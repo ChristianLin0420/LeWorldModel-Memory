@@ -1,0 +1,43 @@
+# LeWorldModel Configuration
+# Based on paper defaults
+
+model:
+  img_size: 224
+  patch_size: 14
+  in_channels: 3
+  embed_dim: 192
+  action_dim: 2
+  
+  # Encoder (ViT-Tiny)
+  encoder_layers: 12
+  encoder_heads: 3
+  
+  # Predictor (ViT-S with AdaLN)
+  predictor_layers: 6
+  predictor_heads: 16
+  history_len: 3
+  dropout: 0.1
+  
+  # SIGReg
+  sigreg_lambda: 0.1
+  sigreg_projections: 1024
+
+training:
+  epochs: 10
+  batch_size: 128
+  lr: 0.0001
+  weight_decay: 0.00001
+  frame_skip: 5
+  history_len: 3
+
+planning:
+  horizon: 5
+  num_samples: 300
+  num_elites: 30
+  num_iterations: 30
+  frame_skip: 5
+
+environment:
+  name: "TwoRoom"
+  img_size: 64  # Smaller for faster testing
+  max_steps: 100

@@ -1,0 +1,11 @@
+torch>=2.0
+torchvision>=0.15
+numpy
+matplotlib
+tqdm
+gymnasium
+opencv-python
+scikit-learn
+scipy
+imageio
+tensorboard
