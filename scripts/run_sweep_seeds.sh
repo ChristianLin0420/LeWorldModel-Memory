@@ -32,7 +32,8 @@ done
 echo "=== sweep-seed jobs: ${#JOBS[@]} on GPUs [${GPU_LIST[*]}] ==="
 
 run_worker () {
-  local slot=$1 gpu=${GPU_LIST[$slot]}
+  local slot=$1
+  local gpu=${GPU_LIST[$slot]}
   for idx in "${!JOBS[@]}"; do
     if [ $(( idx % NG )) -eq "$slot" ]; then
       local args="${JOBS[$idx]}" env mode seed suf name
