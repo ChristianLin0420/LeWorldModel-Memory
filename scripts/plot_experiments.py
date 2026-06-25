@@ -74,20 +74,27 @@ def fig_seeds(rows):
 
 
 def fig_tau_slow(rows):
-    sel = sorted([r for r in rows if r['suffix'].startswith('tslow')], key=lambda r: r['tau_slow'])
+    sel = [r for r in rows if r['suffix'].startswith('tslow')]
     if not sel:
         print("no tau_slow sweep runs"); return
+    by = defaultdict(lambda: defaultdict(list))
+    for r in sel:
+        by[r['tau_slow']]['usage'].append(r['usage_matched'])
+        by[r['tau_slow']]['avail'].append(r['acc_slow'])
+    ts = sorted(by)
     gap = sel[0]['gap']
-    ts = [r['tau_slow'] for r in sel]
+    nseed = max(len(by[t]['usage']) for t in ts)
+    um = [np.nanmean(by[t]['usage']) for t in ts]; us = [np.nanstd(by[t]['usage']) for t in ts]
+    am = [np.nanmean(by[t]['avail']) for t in ts]
     fig, ax = plt.subplots(figsize=(7, 4.4))
-    ax.plot(ts, [r['usage_matched'] for r in sel], 'o-', color='#2ca02c', label='usage (cue from prediction)')
-    ax.plot(ts, [r['acc_slow'] for r in sel], 's--', color='#1f77b4', label='availability (cue in m_slow)')
+    ax.errorbar(ts, um, yerr=us, fmt='o-', color='#2ca02c', capsize=3, label='usage (cue from prediction)')
+    ax.plot(ts, am, 's--', color='#1f77b4', label='availability (cue in m_slow)')
     ax.axhline(sel[0]['chance'], ls=':', c='gray', label='chance')
     ax.axvline(gap, ls='--', c='k', alpha=.6); ax.text(gap + .5, 0.05, f'gap Delta={gap:.0f}', rotation=90, fontsize=9)
     ax.set_xlabel('slow-bank horizon tau_slow (steps)'); ax.set_ylabel('accuracy'); ax.set_ylim(0, 1.02)
-    ax.set_title('(2) tmaze: usage tracks the gap -- decision recovers the cue once tau_slow >= Delta')
+    ax.set_title(f'(2) tmaze: usage tracks the gap -- recovers cue once tau_slow>=Delta (mean+/-std, {nseed} seeds)')
     ax.legend(fontsize=8); fig.tight_layout(); fig.savefig(ROOT / 'exp2_tau_slow_sweep.png', dpi=110, bbox_inches='tight')
-    print("saved exp2_tau_slow_sweep.png")
+    print(f"saved exp2_tau_slow_sweep.png ({nseed} seeds)")
 
 
 def fig_learnable(rows):
@@ -95,33 +102,43 @@ def fig_learnable(rows):
     if not sel:
         print("no learnable runs"); return
     envs = [e for e in MEM_ENVS if any(r['env'] == e for r in sel)]
+    def ms(e, k):
+        v = [r[k] for r in sel if r['env'] == e]
+        return np.nanmean(v), np.nanstd(v)
+    nseed = max(len([r for r in sel if r['env'] == e]) for e in envs)
     fig, ax = plt.subplots(figsize=(7.5, 4.4))
     x = np.arange(len(envs)); w = 0.35
-    tf = [next(r['tau_fast'] for r in sel if r['env'] == e) for e in envs]
-    tsl = [next(r['tau_slow'] for r in sel if r['env'] == e) for e in envs]
+    tf = [ms(e, 'tau_fast') for e in envs]; tsl = [ms(e, 'tau_slow') for e in envs]
     gaps = [next(r['gap'] for r in sel if r['env'] == e) for e in envs]
-    ax.bar(x - w / 2, tf, w, label='learned tau_fast', color='#d62728')
-    ax.bar(x + w / 2, tsl, w, label='learned tau_slow', color='#1f77b4')
+    ax.bar(x - w / 2, [a[0] for a in tf], w, yerr=[a[1] for a in tf], capsize=3, label='learned tau_fast', color='#d62728')
+    ax.bar(x + w / 2, [a[0] for a in tsl], w, yerr=[a[1] for a in tsl], capsize=3, label='learned tau_slow', color='#1f77b4')
     ax.plot(x, gaps, 'k*', ms=14, label='task gap Delta')
     for xi, g in zip(x, gaps):
-        ax.text(xi, g + 0.5, f'{g:.0f}', ha='center', fontsize=8)
+        ax.text(xi, g + 0.6, f'Δ={g:.0f}', ha='center', fontsize=8)
     ax.set_xticks(x); ax.set_xticklabels(envs); ax.set_ylabel('horizon tau (steps)')
-    ax.set_title('(3) Discovered memory horizons (alpha learned): tau adapts toward the task gap')
+    ax.set_title(f'(3) Learned horizons (alpha learnable, {nseed} seeds): tau stays near init, does NOT track the gap')
     ax.legend(fontsize=8); fig.tight_layout(); fig.savefig(ROOT / 'exp3_learnable_tau.png', dpi=110, bbox_inches='tight')
-    print("saved exp3_learnable_tau.png")
+    print(f"saved exp3_learnable_tau.png ({nseed} seeds)")
 
 
 def fig_gap(rows):
     sel = [r for r in rows if r['suffix'].startswith('gap')]
     if not sel:
         print("no gap sweep runs"); return
+    nseed = 1
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4.4))
     for d, c in [('none', '#999999'), ('both', '#2ca02c')]:
-        pts = sorted([r for r in sel if r['design'] == d], key=lambda r: r['gap'])
-        if not pts: continue
-        g = [r['gap'] for r in pts]
-        ax1.plot(g, [r['usage_matched'] for r in pts], 'o-', color=c, label=d)
-        ax2.plot(g, [r['val_mse'] for r in pts], 'o-', color=c, label=d)
+        by = defaultdict(lambda: defaultdict(list))
+        for r in sel:
+            if r['design'] == d:
+                by[r['gap']]['u'].append(r['usage_matched']); by[r['gap']]['m'].append(r['val_mse'])
+        g = sorted(by)
+        if not g: continue
+        nseed = max(nseed, max(len(by[x]['u']) for x in g))
+        ax1.errorbar(g, [np.nanmean(by[x]['u']) for x in g], yerr=[np.nanstd(by[x]['u']) for x in g],
+                     fmt='o-', color=c, capsize=3, label=d)
+        ax2.errorbar(g, [np.nanmean(by[x]['m']) for x in g], yerr=[np.nanstd(by[x]['m']) for x in g],
+                     fmt='o-', color=c, capsize=3, label=d)
     ch = next((r['chance'] for r in sel if not np.isnan(r['chance'])), 0.5)
     ax1.axhline(ch, ls=':', c='gray', label='chance')
     tau_slow = next((r['tau_slow'] for r in sel if r['design'] == 'both'), 25)
@@ -133,10 +150,10 @@ def fig_gap(rows):
     ax1.set_ylabel('usage (cue from prediction)'); ax1.set_ylim(0, 1.02)
     ax1.set_title('(4) Memory vs finite-window baseline as the gap grows')
     ax2.set_ylabel('val next-latent MSE')
-    fig.suptitle('(4) tmaze gap sweep: baseline (none, window h=3) cliffs once Delta>h; '
-                 'memory (both) holds until Delta approaches tau_slow', y=1.02)
+    fig.suptitle(f'(4) tmaze gap sweep ({nseed} seeds, mean+/-std): baseline (none, window h=3) cliffs once '
+                 'Delta>h; memory (both) holds until Delta approaches tau_slow', y=1.02)
     fig.tight_layout(); fig.savefig(ROOT / 'exp4_gap_sweep.png', dpi=110, bbox_inches='tight')
-    print("saved exp4_gap_sweep.png")
+    print(f"saved exp4_gap_sweep.png ({nseed} seeds)")
 
 
 if __name__ == '__main__':

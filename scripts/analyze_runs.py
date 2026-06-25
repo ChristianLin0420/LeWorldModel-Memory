@@ -15,7 +15,7 @@ from lewm.models.memory_model import MemoryLeWorldModel
 from lewm.data import generate_eval_batch
 from lewm.eval.memory_probe import extract_timewise, _fit_probe
 
-ROOT = Path(__file__).parent.parent / 'outputs' / 'mem'
+ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else (Path(__file__).parent.parent / 'outputs' / 'mem')
 dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 N_EVAL = 256
 
