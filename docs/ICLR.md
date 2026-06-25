@@ -133,24 +133,24 @@ On the long-horizon tasks the `long`/`both` designs lift decision-usage well abo
 
 Sweeping the cue→decision gap $\Delta$ on T-Maze (Table 3, Figure 3) shows the vanilla baseline flat at chance for every $\Delta$ beyond its 3-frame window, while the memory model holds high usage and **degrades gracefully**, approaching chance only as $\Delta\to\tau_{\text{slow}}$.
 
-**Table 3 — T-Maze gap sweep: usage vs. gap $\Delta$ (window $h{=}3$, $\tau_{\text{slow}}{=}25$). [preliminary: seed 0; 3-seed run in progress]**
+**Table 3 — T-Maze gap sweep: usage vs. gap $\Delta$ (window $h{=}3$, $\tau_{\text{slow}}{=}25$; 3 seeds, mean).**
 
 | $\Delta$ | 3 | 9 | 15 | 21 | 27 | 33 | 39 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| vanilla (none) | 0.60 | 0.60 | 0.45 | 0.49 | 0.43 | 0.52 | 0.47 |
-| memory (both) | **0.99** | **0.95** | **0.77** | **0.77** | **0.73** | **0.69** | **0.61** |
+| vanilla (none) | 0.55 | 0.55 | 0.44 | 0.53 | 0.44 | 0.48 | 0.45 |
+| memory (both) | **0.98** | **0.94** | **0.88** | **0.87** | **0.83** | **0.77** | **0.64** |
 
 ![Figure 3: gap sweep](figures/exp4_gap_sweep.png)
 *Figure 3. Memory vs. finite-window baseline as the gap grows. Left: usage. Right: MSE (noisy; see §5.4).*
 
 Sweeping the slow-bank horizon $\tau_{\text{slow}}$ at fixed gap $\Delta{=}21$ (Table 4) confirms the duration is the operative knob: a too-short slow bank ($\tau{=}3$) cannot hold the cue at all (availability at chance), and once $\tau_{\text{slow}}\gtrsim\Delta$ the decision recovers it.
 
-**Table 4 — T-Maze $\tau_{\text{slow}}$ sweep ($\Delta{=}21$, design `both`). [preliminary: seed 0]**
+**Table 4 — T-Maze $\tau_{\text{slow}}$ sweep ($\Delta{=}21$, design `both`; 3 seeds, mean).**
 
 | $\tau_{\text{slow}}$ | 3 | 6 | 12 | 21 | 30 | 45 |
 |---|---:|---:|---:|---:|---:|---:|
-| availability ($m^{\text{slow}}$) | 0.49 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| usage | 0.48 | 0.62 | 0.68 | 0.88 | 0.58 | 0.92 |
+| availability ($m^{\text{slow}}$) | 0.47 | 0.99 | 1.00 | 1.00 | 1.00 | 1.00 |
+| usage | 0.50 | 0.54 | 0.66 | 0.89 | 0.78 | 0.94 |
 
 ### 5.4 What does *not* hold up: raw MSE and learned decay
 
@@ -166,7 +166,7 @@ Sweeping the slow-bank horizon $\tau_{\text{slow}}$ at fixed gap $\Delta{=}21$ (
 | Distractor | **0.39 ±.12** | 0.41 ±.16 | 0.57 ±.19 | 0.52 ±.21 |
 | TwoRoom (control) | **0.48** | — | — | 0.48 |
 
-**Learned decay does not self-tune.** Making $\alpha$ learnable leaves the horizons near their initialization for every environment ($\tau_{\text{fast}}\approx2.9,\ \tau_{\text{slow}}\approx24$) regardless of the task gap (5 vs. 21 vs. 23); the gradient signal on a scalar decay is weak. The practical lever is therefore *choosing* timescales — which is precisely why two banks spanning a *range* of horizons is the right design.
+**Learned decay does not self-tune.** Making $\alpha$ learnable leaves the horizons near their initialization for every environment — across 3 seeds the learned $\tau_{\text{slow}}$ is $23.9\text{–}24.4$ regardless of the task gap (5 / 15 / 21 / 23), with std $\le0.4$ — i.e., it does *not* track the gap; the gradient signal on a scalar decay is weak. The practical lever is therefore *choosing* timescales, which is precisely why two banks spanning a *range* of horizons is the right design.
 
 ### 5.5 Control
 
@@ -174,7 +174,7 @@ On the fully-observable **TwoRoom**, `none` and `both` are indistinguishable on 
 
 ## 6. Discussion and Limitations
 
-The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Custom toy environments** are sufficient for controlled probing but not for an acceptance-grade claim; evaluation on a standard pixel memory benchmark (POPGym Arcade, Memory Maze) and a demonstration on frozen V-JEPA/DINO-WM features at scale are the priority next steps. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. We also plan ≥5 seeds for the sweeps, which are currently noisy at single seed.
+The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Custom toy environments** are sufficient for controlled probing but not for an acceptance-grade claim; evaluation on a standard pixel memory benchmark (POPGym Arcade, Memory Maze) and a demonstration on frozen V-JEPA/DINO-WM features at scale are the priority next steps. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
 
 ## 7. Conclusion
 
