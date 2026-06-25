@@ -107,11 +107,15 @@ def decision_uses_memory(model, eval_batch, feats, device, train_ratio: float = 
     perm = rng.permutation(B)
     ntr = int(B * train_ratio)
     tr, te = perm[:ntr], perm[ntr:]
-    # probe trained on TRUE reveal latents, evaluated on the model's PREDICTION
+    # probe trained on TRUE reveal latents, evaluated on the model's PREDICTION (cross-dist)
     acc_from_pred = _fit_probe(z_real[tr], cue[tr], z_pred[te], cue[te], n_classes)
     acc_from_true = _fit_probe(z_real[tr], cue[tr], z_real[te], cue[te], n_classes)
+    # MATCHED probe: trained and tested on the model's PREDICTIONS (the correct "does the
+    # decision encode the cue?" measure -- avoids the encoder->predictor distribution shift)
+    acc_matched = _fit_probe(z_pred[tr], cue[tr], z_pred[te], cue[te], n_classes)
     return {
         'cue_acc_from_prediction': acc_from_pred,
+        'cue_acc_from_prediction_matched': acc_matched,
         'cue_acc_from_true_latent': acc_from_true,
         'chance': 1.0 / n_classes,
     }

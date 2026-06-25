@@ -79,6 +79,11 @@ def main():
     p.add_argument('--memory-mode', default='both', choices=['none', 'short', 'long', 'both'])
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/mem')
+    p.add_argument('--run-suffix', default='', help='appended to run name + output dir (for sweeps)')
+    p.add_argument('--extra-tag', default='', help='comma-separated extra wandb tags (e.g. exp:tau_slow_sweep)')
+    # env overrides (passed through to the env generator when set; e.g. tmaze gap sweep)
+    p.add_argument('--reveal', type=int, default=None)
+    p.add_argument('--cue-len', type=int, default=None)
     # data / episodes
     p.add_argument('--num-episodes', type=int, default=6000)
     p.add_argument('--val-episodes', type=int, default=512)
@@ -123,25 +128,36 @@ def main():
 
     kind = ENV_MEMORY_KIND[args.env]
     run_name = f"lewm-{args.env}-{args.memory_mode}-s{args.seed}"
+    if args.run_suffix:
+        run_name += f"-{args.run_suffix}"
     out_dir = Path(args.output_dir) / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # env kwargs passed through only when explicitly set (keeps defaults otherwise)
+    env_kwargs = {}
+    if args.reveal is not None:
+        env_kwargs['reveal'] = args.reveal
+    if args.cue_len is not None:
+        env_kwargs['cue_len'] = args.cue_len
 
     # ---- wandb ----
     wb = None
     if args.wandb:
         import wandb
+        tags = [f"env:{args.env}", f"design:{args.memory_mode}", f"kind:{kind}", "lewm-memory"]
+        if args.extra_tag:
+            tags += [t.strip() for t in args.extra_tag.split(',') if t.strip()]
         wb = wandb.init(
             project=args.wandb_project, entity=args.wandb_entity, name=run_name,
-            group=args.env, job_type=args.memory_mode,
-            tags=[f"env:{args.env}", f"design:{args.memory_mode}", f"kind:{kind}", "lewm-memory"],
+            group=args.env, job_type=args.memory_mode, tags=tags,
             config=vars(args) | {'memory_kind': kind},
         )
 
     # ---- data ----
     train_ds = MemoryEpisodeDataset(args.env, args.num_episodes, img_size=args.img_size,
-                                    length=args.length, seed=args.seed)
+                                    length=args.length, seed=args.seed, **env_kwargs)
     val_ds = MemoryEpisodeDataset(args.env, args.val_episodes, img_size=args.img_size,
-                                  length=args.length, seed=args.seed + 99991)
+                                  length=args.length, seed=args.seed + 99991, **env_kwargs)
     pin = device.type == 'cuda'
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
                               num_workers=args.num_workers, pin_memory=pin, drop_last=True,
@@ -150,7 +166,7 @@ def main():
                             num_workers=args.num_workers, pin_memory=pin,
                             persistent_workers=args.num_workers > 0)
     eval_batch = generate_eval_batch(args.env, args.probe_episodes, img_size=args.img_size,
-                                     length=args.length, seed=args.seed + 7)
+                                     length=args.length, seed=args.seed + 7, **env_kwargs)
 
     # ---- model / optim ----
     model = build_model(args, device)
