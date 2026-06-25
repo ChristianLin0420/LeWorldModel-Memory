@@ -60,10 +60,12 @@ class ViTTinyEncoder(nn.Module):
 
         self.norm = nn.LayerNorm(embed_dim)
 
-        # Projection head: 1-layer MLP + BatchNorm (needed because LayerNorm prevents SIGReg optimization)
+        # Projection head: 1-layer MLP + BatchNorm (needed because LayerNorm prevents SIGReg optimization).
+        # track_running_stats=False -> BN uses batch statistics in BOTH train and eval, so the latent
+        # distribution the predictor/probes see at eval time matches training (no running-stat drift).
         self.projector = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
-            nn.BatchNorm1d(embed_dim),
+            nn.BatchNorm1d(embed_dim, track_running_stats=False),
         )
 
         # Initialize weights
@@ -263,10 +265,10 @@ class Predictor(nn.Module):
 
         self.norm = nn.LayerNorm(embed_dim)
 
-        # Projector (same as encoder)
+        # Projector (same as encoder); batch-stat BN in both modes (see ViTTinyEncoder note).
         self.projector = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
-            nn.BatchNorm1d(embed_dim),
+            nn.BatchNorm1d(embed_dim, track_running_stats=False),
         )
 
     def _causal_mask(self, seq_len: int, device: torch.device) -> torch.Tensor:

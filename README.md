@@ -1,6 +1,23 @@
-# LeWorldModel (LeWM) Implementation
+# LeWorldModel (LeWM) + Two-Timescale Memory
 
-PyTorch implementation of "LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels" (arXiv:2603.19312).
+PyTorch implementation of "LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels" (arXiv:2603.19312), **extended with a two-timescale (short/long-term) memory** for a foundational study of how memory shapes the dynamics of a JEPA latent space (targeting ICLR 2027).
+
+> **Memory study TL;DR.** JEPA encoders are memoryless and the LeWM predictor only sees a 3-frame window. We add two exponential-moving-average memory banks over the latent stream — a *fast* (short-term, `τ≈3`) and a *slow* (long-term, `τ≈25`) leaky integrator — injected into the predictor with zero-init projections (so training starts exactly at the baseline). The loss stays 2-term. We then *visualize how short- vs long-term memory affect the decision* across 4 memory-stressing environments. See **[`docs/PROPOSAL.md`](docs/PROPOSAL.md)** (method + math + experiments) and **[`docs/RESEARCH_BRIEF.md`](docs/RESEARCH_BRIEF.md)** (annotated literature review).
+
+### Memory study quickstart
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements.txt wandb pyyaml   # torch: use cu128 wheels for Blackwell
+.venv/bin/wandb login                                  # logs to wandb project "lewm-memory"
+.venv/bin/python scripts/test_memory.py                # unit tests for the EMA math + model
+EPOCHS=30 NUM_EPISODES=5000 bash scripts/run_all.sh    # 4 GPUs: one memory env each x {none,short,long,both}
+.venv/bin/python scripts/aggregate_results.py          # env x design summary table + figure
+```
+
+Key new files: `lewm/models/memory.py` (two-timescale EMA + fusion), `lewm/models/memory_model.py` (`MemoryLeWorldModel`), `lewm/envs/memory_envs.py` (tmaze/occlusion/recall/distractor + tworoom control), `lewm/eval/memory_probe.py` (availability + usage probes), `scripts/train_memory.py`, `scripts/run_all.sh`.
+
+---
+
+## Base LeWM
 
 ## Architecture
 

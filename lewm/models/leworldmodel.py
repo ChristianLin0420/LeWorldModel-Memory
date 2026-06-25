@@ -197,9 +197,11 @@ class LeWorldModel(nn.Module):
         """
         self.eval()
 
-        # Encode initial and goal states
-        z_init = self.encode(obs_init)  # (1, D)
-        z_goal = self.encode(obs_goal)  # (1, D)
+        # Encode initial and goal states together as a batch of 2 (the projector BN uses
+        # batch statistics, so it needs >1 sample; encoding the pair jointly satisfies that).
+        z_pair = self.encode(torch.cat([obs_init, obs_goal], dim=0))  # (2, D)
+        z_init = z_pair[:obs_init.shape[0]]   # (1, D)
+        z_goal = z_pair[obs_init.shape[0]:]   # (1, D)
 
         # Initialize CEM distribution
         mu = torch.zeros(horizon, self.action_dim, device=z_init.device)
