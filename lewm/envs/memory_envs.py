@@ -73,6 +73,13 @@ class _Renderer:
         ya, yb = max(0, min(ya, yb)), min(S, max(ya, yb))
         img[ya:yb, xa:xb] = color
 
+    def seg(self, img: np.ndarray, x0: float, y0: float, x1: float, y1: float,
+            r: float, color, n: int = 24) -> None:
+        """Draw a thick line segment as a chain of disks (for the Reacher arm links)."""
+        for i in range(n + 1):
+            t = i / n
+            self.disk(img, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, color)
+
 
 # ---- shared agent-dot random walk -------------------------------------------------
 def _random_walk(rng: np.random.Generator, length: int, step: float = 0.06):
@@ -234,12 +241,134 @@ def make_tworoom(img_size: int = 64, length: int = 32, agent_radius: float = 0.0
     return gen
 
 
+# ---- partially-observable variants of the LeWorldModel paper's envs --------------
+# The paper's tasks (Two-Room, Reacher, Push-T, OGBench-Cube) are all fully observable and
+# goal-conditioned. We make each memory-relevant with the canonical PO twist: the GOAL is
+# shown briefly (cue), then hidden for the rest of the episode, and reappears at `reveal`.
+# Predicting the reappearance requires remembering the cue. These are lightweight pixel
+# proxies (not the original MuJoCo/pymunk simulators), built to study memory on the paper's
+# task semantics with our exact pipeline (cue label -> availability/usage probes work).
+_CUE_COLORS4 = [BLUE, YELLOW, MAGENTA, CYAN]
+
+
+def make_tworoom_po(img_size: int = 64, length: int = 32, cue_len: int = 3, reveal: int = 22,
+                    agent_radius: float = 0.05, goal_radius: float = 0.06) -> EpisodeFn:
+    """PO Two-Room navigation: goal (one of 4 locations) shown early, hidden, reappears late."""
+    R = _Renderer(img_size)
+    targets = [(0.72, 0.22), (0.72, 0.78), (0.90, 0.35), (0.90, 0.65)]
+
+    def gen(rng):
+        cue = int(rng.integers(0, 4)); gx, gy = targets[cue]
+        pos, act = _random_walk(rng, length)
+        obs = np.empty((length, img_size, img_size, 3), dtype=np.uint8)
+        for t in range(length):
+            img = R.blank()
+            R.rect(img, 0.46, 0.0, 0.54, 1.0, GRAY)
+            R.rect(img, 0.46, 0.44, 0.54, 0.56, WHITE)              # door
+            if t < cue_len:
+                R.disk(img, gx, gy, goal_radius, _CUE_COLORS4[cue])  # goal cue shown
+            if t >= reveal:
+                R.disk(img, gx, gy, goal_radius, GREEN)              # goal reappears
+            R.disk(img, pos[t, 0], pos[t, 1], agent_radius, RED)
+            obs[t] = img
+        return obs, act, {'cue': cue, 'cue_end': cue_len, 'reveal': reveal, 'n_cue_classes': 4}
+    return gen
+
+
+def make_reacher_po(img_size: int = 64, length: int = 32, cue_len: int = 3, reveal: int = 16) -> EpisodeFn:
+    """PO Reacher: 2-joint arm (continuous joint-angle action); target shown early, hidden, reappears."""
+    R = _Renderer(img_size)
+    bx, by, l1, l2 = 0.5, 0.82, 0.22, 0.20
+    targets = [(0.25, 0.35), (0.75, 0.35), (0.30, 0.62), (0.70, 0.62)]
+
+    def gen(rng):
+        cue = int(rng.integers(0, 4)); gx, gy = targets[cue]
+        th1 = float(rng.uniform(0.3, 0.7) * np.pi); th2 = float(rng.uniform(-0.4, 0.4) * np.pi)
+        act = np.empty((length - 1, 2), dtype=np.float32)
+        obs = np.empty((length, img_size, img_size, 3), dtype=np.uint8)
+        for t in range(length):
+            ex, ey = bx + l1 * np.cos(th1), by - l1 * np.sin(th1)
+            hx, hy = ex + l2 * np.cos(th1 + th2), ey - l2 * np.sin(th1 + th2)
+            img = R.blank()
+            if t < cue_len:
+                R.disk(img, gx, gy, 0.05, _CUE_COLORS4[cue])
+            if t >= reveal:
+                R.disk(img, gx, gy, 0.06, GREEN)
+            R.seg(img, bx, by, ex, ey, 0.025, GRAY); R.seg(img, ex, ey, hx, hy, 0.022, GRAY)
+            R.disk(img, bx, by, 0.03, (60, 60, 60)); R.disk(img, ex, ey, 0.025, (90, 90, 90))
+            R.disk(img, hx, hy, 0.04, RED)                          # end-effector
+            obs[t] = img
+            if t < length - 1:
+                d1, d2 = float(rng.uniform(-1, 1)), float(rng.uniform(-1, 1))
+                act[t] = (d1, d2)
+                th1 = float(np.clip(th1 + d1 * 0.08, 0.15 * np.pi, 0.85 * np.pi))
+                th2 = float(np.clip(th2 + d2 * 0.08, -0.5 * np.pi, 0.5 * np.pi))
+        return obs, act, {'cue': cue, 'cue_end': cue_len, 'reveal': reveal, 'n_cue_classes': 4}
+    return gen
+
+
+def make_pusht_po(img_size: int = 64, length: int = 32, cue_len: int = 3, reveal: int = 20,
+                  agent_radius: float = 0.04) -> EpisodeFn:
+    """PO Push-T: a T-block + pusher; target pose (one of 4) shown early, hidden, reappears."""
+    R = _Renderer(img_size)
+    targets = [(0.25, 0.30), (0.75, 0.30), (0.25, 0.72), (0.75, 0.72)]
+
+    def gen(rng):
+        cue = int(rng.integers(0, 4)); gx, gy = targets[cue]
+        pos, act = _random_walk(rng, length)
+        obs = np.empty((length, img_size, img_size, 3), dtype=np.uint8)
+        for t in range(length):
+            img = R.blank()
+            if t < cue_len:
+                R.rect(img, gx - 0.07, gy - 0.07, gx + 0.07, gy + 0.07, _CUE_COLORS4[cue])
+            if t >= reveal:
+                R.rect(img, gx - 0.07, gy - 0.07, gx + 0.07, gy + 0.07, GREEN)
+            bxx, byy = float(pos[t, 0]), float(pos[t, 1])           # T-block pose
+            R.rect(img, bxx - 0.09, byy - 0.04, bxx + 0.09, byy + 0.02, (40, 80, 200))   # bar
+            R.rect(img, bxx - 0.03, byy + 0.0, bxx + 0.03, byy + 0.12, (40, 80, 200))    # stem
+            R.disk(img, bxx, byy - 0.08, agent_radius, RED)        # pusher
+            obs[t] = img
+        return obs, act, {'cue': cue, 'cue_end': cue_len, 'reveal': reveal, 'n_cue_classes': 4}
+    return gen
+
+
+def make_cube_po(img_size: int = 64, length: int = 32, cue_len: int = 3, reveal: int = 18) -> EpisodeFn:
+    """PO OGBench-Cube proxy: a pseudo-3D cube on a floor; target pad (one of 4) cued early."""
+    R = _Renderer(img_size)
+    pads = [0.22, 0.42, 0.62, 0.82]
+
+    def gen(rng):
+        cue = int(rng.integers(0, 4)); px = pads[cue]
+        pos, act = _random_walk(rng, length)
+        obs = np.empty((length, img_size, img_size, 3), dtype=np.uint8)
+        for t in range(length):
+            img = R.blank()
+            R.rect(img, 0.0, 0.6, 1.0, 1.0, (224, 224, 234))       # floor
+            if t < cue_len:
+                R.rect(img, px - 0.08, 0.62, px + 0.08, 0.70, _CUE_COLORS4[cue])  # target pad cue
+            if t >= reveal:
+                R.rect(img, px - 0.08, 0.62, px + 0.08, 0.70, GREEN)
+            cx, cy = float(pos[t, 0]), 0.42 + 0.10 * float(pos[t, 1])             # cube (slight depth)
+            s, d = 0.09, 0.05
+            R.rect(img, cx - s + d, cy - s - d, cx + s + d, cy - s, (130, 150, 215))   # top face
+            R.rect(img, cx + s, cy - s, cx + s + d, cy + s, (55, 70, 125))             # right face
+            R.rect(img, cx - s, cy - s, cx + s, cy + s, (75, 95, 165))                 # front face
+            obs[t] = img
+        return obs, act, {'cue': cue, 'cue_end': cue_len, 'reveal': reveal, 'n_cue_classes': 4}
+    return gen
+
+
 ENV_REGISTRY: Dict[str, Callable[..., EpisodeFn]] = {
     'tmaze': make_tmaze,
     'occlusion': make_occlusion,
     'recall': make_recall,
     'distractor': make_distractor,
     'tworoom': make_tworoom,
+    # PO variants of the paper's envs
+    'tworoom_po': make_tworoom_po,
+    'reacher_po': make_reacher_po,
+    'pusht_po': make_pusht_po,
+    'cube_po': make_cube_po,
 }
 
 # Default short/long character of each env (for documentation / tags).
@@ -249,6 +378,10 @@ ENV_MEMORY_KIND = {
     'recall': 'mixed',
     'distractor': 'long-interference',
     'tworoom': 'markovian-control',
+    'tworoom_po': 'paper:two-room-PO',
+    'reacher_po': 'paper:reacher-PO',
+    'pusht_po': 'paper:push-t-PO',
+    'cube_po': 'paper:ogbench-cube-PO',
 }
 
 
