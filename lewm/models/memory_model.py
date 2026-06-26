@@ -185,6 +185,8 @@ class MemoryLeWorldModel(LeWorldModel):
         context_obs: torch.Tensor,
         future_actions: torch.Tensor,
         horizon: int,
+        ablate_fast: bool = False,
+        ablate_slow: bool = False,
     ) -> torch.Tensor:
         """Memory-aware autoregressive latent rollout (for imagination / planning).
 
@@ -209,7 +211,7 @@ class MemoryLeWorldModel(LeWorldModel):
             z_win = torch.stack(window[-h:], dim=1)        # (B, h, D)
             mf_b = mf.unsqueeze(1).expand(-1, h, -1)
             ms_b = ms.unsqueeze(1).expand(-1, h, -1)
-            zt = self.fusion(z_win, mf_b, ms_b)            # (B, h, D)
+            zt = self.fusion(z_win, mf_b, ms_b, ablate_fast=ablate_fast, ablate_slow=ablate_slow)
             a_t = future_actions[:, t:t + 1].expand(-1, h, -1)
             z_next = self.predictor(zt, a_t)[:, -1, :]     # (B, D)
             preds.append(z_next)

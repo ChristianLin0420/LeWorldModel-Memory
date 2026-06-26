@@ -241,6 +241,24 @@ To test the effect on the *paper's task semantics* (not just our toy suite), we 
 
 Across all four, `long`/`both` lift decision-usage above chance while `none`/`short` stay at chance; availability (design `both`) is `z`≈0.25, `m^{fast}`≈0.25 (gaps 13–19 exceed $\tau_{\text{fast}}{=}3$), `m^{slow}`=1.00 — only the slow bank carries the goal cue. So the short/long dissociation holds on PO versions of the paper's *own* tasks, not only our custom suite. *Caveat:* these are lightweight pixel proxies (not the original MuJoCo/pymunk/OGBench simulators), and with continuous joint-angle actions for Reacher; the effect is moderate (4-class) but consistent.
 
+### 5.10 Downstream closed-loop control
+
+Finally we close the loop: an interactive memory T-Maze where the agent must *navigate* to the arm indicated by a cue shown briefly and then hidden (`lewm/envs/control_envs.py`). The agent gathers a short context by moving toward the junction, the world model **imagines the goal** by rolling its latent forward to the reveal step (memory-aware rollout), and a linear read-out of that imagined latent picks the arm. Success = committing to the cued arm.
+
+**Table 9 — Closed-loop T-Maze control success (3 seeds, mean$\pm$std).**
+
+| design | success | memory ablated at test | chance |
+|---|---:|---:|---:|
+| none (vanilla) | 0.48 ±.00 | 0.48 ±.00 | 0.50 |
+| short | **1.00 ±.00** | 0.48 ±.00 | 0.50 |
+| long | **1.00 ±.00** | 0.49 ±.02 | 0.50 |
+| both | **1.00 ±.00** | 0.51 ±.02 | 0.50 |
+
+![Figure 8: closed-loop control](figures/fig_E7_planning.png)
+*Figure 8. Closed-loop control. Memory designs reach the cued arm reliably (1.00) while vanilla LeWM is at chance; ablating the memory **at test time** collapses every memory design to chance.*
+
+Memory **causally enables the downstream decision**: with memory the agent reaches the correct arm every time, vanilla LeWM cannot, and removing the memory at test time breaks it (→ chance). This is the decisive control-level analogue of §5.7. *Honest note:* `short` also succeeds at this cue→decision gap because the linear read-out exploits even residual fast-bank signal (the availability-vs-readout effect of §5.4); the clean causal contrast here is memory-vs-none and the test-time ablation, not short-vs-long.
+
 ## 6. Discussion and Limitations
 
 The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Benchmarks.** We now include one standard pixel memory benchmark (POPGym Arcade, §5.6), where the single-timescale primitive transfers; broader suites (Memory Maze, more POPGym tasks) and a demonstration on frozen V-JEPA/DINO-WM features at scale remain priority next steps. The fragility of the two-bank combination on §5.6 points to learned timescale selection. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
