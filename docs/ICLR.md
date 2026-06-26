@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Joint-Embedding Predictive Architectures (JEPAs) have become a leading recipe for latent world models: an encoder maps each observation to a representation and a predictor forecasts future representations. Yet these models are *memoryless* in time — the encoder sees one frame at a time and the predictor attends only over a short fixed window — so they cannot represent how information at different temporal distances shapes the dynamics of the latent space. We introduce a minimal, mathematically transparent remedy: a **two-timescale exponential memory** that augments the predictor with a *fast* (short-term) and a *slow* (long-term) exponential-moving-average (EMA) bank over the latent stream, injected through zero-initialized projections so training begins exactly at the memoryless baseline. The mechanism is the simplest diagonal linear state-space model; it adds two interpretable scalars whose closed-form effective horizon is $\tau=-1/\ln(1-\alpha)$, and it keeps the host model's two-term loss intact. On a controlled suite of partially-observable, memory-stressing environments built on the recent LeWorldModel, we show that (i) the memory horizon must *match* the task's cue-to-decision gap — a short bank bridges short gaps and only the long bank bridges long ones; (ii) the matched timescale carries information to the *decision*, lifting cue-decodability from the model's own prediction from chance to $0.84$ on long-horizon tasks; and (iii) memory extends the usable horizon far beyond the predictor's window, degrading gracefully where the memoryless baseline cliffs. A fully-observable control confirms the gains are memory-specific. We argue that an explicit, controllable multi-timescale memory — rather than the hierarchy/sub-goal direction the field currently favors — is a foundational primitive for studying memory in JEPA latent dynamics, and we contribute a reusable *availability-vs-usage* measurement protocol.
+Joint-Embedding Predictive Architectures (JEPAs) have become a leading recipe for latent world models: an encoder maps each observation to a representation and a predictor forecasts future representations. Yet these models are *memoryless* in time — the encoder sees one frame at a time and the predictor attends only over a short fixed window — so they cannot represent how information at different temporal distances shapes the dynamics of the latent space. We introduce a minimal, mathematically transparent remedy: a **two-timescale exponential memory** that augments the predictor with a *fast* (short-term) and a *slow* (long-term) exponential-moving-average (EMA) bank over the latent stream, injected through zero-initialized projections so training begins exactly at the memoryless baseline. The mechanism is the simplest diagonal linear state-space model; it adds two interpretable scalars whose closed-form effective horizon is $\tau=-1/\ln(1-\alpha)$, and it keeps the host model's two-term loss intact. On a controlled suite of partially-observable, memory-stressing environments built on the recent LeWorldModel, we show that (i) the memory horizon must *match* the task's cue-to-decision gap — a short bank bridges short gaps and only the long bank bridges long ones; (ii) the matched timescale carries information to the *decision*, lifting cue-decodability from the model's own prediction from chance to $0.84$ on long-horizon tasks; and (iii) memory extends the usable horizon far beyond the predictor's window, degrading gracefully where the memoryless baseline cliffs. A fully-observable control confirms the gains are memory-specific. Across 5 seeds we further show the matched timescale **causally** drives both the prediction (a counterfactual memory-swap flips the prediction to an injected cue) and **downstream closed-loop control** (test-time memory ablation collapses success to chance); a fixed **log-spaced multi-bank** captures the full range of horizons *without tuning* and outperforms a learned GRU and a long-context predictor. We argue that an explicit, controllable multi-timescale memory — rather than the hierarchy/sub-goal direction the field currently favors — is a foundational primitive for studying memory in JEPA latent dynamics, and we contribute a reusable *availability-vs-usage* measurement protocol.
 
 ---
 
@@ -19,8 +19,9 @@ We take the orthogonal view that **explicit, controllable memory** is the missin
 **Contributions.**
 1. **A minimal primitive.** A two-timescale EMA memory for JEPA predictors: two scalars + two zero-initialized projections, preserving the host's two-term loss (§3).
 2. **A measurement protocol.** We separate *availability* (is the cue still linearly present in a representation stream over time?) from *usage* (does the model's prediction at the decision encode the cue?), plus a memory-ablation *influence* functional (§4.3).
-3. **Controlled evidence.** On four memory-stressing environments plus a Markovian control, the memory horizon must match the cue-to-decision gap, the matched timescale drives the decision, and memory degrades gracefully where the finite window cliffs (§5).
-4. **Honest scope.** We report where the picture is clean (decision/availability) and where it is not (raw prediction MSE is a decoupled instrument; learned decay rates do *not* self-tune to the task) (§5.4, §6).
+3. **Controlled evidence + causality.** On four memory-stressing environments plus a Markovian control: the horizon must match the cue-to-decision gap (quantified law, §5.12); the matched timescale **causally** drives both the prediction (counterfactual swap, §5.7) and downstream closed-loop control (§5.10); memory degrades gracefully where the finite window cliffs (§5.3).
+4. **Mechanism comparison.** A fixed **log-spaced K-bank** is best overall *without tuning*, a learned GRU underperforms it, and a long-context window only helps once it spans the whole gap — isolating the *controllable exponential structure* as the contribution (§5.11), plus transfer to a standard benchmark (§5.6) and PO variants of the paper's own tasks (§5.9).
+5. **Honest scope.** We report where the picture is clean and where it is not (raw MSE is decoupled; learned scalar decay does not self-tune; `both` can lose to a single matched τ on noisy data) (§5.4, §6).
 
 ## 2. Related Work
 
@@ -95,17 +96,17 @@ Encoder ViT (patch 8, 64×64 RGB), $D{=}128$, predictor window $h{=}3$; fixed ho
 
 ## 5. Results
 
-**Results at a glance — vanilla LeWM vs two-timescale memory on the four memory environments** (`lewm-memory-4ens`, 3 seeds). Decision-usage = cue decodable from the model's prediction (chance 0.50, except Recall 0.33); MSE = next-latent validation error; "→ best-mem" gives the best memory design.
+**Results at a glance — vanilla LeWM vs two-timescale memory on the four memory environments** (`lewm-memory-4ens`, 5 seeds). Decision-usage = cue decodable from the model's prediction (chance 0.50, except Recall 0.33); "best-mem" = best memory design.
 
-| env | gap $\Delta$ | usage: none → best-mem | MSE: none → best-mem | winning timescale |
-|---|---:|---|---|---|
-| T-Maze | 21 | 0.50 → **0.84** (both) | 0.76 → 0.47 (short) | long / both |
-| Distractor | 23 | 0.55 → **0.94** (long) | 0.39 → 0.41 (no gain) | long |
-| Recall | 15 | 0.37 → **0.46** (both) | 0.76 → **0.33** (short) | short / long |
-| Occlusion | 5 | 0.49 → 0.58 (long) | 0.46 → **0.25** (both) | short / both |
-| TwoRoom (control) | 0 | — (no cue) | 0.48 → 0.48 (unchanged) | none needed |
+| env | gap $\Delta$ | none (vanilla) | best fixed-τ (long/both) | best overall = **multi (K-bank)** |
+|---|---:|---:|---:|---:|
+| T-Maze | 21 | 0.50 | 0.85 | **0.99** |
+| Distractor | 23 | 0.55 | 0.88 | **0.99** |
+| Recall | 15 | 0.37 | 0.45 | **0.47** |
+| Occlusion | 5 | 0.51 | 0.59 | **0.81** |
+| TwoRoom (control) | 0 | 0.48 (MSE) | — | 0.48 (no advantage) |
 
-Memory improves the decision on every memory-stressing environment and gives **no** advantage on the Markovian control; the winning timescale matches the task's gap $\Delta$. The per-metric breakdown and analysis follow.
+Memory improves the decision on every memory-stressing environment and gives **no** advantage on the Markovian control; the winning timescale matches the task's gap $\Delta$ (§5.12), and a fixed log-spaced multi-bank is best overall without tuning (§5.11). The per-metric breakdown and analysis follow; causal evidence is in §5.7 (prediction) and §5.10 (control).
 
 ### 5.1 The memory horizon must match the gap (availability)
 
