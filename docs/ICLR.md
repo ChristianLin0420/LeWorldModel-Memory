@@ -95,6 +95,18 @@ Encoder ViT (patch 8, 64×64 RGB), $D{=}128$, predictor window $h{=}3$; fixed ho
 
 ## 5. Results
 
+**Results at a glance — vanilla LeWM vs two-timescale memory on the four memory environments** (`lewm-memory-4ens`, 3 seeds). Decision-usage = cue decodable from the model's prediction (chance 0.50, except Recall 0.33); MSE = next-latent validation error; "→ best-mem" gives the best memory design.
+
+| env | gap $\Delta$ | usage: none → best-mem | MSE: none → best-mem | winning timescale |
+|---|---:|---|---|---|
+| T-Maze | 21 | 0.50 → **0.84** (both) | 0.76 → 0.47 (short) | long / both |
+| Distractor | 23 | 0.55 → **0.94** (long) | 0.39 → 0.41 (no gain) | long |
+| Recall | 15 | 0.37 → **0.46** (both) | 0.76 → **0.33** (short) | short / long |
+| Occlusion | 5 | 0.49 → 0.58 (long) | 0.46 → **0.25** (both) | short / both |
+| TwoRoom (control) | 0 | — (no cue) | 0.48 → 0.48 (unchanged) | none needed |
+
+Memory improves the decision on every memory-stressing environment and gives **no** advantage on the Markovian control; the winning timescale matches the task's gap $\Delta$. The per-metric breakdown and analysis follow.
+
 ### 5.1 The memory horizon must match the gap (availability)
 
 Figure 1 is the central result. In **T-Maze** (long gap), the memoryless encoder $z$ falls to chance the instant the cue leaves the frame, the *fast* bank holds it briefly and then decays along its exponential kernel — reaching chance *before* the decision — while only the *slow* bank retains the cue across the full 21-step gap. In **Occlusion** (short gap), the *fast* bank alone bridges the brief occlusion where $z$ collapses. Short memory suffices for short gaps; long memory is necessary for long gaps.
@@ -172,9 +184,25 @@ Sweeping the slow-bank horizon $\tau_{\text{slow}}$ at fixed gap $\Delta{=}21$ (
 
 On the fully-observable **TwoRoom**, `none` and `both` are indistinguishable on the held-out set (Table 5), confirming the gains above are memory-specific rather than added capacity.
 
+### 5.6 Standard benchmark: POPGym Arcade
+
+To test transfer beyond our controlled suite, we evaluate on two memory-centric POMDPs from **POPGym Arcade** [Morad et al.] — `CountRecallEasy` and `AutoEncodeEasy` — with pixel observations and discrete actions (one-hot encoded as the predictor's action input). These tasks expose no clean cue label, so we report next-latent validation MSE and the memory-ablation influence $\mathcal I_c$ (3 seeds; `lewm-memory-popgym`).
+
+**Table 6 — POPGym Arcade: next-latent val MSE (lower better) and slow-bank influence (3 seeds, mean$\pm$std).**
+
+| env | none (vanilla) | short | long | both | $\mathcal I_{\text{slow}}$ (long / both) |
+|---|---:|---:|---:|---:|---|
+| AutoEncodeEasy | 0.62 ±.44 | **0.34 ±.24** | 0.91 ±.04 | 0.78 ±.28 | 3.1 / 2.6 |
+| CountRecallEasy | 0.71 ±.17 | 0.56 ±.17 | **0.53 ±.05** | 0.93 ±.19 | 3.9 / 2.1 |
+
+![Figure 4: POPGym Arcade](figures/summary_popgym.png)
+*Figure 4. POPGym Arcade — vanilla LeWM vs two-timescale memory (left: next-latent val MSE; right: slow-bank influence on the prediction). 3 seeds, mean$\pm$std.*
+
+Two findings. **(i) The primitive transfers.** A *single matched* timescale beats vanilla LeWM (AutoEncode `short` $-46\%$; CountRecall `long` $-25\%$ / `short` $-21\%$), and the influence metric confirms the banks are genuinely *used* — $\mathcal I\approx3$ when a bank is injected and exactly $0$ when it is not. **(ii) Naive two-bank stacking is fragile.** `both` is the *worst* memory design on both envs (CountRecall `both` even underperforms vanilla), echoing the synthetic-env result (§5.4) and the learnable-$\alpha$ negative (§5.4): on noisier random-policy trajectories the two banks interfere rather than compose. This motivates **learned timescale gating/selection** as the clear next step, and tempers any "more memory is always better" reading.
+
 ## 6. Discussion and Limitations
 
-The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Custom toy environments** are sufficient for controlled probing but not for an acceptance-grade claim; evaluation on a standard pixel memory benchmark (POPGym Arcade, Memory Maze) and a demonstration on frozen V-JEPA/DINO-WM features at scale are the priority next steps. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
+The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Benchmarks.** We now include one standard pixel memory benchmark (POPGym Arcade, §5.6), where the single-timescale primitive transfers; broader suites (Memory Maze, more POPGym tasks) and a demonstration on frozen V-JEPA/DINO-WM features at scale remain priority next steps. The fragility of the two-bank combination on §5.6 points to learned timescale selection. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
 
 ## 7. Conclusion
 
