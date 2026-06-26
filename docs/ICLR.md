@@ -226,6 +226,21 @@ To open the box further we attribute each step's next-latent prediction (i) to i
 ![Figure 7: attribution Occlusion](figures/fig_attribution_occlusion.png)
 *Figures 6–7. Memory-attribution timeline. (A) episode frames; (B) per-step fast vs slow bank influence on the next prediction; (C) gradient attribution of the decision over source frames, with the fast/slow kernels overlaid and cue frames shaded. T-Maze: slow bank dominates and reaches the cue; Occlusion: fast bank dominates.*
 
+### 5.9 Partially-observable variants of the paper's own tasks
+
+To test the effect on the *paper's task semantics* (not just our toy suite), we build PO variants of LeWorldModel's four benchmark envs — Two-Room, Reacher, Push-T, OGBench-Cube — as lightweight pixel proxies where the goal is shown briefly then hidden (so it must be remembered; `lewm-memory-paperpo`, 3 seeds, 4-class cue, chance 0.25).
+
+**Table 8 — Paper-task PO variants: usage (cue decodable from the prediction, 3 seeds, mean$\pm$std).**
+
+| env (paper task) | gap $\Delta$ | none (vanilla) | short | long | both | chance |
+|---|---:|---:|---:|---:|---:|---:|
+| Two-Room-PO | 19 | 0.23 ±.05 | 0.25 ±.01 | **0.40 ±.03** | 0.38 ±.05 | 0.25 |
+| Push-T-PO | 17 | 0.31 ±.04 | 0.32 ±.02 | **0.48 ±.06** | **0.48 ±.04** | 0.25 |
+| OGBench-Cube-PO | 15 | 0.26 ±.00 | 0.31 ±.02 | **0.42 ±.03** | 0.38 ±.04 | 0.25 |
+| Reacher-PO | 13 | 0.24 ±.02 | 0.26 ±.02 | **0.38 ±.01** | 0.36 ±.05 | 0.25 |
+
+Across all four, `long`/`both` lift decision-usage above chance while `none`/`short` stay at chance; availability (design `both`) is `z`≈0.25, `m^{fast}`≈0.25 (gaps 13–19 exceed $\tau_{\text{fast}}{=}3$), `m^{slow}`=1.00 — only the slow bank carries the goal cue. So the short/long dissociation holds on PO versions of the paper's *own* tasks, not only our custom suite. *Caveat:* these are lightweight pixel proxies (not the original MuJoCo/pymunk/OGBench simulators), and with continuous joint-angle actions for Reacher; the effect is moderate (4-class) but consistent.
+
 ## 6. Discussion and Limitations
 
 The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Benchmarks.** We now include one standard pixel memory benchmark (POPGym Arcade, §5.6), where the single-timescale primitive transfers; broader suites (Memory Maze, more POPGym tasks) and a demonstration on frozen V-JEPA/DINO-WM features at scale remain priority next steps. The fragility of the two-bank combination on §5.6 points to learned timescale selection. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
