@@ -22,7 +22,7 @@ import torch
 import torch.nn.functional as F
 
 from lewm.models.leworldmodel import LeWorldModel
-from lewm.models.memory import TwoTimescaleMemory, MemoryFusion
+from lewm.models.memory import TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory, GRUMemory
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -41,17 +41,43 @@ class MemoryLeWorldModel(LeWorldModel):
         tau_fast: float = 2.0,
         tau_slow: float = 20.0,
         learnable_alpha: bool = True,
+        memory_impl: str = 'ema',
+        multi_taus=(2, 4, 8, 16, 32, 64),
+        gru_hidden: int = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.memory_mode = memory_mode
-        self.memory = TwoTimescaleMemory(
-            embed_dim=self.embed_dim,
-            tau_fast=tau_fast,
-            tau_slow=tau_slow,
-            learnable=learnable_alpha,
-        )
-        self.fusion = MemoryFusion(embed_dim=self.embed_dim, mode=memory_mode)
+        self.memory_impl = memory_impl
+        # 'ema' is the default two-timescale design (unchanged param names -> old checkpoints load).
+        # 'multi' (E3, log-spaced K-bank) and 'gru' (E2 learned-recurrent baseline) are additive.
+        if memory_impl == 'ema':
+            self.memory = TwoTimescaleMemory(
+                embed_dim=self.embed_dim, tau_fast=tau_fast, tau_slow=tau_slow, learnable=learnable_alpha)
+            self.fusion = MemoryFusion(embed_dim=self.embed_dim, mode=memory_mode)
+        elif memory_impl == 'multi':
+            self.mem_multi = MultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus)
+        elif memory_impl == 'gru':
+            self.mem_gru = GRUMemory(embed_dim=self.embed_dim, hidden=gru_hidden)
+        else:
+            raise ValueError(f"unknown memory_impl '{memory_impl}'")
+
+    def _inject(self, z: torch.Tensor) -> torch.Tensor:
+        """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
+        if self.memory_impl == 'ema':
+            m_fast, m_slow = self.memory(z)
+            return self.fusion(z, m_fast, m_slow)
+        if self.memory_impl == 'multi':
+            return self.mem_multi.fuse(z, self.mem_multi.banks(z))
+        return self.mem_gru.fuse(z, self.mem_gru(z))  # gru
+
+    def horizons(self):
+        """Uniform horizon accessor across impls (for logging)."""
+        if self.memory_impl == 'ema':
+            return self.memory.horizons()
+        if self.memory_impl == 'multi':
+            return self.mem_multi.horizons()
+        return self.mem_gru.horizons()
 
     # ---- core training loss (sliding short-window over a long chunk) ---------------
     def compute_loss(
@@ -75,9 +101,8 @@ class MemoryLeWorldModel(LeWorldModel):
         # Encode all frames (memoryless, per-frame).
         z = self.encode(observations)                      # (B, L, D)
 
-        # Two-timescale memory over the full causal history.
-        m_fast, m_slow = self.memory(z)                    # (B, L, D), (B, L, D)
-        z_tilde = self.fusion(z, m_fast, m_slow)           # (B, L, D)
+        # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
+        z_tilde = self._inject(z)                          # (B, L, D)
 
         # Sliding windows of length h: window s = z~[s : s+h] predicts z_{s+h}.
         # Number of windows W = L - h (s = 0 .. L-h-1).
@@ -102,11 +127,12 @@ class MemoryLeWorldModel(LeWorldModel):
     # ---- analysis utilities (used by probing / visualization) ----------------------
     @torch.no_grad()
     def encode_with_memory(self, observations: torch.Tensor):
-        """Return (z, m_fast, m_slow, z_tilde) for a chunk (B, L, C, H, W)."""
+        """Return (z, m_fast, m_slow, z_tilde). m_fast/m_slow are None for non-EMA impls."""
         z = self.encode(observations)
-        m_fast, m_slow = self.memory(z)
-        z_tilde = self.fusion(z, m_fast, m_slow)
-        return z, m_fast, m_slow, z_tilde
+        if self.memory_impl == 'ema':
+            m_fast, m_slow = self.memory(z)
+            return z, m_fast, m_slow, self.fusion(z, m_fast, m_slow)
+        return z, None, None, self._inject(z)
 
     @torch.no_grad()
     def memory_influence(
@@ -131,24 +157,27 @@ class MemoryLeWorldModel(LeWorldModel):
         """
         h = self.history_len
         z = self.encode(observations)
-        m_fast, m_slow = self.memory(z)
         L = z.shape[1]
         assert L >= h + 1
+        wsl = slice(L - 1 - h, L - 1)
+        act = actions[:, wsl]
 
-        def pred(ablate_fast: bool, ablate_slow: bool) -> torch.Tensor:
-            zt = self.fusion(z, m_fast, m_slow, ablate_fast=ablate_fast, ablate_slow=ablate_slow)
-            win = zt[:, L - 1 - h:L - 1]                   # (B, h, D)
-            act = actions[:, L - 1 - h:L - 1]              # (B, h, A)
-            return self.predictor(win, act)[:, -1, :]      # (B, D) ~ predicted z_{L-1}
+        if self.memory_impl == 'ema':
+            m_fast, m_slow = self.memory(z)
 
-        full = pred(False, False)
-        no_fast = pred(True, False)
-        no_slow = pred(False, True)
-        return {
-            'pred_full': full,
-            'infl_fast': (full - no_fast).norm(dim=-1),
-            'infl_slow': (full - no_slow).norm(dim=-1),
-        }
+            def pred(ablate_fast: bool, ablate_slow: bool) -> torch.Tensor:
+                zt = self.fusion(z, m_fast, m_slow, ablate_fast=ablate_fast, ablate_slow=ablate_slow)
+                return self.predictor(zt[:, wsl], act)[:, -1, :]
+
+            full = pred(False, False)
+            return {'pred_full': full,
+                    'infl_fast': (full - pred(True, False)).norm(dim=-1),
+                    'infl_slow': (full - pred(False, True)).norm(dim=-1)}
+        # non-EMA: total memory influence = ablate ALL memory (fused window vs raw window)
+        full = self.predictor(self._inject(z)[:, wsl], act)[:, -1, :]
+        nomem = self.predictor(z[:, wsl], act)[:, -1, :]
+        infl_all = (full - nomem).norm(dim=-1)
+        return {'pred_full': full, 'infl_fast': infl_all, 'infl_slow': infl_all}
 
     @torch.no_grad()
     def rollout_latents(

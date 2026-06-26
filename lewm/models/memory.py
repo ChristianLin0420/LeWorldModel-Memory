@@ -172,6 +172,61 @@ class TwoTimescaleMemory(nn.Module):
         return alpha * (1.0 - alpha) ** k
 
 
+class MultiTimescaleMemory(nn.Module):
+    """E3 baseline: K leaky integrators at log-spaced FIXED horizons + K zero-init read-outs.
+
+    Generalizes the two-bank design to a fixed multi-scale bank (e.g. tau in {2,4,8,16,32,64}),
+    so the model can *read from* a spectrum of horizons without anyone choosing tau per task --
+    the fix for "learned alpha does not self-tune". Decay rates are fixed (buffers)."""
+
+    def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64)):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.taus = list(taus)
+        alphas = [tau_to_alpha(t) for t in self.taus]
+        self.register_buffer('alphas', torch.tensor(alphas, dtype=torch.float32))
+        self.readouts = nn.ModuleList([nn.Linear(embed_dim, embed_dim, bias=False) for _ in self.taus])
+        for ro in self.readouts:
+            nn.init.zeros_(ro.weight)
+
+    def banks(self, z: torch.Tensor):
+        return [TwoTimescaleMemory._scan(z, self.alphas[k]) for k in range(len(self.taus))]
+
+    def fuse(self, z: torch.Tensor, banks) -> torch.Tensor:
+        out = z
+        for k, m in enumerate(banks):
+            out = out + self.readouts[k](m)
+        return out
+
+    def horizons(self):
+        return {'tau_fast': float(self.taus[0]), 'tau_slow': float(self.taus[-1]),
+                'alpha_fast': float(self.alphas[0]), 'alpha_slow': float(self.alphas[-1]),
+                'n_banks': len(self.taus)}
+
+
+class GRUMemory(nn.Module):
+    """E2 baseline: a GRU over the latent stream; its (causal) hidden state is injected via a
+    zero-init read-out -- the simplest *learned* recurrent memory, matched to the EMA interface."""
+
+    def __init__(self, embed_dim: int, hidden: int = None):
+        super().__init__()
+        h = hidden or embed_dim
+        self.gru = nn.GRU(embed_dim, h, batch_first=True)
+        self.readout = nn.Linear(h, embed_dim, bias=False)
+        nn.init.zeros_(self.readout.weight)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        out, _ = self.gru(z)            # (B,T,h), causal
+        return out
+
+    def fuse(self, z: torch.Tensor, h: torch.Tensor) -> torch.Tensor:
+        return z + self.readout(h)
+
+    def horizons(self):
+        return {'tau_fast': float('nan'), 'tau_slow': float('nan'),
+                'alpha_fast': float('nan'), 'alpha_slow': float('nan')}
+
+
 class MemoryFusion(nn.Module):
     """Inject the two memory banks into the latent stream before the predictor.
 

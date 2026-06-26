@@ -200,6 +200,24 @@ To test transfer beyond our controlled suite, we evaluate on two memory-centric 
 
 Two findings. **(i) The primitive transfers.** A *single matched* timescale beats vanilla LeWM (AutoEncode `short` $-46\%$; CountRecall `long` $-25\%$ / `short` $-21\%$), and the influence metric confirms the banks are genuinely *used* — $\mathcal I\approx3$ when a bank is injected and exactly $0$ when it is not. **(ii) Naive two-bank stacking is fragile.** `both` is the *worst* memory design on both envs (CountRecall `both` even underperforms vanilla), echoing the synthetic-env result (§5.4) and the learnable-$\alpha$ negative (§5.4): on noisier random-policy trajectories the two banks interfere rather than compose. This motivates **learned timescale gating/selection** as the clear next step, and tempers any "more memory is always better" reading.
 
+### 5.7 Counterfactual memory swap: the memory *causally* drives the prediction
+
+Probes show information is decodable, but not that the predictor *uses* it. We therefore intervene: for each episode *i* we predict the reveal-latent using *i*'s current frames and actions but **another episode *j*'s memory banks** (with cue[*j*]≠cue[*i*]), and apply a matched probe.
+
+**Table 7 — Counterfactual memory swap (design `both`, 3 seeds, mean$\pm$std).** Does the prediction follow the *injected* memory or the *current* frame?
+
+| env | own memory → cue (control) | **swapped memory → swapped cue** | swapped → current-frame cue | chance |
+|---|---:|---:|---:|---:|
+| T-Maze | 0.85 | **0.83** | 0.17 | 0.50 |
+| Distractor | 0.87 | **0.79** | 0.21 | 0.50 |
+| Recall | 0.41 | 0.40 | 0.25 | 0.33 |
+| Occlusion | 0.58 | 0.58 | 0.43 | 0.50 |
+
+![Figure 5: counterfactual swap](figures/fig_causal_swap.png)
+*Figure 5. Swapping the memory bank between episodes with different cues. On long-gap tasks the prediction tracks the **injected** cue (follow-memory ≈ follow-self), while the current-frame cue collapses to ~chance.*
+
+On the long-gap tasks, swapping the memory bank **flips the prediction to the injected cue** (follow-memory ≈ the own-memory control) while reading the current frame collapses to ~chance — direct causal evidence that the EMA banks control the prediction, not merely carry decodable information. This is the decisive test that probe decodability alone cannot provide.
+
 ## 6. Discussion and Limitations
 
 The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Benchmarks.** We now include one standard pixel memory benchmark (POPGym Arcade, §5.6), where the single-timescale primitive transfers; broader suites (Memory Maze, more POPGym tasks) and a demonstration on frozen V-JEPA/DINO-WM features at scale remain priority next steps. The fragility of the two-bank combination on §5.6 points to learned timescale selection. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.

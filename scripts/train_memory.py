@@ -35,14 +35,18 @@ from lewm.eval.memory_probe import run_memory_eval
 
 
 def build_model(args, device) -> MemoryLeWorldModel:
+    # 'multi'/'gru' select a memory implementation; none/short/long/both use the EMA impl.
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru') else 'ema'
+    ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim,
         action_dim=2, encoder_layers=args.encoder_layers, encoder_heads=args.encoder_heads,
         predictor_layers=args.predictor_layers, predictor_heads=args.predictor_heads,
         history_len=args.history_len, dropout=args.dropout,
         sigreg_lambda=args.sigreg_lambda, sigreg_projections=args.sigreg_projections,
-        memory_mode=args.memory_mode, tau_fast=args.tau_fast, tau_slow=args.tau_slow,
+        memory_mode=ema_mode, tau_fast=args.tau_fast, tau_slow=args.tau_slow,
         learnable_alpha=not args.fixed_alpha,
+        memory_impl=impl, multi_taus=tuple(args.multi_taus),
     ).to(device)
     return model
 
@@ -76,7 +80,9 @@ def main():
     p = argparse.ArgumentParser()
     # experiment identity
     p.add_argument('--env', required=True, choices=list(ENV_REGISTRY))
-    p.add_argument('--memory-mode', default='both', choices=['none', 'short', 'long', 'both'])
+    p.add_argument('--memory-mode', default='both',
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru'])
+    p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/mem')
     p.add_argument('--run-suffix', default='', help='appended to run name + output dir (for sweeps)')
@@ -200,7 +206,7 @@ def main():
         t0 = time.time()
         tr = run_epoch(model, train_loader, optimizer, device, True, use_amp)
         va = run_epoch(model, val_loader, optimizer, device, False, use_amp)
-        tau = model.memory.horizons()
+        tau = model.horizons()
         dt = time.time() - t0
         print(f"e{epoch:3d}/{args.epochs} ({dt:.1f}s) "
               f"train {tr['loss']:.4f} (pred {tr['pred_loss']:.4f}) | "

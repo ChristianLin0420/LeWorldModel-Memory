@@ -39,14 +39,15 @@ def extract_timewise(model, obs: torch.Tensor, device, batch_size: int = 64
                      ) -> Dict[str, np.ndarray]:
     """Return per-time feature streams as (B, L, D) numpy arrays."""
     model.eval()
-    out = {'z': [], 'm_fast': [], 'm_slow': [], 'z_tilde': []}
+    out = {'z': [], 'z_tilde': []}
     for i in range(0, obs.shape[0], batch_size):
         o = obs[i:i + batch_size].to(device)
         z, m_fast, m_slow, z_tilde = model.encode_with_memory(o)
         out['z'].append(z.float().cpu())
-        out['m_fast'].append(m_fast.float().cpu())
-        out['m_slow'].append(m_slow.float().cpu())
         out['z_tilde'].append(z_tilde.float().cpu())
+        if m_fast is not None:                              # EMA only; non-EMA impls have no banks
+            out.setdefault('m_fast', []).append(m_fast.float().cpu())
+            out.setdefault('m_slow', []).append(m_slow.float().cpu())
     return {k: torch.cat(v).numpy() for k, v in out.items()}
 
 
@@ -170,24 +171,27 @@ def run_memory_eval(model, eval_batch, device, max_probe_episodes: int = 400,
     reveal = int(sub['reveal'].float().mean())
 
     feats = extract_timewise(model, obs, device)
-    tau = model.memory.horizons()
+    is_ema = getattr(model, 'memory_impl', 'ema') == 'ema'
+    tau = model.horizons() if hasattr(model, 'horizons') else model.memory.horizons()
     metrics: Dict[str, float] = dict(tau)
-    figs: Dict[str, object] = {'memory_kernels': plot_memory_kernels(model)}
+    figs: Dict[str, object] = {}
+    if is_ema:
+        figs['memory_kernels'] = plot_memory_kernels(model)
 
     if n_classes > 1:
+        stream_names = [s for s in ['z', 'm_fast', 'm_slow'] if s in feats]
         streams = {name: probe_cue_over_time(feats[name], cue, n_classes, seed=seed)
-                   for name in ['z', 'm_fast', 'm_slow']}
-        figs['probe_cue_over_time'] = plot_probe_curves(streams, cue_end, reveal, n_classes, env, tau)
+                   for name in stream_names}
         L = streams['z'].shape[0]
         # Decision-relevant time = the last DELAY step (just before the event appears).
-        # At `reveal` itself the event is visible, so z trivially decodes the cue; the
-        # interesting contrast is during the delay, where only memory can carry the cue.
         dt = int(np.clip(reveal - 1, max(cue_end, 0), L - 1))
         metrics['decision_time'] = float(dt)
         for name, acc in streams.items():
             metrics[f'acc_{name}_delay'] = float(acc[dt])
-        metrics['long_mem_advantage'] = float(streams['m_slow'][dt] - streams['z'][dt])
-        metrics['short_mem_advantage'] = float(streams['m_fast'][dt] - streams['z'][dt])
+        if 'm_slow' in streams:
+            figs['probe_cue_over_time'] = plot_probe_curves(streams, cue_end, reveal, n_classes, env, tau)
+            metrics['long_mem_advantage'] = float(streams['m_slow'][dt] - streams['z'][dt])
+            metrics['short_mem_advantage'] = float(streams['m_fast'][dt] - streams['z'][dt])
         metrics.update(decision_uses_memory(model, sub, feats, device, seed=seed))
 
     # causal influence of each bank on the prediction (USAGE)

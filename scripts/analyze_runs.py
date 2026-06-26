@@ -25,13 +25,17 @@ DEFAULT_GAP = {'tmaze': 24 - 3, 'distractor': 26 - 3, 'occlusion': 17 - 12,
 
 
 def build_model(a):
+    mode = a['memory_mode']
+    impl = mode if mode in ('multi', 'gru') else 'ema'
+    ema_mode = 'both' if impl != 'ema' else mode
     m = MemoryLeWorldModel(
         img_size=a['img_size'], patch_size=a['patch_size'], embed_dim=a['embed_dim'], action_dim=2,
         encoder_layers=a['encoder_layers'], encoder_heads=a['encoder_heads'],
         predictor_layers=a['predictor_layers'], predictor_heads=a['predictor_heads'],
         history_len=a['history_len'], dropout=a['dropout'], sigreg_lambda=a['sigreg_lambda'],
-        sigreg_projections=a['sigreg_projections'], memory_mode=a['memory_mode'],
-        tau_fast=a['tau_fast'], tau_slow=a['tau_slow'], learnable_alpha=not a.get('fixed_alpha', True))
+        sigreg_projections=a['sigreg_projections'], memory_mode=ema_mode,
+        tau_fast=a['tau_fast'], tau_slow=a['tau_slow'], learnable_alpha=not a.get('fixed_alpha', True),
+        memory_impl=impl, multi_taus=tuple(a.get('multi_taus', (2, 4, 8, 16, 32, 64))))
     return m
 
 
@@ -73,7 +77,8 @@ def analyze(run_dir):
         tr, te = p[:ntr], p[ntr:]
         dt = int(np.clip(reveal - 1, max(cue_end, 0), L - 1))
         for key, nm in [('z', 'acc_z'), ('m_fast', 'acc_fast'), ('m_slow', 'acc_slow')]:
-            row[nm] = _fit_probe(feats[key][tr, dt], cue[tr], feats[key][te, dt], cue[te], n_classes)
+            if key in feats:                                # m_fast/m_slow absent for non-EMA impls
+                row[nm] = _fit_probe(feats[key][tr, dt], cue[tr], feats[key][te, dt], cue[te], n_classes)
         t = min(reveal, L - 1)
         win = zt[:, t - h:t]; a_w = act[:, t - h:t].to(dev)
         z_pred = m.predictor(win, a_w)[:, -1, :].cpu().numpy()
