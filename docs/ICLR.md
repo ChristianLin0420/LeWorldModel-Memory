@@ -127,14 +127,14 @@ Table 1 reports availability at the decision step:
 
 ### 5.2 The matched timescale drives the decision (usage)
 
-**Table 2 — Usage: cue decodable from the model's prediction (matched probe, 3 seeds, mean$\pm$std).** Higher is better; chance in last column.
+**Table 2 — Usage: cue decodable from the model's prediction (matched probe, 5 seeds, mean$\pm$std).** Higher is better; chance in last column.
 
 | env | gap $\Delta$ | none (vanilla) | short | long | both | chance |
 |---|---:|---:|---:|---:|---:|---:|
-| T-Maze | 21 | 0.50 ±.01 | 0.52 ±.02 | 0.81 ±.06 | **0.84 ±.08** | 0.50 |
-| Distractor | 23 | 0.55 ±.01 | 0.56 ±.01 | **0.94 ±.05** | 0.84 ±.09 | 0.50 |
-| Recall | 15 | 0.37 ±.04 | 0.38 ±.03 | 0.45 ±.08 | **0.46 ±.05** | 0.33 |
-| Occlusion | 5 | 0.49 ±.04 | 0.55 ±.06 | **0.58 ±.03** | 0.56 ±.08 | 0.50 |
+| T-Maze | 21 | 0.50 ±.02 | 0.50 ±.03 | **0.85 ±.09** | 0.84 ±.07 | 0.50 |
+| Distractor | 23 | 0.55 ±.03 | 0.54 ±.03 | **0.88 ±.09** | 0.85 ±.07 | 0.50 |
+| Recall | 15 | 0.37 ±.03 | 0.39 ±.05 | 0.45 ±.07 | **0.45 ±.04** | 0.33 |
+| Occlusion | 5 | 0.51 ±.04 | 0.54 ±.05 | **0.59 ±.04** | 0.57 ±.06 | 0.50 |
 
 On the long-horizon tasks the `long`/`both` designs lift decision-usage well above the vanilla baseline and chance with low variance; `none`/`short` stay at chance (Figure 2).
 
@@ -259,9 +259,49 @@ Finally we close the loop: an interactive memory T-Maze where the agent must *na
 
 Memory **causally enables the downstream decision**: with memory the agent reaches the correct arm every time, vanilla LeWM cannot, and removing the memory at test time breaks it (→ chance). This is the decisive control-level analogue of §5.7. *Honest note:* `short` also succeeds at this cue→decision gap because the linear read-out exploits even residual fast-bank signal (the availability-vs-readout effect of §5.4); the clean causal contrast here is memory-vs-none and the test-time ablation, not short-vs-long.
 
+### 5.11 Is two-timescale EMA the right primitive? (baselines)
+
+We compare the EMA designs against (a) a **log-spaced fixed K-bank** EMA (`multi`, $\tau\in\{2,4,8,16,32,64\}$, no per-task tuning), (b) a **learned GRU** memory (matched interface/budget), and (c) a **long-context predictor** (window $h$ instead of memory). Usage (cue from prediction):
+
+**Table 10 — Memory-mechanism comparison (usage; ema 5 seeds, multi/gru 3 seeds, mean$\pm$std).**
+
+| env | none | short | long | both | **multi (K-bank)** | **gru** |
+|---|---:|---:|---:|---:|---:|---:|
+| T-Maze | 0.50 ±.02 | 0.50 ±.03 | 0.85 ±.09 | 0.84 ±.07 | **0.99 ±.01** | 0.54 ±.05 |
+| Distractor | 0.55 ±.03 | 0.54 ±.03 | 0.88 ±.09 | 0.85 ±.07 | **0.99 ±.01** | 0.59 ±.02 |
+| Recall | 0.37 ±.03 | 0.39 ±.05 | 0.45 ±.07 | 0.45 ±.04 | **0.47 ±.01** | 0.45 ±.02 |
+| Occlusion | 0.51 ±.04 | 0.54 ±.05 | 0.59 ±.04 | 0.57 ±.06 | **0.81 ±.06** | 0.68 ±.18 |
+
+**Long-context predictor (T-Maze, design `none`, window $h$; vs EMA at $h{=}3$):**
+
+| h=9 | h=18 | h=21 | h=24 | — EMA `both` (h=3) | EMA `multi` (h=3) |
+|---:|---:|---:|---:|---:|---:|
+| 0.46 | 0.50 | 0.50 | **1.00** | 0.84 | 0.99 |
+
+Three takeaways. **(i) The fixed log-spaced K-bank (`multi`) is the best design everywhere, with *no* per-task $\tau$ tuning** — directly fixing the "learned $\alpha$ doesn't self-tune" weakness (§5.4): *spanning* horizons beats picking one. **(ii) A learned GRU stays near chance on the long-gap tasks** (T-Maze 0.54, Distractor 0.59) while the fixed EMA succeeds — i.e. it is *not* merely "memory helps"; the fixed exponential structure is the right inductive bias (no 21-step credit assignment required). *Caveat: the GRU may need longer training; reported under matched budget.* **(iii) Enlarging the predictor window does not help until it spans the entire gap** ($h{=}9{\to}21$ stay at chance; $h{=}24$ finally reaches the cue → 1.00) — i.e. $O(\Delta)$ context cost — whereas the EMA reaches 0.84–0.99 with $h{=}3$ and $O(1)$ memory. (h=18/24 are single-seed point estimates; trend unambiguous.)
+
+### 5.12 The horizon law, quantified
+
+Sweeping gap $\Delta$ × horizon $\tau$ (design `long`, T-Maze) makes the rule precise: **usage is high iff $\tau \gtrsim \Delta$.**
+
+**Table 11 — usage($\Delta$, $\tau$).**
+
+| $\Delta$ \ $\tau$ | 4 | 16 | 64 |
+|---|---:|---:|---:|
+| 3 | 0.92 | 1.00 | 0.98 |
+| 9 | 0.78 | 0.96 | 0.98 |
+| 21 | 0.50 | 0.89 | 0.89 |
+| 39 | 0.44 | 0.58 | 0.96 |
+
+![Figure 9: horizon law](figures/exp_E4_horizon_law.png)
+![Figure 10: single-tau sweep](figures/exp_E3_singletau.png)
+*Figures 9–10. (9) usage($\Delta,\tau$): the usable region is $\tau\gtrsim\Delta$, matching the exponential kernel $e^{-\Delta/\tau}$. (10) single-bank sweep at $\Delta{\approx}21$: availability saturates by $\tau{=}8$ but **usage keeps rising to $\tau{=}64$** — quantitative confirmation that linear availability is necessary but not sufficient (§5.4).*
+
 ## 6. Discussion and Limitations
 
-The robust, multi-seed claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau$ exceeds the task's cue-to-decision gap $\Delta$, and a two-timescale pair covers a range of $\Delta$ with one elegant primitive. We are deliberately conservative about three points. **(i) Raw MSE is the wrong metric** here and should not headline. **(ii) Benchmarks.** We now include one standard pixel memory benchmark (POPGym Arcade, §5.6), where the single-timescale primitive transfers; broader suites (Memory Maze, more POPGym tasks) and a demonstration on frozen V-JEPA/DINO-WM features at scale remain priority next steps. The fragility of the two-bank combination on §5.6 points to learned timescale selection. **(iii) Baselines.** A long-context predictor, an RNN/SSM predictor, and an episodic-retrieval bank should be compared to show the two-timescale EMA is competitive and that the *controllable decomposition*, not capacity, is the contribution. All experiments here use 3 seeds; ≥5 seeds would further tighten the sweep curves.
+The robust claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau\gtrsim$ the cue-to-decision gap $\Delta$ (§5.12), the matched timescale **causally** drives both the prediction (§5.7) and downstream control (§5.10), and a fixed log-spaced K-bank captures the whole range without tuning (§5.11). What we have now addressed relative to an earlier draft: **causal** evidence (counterfactual swap §5.7, closed-loop ablation §5.10); **downstream planning** (§5.10); **baselines** — GRU, K-bank, and long-context (§5.11); **5 seeds** on the headline matrix; a **standard benchmark** (POPGym Arcade §5.6) and **paper-task PO variants** (§5.9).
+
+We remain conservative about: **(i) Raw MSE is a decoupled instrument** here and is not used for headline claims (§5.4). **(ii) Stronger sequence-memory baselines** — S4/Mamba/RetNet-style and episodic-retrieval — are still missing; our GRU result suggests fixed structure helps in this regime, but a tuned SSM should be compared. **(iii) Benchmark breadth and scale** — one standard suite (2 POPGym Arcade tasks) is not the ≥5-task×5-seed bar; Memory Maze and a frozen V-JEPA/DINO-WM-feature demonstration at scale remain the priority. **(iv)** the two-bank `both` can underperform a single matched timescale or the K-bank on noisier data (§5.6), pointing to learned timescale gating; and several sweep points (gap/long-context) are single- or 1–3-seed.
 
 ## 7. Conclusion
 

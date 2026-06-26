@@ -68,7 +68,7 @@ def analyze(run_dir):
     # availability at decision (one step before reveal) + matched usage probe at reveal
     row = dict(run=run_dir.name, env=env, design=design, seed=seed,
                suffix=a.get('run_suffix', ''), exp=a.get('extra_tag', ''),
-               tau_fast=m.memory.horizons()['tau_fast'], tau_slow=m.memory.horizons()['tau_slow'],
+               tau_fast=m.horizons()['tau_fast'], tau_slow=m.horizons()['tau_slow'],
                learnable=int(not a.get('fixed_alpha', True)), reveal=reveal, length=length,
                gap=gap, n_classes=n_classes, chance=1.0 / max(n_classes, 1), val_mse=val_mse,
                acc_z=np.nan, acc_fast=np.nan, acc_slow=np.nan, usage_matched=np.nan)
