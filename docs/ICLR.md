@@ -315,6 +315,19 @@ To show the primitive is *backbone-agnostic*, we pretrain a vanilla (memoryless)
 
 Even with the encoder frozen, memory recovers the decision well above the memoryless baseline (T-Maze 0.49→0.84, Distractor 0.53→0.86) — the primitive is an add-on to a pretrained JEPA backbone, not a LeWM-specific end-to-end trick. (Frozen **V-JEPA 2 / DINO-WM** features at scale remain the natural next step.)
 
+### 5.14 3D benchmark: Memory-Maze
+
+We run the real 3D first-person **Memory-Maze 9×9** (MuJoCo, 64×64 RGB, 6 discrete actions; `lewm-memory-mmaze`, {none, multi} × 3 seeds, random-policy trajectories).
+
+**Table 13 — Memory-Maze 9×9 (3 seeds, mean).**
+
+| design | val next-latent MSE | $\mathcal I_{\text{slow}}$ (memory influence) |
+|---|---:|---:|
+| none (vanilla) | 0.021 | 0.00 |
+| multi (K-bank) | 0.020 | **0.79** |
+
+*Honest finding (a null on this metric).* The K-bank memory is demonstrably **injected and used** (influence 0.79 vs 0 for vanilla), but next-latent prediction here is **near-trivial under a random policy** — val MSE ≈ 0.02, because consecutive ego-centric frames barely change — so the prediction metric does not discriminate memory (the same pattern as the near-trivial MineSweeper, §5.6). The memory-relevant signal in Memory-Maze (recalling target colours/locations across the maze) is exercised by a *goal-directed policy and reward*, not by random-policy next-frame prediction. So the offline self-supervised protocol confirms the primitive **runs and is used at 3D scale**, but the discriminating test there is closed-loop/policy-driven (as in §5.10) — the clearest remaining 3D next step.
+
 ## 6. Discussion and Limitations
 
 The robust claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau\gtrsim$ the cue-to-decision gap $\Delta$ (§5.12), the matched timescale **causally** drives both the prediction (§5.7) and downstream control (§5.10), and a fixed log-spaced K-bank captures the whole range without tuning (§5.11). What we have now addressed relative to an earlier draft: **causal** evidence (counterfactual swap §5.7, closed-loop ablation §5.10); **downstream planning** (§5.10); **baselines** — GRU, K-bank, and long-context (§5.11); **5 seeds** on the headline matrix; a **standard benchmark** (POPGym Arcade §5.6) and **paper-task PO variants** (§5.9).
