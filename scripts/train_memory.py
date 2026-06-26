@@ -46,7 +46,7 @@ def build_model(args, device) -> MemoryLeWorldModel:
         sigreg_lambda=args.sigreg_lambda, sigreg_projections=args.sigreg_projections,
         memory_mode=ema_mode, tau_fast=args.tau_fast, tau_slow=args.tau_slow,
         learnable_alpha=not args.fixed_alpha,
-        memory_impl=impl, multi_taus=tuple(args.multi_taus),
+        memory_impl=impl, multi_taus=tuple(args.multi_taus), encoder_type=args.encoder,
     ).to(device)
     return model
 
@@ -85,6 +85,7 @@ def main():
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
     p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')
     p.add_argument('--init-from', default=None, help='load encoder weights from this checkpoint (for frozen-backbone)')
+    p.add_argument('--encoder', default='vit', choices=['vit', 'dino'], help="encoder backbone ('dino' = frozen DINOv2)")
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/mem')
     p.add_argument('--run-suffix', default='', help='appended to run name + output dir (for sweeps)')

@@ -45,11 +45,16 @@ class MemoryLeWorldModel(LeWorldModel):
         memory_impl: str = 'ema',
         multi_taus=(2, 4, 8, 16, 32, 64),
         gru_hidden: int = None,
+        encoder_type: str = 'vit',
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.memory_mode = memory_mode
         self.memory_impl = memory_impl
+        self.encoder_type = encoder_type
+        if encoder_type == 'dino':                          # frozen pretrained DINOv2 backbone
+            from lewm.models.encoder import FrozenDINOEncoder
+            self.encoder = FrozenDINOEncoder(embed_dim=self.embed_dim)
         # 'ema' is the default two-timescale design (unchanged param names -> old checkpoints load).
         # 'multi' (E3, log-spaced K-bank) and 'gru' (E2 learned-recurrent baseline) are additive.
         if memory_impl == 'ema':

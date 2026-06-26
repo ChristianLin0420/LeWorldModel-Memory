@@ -59,10 +59,14 @@ def get_or_collect(env_id: str, num_episodes: int, length: int, img_size: int = 
                    seed: int = 0, data_dir: str = 'outputs/popgym_data'):
     """Cache trajectories to .npz so collection happens once per (env, size, seed)."""
     Path(data_dir).mkdir(parents=True, exist_ok=True)
-    fp = Path(data_dir) / f"{env_id}_n{num_episodes}_L{length}_s{img_size}_seed{seed}.npz"
+    fp = Path(data_dir) / f"{env_id.replace(':', '_')}_n{num_episodes}_L{length}_s{img_size}_seed{seed}.npz"
     if fp.exists():
         d = np.load(fp)
         return d['obs'], d['actions'], int(d['n_actions'])
-    obs, act, n_actions = collect_popgym(env_id, num_episodes, length, img_size=img_size, seed=seed)
+    if env_id.startswith('mmaze:'):                          # Memory-Maze (3D) via MuJoCo
+        from lewm.envs.memory_maze_collect import collect_mmaze
+        obs, act, n_actions = collect_mmaze(env_id.split(':', 1)[1], num_episodes, length, img_size=img_size, seed=seed)
+    else:
+        obs, act, n_actions = collect_popgym(env_id, num_episodes, length, img_size=img_size, seed=seed)
     np.savez_compressed(fp, obs=obs, actions=act, n_actions=n_actions)
     return obs, act, n_actions

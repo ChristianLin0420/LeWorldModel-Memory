@@ -342,3 +342,38 @@ class Predictor(nn.Module):
             z_current = z_next
 
         return torch.stack(z_rollout, dim=1)  # (B, H, D)
+
+
+class FrozenDINOEncoder(nn.Module):
+    """Frozen pretrained DINOv2 ViT-S backbone (the DINO-WM backbone) + a trainable
+    projection — the 'frozen large pretrained backbone at scale' encoder. The 21.6M DINOv2
+    params are frozen; only the projector (and the memory/predictor) are trained."""
+
+    def __init__(self, embed_dim: int = 128,
+                 model_name: str = 'vit_small_patch14_dinov2.lvd142m', img: int = 224):
+        super().__init__()
+        import timm
+        self.backbone = timm.create_model(model_name, pretrained=True, num_classes=0,
+                                          img_size=img, dynamic_img_size=True)
+        for p in self.backbone.parameters():
+            p.requires_grad_(False)
+        self.backbone.eval()
+        self.img = img
+        self.register_buffer('mean', torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.projector = nn.Sequential(
+            nn.Linear(self.backbone.num_features, embed_dim),
+            nn.BatchNorm1d(embed_dim, track_running_stats=False),
+        )
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        self.backbone.eval()                 # keep frozen backbone in eval always
+        return self
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        with torch.no_grad():
+            xi = F.interpolate(x, size=(self.img, self.img), mode='bilinear', align_corners=False)
+            xi = (xi - self.mean) / self.std
+            f = self.backbone(xi)
+        return self.projector(f.float())
