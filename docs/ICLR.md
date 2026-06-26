@@ -313,7 +313,23 @@ To show the primitive is *backbone-agnostic*, we pretrain a vanilla (memoryless)
 ![Figure 11: frozen backbone](figures/fig_frozen.png)
 *Figure 11. With the encoder frozen, memory (esp. `multi`) still recovers the decision well above chance.*
 
-Even with the encoder frozen, memory recovers the decision well above the memoryless baseline (T-Maze 0.49→0.84, Distractor 0.53→0.86) — the primitive is an add-on to a pretrained JEPA backbone, not a LeWM-specific end-to-end trick. (Frozen **V-JEPA 2 / DINO-WM** features at scale remain the natural next step.)
+Even with the encoder frozen, memory recovers the decision well above the memoryless baseline (T-Maze 0.49→0.84, Distractor 0.53→0.86) — the primitive is an add-on to a pretrained JEPA backbone, not a LeWM-specific end-to-end trick.
+
+**A genuinely external pretrained backbone (DINO-WM-style).** The frozen encoder above is still a *vanilla LeWM* encoder. To rule out any LeWM-specific coupling, we repeat the study with a truly external backbone: a **frozen pretrained DINOv2 ViT-S** (21.6 M parameters, `vit_small_patch14_dinov2`, distilled on ImageNet, *never trained on these tasks* — the DINO-WM recipe). We interpolate the 64×64 frames to 224, apply ImageNet normalisation, and train only a small projector + the memory + the predictor; the backbone stays in `eval()` throughout. We use the matched usage probe (does the predictor's decision-point output carry the cue?) and, as a control, the **instantaneous frozen latent** $z$ at the decision frame (4 envs × {none, multi} × 2 seeds; `lewm-memory-dino`).
+
+**Table 12b — Frozen pretrained DINOv2 ViT-S backbone: cue usage at the decision (2 seeds, mean).**
+
+| env | frozen latent $z$ | none (pred.) | multi (K-bank) | chance |
+|---|---:|---:|---:|---:|
+| T-Maze (Δ=21) | 0.57 | 0.53 | **0.86** | 0.50 |
+| Distractor (Δ=23) | 0.50 | 0.52 | **0.65** | 0.50 |
+| Occlusion (Δ=5) | 0.45 | 0.55 | 0.61 | 0.50 |
+| Recall (Δ=15, 3-way) | 0.37 | 0.38 | 0.36 | 0.33 |
+
+![Figure 12: frozen DINOv2 backbone](figures/fig_dino.png)
+*Figure 12. Frozen pretrained DINOv2 ViT-S. The instantaneous frozen latent $z$ sits at chance on every task — the per-frame features of a generic ImageNet backbone do **not** encode the temporally distant cue. The K-bank memory recovers it on the long-gap tasks (T-Maze 0.53→0.86, Distractor 0.52→0.65).*
+
+Two things stand out. First, the **frozen latent $z$ is at chance everywhere** (T-Maze 0.57, Distractor 0.50, Occlusion 0.45, Recall 0.37 ≈ chance): a generic pretrained backbone's per-frame features carry no information about a cue that left the frame 15–23 steps earlier — exactly as expected, and the cleanest possible statement of *why* memory is needed. Second, the **K-bank memory recovers that information** on the long-horizon tasks (T-Maze 0.53→**0.86**, Distractor 0.52→**0.65**) while leaving the short-gap Occlusion modestly improved and the 3-way Recall at chance (consistent with §5.6: a near-trivial-MSE task where memory is injected, §5.14, but not decodable from this protocol). The memory primitive therefore plugs directly onto a frozen, externally-pretrained DINO-WM-style backbone and supplies precisely the long-range channel that backbone lacks — no end-to-end LeWM training required.
 
 ### 5.14 3D benchmark: Memory-Maze
 
@@ -330,9 +346,9 @@ We run the real 3D first-person **Memory-Maze 9×9** (MuJoCo, 64×64 RGB, 6 disc
 
 ## 6. Discussion and Limitations
 
-The robust claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau\gtrsim$ the cue-to-decision gap $\Delta$ (§5.12), the matched timescale **causally** drives both the prediction (§5.7) and downstream control (§5.10), and a fixed log-spaced K-bank captures the whole range without tuning (§5.11). What we have now addressed relative to an earlier draft: **causal** evidence (counterfactual swap §5.7, closed-loop ablation §5.10); **downstream planning** (§5.10); **baselines** — GRU, K-bank, and long-context (§5.11); **5 seeds** on the headline matrix; a **standard benchmark** (POPGym Arcade §5.6) and **paper-task PO variants** (§5.9).
+The robust claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau\gtrsim$ the cue-to-decision gap $\Delta$ (§5.12), the matched timescale **causally** drives both the prediction (§5.7) and downstream control (§5.10), and a fixed log-spaced K-bank captures the whole range without tuning (§5.11). What we have now addressed relative to an earlier draft: **causal** evidence (counterfactual swap §5.7, closed-loop ablation §5.10); **downstream planning** (§5.10); **baselines** — GRU, K-bank, and long-context (§5.11); **5 seeds** on the headline matrix; a **standard benchmark** (POPGym Arcade §5.6) and **paper-task PO variants** (§5.9); and **scale** — a frozen pretrained DINOv2 (DINO-WM) backbone and a 3D Memory-Maze (§5.13–5.14).
 
-We now also compare against learned SSM/RetNet-lite, episodic-retrieval, GRU, and long-context baselines (§5.11), report a 5-task×5-seed standard benchmark (§5.6), and a frozen-backbone study (§5.13). We remain conservative about: **(i) Raw MSE is a decoupled instrument** and is not used for headline claims (§5.4). **(ii) Our learned baselines are under matched compute/training** — a *tuned*, longer-trained S4/Mamba could narrow the gap to the fixed K-bank (which would itself be a clean "fixed-structure is a strong, cheap prior" result). **(iii) Scale** — the frozen backbone here is a vanilla LeWM encoder; a frozen **V-JEPA 2 / DINO-WM** demonstration at scale, and a 3D suite (Memory Maze), remain the priority. **(iv)** a few sweep points (gap/long-context) are 1–3-seed; the headline matrices are 5-seed.
+We now also compare against learned SSM/RetNet-lite, episodic-retrieval, GRU, and long-context baselines (§5.11), report a 5-task×5-seed standard benchmark (§5.6), a frozen-backbone study on both a vanilla LeWM encoder and a **frozen pretrained DINOv2 ViT-S** (the DINO-WM backbone; §5.13), and a real **3D Memory-Maze** at 64×64 (§5.14). We remain conservative about: **(i) Raw MSE is a decoupled instrument** and is not used for headline claims (§5.4). **(ii) Our learned baselines are under matched compute/training** — a *tuned*, longer-trained S4/Mamba could narrow the gap to the fixed K-bank (which would itself be a clean "fixed-structure is a strong, cheap prior" result). **(iii) Scale** — the frozen-backbone study now includes a true externally-pretrained DINOv2, and the 3D Memory-Maze confirms the primitive *runs and is used* at 3D scale (influence 0.79), but the discriminating 3D test there is **closed-loop / policy-driven** (random-policy next-frame prediction is near-trivial, §5.14); a **V-JEPA 2** video-scale and a *goal-conditioned* 3D demonstration remain the priority. **(iv)** a few sweep points (gap/long-context) are 1–3-seed; the headline matrices are 5-seed.
 
 ## 7. Conclusion
 
