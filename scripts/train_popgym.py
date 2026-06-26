@@ -70,6 +70,7 @@ def main():
     p.add_argument('--wandb', dest='wandb', action='store_true', default=True)
     p.add_argument('--no-wandb', dest='wandb', action='store_false')
     p.add_argument('--wandb-project', default='lewm-memory-popgym')
+    p.add_argument('--extra-tag', default='', help='comma-separated extra wandb tags')
     p.add_argument('--device', default='cuda')
     args = p.parse_args()
 
@@ -90,9 +91,11 @@ def main():
     wb = None
     if args.wandb:
         import wandb
+        tags = [f"env:{args.env_id}", f"design:{args.memory_mode}", "popgym-arcade", "lewm-memory"]
+        if args.extra_tag:
+            tags += [t.strip() for t in args.extra_tag.split(',') if t.strip()]
         wb = wandb.init(project=args.wandb_project, name=run_name, group=args.env_id,
-                        job_type=args.memory_mode,
-                        tags=[f"env:{args.env_id}", f"design:{args.memory_mode}", "popgym-arcade", "lewm-memory"],
+                        job_type=args.memory_mode, tags=tags,
                         config=vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'})
 
     pin = device.type == 'cuda'
@@ -122,7 +125,7 @@ def main():
         t0 = time.time()
         tr = run_epoch(model, train_loader, opt, device, True, use_amp)
         va = run_epoch(model, val_loader, opt, device, False, use_amp)
-        tau = model.memory.horizons()
+        tau = model.horizons()
         print(f"e{epoch:3d}/{args.epochs} ({time.time()-t0:.1f}s) train {tr['loss']:.4f}(pred {tr['pred_loss']:.4f}) "
               f"| val pred {va['pred_loss']:.4f} | tau_f={tau['tau_fast']:.1f} tau_s={tau['tau_slow']:.1f}", flush=True)
         if wb is not None:
@@ -132,16 +135,18 @@ def main():
 
     # final eval: influence of each memory bank on the prediction
     infl = model.memory_influence(vb_obs.to(device), vb_act.to(device))
-    tau = model.memory.horizons()
+    tau = model.horizons()
     best = {'env': args.env_id, 'design': args.memory_mode, 'n_actions': n_actions,
             'val_pred_loss': va['pred_loss'], 'infl_fast': float(infl['infl_fast'].mean()),
             'infl_slow': float(infl['infl_slow'].mean()), **tau}
-    fig = plot_memory_kernels(model); fp = out_dir / 'memory_kernels.png'
-    fig.savefig(fp, dpi=100, bbox_inches='tight')
     if wb is not None:
         import wandb, matplotlib.pyplot as plt
-        wb.log({'eval/memory_kernels': wandb.Image(str(fp)), **{f'eval/{k}': v for k, v in best.items() if isinstance(v, (int, float))}})
-        plt.close(fig)
+        log = {f'eval/{k}': v for k, v in best.items() if isinstance(v, (int, float))}
+        if model.memory_impl == 'ema':                      # kernels only defined for EMA banks
+            fig = plot_memory_kernels(model); fp = out_dir / 'memory_kernels.png'
+            fig.savefig(fp, dpi=100, bbox_inches='tight')
+            log['eval/memory_kernels'] = wandb.Image(str(fp)); plt.close(fig)
+        wb.log(log)
     torch.save({'model_state_dict': model.state_dict(), 'args': vars(args), 'final_metrics': best}, out_dir / 'model.pt')
     json.dump(best, open(out_dir / 'metrics.json', 'w'), indent=2)
     print(f"=== done {run_name}: val_pred={best['val_pred_loss']:.4f} infl_fast={best['infl_fast']:.3f} "
