@@ -227,6 +227,67 @@ class GRUMemory(nn.Module):
                 'alpha_fast': float('nan'), 'alpha_slow': float('nan')}
 
 
+class SSMMemory(nn.Module):
+    """E2(a) baseline: a learned diagonal linear state-space / RetNet-lite memory — a
+    *per-channel* leaky integrator with learned decay and an input projection. Generalizes
+    the fixed scalar EMA to D learned decays spanning a range (multi-scale within one bank).
+
+        u_t = W_in z_t ;  s_t = (1-a) ⊙ s_{t-1} + a ⊙ u_t ;  m_t = W_out s_t   (a ∈ (0,1)^D)
+    """
+
+    def __init__(self, embed_dim: int):
+        super().__init__()
+        self.in_proj = nn.Linear(embed_dim, embed_dim)
+        # init per-channel decay spread across horizons tau ~ logspace(2..64)
+        taus = torch.logspace(math.log10(2), math.log10(64), embed_dim)
+        a = 1.0 - torch.exp(-1.0 / taus)
+        self.raw_decay = nn.Parameter(torch.log(a / (1 - a)))         # logit(alpha) per channel
+        self.out = nn.Linear(embed_dim, embed_dim, bias=False)
+        nn.init.zeros_(self.out.weight)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        u = self.in_proj(z)
+        a = torch.sigmoid(self.raw_decay)                            # (D,)
+        s = torch.zeros(z.shape[0], z.shape[2], device=z.device, dtype=z.dtype)
+        out = []
+        for t in range(z.shape[1]):
+            s = (1 - a) * s + a * u[:, t]
+            out.append(s)
+        return torch.stack(out, dim=1)
+
+    def fuse(self, z: torch.Tensor, m: torch.Tensor) -> torch.Tensor:
+        return z + self.out(m)
+
+    def horizons(self):
+        return {'tau_fast': float('nan'), 'tau_slow': float('nan'),
+                'alpha_fast': float('nan'), 'alpha_slow': float('nan')}
+
+
+class RetrievalMemory(nn.Module):
+    """E2(a) baseline: episodic retrieval — causal self-attention over the stored stream of
+    past latents (a differentiable FIFO latent cache), injected via a zero-init read-out.
+    Tests whether attending over *raw* past latents beats exponential compression."""
+
+    def __init__(self, embed_dim: int, num_heads: int = 4):
+        super().__init__()
+        self.attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+        self.out = nn.Linear(embed_dim, embed_dim, bias=False)
+        nn.init.zeros_(self.out.weight)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        L = z.shape[1]
+        mask = torch.triu(torch.ones(L, L, device=z.device), diagonal=1).bool()  # causal
+        m, _ = self.attn(z, z, z, attn_mask=mask, need_weights=False)
+        return m
+
+    def fuse(self, z: torch.Tensor, m: torch.Tensor) -> torch.Tensor:
+        return z + self.out(m)
+
+    def horizons(self):
+        return {'tau_fast': float('nan'), 'tau_slow': float('nan'),
+                'alpha_fast': float('nan'), 'alpha_slow': float('nan')}
+
+
 class MemoryFusion(nn.Module):
     """Inject the two memory banks into the latent stream before the predictor.
 

@@ -35,8 +35,8 @@ from lewm.eval.memory_probe import run_memory_eval
 
 
 def build_model(args, device) -> MemoryLeWorldModel:
-    # 'multi'/'gru' select a memory implementation; none/short/long/both use the EMA impl.
-    impl = args.memory_mode if args.memory_mode in ('multi', 'gru') else 'ema'
+    # non-EMA modes select a memory implementation; none/short/long/both use the EMA impl.
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim,
@@ -81,8 +81,10 @@ def main():
     # experiment identity
     p.add_argument('--env', required=True, choices=list(ENV_REGISTRY))
     p.add_argument('--memory-mode', default='both',
-                   choices=['none', 'short', 'long', 'both', 'multi', 'gru'])
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval'])
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
+    p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')
+    p.add_argument('--init-from', default=None, help='load encoder weights from this checkpoint (for frozen-backbone)')
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/mem')
     p.add_argument('--run-suffix', default='', help='appended to run name + output dir (for sweeps)')
@@ -176,7 +178,16 @@ def main():
 
     # ---- model / optim ----
     model = build_model(args, device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if args.init_from:                                  # frozen-backbone: load a pretrained encoder
+        ck = torch.load(args.init_from, map_location=device, weights_only=False)
+        enc_sd = {k[len('encoder.'):]: v for k, v in ck['model_state_dict'].items() if k.startswith('encoder.')}
+        model.encoder.load_state_dict(enc_sd); print(f"  loaded encoder from {args.init_from}")
+    if args.freeze_encoder:
+        for p in model.encoder.parameters():
+            p.requires_grad_(False)
+        print("  encoder FROZEN (training memory+predictor only)")
+    optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad],
+                                  lr=args.lr, weight_decay=args.weight_decay)
 
     print(f"=== {run_name} | kind={kind} | params={model.num_parameters():,} | "
           f"amp={use_amp} | device={device} ===", flush=True)

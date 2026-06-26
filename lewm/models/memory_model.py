@@ -22,7 +22,8 @@ import torch
 import torch.nn.functional as F
 
 from lewm.models.leworldmodel import LeWorldModel
-from lewm.models.memory import TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory, GRUMemory
+from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
+                                GRUMemory, SSMMemory, RetrievalMemory)
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -59,6 +60,10 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_multi = MultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus)
         elif memory_impl == 'gru':
             self.mem_gru = GRUMemory(embed_dim=self.embed_dim, hidden=gru_hidden)
+        elif memory_impl == 'ssm':
+            self.mem_ssm = SSMMemory(embed_dim=self.embed_dim)
+        elif memory_impl == 'retrieval':
+            self.mem_ret = RetrievalMemory(embed_dim=self.embed_dim, num_heads=4)
         else:
             raise ValueError(f"unknown memory_impl '{memory_impl}'")
 
@@ -69,7 +74,11 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.fusion(z, m_fast, m_slow)
         if self.memory_impl == 'multi':
             return self.mem_multi.fuse(z, self.mem_multi.banks(z))
-        return self.mem_gru.fuse(z, self.mem_gru(z))  # gru
+        if self.memory_impl == 'gru':
+            return self.mem_gru.fuse(z, self.mem_gru(z))
+        if self.memory_impl == 'ssm':
+            return self.mem_ssm.fuse(z, self.mem_ssm(z))
+        return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
 
     def horizons(self):
         """Uniform horizon accessor across impls (for logging)."""
@@ -77,7 +86,11 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.memory.horizons()
         if self.memory_impl == 'multi':
             return self.mem_multi.horizons()
-        return self.mem_gru.horizons()
+        if self.memory_impl == 'gru':
+            return self.mem_gru.horizons()
+        if self.memory_impl == 'ssm':
+            return self.mem_ssm.horizons()
+        return self.mem_ret.horizons()
 
     # ---- core training loss (sliding short-window over a long chunk) ---------------
     def compute_loss(

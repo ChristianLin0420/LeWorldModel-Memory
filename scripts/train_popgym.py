@@ -40,7 +40,8 @@ def run_epoch(model, loader, opt, device, train, use_amp):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--env-id', required=True)
-    p.add_argument('--memory-mode', default='both', choices=['none', 'short', 'long', 'both'])
+    p.add_argument('--memory-mode', default='both',
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval'])
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/popgym')
     p.add_argument('--num-episodes', type=int, default=4000)
@@ -100,12 +101,14 @@ def main():
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                             pin_memory=pin, persistent_workers=args.num_workers > 0)
 
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval') else 'ema'
+    ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
         encoder_layers=args.encoder_layers, encoder_heads=args.encoder_heads,
         predictor_layers=args.predictor_layers, predictor_heads=args.predictor_heads,
         history_len=args.history_len, dropout=args.dropout, sigreg_lambda=args.sigreg_lambda,
-        sigreg_projections=args.sigreg_projections, memory_mode=args.memory_mode,
+        sigreg_projections=args.sigreg_projections, memory_mode=ema_mode, memory_impl=impl,
         tau_fast=args.tau_fast, tau_slow=args.tau_slow, learnable_alpha=not args.fixed_alpha).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     print(f"=== {run_name} | n_actions={n_actions} | params={model.num_parameters():,} | amp={use_amp} ===", flush=True)
