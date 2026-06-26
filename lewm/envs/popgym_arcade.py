@@ -66,6 +66,9 @@ def get_or_collect(env_id: str, num_episodes: int, length: int, img_size: int = 
     if env_id.startswith('mmaze:'):                          # Memory-Maze (3D) via MuJoCo
         from lewm.envs.memory_maze_collect import collect_mmaze
         obs, act, n_actions = collect_mmaze(env_id.split(':', 1)[1], num_episodes, length, img_size=img_size, seed=seed)
+    elif env_id.startswith('dmc:'):                          # DeepMind Control (real MuJoCo robots)
+        from lewm.envs.dmc_collect import collect_dmc
+        obs, act, n_actions = collect_dmc(env_id.split(':', 1)[1], num_episodes, length, img_size=img_size, seed=seed)
     else:
         obs, act, n_actions = collect_popgym(env_id, num_episodes, length, img_size=img_size, seed=seed)
     np.savez_compressed(fp, obs=obs, actions=act, n_actions=n_actions)
