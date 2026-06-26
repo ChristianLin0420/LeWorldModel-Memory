@@ -22,7 +22,7 @@ COLLECT_PID=$!
 # ---- phase 1: DINO jobs (run while mmaze collects) ----
 DJOBS=(); DSK=()
 for s in 0 1; do for env in tmaze occlusion recall distractor; do for d in none multi; do
-  DJOBS+=("scripts/train_memory.py --env $env --memory-mode $d --seed $s --encoder dino --fixed-alpha --output-dir outputs/dino --wandb-project lewm-memory-dino --extra-tag exp:dino --epochs 20 --num-episodes 2000 --batch-size 24 --num-workers 2 --eval-interval 20")
+  DJOBS+=("scripts/train_memory.py --env $env --memory-mode $d --seed $s --encoder dino --fixed-alpha --output-dir outputs/dino --wandb-project lewm-memory-dino --extra-tag exp:dino --epochs 20 --num-episodes 2000 --batch-size 16 --num-workers 2 --eval-interval 20")
   DSK+=("outputs/dino/lewm-$env-$d-s$s/model.pt")
 done; done; done
 echo "=== DINO jobs: ${#DJOBS[@]} on GPUs [${GPU_LIST[*]}] ==="
