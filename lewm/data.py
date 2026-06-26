@@ -40,6 +40,27 @@ class MemoryEpisodeDataset(Dataset):
         return _episode_to_tensors(obs, act)
 
 
+class PopgymDataset(Dataset):
+    """Offline POPGym Arcade trajectories: serves (obs (L,3,H,W) float, action one-hot
+    (L-1, n_actions) float). Trajectories are collected/cached once via get_or_collect."""
+
+    def __init__(self, env_id: str, num_episodes: int, length: int = 32, img_size: int = 64,
+                 seed: int = 0, data_dir: str = 'outputs/popgym_data'):
+        from lewm.envs.popgym_arcade import get_or_collect
+        self.obs, self.act, self.n_actions = get_or_collect(
+            env_id, num_episodes, length, img_size=img_size, seed=seed, data_dir=data_dir)
+
+    def __len__(self) -> int:
+        return len(self.obs)
+
+    def __getitem__(self, idx: int):
+        o = torch.from_numpy(self.obs[idx].astype(np.float32) / 255.0).permute(0, 3, 1, 2).contiguous()
+        a = self.act[idx].astype(np.int64)
+        a1h = np.zeros((a.shape[0], self.n_actions), dtype=np.float32)
+        a1h[np.arange(a.shape[0]), a] = 1.0
+        return o, torch.from_numpy(a1h)
+
+
 def generate_eval_batch(env_name: str, num_episodes: int, img_size: int = 64,
                         length: int = 32, seed: int = 10_000, **env_kwargs
                         ) -> Dict[str, object]:

@@ -9,3 +9,4 @@ scikit-learn
 scipy
 imageio
 tensorboard
+popgym-arcade  # optional: POPGym Arcade benchmark (pulls jax)
