@@ -118,7 +118,38 @@ Two honest takeaways:
 
 The change is large exactly where predicted — **+0.16 on T-Maze and +0.18 on Distractor** — confirming that the softmax mixture was the bottleneck (it down-weighted the decisive long bank). **SMT-v2 now matches the fixed K-bank on the clean long-gap tasks (0.96 vs 0.99; 0.97 vs 1.00) while being fully learnable, input-conditioned, and interpretable.** On the harder Recall (3-way) and short-gap Occlusion it narrows the gap but still trails slightly.
 
-**Conclusion.** A learnable short/long memory *can* match the strong fixed prior — provided learnability is placed on **input-conditioned gating over a fixed timescale basis** (write gate + *additive* read gates), not on the decay rates. The validated recipe: *fixed log-spaced decays (§5.11) + additive sigmoid gating (v2) → matches `multi` while adding adaptivity and a plottable per-step horizon selection.* The remaining, honest open question is whether the **added learnability buys something the fixed bank cannot** on harder settings — distractor suppression under heavier interference, mid-sequence horizon switching (Recall), distribution shift, and longer sequences (the scalability axis). Those selectivity-specific gains, measurable via `route_weights()` and harder task variants, are the next experiments (§6).
+### 7.1 Real-robot SMT (exp #5)
+
+On the cached dm_control + OGBench occlusion data, learnable `smt` (sigmoid) vs the fixed `multi` (next-latent val MSE, lower = better, 3 seeds):
+
+| env (occluded) | none | **multi (fixed)** | **smt (learnable)** |
+|---|---:|---:|---:|
+| Reacher | 0.328 | **0.175** | 0.182 |
+| Ball-in-Cup | 0.331 | 0.173 | **0.135** |
+| Finger-spin | 0.333 | **0.175** | 0.176 |
+| Cheetah | 0.240 | **0.201** | 0.227 |
+| OGBench-Cube | 0.329 | **0.177** | 0.178 |
+
+SMT generalizes to real robots and **matches `multi`** — one clear win (Ball-in-Cup, −22% vs multi, where selectively storing the ball's trajectory through the blackout helps), otherwise ties/slight losses; all far below memoryless `none`.
+
+### 7.2 Selectivity under harder interference (exp #1, harder variants)
+
+The decisive test set up by §5: does the learnable gating *beat* the fixed K-bank once a static mixture is no longer sufficient? Harder Distractor (more interference flashes) and Recall (longer sequence), usage (mean±std; chance Distractor 0.50, Recall 0.33):
+
+| task (hardness) | none | **multi (fixed)** | **smt (learnable)** | smt − multi |
+|---|---:|---:|---:|---:|
+| Distractor n=10 | 0.44 | **0.98** | 0.96 | −0.02 |
+| Distractor n=16 (harder) | 0.52 | **0.99** | 0.91 | **−0.08** |
+| Recall seq=5 | 0.39 | **0.40** | 0.36 | −0.05 |
+| Recall seq=7 (harder) | 0.32 | 0.36 | **0.42** | **+0.06** |
+
+**The selectivity hypothesis is largely not confirmed.** Under *heavier* distractor interference SMT does **not** beat `multi`; the gap actually *widens against* SMT at n=16 (−0.08) — the opposite of the predicted "write gate suppresses distractors" effect. The lone positive is harder Recall (seq=7, +0.06), but in a regime where every method sits near 3-way chance. This is fully coherent with the router-collapse finding (§5): SMT's learnable selectivity does not strongly activate, so the extra machinery matches `multi` at best and slightly underperforms it under heavy interference (harder optimization, no selectivity payoff).
+
+### 7.3 Conclusion (honest)
+
+A learnable short/long memory can **match** the strong fixed K-bank — on clean tasks (§7 v2), on real robots (1 win / 2 ties / 2 slight losses, §7.1), and under moderate interference — *provided* learnability is placed on input-conditioned gating over a fixed timescale basis, not on the decays. But across every setting it does **not yet beat** the fixed prior, and under heavy interference it slightly trails (§7.2). The diagnosis is consistent end to end: the learned router collapses to a near-static, input-independent mixture (§5), so SMT mostly **recovers `multi`'s additive K-bank** rather than exploiting content-dependent selectivity. The fixed log-spaced K-bank thus **remains the prior to beat** — a striking reaffirmation of the paper's thesis (§5.11), now against a strong learnable challenger.
+
+This sharpens the real open problem into two levers: **(i) make selectivity actually emerge** (sparsity/entropy or load-balancing pressure on the gates, temperature, or curriculum/harder training so a static mixture cannot win); and **(ii) relax the constant-size constraint** — replace the fixed K=6 bank with a **learnable, variable-size** multi-scale bank (an over-complete fixed-decay basis with *sparse, learned* selection to an emergent active set), so capacity is allocated by content rather than hand-set. That second lever is exactly the question explored in §8.
 
 ## References
 
