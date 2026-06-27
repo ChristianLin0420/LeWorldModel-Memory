@@ -71,9 +71,16 @@ Only `W_i` (D×D), `W_r` (D×K) and `W_o` (D×D) are learned — about `2D² + D
 
 **Net positioning.** The literature either *learns the decays* (Mamba, Mega, HGRN2) — unreliable here — or uses *fixed multi-scale decays without selectivity* (RetNet). SMT is the missing quadrant: **fixed decay basis + learned input-conditioned selectivity (write + read)**, motivated by a controlled finding that this is exactly the split that works. To our knowledge this specific combination has not been proposed as a sequence-memory module for (JEPA) world models.
 
-## 5. Interpretability — it extends our measurement protocol for free
+## 5. Interpretability — and an honest negative finding about the router
 
-Because the horizons are fixed and known, the router output `r_t` is a **per-step probability distribution over known horizons**. This is directly plottable: we can show, frame by frame, whether the model is reading *short* or *long* memory — a learned, content-dependent version of the short-vs-long dissociation the paper visualizes (§5.1). `route_weights()` exposes this; the planned analysis overlays `r_t` on the cue→decision timeline and on the robot-occlusion rollouts.
+Because the horizons are fixed and known, the router output `r_t` is directly plottable as a **read preference over known horizons** (`route_weights()`), a learned analogue of the short-vs-long dissociation (§5.1). We visualize the trained `smt` (sigmoid/v2) router on three envs:
+
+![SMT router](figures/fig_smt_router.png)
+*Figure 2. SMT learned read router. (a) per-horizon mean read weight ≈ uniform (1/6) with only tiny, weakly task-appropriate deviations (Distractor leans slightly toward the longest τ=64). (b) the temporal std of the router is ~10⁻⁵ — i.e. essentially **constant over time**.*
+
+**Honest finding: the router collapsed to a near-static, input-independent mixture.** On these clean tasks the trained read router barely deviates from a uniform, time-constant weighting (`W_r ≈ 0`; only its bias matters). This *explains why SMT-v2 matches `multi`*: with near-uniform additive gates it effectively **becomes a static additive K-bank with learned constant weights** — i.e. it recovered `multi`'s read-out rather than learning per-step content routing. The hypothesized selectivity *did not emerge* — the same weak-gradient degeneracy we saw for learned decay (§5.4), now for the router: when a static mixture already solves an easy task, there is no pressure to be input-dependent.
+
+This sharpens the proposal's central question and motivates the next experiments (§6–§7): does input-dependent routing (and the write gate) *emerge and help* when a static mixture is **not** sufficient — i.e. on harder, interference-heavy tasks? (It also suggests an architectural lever: a router temperature / entropy or load-balancing pressure to encourage peakier, content-dependent routing.)
 
 ## 6. Experiment plan
 
