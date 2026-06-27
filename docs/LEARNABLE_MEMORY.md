@@ -65,6 +65,25 @@ Because the horizons are fixed and known, the router output `r_t` is a **per-ste
 4. **Router visualization** — per-step `r_t` over the cue→decision gap and over the dm_control/OGBench occlusion rollouts (does the model route to long memory exactly across the blackout?).
 5. **Real robots** — `smt` on the dm_control/OGBench occlusion suite (§5.15–5.16): does learned write-gating improve post-occlusion prediction over the fixed K-bank?
 
+## 7. Initial validation results
+
+**v1 (softmax mixture router), 4 envs × 3 seeds, 30 epochs (usage = cue decodable from the prediction; mean±std).**
+
+| env | none | **multi (fixed)** | **smt (learnable)** | chance |
+|---|---:|---:|---:|---:|
+| T-Maze (Δ21) | 0.49 ±.02 | **0.99 ±.00** | 0.80 ±.06 | 0.50 |
+| Distractor (Δ23) | 0.55 ±.03 | **1.00 ±.00** | 0.79 ±.04 | 0.50 |
+| Recall (Δ15) | 0.32 ±.03 | **0.47 ±.01** | 0.40 ±.03 | 0.33 |
+| Occlusion (Δ5) | 0.48 ±.06 | **0.71 ±.02** | 0.59 ±.02 | 0.50 |
+
+Two honest takeaways:
+1. **SMT is the strongest *learnable* memory so far.** On T-Maze it reaches 0.80, clearly above the paper's learned baselines (GRU 0.54, SSM 0.58, retrieval 0.72) and approaching the fixed-EMA `both` (0.84) — learning *selection over a fixed basis* is a real improvement over learning the dynamics.
+2. **But it does not yet beat the fixed K-bank** (0.80 vs 0.99; 0.79 vs 1.00). The "fixed structure is a remarkably strong prior" thesis (§5.11) survives this stronger learnable challenger.
+
+**Diagnosis.** `multi` reads *all* banks **additively** (each fully contributes via its own read-out); SMT-v1's **softmax** router is a *convex mixture*, so reading the decisive long bank requires *down-weighting* the others, attenuating exactly the signal that matters. This predicts a fix: replace the softmax mixture with **independent additive sigmoid gates** (every fixed-horizon bank can contribute fully, but input-conditioned) — i.e. `multi`'s additive read-out made content-selective.
+
+**v2 (additive sigmoid gates, `--smt-router sigmoid`).** Implemented; comparison sweep on the 4 envs × 3 seeds running (`outputs/smt_v2`). *Results to be appended.* If v2 closes the gap to `multi`, the takeaway becomes "input-conditioned gating over a fixed basis matches the fixed prior *and* adds adaptivity/interpretability"; if it does not, the honest conclusion is that the fixed K-bank remains the prior to beat, and the learnable value is in selectivity (distractor suppression, horizon switching) measurable beyond raw usage.
+
 ## References
 
 Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 learned-decay does not self-tune; §5.11 fixed K-bank beats learned memories).
