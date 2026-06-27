@@ -50,6 +50,8 @@ def analyze(run_dir):
     env_kwargs = {}
     if a.get('reveal') is not None: env_kwargs['reveal'] = a['reveal']
     if a.get('cue_len') is not None: env_kwargs['cue_len'] = a['cue_len']
+    if a.get('n_distract') is not None: env_kwargs['n_distract'] = a['n_distract']
+    if a.get('seq_len') is not None: env_kwargs['seq_len'] = a['seq_len']
     b = generate_eval_batch(env, N_EVAL, img_size=a['img_size'], length=length, seed=4242, **env_kwargs)
     obs, act, cue = b['obs'], b['actions'], b['cue'].numpy()
     n_classes = b['n_cue_classes']

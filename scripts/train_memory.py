@@ -96,6 +96,8 @@ def main():
     # env overrides (passed through to the env generator when set; e.g. tmaze gap sweep)
     p.add_argument('--reveal', type=int, default=None)
     p.add_argument('--cue-len', type=int, default=None)
+    p.add_argument('--n-distract', type=int, default=None, help='distractor env: # interference flashes')
+    p.add_argument('--seq-len', type=int, default=None, help='recall env: sequence length')
     # data / episodes
     p.add_argument('--num-episodes', type=int, default=6000)
     p.add_argument('--val-episodes', type=int, default=512)
@@ -151,6 +153,10 @@ def main():
         env_kwargs['reveal'] = args.reveal
     if args.cue_len is not None:
         env_kwargs['cue_len'] = args.cue_len
+    if args.n_distract is not None:
+        env_kwargs['n_distract'] = args.n_distract
+    if args.seq_len is not None:
+        env_kwargs['seq_len'] = args.seq_len
 
     # ---- wandb ----
     wb = None
