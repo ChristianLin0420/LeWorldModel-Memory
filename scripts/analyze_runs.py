@@ -26,7 +26,7 @@ DEFAULT_GAP = {'tmaze': 24 - 3, 'distractor': 26 - 3, 'occlusion': 17 - 12,
 
 def build_model(a):
     mode = a['memory_mode']
-    impl = mode if mode in ('multi', 'gru', 'ssm', 'retrieval') else 'ema'
+    impl = mode if mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt') else 'ema'
     ema_mode = 'both' if impl != 'ema' else mode
     m = MemoryLeWorldModel(
         img_size=a['img_size'], patch_size=a['patch_size'], embed_dim=a['embed_dim'], action_dim=2,

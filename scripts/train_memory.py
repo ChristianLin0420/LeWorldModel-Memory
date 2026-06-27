@@ -36,7 +36,7 @@ from lewm.eval.memory_probe import run_memory_eval
 
 def build_model(args, device) -> MemoryLeWorldModel:
     # non-EMA modes select a memory implementation; none/short/long/both use the EMA impl.
-    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval') else 'ema'
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim,
@@ -81,7 +81,7 @@ def main():
     # experiment identity
     p.add_argument('--env', required=True, choices=list(ENV_REGISTRY))
     p.add_argument('--memory-mode', default='both',
-                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval'])
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt'])
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
     p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')
     p.add_argument('--init-from', default=None, help='load encoder weights from this checkpoint (for frozen-backbone)')

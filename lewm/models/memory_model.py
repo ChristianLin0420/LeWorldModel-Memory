@@ -23,7 +23,8 @@ import torch.nn.functional as F
 
 from lewm.models.leworldmodel import LeWorldModel
 from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
-                                GRUMemory, SSMMemory, RetrievalMemory)
+                                GRUMemory, SSMMemory, RetrievalMemory,
+                                SelectiveMultiTimescaleMemory)
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -69,6 +70,8 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_ssm = SSMMemory(embed_dim=self.embed_dim)
         elif memory_impl == 'retrieval':
             self.mem_ret = RetrievalMemory(embed_dim=self.embed_dim, num_heads=4)
+        elif memory_impl == 'smt':                          # learnable selective multi-timescale
+            self.mem_smt = SelectiveMultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus)
         else:
             raise ValueError(f"unknown memory_impl '{memory_impl}'")
 
@@ -83,6 +86,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_gru.fuse(z, self.mem_gru(z))
         if self.memory_impl == 'ssm':
             return self.mem_ssm.fuse(z, self.mem_ssm(z))
+        if self.memory_impl == 'smt':
+            return self.mem_smt.fuse(z, self.mem_smt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
 
     def horizons(self):
@@ -95,6 +100,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_gru.horizons()
         if self.memory_impl == 'ssm':
             return self.mem_ssm.horizons()
+        if self.memory_impl == 'smt':
+            return self.mem_smt.horizons()
         return self.mem_ret.horizons()
 
     # ---- core training loss (sliding short-window over a long chunk) ---------------

@@ -41,7 +41,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--env-id', required=True)
     p.add_argument('--memory-mode', default='both',
-                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval'])
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt'])
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/popgym')
     p.add_argument('--num-episodes', type=int, default=4000)
@@ -104,7 +104,7 @@ def main():
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                             pin_memory=pin, persistent_workers=args.num_workers > 0)
 
-    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval') else 'ema'
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,

@@ -204,6 +204,69 @@ class MultiTimescaleMemory(nn.Module):
                 'n_banks': len(self.taus)}
 
 
+class SelectiveMultiTimescaleMemory(nn.Module):
+    """Selective Multi-Timescale (SMT) memory -- a *learnable, scalable* short/long memory.
+
+    Motivation (from our controlled study): a FIXED log-spaced bank of EMA horizons beats every
+    *learned* memory here, and a learnable scalar decay alpha does NOT self-tune (weak gradient on
+    a decay rate). So instead of learning the decays, we keep the fixed log-spaced basis (the
+    reliable prior) and move ALL learnability to *input-conditioned gating*:
+
+        write/input gate   i_t   = sigmoid(W_i z_t)                         (what to store)
+        bank-k recurrence  m^k_t = (1-a_k) m^k_{t-1} + a_k (i_t ⊙ z_t)      (a_k FIXED, log-spaced)
+        read router        r_t   = softmax(W_r z_t / T)  ∈ Δ^{K-1}          (which horizon to read)
+        memory read-out    o_t   = W_o ( Σ_k r_{t,k} · m^k_t )              (W_o zero-init)
+
+    This is a *selective diagonal linear SSM over a fixed timescale basis*: O(L·K·D), linear in
+    sequence length and parallelizable via an associative scan; the only learned, content-dependent
+    parts are a small write gate and a K-way router (a "mixture of timescales" with learned, per-step
+    routing). Decays stay fixed, so horizons are known and the router r_t is a per-step distribution
+    over KNOWN horizons -> directly interpretable as short-vs-long selection. W_o is zero-initialized,
+    so training begins exactly at the memoryless baseline (same philosophy as MemoryFusion).
+
+    Differs from: Mamba/S6 (learns input-dependent timescale Delta), Mega (learns EMA coefficients),
+    HGRN2 (learns data-dependent decay), RetNet (fixed multi-scale decay, no selectivity). Here the
+    decays are fixed and the *selection over* them is what is learned.
+    """
+
+    def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64), router_temp: float = 1.0):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.taus = list(taus)
+        self.K = len(self.taus)
+        self.router_temp = router_temp
+        alphas = [tau_to_alpha(t) for t in self.taus]
+        self.register_buffer('alphas', torch.tensor(alphas, dtype=torch.float32))  # FIXED
+        self.in_gate = nn.Linear(embed_dim, embed_dim)        # learned write gate (what to store)
+        nn.init.constant_(self.in_gate.bias, 1.0)             # start ~open (sigmoid~0.73): populate memory
+        self.router = nn.Linear(embed_dim, self.K)            # learned read router (which horizon)
+        self.out = nn.Linear(embed_dim, embed_dim, bias=False)
+        # NOTE: a *small* (not zero) read-out init -- the router/write-gate sit upstream of this
+        # multiplicative read-out, so a zero-init would give them exactly zero gradient at step 0.
+        # Small init keeps the model near the memoryless baseline yet trains every part from step 1.
+        nn.init.normal_(self.out.weight, std=1e-2)
+
+    def route_weights(self, z: torch.Tensor) -> torch.Tensor:
+        """Per-step router distribution over the K fixed horizons (B,L,K) -- for interpretability."""
+        return torch.softmax(self.router(z) / self.router_temp, dim=-1)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        """Return the routed memory read-out (B,L,D) to be fused into the predictor input."""
+        zi = torch.sigmoid(self.in_gate(z)) * z               # gated (written) input
+        banks = torch.stack([TwoTimescaleMemory._scan(zi, self.alphas[k]) for k in range(self.K)],
+                            dim=2)                            # (B,L,K,D)
+        w = self.route_weights(z).unsqueeze(-1)               # (B,L,K,1)
+        return (w * banks).sum(dim=2)                         # (B,L,D)
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        return z + self.out(mixed)
+
+    def horizons(self):
+        return {'tau_fast': float(self.taus[0]), 'tau_slow': float(self.taus[-1]),
+                'alpha_fast': float(self.alphas[0]), 'alpha_slow': float(self.alphas[-1]),
+                'n_banks': self.K}
+
+
 class GRUMemory(nn.Module):
     """E2 baseline: a GRU over the latent stream; its (causal) hidden state is injected via a
     zero-init read-out -- the simplest *learned* recurrent memory, matched to the EMA interface."""
