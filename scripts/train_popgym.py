@@ -42,6 +42,7 @@ def main():
     p.add_argument('--env-id', required=True)
     p.add_argument('--memory-mode', default='both',
                    choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt'])
+    p.add_argument('--smt-router', default='softmax', choices=['softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--output-dir', default='outputs/popgym')
     p.add_argument('--num-episodes', type=int, default=4000)
@@ -112,7 +113,8 @@ def main():
         predictor_layers=args.predictor_layers, predictor_heads=args.predictor_heads,
         history_len=args.history_len, dropout=args.dropout, sigreg_lambda=args.sigreg_lambda,
         sigreg_projections=args.sigreg_projections, memory_mode=ema_mode, memory_impl=impl,
-        tau_fast=args.tau_fast, tau_slow=args.tau_slow, learnable_alpha=not args.fixed_alpha).to(device)
+        tau_fast=args.tau_fast, tau_slow=args.tau_slow, learnable_alpha=not args.fixed_alpha,
+        smt_router=getattr(args, 'smt_router', 'softmax')).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     print(f"=== {run_name} | n_actions={n_actions} | params={model.num_parameters():,} | amp={use_amp} ===", flush=True)
 
