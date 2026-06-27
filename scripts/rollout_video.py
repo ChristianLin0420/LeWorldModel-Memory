@@ -115,7 +115,8 @@ def label(img, text, color=(255, 255, 255)):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--robot', required=True, help='e.g. reacher.hard')
+    ap.add_argument('--robot', required=True, help='e.g. reacher.hard or cube-single')
+    ap.add_argument('--prefix', default='dmc', help="env-id prefix: 'dmc' or 'ogbench'")
     ap.add_argument('--robotic-dir', default='outputs/robotic')
     ap.add_argument('--out-dir', default='outputs/robotic_viz')
     ap.add_argument('--wandb-project', default='lewm-memory-robotic-viz')
@@ -127,7 +128,7 @@ def main():
     args = ap.parse_args()
 
     robot = args.robot
-    env_occ, env_full = f'dmc:{robot}.occ', f'dmc:{robot}'
+    env_occ, env_full = f'{args.prefix}:{robot}.occ', f'{args.prefix}:{robot}'
     out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
 
     # viz episodes: occluded (model input) + full (true robot), same seed -> aligned dynamics
