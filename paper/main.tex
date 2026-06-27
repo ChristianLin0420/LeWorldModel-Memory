@@ -1,0 +1,45 @@
+\documentclass{article}
+
+\usepackage{iclr2027_conference}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{calc}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+\graphicspath{{figures/}}
+\emergencystretch=2em  % reduce overfull boxes from long \texttt filenames
+\sloppy
+
+% --- pandoc longtable / list helper macros (we use pandoc fragment output) ---
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\real}[1]{#1}
+% pandoc emits \def\LTcaptype{none} for caption-less longtables; satisfy caption pkg + hyperref
+\newcounter{none}
+\providecommand{\theHnone}{none.\arabic{none}}
+\setlength{\LTpre}{0.6em}\setlength{\LTpost}{0.6em}
+\captionsetup{font=small,labelfont=bf}
+
+\title{Two-Timescale Memory for\\ Joint-Embedding Predictive World Models}
+\author{Anonymous authors\\ Paper under double-blind review}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+
+\input{body.tex}
+
+\input{refs.tex}
+
+\end{document}

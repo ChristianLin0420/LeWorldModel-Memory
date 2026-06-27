@@ -1,0 +1,15 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+# pandoc intermediates / diagnostics
+abstract.md
+body.md
+build.log
+r[0-9].log
