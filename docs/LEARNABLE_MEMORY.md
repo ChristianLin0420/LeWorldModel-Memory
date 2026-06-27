@@ -204,6 +204,9 @@ L0 penalty    L += λ0(t)·Σ_m P(g_{t,m}>0)      (annealed: λ0=0 for 40% of tr
 ```
 Knobs: `--l0-lambda`, `--oc-num` (M), `--gate-lr-mult` (separate, higher LR for the gate logits). The L0 term is folded into `compute_loss`; `active_count()` / `route_weights()` expose the learned effective size. State is M·D (constant in L); a bank is "active" iff its deterministic gate > 0, and the **effective bank size = number of active banks** — learnable and with no constant K.
 
+![OC-SMT architecture](figures/fig_ocsmt_arch.png)
+*Figure 3. OC-SMT (contrast with Fig 1's fixed K=6 SMT). The latent feeds an **over-complete** fixed basis of M=28 log-spaced EMA banks (gray, decays fixed); a learned **L0 gate** (`W_g`, blue) opens/closes each bank via a hard-concrete gate, so only an **emergent, data-chosen active set** (green = open, faded = pruned) is summed, projected by `W_o`, and added residually. The L0 penalty (annealed) prunes banks → the bank size is learnable with no constant K. Blue = learned (`W_i, W_g, W_o`); gray = fixed decays.*
+
 ### 9.2 Engineering findings (the hard part is *not* the mechanism)
 
 Getting OC-SMT to *train* surfaced three non-obvious facts, each verified directly:
