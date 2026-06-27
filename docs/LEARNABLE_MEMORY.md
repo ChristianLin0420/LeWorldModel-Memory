@@ -17,6 +17,24 @@ The naive reading is "memory should be fixed." But fixed memory cannot *allocate
 
 ## 2. The architecture
 
+![SMT architecture](figures/fig_smt_arch.png)
+*Figure 1. SMT data flow. The latent `z_t` is gated by a learned **write gate** `i_t` and written into `K` **fixed** log-spaced EMA banks (`τ=2…64`); a learned **read router** `r_t` weights the banks; the weighted read-out is projected by `W_o` and added back residually. Blue = learned (`W_i,W_r,W_o`, ~1.5% of params); gray = fixed decays. All learnability is in the input-conditioned gating, never in the decay rates.*
+
+Compact data flow:
+
+```
+                 ┌─ write gate  i_t = σ(W_i z_t) ─┐                    fixed banks
+   z_t ──┬──────►│            (LEARNED)           │── i_t⊙z_t ──► [ τ=2 ][ τ=4 ]…[ τ=64 ]
+         │       └───────────────────────────────┘                       │  │      │
+         │                                                                ▼  ▼      ▼
+         │        read router  r_t = g(W_r z_t)  (LEARNED) ───► weights r_{t,1..K}
+         │                                                                │
+         │                                          o_t = W_o( Σ_k r_{t,k} m^k_t )  (LEARNED)
+         └──────────────────────────────── + ◄─────────────────────────────┘
+                                            │
+                                      z̃_t = z_t + o_t   ──►  predictor
+```
+
 Let `z_t ∈ R^D` be the encoder latent. SMT maintains `K` EMA banks at **fixed** log-spaced horizons `τ_1<…<τ_K` (default `τ ∈ {2,4,8,16,32,64}`), `a_k = 1 − e^{−1/τ_k}`:
 
 ```
