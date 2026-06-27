@@ -273,6 +273,81 @@ class SelectiveMultiTimescaleMemory(nn.Module):
                 'n_banks': self.K}
 
 
+class OCSMTMemory(nn.Module):
+    """OC-SMT: Over-Complete fixed log-spaced EMA basis + L0 (hard-concrete) sparse READ gates.
+
+    Makes the bank a *learnable, variable-size* active set with NO constant K (docs/LEARNABLE_MEMORY.md
+    §8). We keep the decays FIXED (learning them fails, §5.4) but enlarge the basis to an over-complete
+    grid of M horizons and learn a per-bank hard-concrete L0 gate, so 'how many banks are on' is a
+    differentiable, penalized quantity rather than a hand-set constant:
+
+        gate logit   l_{t,m} = (W_g z_t)_m
+        hard-concrete g_{t,m} ∈ {0} ∪ (0,1]   (exact zeros via the stretch [gamma,zeta], Louizos 2018)
+        write gate   i_t = sigmoid(W_i z_t) ;  m^m_t = (1-a_m) m^m_{t-1} + a_m (i_t ⊙ z_t)   (a_m FIXED)
+        read-out     o_t = W_o( Σ_m g_{t,m} m^m_t ) ;  z~_t = z_t + o_t        (additive, as SMT-v2)
+        L0 penalty   λ0 · Σ_m P(g_{t,m} > 0)                                   (cost for being dense)
+
+    The L0 penalty is the anti-collapse pressure the SMT softmax router lacked: a uniform/dense gate
+    now *costs* loss, so SGD turns banks off and the effective size emerges from data (≈0 on a Markov
+    env, a few long horizons on T-Maze/Distractor). Decays never change; state M·D (constant in L)."""
+
+    BETA, GAMMA, ZETA = 2.0 / 3.0, -0.1, 1.1            # hard-concrete temperature + stretch
+
+    def __init__(self, embed_dim: int, M: int = 28, tau_min: float = 1.5, tau_max: float = 256.0):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.M = M
+        taus = torch.logspace(math.log10(tau_min), math.log10(tau_max), M)
+        self.register_buffer('taus', taus)
+        self.register_buffer('alphas', 1.0 - torch.exp(-1.0 / taus))   # (M,) FIXED
+        self.in_gate = nn.Linear(embed_dim, embed_dim)
+        nn.init.constant_(self.in_gate.bias, 1.0)         # write gate starts ~open
+        self.gate = nn.Linear(embed_dim, M)               # W_g: hard-concrete gate logits
+        nn.init.constant_(self.gate.bias, 1.0)            # start banks OPEN so memory is used; an ANNEALED
+        #   L0 (populate-then-sparsify, in train_memory) then prunes. NOTE (empirical): on clean short
+        #   tasks the L0 is bistable (dense-or-collapse) -- the over-complete banks are cheap+useful, so
+        #   aggressive pruning collapses memory; the practical operating point keeps most banks. See §9.
+        self.out = nn.Linear(embed_dim, embed_dim, bias=False)
+        nn.init.normal_(self.out.weight, std=5e-4)        # small: M~28 open banks sum -> keep near baseline
+        self.last_l0 = None                               # stashed expected #open gates (for the loss)
+
+    def _sample_gate(self, logits: torch.Tensor) -> torch.Tensor:
+        if self.training:
+            u = torch.rand_like(logits).clamp(1e-6, 1 - 1e-6)
+            s = torch.sigmoid((torch.log(u) - torch.log(1 - u) + logits) / self.BETA)
+        else:
+            s = torch.sigmoid(logits)                     # deterministic at eval
+        return (s * (self.ZETA - self.GAMMA) + self.GAMMA).clamp(0, 1)
+
+    def route_weights(self, z: torch.Tensor) -> torch.Tensor:
+        """Deterministic gate (B,L,M) for eval / interpretability; a bank is 'active' iff > 0."""
+        s = torch.sigmoid(self.gate(z))
+        return (s * (self.ZETA - self.GAMMA) + self.GAMMA).clamp(0, 1)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        logits = self.gate(z)                             # (B,L,M)
+        g = self._sample_gate(logits)
+        # expected number of open gates per step (Louizos L0): P(g>0)=sigmoid(logit - beta*log(-gamma/zeta))
+        p_open = torch.sigmoid(logits - self.BETA * math.log(-self.GAMMA / self.ZETA))
+        self.last_l0 = p_open.mean(dim=(0, 1)).sum()      # sum over M of mean-over-(B,L) open prob
+        zi = torch.sigmoid(self.in_gate(z)) * z
+        banks = torch.stack([TwoTimescaleMemory._scan(zi, self.alphas[m]) for m in range(self.M)], dim=2)
+        return (g.unsqueeze(-1) * banks).sum(dim=2)       # (B,L,D)
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        return z + self.out(mixed)
+
+    @torch.no_grad()
+    def active_count(self, z: torch.Tensor, thresh: float = 1e-3) -> torch.Tensor:
+        """Mean number of active (gate>thresh) banks per step -- the learned effective bank size."""
+        return (self.route_weights(z) > thresh).float().sum(-1).mean()
+
+    def horizons(self):
+        return {'tau_fast': float(self.taus[0]), 'tau_slow': float(self.taus[-1]),
+                'alpha_fast': float(self.alphas[0]), 'alpha_slow': float(self.alphas[-1]),
+                'n_banks': self.M}
+
+
 class GRUMemory(nn.Module):
     """E2 baseline: a GRU over the latent stream; its (causal) hidden state is injected via a
     zero-init read-out -- the simplest *learned* recurrent memory, matched to the EMA interface."""

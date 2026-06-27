@@ -26,7 +26,7 @@ DEFAULT_GAP = {'tmaze': 24 - 3, 'distractor': 26 - 3, 'occlusion': 17 - 12,
 
 def build_model(a):
     mode = a['memory_mode']
-    impl = mode if mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt') else 'ema'
+    impl = mode if mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt', 'ocsmt') else 'ema'
     ema_mode = 'both' if impl != 'ema' else mode
     m = MemoryLeWorldModel(
         img_size=a['img_size'], patch_size=a['patch_size'], embed_dim=a['embed_dim'], action_dim=2,
@@ -36,7 +36,8 @@ def build_model(a):
         sigreg_projections=a['sigreg_projections'], memory_mode=ema_mode,
         tau_fast=a['tau_fast'], tau_slow=a['tau_slow'], learnable_alpha=not a.get('fixed_alpha', True),
         memory_impl=impl, multi_taus=tuple(a.get('multi_taus', (2, 4, 8, 16, 32, 64))),
-        encoder_type=a.get('encoder', 'vit'), smt_router=a.get('smt_router', 'softmax'))
+        encoder_type=a.get('encoder', 'vit'), smt_router=a.get('smt_router', 'softmax'),
+        oc_num=a.get('oc_num', 28), l0_lambda=a.get('l0_lambda', 0.0))
     return m
 
 

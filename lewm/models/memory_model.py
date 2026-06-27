@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from lewm.models.leworldmodel import LeWorldModel
 from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
                                 GRUMemory, SSMMemory, RetrievalMemory,
-                                SelectiveMultiTimescaleMemory)
+                                SelectiveMultiTimescaleMemory, OCSMTMemory)
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -48,12 +48,15 @@ class MemoryLeWorldModel(LeWorldModel):
         gru_hidden: int = None,
         encoder_type: str = 'vit',
         smt_router: str = 'softmax',
+        oc_num: int = 28,
+        l0_lambda: float = 0.0,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.memory_mode = memory_mode
         self.memory_impl = memory_impl
         self.encoder_type = encoder_type
+        self.l0_lambda = l0_lambda
         if encoder_type == 'dino':                          # frozen pretrained DINOv2 backbone
             from lewm.models.encoder import FrozenDINOEncoder
             self.encoder = FrozenDINOEncoder(embed_dim=self.embed_dim)
@@ -74,6 +77,8 @@ class MemoryLeWorldModel(LeWorldModel):
         elif memory_impl == 'smt':                          # learnable selective multi-timescale
             self.mem_smt = SelectiveMultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus,
                                                          router_mode=smt_router)
+        elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
+            self.mem_ocsmt = OCSMTMemory(embed_dim=self.embed_dim, M=oc_num)
         else:
             raise ValueError(f"unknown memory_impl '{memory_impl}'")
 
@@ -90,6 +95,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_ssm.fuse(z, self.mem_ssm(z))
         if self.memory_impl == 'smt':
             return self.mem_smt.fuse(z, self.mem_smt(z))
+        if self.memory_impl == 'ocsmt':
+            return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
 
     def horizons(self):
@@ -104,6 +111,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_ssm.horizons()
         if self.memory_impl == 'smt':
             return self.mem_smt.horizons()
+        if self.memory_impl == 'ocsmt':
+            return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
 
     # ---- core training loss (sliding short-window over a long chunk) ---------------
@@ -146,7 +155,12 @@ class MemoryLeWorldModel(LeWorldModel):
         pred_loss = F.mse_loss(z_pred_last, targets)
         sigreg_loss = self.sigreg(z.reshape(B * L, D))     # Gaussianize all latents
         total = pred_loss + self.sigreg_lambda * sigreg_loss
-        return {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss}
+        out = {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss}
+        if self.memory_impl == 'ocsmt' and self.l0_lambda > 0 and self.mem_ocsmt.last_l0 is not None:
+            l0 = self.mem_ocsmt.last_l0                     # expected #open gates (set in _inject)
+            out['l0_loss'] = l0
+            out['loss'] = total + self.l0_lambda * l0
+        return out
 
     def forward(self, observations, actions):
         return self.compute_loss(observations, actions)

@@ -36,7 +36,7 @@ from lewm.eval.memory_probe import run_memory_eval
 
 def build_model(args, device) -> MemoryLeWorldModel:
     # non-EMA modes select a memory implementation; none/short/long/both use the EMA impl.
-    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt') else 'ema'
+    impl = args.memory_mode if args.memory_mode in ('multi', 'gru', 'ssm', 'retrieval', 'smt', 'ocsmt') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim,
@@ -48,6 +48,7 @@ def build_model(args, device) -> MemoryLeWorldModel:
         learnable_alpha=not args.fixed_alpha,
         memory_impl=impl, multi_taus=tuple(args.multi_taus), encoder_type=args.encoder,
         smt_router=getattr(args, 'smt_router', 'softmax'),
+        oc_num=getattr(args, 'oc_num', 28), l0_lambda=getattr(args, 'l0_lambda', 0.0),
     ).to(device)
     return model
 
@@ -82,10 +83,13 @@ def main():
     # experiment identity
     p.add_argument('--env', required=True, choices=list(ENV_REGISTRY))
     p.add_argument('--memory-mode', default='both',
-                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt'])
+                   choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt', 'ocsmt'])
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
     p.add_argument('--smt-router', default='softmax', choices=['softmax', 'sigmoid'],
                    help="SMT read-out: softmax mixture (v1) or independent additive sigmoid gates (v2)")
+    p.add_argument('--oc-num', type=int, default=28, help='OC-SMT: # over-complete fixed horizons (M)')
+    p.add_argument('--l0-lambda', type=float, default=0.0, help='OC-SMT: L0 sparsity weight on #open gates')
+    p.add_argument('--gate-lr-mult', type=float, default=20.0, help='OC-SMT: LR multiplier for gate logits')
     p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')
     p.add_argument('--init-from', default=None, help='load encoder weights from this checkpoint (for frozen-backbone)')
     p.add_argument('--encoder', default='vit', choices=['vit', 'dino'], help="encoder backbone ('dino' = frozen DINOv2)")
@@ -196,8 +200,17 @@ def main():
         for p in model.encoder.parameters():
             p.requires_grad_(False)
         print("  encoder FROZEN (training memory+predictor only)")
-    optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad],
-                                  lr=args.lr, weight_decay=args.weight_decay)
+    # OC-SMT: the L0 gate logits must traverse a wide range to actually open/close banks; the main LR
+    # caps per-step movement (Adam), so give the gate its own higher LR + no weight decay.
+    gate_params = []
+    if getattr(args, 'memory_mode', '') == 'ocsmt' and args.gate_lr_mult != 1.0:
+        gate_params = list(model.mem_ocsmt.gate.parameters())
+    gate_ids = {id(p) for p in gate_params}
+    base_params = [p for p in model.parameters() if p.requires_grad and id(p) not in gate_ids]
+    groups = [{'params': base_params, 'lr': args.lr, 'weight_decay': args.weight_decay}]
+    if gate_params:
+        groups.append({'params': gate_params, 'lr': args.lr * args.gate_lr_mult, 'weight_decay': 0.0})
+    optimizer = torch.optim.AdamW(groups)
 
     print(f"=== {run_name} | kind={kind} | params={model.num_parameters():,} | "
           f"amp={use_amp} | device={device} ===", flush=True)
@@ -225,6 +238,12 @@ def main():
     best = {}
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
+        # OC-SMT: anneal L0 (populate-then-sparsify) -- lambda0=0 for the first 40% of training so the
+        # model first learns WHICH banks help, then ramp to full over the next 30%, then hold. Without
+        # this the L0 is bistable (keeps all banks or collapses memory to none).
+        if getattr(args, 'memory_mode', '') == 'ocsmt':
+            frac = (epoch - 1) / max(1, args.epochs - 1)
+            model.l0_lambda = args.l0_lambda * min(1.0, max(0.0, (frac - 0.4) / 0.3))
         tr = run_epoch(model, train_loader, optimizer, device, True, use_amp)
         va = run_epoch(model, val_loader, optimizer, device, False, use_amp)
         tau = model.horizons()
