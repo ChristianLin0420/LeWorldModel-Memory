@@ -153,6 +153,44 @@ A learnable short/long memory can **match** the strong fixed K-bank — on clean
 
 This sharpens the real open problem into two levers: **(i) make selectivity actually emerge** (sparsity/entropy or load-balancing pressure on the gates, temperature, or curriculum/harder training so a static mixture cannot win); and **(ii) relax the constant-size constraint** — replace the fixed K=6 bank with a **learnable, variable-size** multi-scale bank (an over-complete fixed-decay basis with *sparse, learned* selection to an emergent active set), so capacity is allocated by content rather than hand-set. That second lever is exactly the question explored in §8.
 
+## 8. Toward a learnable, variable-size bank (no constant K)
+
+**Question:** the bank is currently a *fixed, constant-size* set of K=6 log-spaced EMA horizons (τ∈{2,4,8,16,32,64}). Can it instead be a **multi-scale-sized, learnable bank with no constant size**? **Yes** — and our own evidence dictates *how*: do **not** learn the decays (§5.4 says that fails), but make the **active set** (which/how-many horizons) learnable. (Grounded in a literature sweep; see references.)
+
+**What the literature does (and the one thing to avoid).**
+
+| method | how it makes size variable | learns decays? | basis fixed? |
+|---|---|---|---|
+| **Log-Linear Attention** (2506.04761) | Fenwick-tree of power-of-2 buckets; #active buckets grows ~log T with position | no | yes (structural) |
+| **MoM: Mixture-of-Memories** (2025) | input router activates **top-k of K** memory states (+1 always-on) | no | yes |
+| **Routing Mamba** (NeurIPS'25, 2506.18145) | top-k router over experts; **SSM core/decays stay fixed** | no | yes |
+| **DynMoE** (ICLR'25) / **ReMoE** (ICLR'25) | **learns the number of active experts** (top-any / ReLU+L1); grow/prune | no | yes |
+| **LAST** (NeurIPS'24) / **SparseSSM** (2025) | prune SSM modes by energy/saliency → variable state size | no | yes |
+| *Adaptive Memory Decay* (2605.06946) | input-conditioned decays | **yes ← avoid** | no |
+
+The convergent pattern: **route/sparsify over a fixed-decay basis; never relearn the decays** — exactly our finding. The last row is the negative control (the thing §5.4 says breaks).
+
+**Three designs (workflow-vetted).**
+
+1. **OC-SMT (recommended).** Replace K=6 with an **over-complete** fixed log-spaced basis (M≈24–32 spanning τ∈[1.5,256], decays still fixed buffers), and learn a **per-bank L0 / hard-concrete gate** (Louizos et al. 2018) instead of the softmax/sigmoid router:
+   ```
+   logit  l_{t,m} = (W_g z_t)_m            gate g_{t,m} = hardconcrete(l_{t,m})  ∈ {0}∪(0,1]
+   banks  m^m_t  = (1−a_m) m^m_{t−1} + a_m (i_t ⊙ z_t)        (a_m FIXED, i_t = write gate)
+   read   o_t    = W_o( Σ_m g_{t,m} · m^m_t ),   z̃_t = z_t + o_t        (additive, as in v2)
+   loss   L += λ₀ Σ_m P(g_{t,m}>0)          (L0 penalty on the # of open gates)
+   ```
+   The **effective bank size = expected #open gates**, a differentiable quantity the L0 term directly penalizes → SGD trades task loss against active-set cardinality, driving most of the M gates to **exact zero**. No constant K: M is just a ceiling; the realized active set is data-determined (≈0 on the Markov control, a few long horizons on T-Maze/Distractor). **This is the diff the rest of the doc set up**: the L0 penalty is precisely the *anti-collapse pressure* the §5 router lacked (a uniform/dense gate now *costs* loss, unlike the softmax that drifted to `W_r≈0`). It's a ~few-line change to `SelectiveMultiTimescaleMemory` (enlarge `taus`, swap `route_weights` for a hard-concrete gate, add the L0 term to `compute_loss`). State M·D (still constant in L), compute O(L·M·D), eval skips closed gates → O(L·k_active·D).
+
+2. **DA-Route** — a scalar "size head" picks a per-step top-k over the fixed bank. Smaller, but lower novelty and the size head likely re-collapses to a constant (same failure as §5). *Not recommended first.*
+
+3. **GP-SMT** — physically grow/prune banks (mutable module list, optimizer surgery). Most novel ("size truly discovered from data") but fights the codebase and, by its own admission, likely just rediscovers the fixed bank on these short tasks. *High risk.*
+
+**Honest caveat (the critique's main point).** OC-SMT cleanly delivers *learnable **cardinality*** (variable, sparse, no constant K) — but on our **clean, short (L=32)** tasks a *static* sparse mask already wins (the §5/§7 evidence that a constant solution suffices), so it will most likely learn a **fixed** sparse subset rather than a genuinely **input-dependent** active set. That still yields a real result — *match `multi` at a lower mean active-bank count* (an efficiency/auto-sizing win) and an emergent, plottable active set per env — but the stronger "input-dependent size" claim needs the harder/longer/curriculum tasks (and the active-set viz) to actually elicit it. This is the same lesson as §7, now built into the design: **the mechanism for variable size is straightforward; making the variation *content-dependent* is the open research problem.**
+
+Recommended next step: implement OC-SMT (`memory_impl='ocsmt'`, `--l0-lambda`), reuse `run_memory_eval` + `smt_router_viz` (deterministic gate), and report *usage vs mean-active-count* against none/multi/smt — framed as auto-sizing, with the input-dependence question as the honest open axis.
+
 ## References
 
 Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 learned-decay does not self-tune; §5.11 fixed K-bank beats learned memories).
+
+**§8 (variable-size design).** Guo et al. *Log-Linear Attention.* 2025 (arXiv:2506.04761). · Du et al. *MoM: Mixture-of-Memories.* 2025. · Zhang et al. *Routing Mamba: Scaling SSMs with MoE Projections.* NeurIPS 2025 (arXiv:2506.18145). · Guo et al. *DynMoE: Dynamic Mixture of Experts (auto-tuning).* ICLR 2025 (arXiv:2405.14297). · Wang et al. *ReMoE: Fully Differentiable MoE with ReLU Routing.* ICLR 2025 (arXiv:2412.14711). · Gwak et al. *Layer-Adaptive State Pruning (LAST).* NeurIPS 2024 (arXiv:2411.02824). · *SparseSSM.* 2025. · Louizos et al. *Learning Sparse NNs through L0 Regularization (hard-concrete).* ICLR 2018 (arXiv:1712.01312). · *Adaptive Memory Decay for Log-Linear Attention* (arXiv:2605.06946) — negative control (learns input-conditioned decays).
