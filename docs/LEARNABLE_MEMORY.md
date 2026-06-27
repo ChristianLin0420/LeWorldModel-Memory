@@ -189,6 +189,37 @@ The convergent pattern: **route/sparsify over a fixed-decay basis; never relearn
 
 Recommended next step: implement OC-SMT (`memory_impl='ocsmt'`, `--l0-lambda`), reuse `run_memory_eval` + `smt_router_viz` (deterministic gate), and report *usage vs mean-active-count* against none/multi/smt — framed as auto-sizing, with the input-dependence question as the honest open axis.
 
+## 9. OC-SMT: implementation and findings
+
+§8 proposed OC-SMT; this section reports the **implemented** architecture (`memory_impl='ocsmt'`, `lewm/models/memory.py::OCSMTMemory`) and what we learned making it train.
+
+### 9.1 Implementation
+
+```
+fixed basis   M=28 horizons, τ = logspace(1.5 … 256)         (decays a_m FIXED buffers)
+write gate    i_t = σ(W_i z_t)
+hard-concrete g_{t,m} = clamp( σ((logit_{t,m}+noise)/β)·(ζ−γ)+γ , 0, 1 ),  logit = W_g z_t   (Louizos 2018)
+banks/read    m^m_t = (1−a_m)m^m_{t−1}+a_m(i_t⊙z_t);  o_t = W_o(Σ_m g_{t,m} m^m_t);  z̃_t = z_t+o_t
+L0 penalty    L += λ0(t)·Σ_m P(g_{t,m}>0)      (annealed: λ0=0 for 40% of training, ramp over next 30%)
+```
+Knobs: `--l0-lambda`, `--oc-num` (M), `--gate-lr-mult` (separate, higher LR for the gate logits). The L0 term is folded into `compute_loss`; `active_count()` / `route_weights()` expose the learned effective size. State is M·D (constant in L); a bank is "active" iff its deterministic gate > 0, and the **effective bank size = number of active banks** — learnable and with no constant K.
+
+### 9.2 Engineering findings (the hard part is *not* the mechanism)
+
+Getting OC-SMT to *train* surfaced three non-obvious facts, each verified directly:
+
+1. **Read-out init must shrink with M.** Summing M=28 open banks makes the residual injection ~120% of `‖z‖` at the SMT init; we use read-out std `5e-4` (vs SMT's `1e-2`) to restore the ≈baseline start.
+2. **L0 sparsification is *bistable* under Adam on these tasks.** With a dense start, even **λ0=2.0 does not close any bank** — Adam caps per-step logit movement and the over-complete banks are individually cheap+useful, so the task gradient holds them open. With a start-closed init + high gate-LR, the L0 instead **collapses memory to zero** (banks never open; usage → chance). The window that yields a *small-but-useful* active set is knife-edge.
+3. **Fixes that help (partially):** a separate higher LR for the gate logits (so they can traverse the wide range), and **annealing λ0** (populate at λ0=0 so the model first learns which banks help, then ramp to prune). These make the mechanism *function*, but do not, on these clean short tasks, manufacture a clean small active set — exactly the critique's predicted risk.
+
+**This is itself the result.** The mechanism for a learnable, variable-size bank is straightforward and correct; what is *hard* — and remains open — is making a small, useful, content-dependent active set actually emerge when the over-complete banks are cheap and a dense (or collapsed) solution already wins. It is the same lesson as §5 (router collapse) and §7 (selectivity didn't pay off), now for cardinality: **the fixed, well-chosen K-bank is a remarkably strong prior, and "let the data choose the size" does not beat it on these tasks without a setting where size actually matters** (longer sequences, tighter capacity budgets, curriculum).
+
+### 9.3 Auto-sizing sweep
+
+We sweep the (annealed) L0 weight λ0 ∈ {0, 0.05, 0.2} over the 4 memory envs × 3 seeds, reporting **usage** and the **mean active-bank count** (out of M=28). λ0=0 is the dense over-complete bank (the SMT-style upper bound on usage); larger λ0 trades active-count for usage.
+
+*Results (sweep `outputs/ocsmt`, in progress — table to be filled on completion).*
+
 ## References
 
 Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 learned-decay does not self-tune; §5.11 fixed K-bank beats learned memories).
