@@ -140,8 +140,10 @@ The decisive test set up by §5: does the learnable gating *beat* the fixed K-ba
 |---|---:|---:|---:|---:|
 | Distractor n=10 | 0.44 | **0.98** | 0.96 | −0.02 |
 | Distractor n=16 (harder) | 0.52 | **0.99** | 0.91 | **−0.08** |
-| Recall seq=5 | 0.39 | **0.40** | 0.36 | −0.05 |
-| Recall seq=7 (harder) | 0.32 | 0.36 | **0.42** | **+0.06** |
+| Recall seq=5 | 0.39 | **0.40** | 0.38 | −0.03 |
+| Recall seq=7 (harder) | 0.35 | 0.36 | **0.42** | **+0.06** |
+
+*(3 seeds each, full 36-run sweep.)*
 
 **The selectivity hypothesis is largely not confirmed.** Under *heavier* distractor interference SMT does **not** beat `multi`; the gap actually *widens against* SMT at n=16 (−0.08) — the opposite of the predicted "write gate suppresses distractors" effect. The lone positive is harder Recall (seq=7, +0.06), but in a regime where every method sits near 3-way chance. This is fully coherent with the router-collapse finding (§5): SMT's learnable selectivity does not strongly activate, so the extra machinery matches `multi` at best and slightly underperforms it under heavy interference (harder optimization, no selectivity payoff).
 
