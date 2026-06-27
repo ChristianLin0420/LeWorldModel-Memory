@@ -9,4 +9,10 @@ scikit-learn
 scipy
 imageio
 tensorboard
+wandb
 popgym-arcade  # optional: POPGym Arcade benchmark (pulls jax)
+dm_control     # real robotic simulator (DeepMind Control, §5.15)
+memory-maze    # 3D Memory-Maze benchmark (§5.14)
+timm           # frozen pretrained DINOv2 backbone (§5.13)
+moviepy        # wandb rollout-video logging (scripts/rollout_video.py)
+imageio-ffmpeg
