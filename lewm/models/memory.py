@@ -229,12 +229,16 @@ class SelectiveMultiTimescaleMemory(nn.Module):
     decays are fixed and the *selection over* them is what is learned.
     """
 
-    def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64), router_temp: float = 1.0):
+    def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64), router_temp: float = 1.0,
+                 router_mode: str = 'softmax'):
         super().__init__()
         self.embed_dim = embed_dim
         self.taus = list(taus)
         self.K = len(self.taus)
         self.router_temp = router_temp
+        # 'softmax' = convex mixture over horizons (v1); 'sigmoid' = independent additive gates so
+        # every bank can contribute fully (v2) -- like the fixed K-bank but input-conditioned.
+        self.router_mode = router_mode
         alphas = [tau_to_alpha(t) for t in self.taus]
         self.register_buffer('alphas', torch.tensor(alphas, dtype=torch.float32))  # FIXED
         self.in_gate = nn.Linear(embed_dim, embed_dim)        # learned write gate (what to store)
@@ -247,8 +251,10 @@ class SelectiveMultiTimescaleMemory(nn.Module):
         nn.init.normal_(self.out.weight, std=1e-2)
 
     def route_weights(self, z: torch.Tensor) -> torch.Tensor:
-        """Per-step router distribution over the K fixed horizons (B,L,K) -- for interpretability."""
-        return torch.softmax(self.router(z) / self.router_temp, dim=-1)
+        """Per-step router weights over the K fixed horizons (B,L,K) -- for read-out & interpretability.
+        softmax -> convex mixture (sums to 1); sigmoid -> independent additive gates."""
+        s = self.router(z) / self.router_temp
+        return torch.softmax(s, dim=-1) if self.router_mode == 'softmax' else torch.sigmoid(s)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         """Return the routed memory read-out (B,L,D) to be fused into the predictor input."""

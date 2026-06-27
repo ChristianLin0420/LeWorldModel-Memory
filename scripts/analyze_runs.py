@@ -36,7 +36,7 @@ def build_model(a):
         sigreg_projections=a['sigreg_projections'], memory_mode=ema_mode,
         tau_fast=a['tau_fast'], tau_slow=a['tau_slow'], learnable_alpha=not a.get('fixed_alpha', True),
         memory_impl=impl, multi_taus=tuple(a.get('multi_taus', (2, 4, 8, 16, 32, 64))),
-        encoder_type=a.get('encoder', 'vit'))
+        encoder_type=a.get('encoder', 'vit'), smt_router=a.get('smt_router', 'softmax'))
     return m
 
 

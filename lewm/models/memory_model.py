@@ -47,6 +47,7 @@ class MemoryLeWorldModel(LeWorldModel):
         multi_taus=(2, 4, 8, 16, 32, 64),
         gru_hidden: int = None,
         encoder_type: str = 'vit',
+        smt_router: str = 'softmax',
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -71,7 +72,8 @@ class MemoryLeWorldModel(LeWorldModel):
         elif memory_impl == 'retrieval':
             self.mem_ret = RetrievalMemory(embed_dim=self.embed_dim, num_heads=4)
         elif memory_impl == 'smt':                          # learnable selective multi-timescale
-            self.mem_smt = SelectiveMultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus)
+            self.mem_smt = SelectiveMultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus,
+                                                         router_mode=smt_router)
         else:
             raise ValueError(f"unknown memory_impl '{memory_impl}'")
 

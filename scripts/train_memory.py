@@ -47,6 +47,7 @@ def build_model(args, device) -> MemoryLeWorldModel:
         memory_mode=ema_mode, tau_fast=args.tau_fast, tau_slow=args.tau_slow,
         learnable_alpha=not args.fixed_alpha,
         memory_impl=impl, multi_taus=tuple(args.multi_taus), encoder_type=args.encoder,
+        smt_router=getattr(args, 'smt_router', 'softmax'),
     ).to(device)
     return model
 
@@ -83,6 +84,8 @@ def main():
     p.add_argument('--memory-mode', default='both',
                    choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt'])
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
+    p.add_argument('--smt-router', default='softmax', choices=['softmax', 'sigmoid'],
+                   help="SMT read-out: softmax mixture (v1) or independent additive sigmoid gates (v2)")
     p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')
     p.add_argument('--init-from', default=None, help='load encoder weights from this checkpoint (for frozen-backbone)')
     p.add_argument('--encoder', default='vit', choices=['vit', 'dino'], help="encoder backbone ('dino' = frozen DINOv2)")
