@@ -1,6 +1,6 @@
-# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM-v4
+# Learnable memory for LeWorldModel: SMT-v1–v3, HACSM-v4, and HACSSM-v5
 
-*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (V1/V2), `SelectiveUpdateMemoryV3`, and `HierarchicalActionConditionedMemory` (HACSM-v4) in `lewm/models/memory.py`. Status as of 2026-06-28: every reported batch is complete. V4 causally uses blackout actions and improves causally retrained V3 by 12.49% over paired cells, but it is 3.43% worse than SSM, wins only 3/15 SSM pairs, and its fixed hierarchical auxiliary loses to `noaux`. The staged analyzer returns `NO_GO`; the evidence still does not support an overall-best learned memory or a main-track ICLR submission in the current form (§7.6, §10).*
+*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (V1/V2), `SelectiveUpdateMemoryV3`, `HierarchicalActionConditionedMemory` (HACSM-v4), and `HierarchicalActionConditionedSSMMemory` (HACSSM-v5) in `lewm/models/memory.py`. Status as of 2026-06-28: every result reported through V4 is complete. V5 is the prospectively specified follow-up (§2.4, §7.7): its exact producer code, controls, schedule, and pilot screen are frozen before any decision-grid outcome is inspected. Per explicit instruction, all 300 V5 cells run even if the immutable pilot returns `NO_GO`; later seeds cannot rewrite that prospective decision. V4 remains 3.43% worse than SSM; no V5 performance claim is made before the all-environment grid completes.*
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -20,7 +20,7 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 ## 2. The architecture
 
 ![Architecture map of tested memory designs](figures/fig_memory_versions_arch.png)
-*Figure 1. Consolidated map of the V1→V4 evolution, every architecture-changing V3 control in the 225-cell factorial, every V4 variant in the 135-cell pilot, and the external/historical memory families used in this study. Seeds, optimizer settings, mask placements, and basis-size/horizon grids are experiment settings rather than new architectures and are intentionally omitted. The bottom contract applies only to the nine leakage-safe V4 Stage-A designs; historical V1–V3 results retain their documented protocols.*
+*Figure 1. Consolidated map of the V1→V5 evolution, architecture-changing V3 controls, V4 controls, every parameter-matched V5 mechanism variant, and external/historical memory families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. Only the 12 designs named in the prospective V5 grid (§7.7) share its bottom contract; all historical cards retain their documented protocols.*
 
 ### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
 
@@ -81,6 +81,7 @@ The architectural distinction is easiest to see side by side:
 | **SMT-v2** | same gated-value write | per-step independent sigmoids, initial mass ≈`K/2` | 33,670 | stronger usage, but learned read/write gates are nearly static |
 | **SMT-v3-W** | scalar gate multiplies the whole EMA update; `g_t=0` is exact freeze | one global simplex + RMS-normalized read | 16,647 | gate is causal and dynamic, but specializes to the exact black sentinel and returns `NO_GO` |
 | **HACSM-v4** | action prior advances three belief states, then a per-level gate corrects from the observation | one global simplex over `τ={2,8,32}` + RMS-normalized read | 34,566 | actions are causally necessary and V4 beats V3, but SSM wins 4/5 means and the fixed auxiliary fails |
+| **HACSSM-v5** | action prior + correction use hard-monotone learned per-channel gains over two states | one global simplex over fast/medium states + RMS-normalized read | 34,820 | prospective: removes V4's dispensable slow level, imports SSM-like channel rates, and decays boundary shaping to zero |
 
 V3's simplification is deliberate: it removes content-dependent horizon routing so its experiment asks one clean question—**does input-conditioned update timing help beyond an equally parameterized static gate?** HACSM-v4 retains the global read but adds action prediction, a three-level hierarchy, and self-supervision. Sections 7.5–7.6 give the matched controls and results.
 
@@ -115,32 +116,62 @@ At `D=128,A=6,K=3`, HACSM-v4 has `2D²+2AD+2D+2K = 34,566` memory parameters, ve
 
 The matched controls retain the same nominal parameters: `hacsmv4_static` removes input conditioning from correction gates, `hacsmv4_noaction` zeros only the recurrent action path, `hacsmv4_noaux` sets the auxiliary weight to zero, and `hacsmv4_single` fixes the read to the middle `τ=8` state. Full experiment protocol and results are in §7.6.
 
+### 2.4 HACSSM-v5: learned-rate two-level action hierarchy
+
+![HACSSM-v5 architecture](figures/fig_hacssm_v5_arch.png)
+*Figure 5. Prospective HACSSM-v5 architecture. V5 retains V4's causally useful action predict/correct path, removes the slow `τ=32` level, and replaces the two remaining scalar rates with hard-monotone learned per-channel gains initialized from fast and medium SSM-like spectra. Training-only action rollouts shape the already-weighted first-visible boundary early in optimization and decay to exactly zero; this is boundary shaping, not evidence of general hierarchical self-supervision.*
+
+For every channel, V5 parameterizes medium gain and the non-negative fast/medium gap as
+
+```text
+beta_medium = sigmoid(theta_medium)
+beta_fast   = beta_medium + (1-beta_medium) sigmoid(theta_gap)
+```
+
+Thus `0<β_medium≤β_fast<1` throughout training. Fast gains initialize from log-spaced `τ=1.5…8`, medium gains from `τ=8…64`, using `β=1-exp(-1/τ)`. These bands are **initialization priors only**, not post-training bounds. Because the actual observation rate is `β⊙g`, `τ(β)` is a gain diagnostic rather than an identifiable effective memory horizon.
+
+With `(d_{t-1},v_{t-1})=W_a a_{t-1}` and `x_t=W_xz_t`, both action advance and observation correction use the same channel gain:
+
+```text
+action prior       p_t^k = m_{t-1}^k + β_k ⊙ tanh(v_{t-1}+d_{t-1}⊙LN(m_{t-1}^k))
+correction gate    g_t^k = sigmoid((w_z^T LN(z_t)+w_e^T LN(x_t-p_t^k))/sqrt(D)+b_k)
+posterior          m_t^k = p_t^k + β_k ⊙ g_t^k (x_t-p_t^k),       k∈{fast,medium}
+global read        q_t   = RMSNorm(softmax(r)_f m_t^f + softmax(r)_m m_t^m)
+residual input     z_tilde_t = z_t + W_o q_t
+```
+
+Initialization is again exactly memoryless at the predictor: `W_x=I`, `W_a=W_o=0`, `b_f=b_m=2`, and the route is uniform. At `D=128,A=6`, V5 has `2D²+2AD+4D+4=34,820` memory parameters: +0.73% versus V4 and +5.44% versus SSM. Its recurrent state is `2D`, versus V4's `3D` and SSM's `D`; parameter proximity is therefore not state matching.
+
+The auxiliary uses four action-only rollouts whose endpoints are the canonical first visible target at time 16: fast sources `t={15,14}` at horizons `{1,2}`, and medium sources `t={12,8}` at `{4,8}`. Hidden targets remain excluded and endpoints are stop-gradient. Its locked schedule is `.05` for epochs 1–20, cosine decay over epochs 21–120 to exactly zero, then zero for epochs 121–200. The auxiliary duplicates a target already emphasized by the `.5` primary first-post weight, so a gain by full V5 alone is an objective/system gain; the inference architecture is stronger only if `hacssmv5_noaux` also beats SSM.
+
+The parameter-matched V5 controls are `static`, `noaction`, `fixedbeta_noaux`, `noaux`, `single` (medium read only), and `ssmcontrol` (`g=1`, no action, same learned two-state rate spectrum). `hacsmv4_two_noaux` provides the sequential bridge with two fixed scalar levels `τ={2,8}`. Section 7.7 freezes the complete 12-design all-environment ladder before launch.
+
 ## 3. Why it is scalable
 
-- **Linear time / memory.** Each bank is a diagonal linear recurrence: `O(L·K·D)` with `K` small (log-spacing covers `τ∈[2,256]` with `K=8`). No `O(L²)` attention.
+- **Linear time / memory.** Each bank/state is a diagonal recurrence: `O(L·K·D)` with `K` small (V5 fixes `K=2`). No `O(L²)` attention.
 - **Parallelizable in principle.** The recurrence `m^k_t = (1−a_k)m^k_{t−1} + a_k u_t` admits an associative scan. The current code uses a Python sequential scan for `L=32`; no parallel implementation or long-sequence benchmark exists yet.
-- **Two distinct hierarchy routes.** SMT-v1–v3 can be stacked by depth; HACSM-v4 instead carries three explicit within-layer belief levels with fixed structural horizons. Neither route currently has a parallel scan or long-sequence scaling benchmark.
+- **Explicit hierarchy with bounded state.** SMT-v1–v3 can be stacked by depth; V4 carries three fixed-rate belief levels, while V5 carries two learned-rate levels with hard per-channel ordering. None currently has a parallel implementation or long-sequence scaling benchmark.
 - **Constant recurrent state in streaming form.** The recurrence needs `K·D` state regardless of sequence length. The current training implementation materializes the full sequential scan and its activations; the claimed constant state is algorithmic/streaming, not a measured peak-memory result for this code path.
 
 ## 4. Relation to prior work and revised positioning
 
 | Method | Decay/timescale | Input-dependent? | Our difference |
 |---|---|---|---|
-| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | we fix the timescale basis to isolate selection; our failed global scalar-`α` experiment does **not** test or refute input-dependent `Δ` |
-| **Mega** (arXiv:2209.10655) | learned multi-dim EMA coefficients | no (static EMA) | we fix the EMA coefficients; learnability is in per-step routing + write gating |
-| **HGRN2** (arXiv:2404.07904) | learned data-dependent decay, monotone by depth | yes | decays fixed; hierarchy optional via stacking, not via learned decay bounds |
-| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | we use explicit EMA banks and expose gate interventions; V2 becomes static, while V3 is dynamic only for the black sentinel |
+| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | V1–V4 fix rate bases; V5 learns channel gains but not token-dependent `Δ`, so neither our failed global scalar nor V5 tests/refutes Mamba selectivity |
+| **Mega** (arXiv:2209.10655) | learned multi-dim EMA coefficients | no (static EMA) | V5 is closest in learned channel gains, but adds action prediction, correction gates, hard fast/medium ordering, and explicit causal interventions |
+| **HGRN2** (arXiv:2404.07904) | learned data-dependent decay, monotone by depth | yes | V5 enforces monotonicity between two within-layer states, while its gains are global parameters rather than token-dependent depth bounds |
+| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | our explicit recurrent states expose action/gate/rate counterfactuals; V5's channel gains are learned but its two-state route remains global |
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning, revised after the experiments.** Architecturally, SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 does not become meaningfully input-dependent; V3 does, but only by separating an explicit black missingness token from visible inputs (§7.5). V4 adds a genuine action-conditioned predict/correct path and explicit self-supervised levels, but its slow level and fixed auxiliary do not establish a useful hierarchy, and it still trails SSM (§7.6). Fixed EMA banks are also a simple diagonal-SSM/RetNet special case. The ICLR novelty audit (§10) therefore treats these as diagnostic mechanisms, not a defensible superiority or missing-quadrant claim.
+**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly separates an explicit black token from visible inputs (§7.5). V4 adds a genuine action-conditioned predict/correct path, but its slow level and fixed auxiliary fail and it trails SSM (§7.6). V5 prospectively combines that action path with a two-level learned diagonal spectrum; this is an evidence-driven hybrid of familiar filtering/SSM components, not a novelty claim before performance, state-matched controls, and untouched tests succeed. The ICLR audit (§10) continues to treat the contribution as diagnostic unless those bars are met.
 
 ## 5. Interpretability — little observed switching in the synthetic tasks
 
 Because the horizons are fixed and known, the router output `r_t` is directly plottable as a **read preference over known horizons** (`route_weights()`). The diagnostic below uses the seed-0 `smt` sigmoid/v2 checkpoints; it normalizes the six independent gates to sum to one before plotting them:
 
 ![SMT router](figures/fig_smt_router.png)
-*Figure 5. Normalized read preferences for three seed-0 SMT-v2 checkpoints. Mean preferences are close to uniform, and the temporal standard deviation of the episode-averaged weights is ≈10⁻⁵. This diagnostic shows little shared time-dependent switching; averaging episodes can hide episode-specific variation.*
+*Figure 6. Normalized read preferences for three seed-0 SMT-v2 checkpoints. Mean preferences are close to uniform, and the temporal standard deviation of the episode-averaged weights is ≈10⁻⁵. This diagnostic shows little shared time-dependent switching; averaging episodes can hide episode-specific variation.*
 
 **Honest finding: useful switching did not emerge.** An all-seed audit still finds extremely small normalized within-episode router variation (≈10⁻⁵–5×10⁻⁵) and write-gate variation (≈3×10⁻⁵–10⁻⁴) on these synthetic tasks. This is an output-level result, not evidence that `W_r≈0`: the final router-weight norms remain near ordinary initialization. The supported conclusion is that neither learned gate developed meaningful input/time dependence under this evaluation.
 
@@ -172,6 +203,7 @@ Across every individual intervention and checkpoint, the largest absolute valida
 5. **Simulator/robotic diagnostic — complete, with a narrower outcome.** The old self-latent comparison was integrity-corrected but remains invalid across independently learned coordinate systems (§7.1). A new fixed-DINO, paired-clean-target factorial removes that flaw and evaluates shifted masks (§7.2); it is an offline latent-prediction diagnostic, not robot-control performance.
 6. **Optimization-budget and V3 factorial — complete.** The 125-cell 100-epoch audit shows the old 30-epoch ranking was undertrained and still not converged. The subsequent matched 225-cell, 200-epoch V3 grid, 900 mask evaluations, and 100 gate audits are complete and return `NO_GO` (§7.2, §7.5).
 7. **Causal-predictor V4 pilot — complete and stopped prospectively.** A four-run normalization calibration selected batch-independent `predictor_norm=none`; the 135-cell V4 pilot and post-decision mask/gate/action/level diagnostics are complete. V4 beats V3 but not SSM, and the auxiliary ablation is negative, so the locked protocol did not launch its 165-run expansion (§7.6).
+8. **Learned-rate V5 all-environment study — prospectively frozen, not yet interpreted.** The two-level action/SSM hybrid, state-matched controls, exact boundary schedule, immutable 180-run pilot screen, and requested 120-run five-seed completion are specified in §2.4/§7.7. No V5 result enters this document until the committed runner completes all 300 cells.
 
 ## 7. Initial validation results
 
@@ -563,6 +595,38 @@ Level-read ablations show an asymmetric hierarchy. Dropping fast memory worsens 
 
 Primary artifacts are in `outputs/hacsm_v4_shared`: `protocol.json`, `pilot_per_run.csv`, `pilot_grouped.csv`, `pilot_paired_contrasts.csv`, `pilot_convergence.csv`, `pilot_decision.json`, and the hash-complete `hacsm_v4_manifest.json`. The manifest attests 135 checkpoint/metric pairs, all fixed feature inputs, producer sources, analysis outputs, and logs. Post-decision outputs are `pilot_mask_generalization_per_run.csv`, `pilot_v4_gate_per_run.csv`, `pilot_v4_action_interventions.csv`, `pilot_v4_level_ablations.csv`, `pilot_diagnostics.json`, and `pilot_diagnostics_manifest.json`; they cannot change the locked `NO_GO`. These compact protocol/result/manifest files are versioned with the study despite the general `outputs/` ignore rule. The 135 checkpoints and execution logs remain uncommitted because of size; the primary manifest retains their exact hashes, so a durable external checkpoint bundle is still required for independent replay.
 
+### 7.7 HACSSM-v5: prospectively frozen all-environment study
+
+**Status before launch.** No V5 **decision-grid** metric has been inspected. After freezing the choices below, one excluded seed-99 engineering smoke run used batch 600 and 120 epochs solely to validate end-to-end execution; its value cannot change the design or enter any table/decision. The architecture, initialization, boundary schedule, control ladder, seeds, training budget, and thresholds are committed before creating the official output namespace. V4 results motivate the design but cannot count as V5 evidence.
+
+Stage A is five environments × 12 designs × seeds `{0,1,2}` = **180 independent 200-epoch runs**:
+
+| role | design | isolated question |
+|---|---|---|
+| basic controls | `none`, SSM | does any recurrent path help; does V5 beat the strongest prior baseline? |
+| V4 anchors | full V4, V4-noaux | does V5 improve the prior action architecture and its stronger objective ablation? |
+| slow-removal bridge | `hacsmv4_two_noaux` | what changes from removing `τ=32` alone? |
+| state/spectrum control | `hacssmv5_ssmcontrol` | do two learned-rate states help with `g=1` and no recurrent action? |
+| frozen spectral control | `hacssmv5_fixedbeta_noaux` | does the initialized two-band spectrum help before learning gains? |
+| inference candidate | `hacssmv5_noaux` | do learned gains + action + dynamic correction beat SSM without boundary shaping? |
+| mechanism controls | `hacssmv5_noaction`, `hacssmv5_static`, `hacssmv5_single` | are action transport, dynamic correction, and the joint two-state read useful? |
+| complete system | `hacssmv5` | does the front-loaded boundary objective improve the inference candidate? |
+
+Every cell uses the exact V4 fixed DINO-PCA artifacts, 600/150 episodes, `L=32`, `D=128`, predictor history 3, batch 64, AdamW `3e-4/1e-5`, `predictor_norm=none`, first-post weight `.5`, hidden-target exclusion, and the final epoch without best-checkpoint selection. V4 full retains its original fixed auxiliary `.1`; V4-noaux/two-level-noaux use zero. V5 full/mechanism controls use the §2.4 `.05→0` schedule; V5-noaux, frozen-beta-noaux, and state/spectrum control use zero.
+
+After the first 180 cells, the analyzer records an immutable prospective screen using every condition below. Per the explicit all-experiment instruction, seeds `{3,4}` then run regardless—another 120 cells, **300 total**—but cannot reverse a failed pilot:
+
+1. Full V5 improves over SSM by at least 1% over paired cells, wins at least 9/15 pairs and 3/5 environment means.
+2. Full V5 clears the same 1%, 9/15, and 3/5 bar versus V4-noaux.
+3. Full V5 beats last-visible hold in at least 3/5 environment means, and its clean-input first-post MSE is no more than 5% worse than SSM.
+4. Full V5 has positive paired improvement with at least 8/15 wins versus V5-noaux, no-action, static, and single-medium controls.
+5. V5-noaux has positive paired improvement with at least 8/15 wins versus both frozen-beta-noaux and SSM. This prevents boundary shaping alone from being called a better memory architecture.
+6. Absolute epoch-window change from 181–190 to 191–200 is below 1% median, 3% p95, and 5% maximum.
+
+Any pilot failure produces immutable prospective `NO_GO`. The requested seeds 3–4 are then descriptive precision runs, not a second chance to pass the screen. A pilot pass allows the five-seed final labels below, but even “best in this locked grid” is not ICLR-quality confirmation: seed-7777 trajectories are now adaptive development data. An overall-best publication claim additionally requires frozen evaluation on new rollout seeds and an unseen mask/corruption family, plus state/return outcomes.
+
+If the pilot passes, the analyzer emits `OVERALL_BEST_IN_LOCKED_GRID` only if full V5 improves over SSM by at least 5% with 18/25 paired wins and 4/5 environment-mean wins; improves over V4-noaux by at least 3% with 17/25 wins and 4/5 means; is the all-design locked-grid environment-mean envelope winner (including `none`) on at least 4/5 tasks; beats hold on 4/5; clears a 3%, 17/25, 3/5 bar against noaux/no-action/static/single; and retains the convergence bounds above. Positive paired directions against SSM and V4-noaux without all bars yield `PROMISING_NOT_OVERALL_BEST`; otherwise the final label is `NO_GO`. A failed pilot forces `PILOT_NO_GO_FINAL_DESCRIPTIVE` regardless of the five-seed estimate. Even the strongest label remains development-grid language until the untouched tests above pass.
+
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
 **Question:** can the hand-set K=6 read set be replaced by a learned active subset of an over-complete fixed-decay basis? OC-SMT tests this by fixing a ceiling `M` and learning penalized read gates. This makes the **effective read-gate cardinality** learnable; it does not yet make the physical state or dense computation variable-sized. Fixed decays are a deliberate experimental control motivated by our failed global scalar-`α` run—not a claim that every adaptive-decay parameterization fails.
@@ -623,7 +687,7 @@ The experiments use `M=28`, an 8× gate learning-rate multiplier, and output-pro
 They are not interchangeable: an expected-open count above zero can coexist with zero deterministic gates. All three are analysis statistics. The current code still instantiates and computes all 28 banks.
 
 ![OC-SMT architecture](figures/fig_ocsmt_arch.png)
-*Figure 6. OC-SMT places hard-concrete read gates over a fixed M=28 EMA basis. Green/white gates illustrate the intended selected/masked read set; they do not depict the observed solution, and a masked read is not a removed state or skipped computation in the current implementation.*
+*Figure 7. OC-SMT places hard-concrete read gates over a fixed M=28 EMA basis. Green/white gates illustrate the intended selected/masked read set; they do not depict the observed solution, and a masked read is not a removed state or skipped computation in the current implementation.*
 
 ### 9.2 Engineering finding: a narrow cardinality transition with no useful sparse point
 

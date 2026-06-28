@@ -26,7 +26,8 @@ from lewm.models.leworldmodel import LeWorldModel
 from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
                                 GRUMemory, SSMMemory, RetrievalMemory,
                                 SelectiveMultiTimescaleMemory, SelectiveUpdateMemoryV3,
-                                HierarchicalActionConditionedMemory, OCSMTMemory)
+                                HierarchicalActionConditionedMemory,
+                                HierarchicalActionConditionedSSMMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -43,10 +44,25 @@ _HACSMV4_MODES = {
     'hacsmv4_noaux': 'dynamic',
     'hacsmv4_single': 'single',
     'hacsmv4_oracle': 'oracle',
+    'hacsmv4_two_noaux': 'dynamic',
 }
 
 # Each level is supervised only at horizons appropriate to its structural timescale.
 _HACSMV4_AUX_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8), (2, 16))
+
+_HACSSMV5_MODES = {
+    'hacssmv5': 'dynamic',
+    'hacssmv5_static': 'static',
+    'hacssmv5_noaction': 'noaction',
+    'hacssmv5_fixedbeta': 'fixedbeta',
+    'hacssmv5_fixedbeta_noaux': 'fixedbeta',
+    'hacssmv5_noaux': 'dynamic',
+    'hacssmv5_single': 'single',
+    'hacssmv5_ssmcontrol': 'ssmcontrol',
+}
+
+# V5 deliberately drops V4's harmful slow level and uses only first-visible boundary targets.
+_HACSSMV5_AUX_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -114,7 +130,12 @@ class MemoryLeWorldModel(LeWorldModel):
         elif memory_impl in _HACSMV4_MODES:                 # hierarchical action predict/correct memory
             self.mem_hacsmv4 = HierarchicalActionConditionedMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
-                mode=_HACSMV4_MODES[memory_impl])
+                mode=_HACSMV4_MODES[memory_impl],
+                taus=((2.0, 8.0) if memory_impl == 'hacsmv4_two_noaux' else None))
+        elif memory_impl in _HACSSMV5_MODES:                # learned-rate action-conditioned SSM hierarchy
+            self.mem_hacssmv5 = HierarchicalActionConditionedSSMMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_HACSSMV5_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -135,8 +156,9 @@ class MemoryLeWorldModel(LeWorldModel):
                 memory_update_mask: torch.Tensor = None, gate_override=None,
                 action_override=None, return_memory_details: bool = False):
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
-        if return_memory_details and self.memory_impl not in _HACSMV4_MODES:
-            raise ValueError('memory details are currently available only for HACSM-v4')
+        if (return_memory_details and self.memory_impl not in _HACSMV4_MODES
+                and self.memory_impl not in _HACSSMV5_MODES):
+            raise ValueError('memory details are available only for HACSM-v4/HACSSM-v5')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -163,6 +185,17 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_hacsmv4.fuse(z, mixed), details
             return self.mem_hacsmv4.fuse(z, result)
+        if self.memory_impl in _HACSSMV5_MODES:
+            if actions is None:
+                raise ValueError('HACSSM-v5 requires actions with a_t mapping z_t to z_{t+1}')
+            result = self.mem_hacssmv5(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_hacssmv5.fuse(z, mixed), details
+            return self.mem_hacssmv5.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -183,6 +216,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_smtv3.horizons()
         if self.memory_impl in _HACSMV4_MODES:
             return self.mem_hacsmv4.horizons()
+        if self.memory_impl in _HACSSMV5_MODES:
+            return self.mem_hacssmv5.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -225,8 +260,10 @@ class MemoryLeWorldModel(LeWorldModel):
 
         detached_targets = targets.detach()
         horizon_losses = {}
-        level_terms = {0: [], 1: [], 2: []}
-        for level, horizon in _HACSMV4_AUX_HORIZONS:
+        configured_horizons = tuple(
+            pair for pair in _HACSMV4_AUX_HORIZONS if pair[0] < K)
+        level_terms = {level: [] for level in range(K)}
+        for level, horizon in configured_horizons:
             n_sources = T - horizon
             if n_sources < 1:
                 raise ValueError(
@@ -256,13 +293,83 @@ class MemoryLeWorldModel(LeWorldModel):
 
         fast = torch.stack(level_terms[0]).mean()
         medium = torch.stack(level_terms[1]).mean()
-        slow = torch.stack(level_terms[2]).mean()
-        hierarchy = torch.stack((fast, medium, slow)).mean()
+        level_losses = [fast, medium]
+        result = {
+            'hier_loss_fast': fast,
+            'hier_loss_medium': medium,
+            **horizon_losses,
+        }
+        if K == 3:
+            slow = torch.stack(level_terms[2]).mean()
+            level_losses.append(slow)
+            result['hier_loss_slow'] = slow
+        result['hier_loss'] = torch.stack(level_losses).mean()
+        return result
+
+    def _hierarchical_boundary_loss(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        targets: torch.Tensor,
+        target_valid_mask: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        """V5 front-loaded action-rollout shaping at the first visible boundary only.
+
+        Unlike V4's all-valid plus boundary objective, this loss contributes exactly the
+        masked-to-visible endpoint for each configured horizon.  It is deliberately called
+        boundary shaping rather than general self-supervision: all four targets are the canonical
+        first-post frame, reached from different source times using actions only.
+        """
+        if self.memory_impl not in _HACSSMV5_MODES:
+            raise ValueError('hierarchical boundary loss requires HACSSM-v5')
+        if states.dim() != 4:
+            raise ValueError(f'expected states (B,T,K,D), got {tuple(states.shape)}')
+        B, T, K, D = states.shape
+        if tuple(targets.shape) != (B, T, D):
+            raise ValueError(f'target shape {tuple(targets.shape)} != {(B, T, D)}')
+        if tuple(actions.shape) != (B, T - 1, self.action_dim):
+            raise ValueError(
+                f'action shape {tuple(actions.shape)} != {(B, T - 1, self.action_dim)}')
+        if K != self.mem_hacssmv5.K:
+            raise ValueError(f'state level count {K} != {self.mem_hacssmv5.K}')
+        if target_valid_mask is None or tuple(target_valid_mask.shape) != (B, T):
+            shape = None if target_valid_mask is None else tuple(target_valid_mask.shape)
+            raise ValueError(f'HACSSM-v5 boundary shaping requires target mask {(B, T)}, got {shape}')
+
+        mask = target_valid_mask.to(device=states.device, dtype=torch.bool)
+        detached_targets = targets.detach()
+        horizon_losses = {}
+        level_terms = {0: [], 1: []}
+        for level, horizon in _HACSSMV5_AUX_HORIZONS:
+            n_sources = T - horizon
+            if n_sources < 1:
+                raise ValueError(
+                    f'sequence length {T} is too short for HACSSM-v5 horizon {horizon}')
+            source = states[:, :n_sources].reshape(B * n_sources, K, D)
+            action_windows = actions.unfold(1, horizon, 1)
+            action_windows = action_windows.permute(0, 1, 3, 2).reshape(
+                B * n_sources, horizon, self.action_dim)
+            prediction = self.mem_hacssmv5.action_rollout(
+                source, action_windows)[:, -1, level].reshape(B, n_sources, D)
+            per_pair = (prediction - detached_targets[:, horizon:]).square().mean(dim=-1)
+            endpoint_valid = mask[:, horizon:]
+            first_visible = endpoint_valid & ~mask[:, horizon - 1:T - 1]
+            if not bool(first_visible.any()):
+                raise ValueError(
+                    f'no masked-to-visible HACSSM-v5 target at horizon {horizon}')
+            loss_h = per_pair[first_visible].mean()
+            horizon_losses[f'hier_loss_h{horizon}'] = loss_h
+            horizon_losses[f'hier_pairs_h{horizon}'] = first_visible.sum().to(
+                dtype=states.dtype)
+            level_terms[level].append(loss_h)
+
+        fast = torch.stack(level_terms[0]).mean()
+        medium = torch.stack(level_terms[1]).mean()
+        hierarchy = torch.stack((fast, medium)).mean()
         return {
             'hier_loss': hierarchy,
             'hier_loss_fast': fast,
             'hier_loss_medium': medium,
-            'hier_loss_slow': slow,
             **horizon_losses,
         }
 
@@ -305,7 +412,7 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
-        if self.memory_impl in _HACSMV4_MODES:
+        if self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES:
             z_tilde, memory_details = self._inject(
                 z, actions=actions, memory_update_mask=memory_update_mask,
                 gate_override=gate_override, return_memory_details=True)
@@ -370,10 +477,17 @@ class MemoryLeWorldModel(LeWorldModel):
             out['l0_loss'] = l0
             out['loss'] = total + self.l0_lambda * l0
         if memory_details is not None:
-            auxiliary = self._hierarchical_auxiliary_loss(
-                memory_details['states'], actions, z_target, target_valid_mask)
+            if self.memory_impl in _HACSSMV5_MODES:
+                auxiliary = self._hierarchical_boundary_loss(
+                    memory_details['states'], actions, z_target, target_valid_mask)
+            else:
+                auxiliary = self._hierarchical_auxiliary_loss(
+                    memory_details['states'], actions, z_target, target_valid_mask)
             out.update(auxiliary)
-            effective_weight = (0.0 if self.memory_impl == 'hacsmv4_noaux'
+            effective_weight = (0.0 if self.memory_impl in {
+                                    'hacsmv4_noaux', 'hacsmv4_two_noaux',
+                                    'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
+                                    'hacssmv5_ssmcontrol'}
                                 else self.hier_loss_weight)
             out['hier_loss_weight'] = auxiliary['hier_loss'].new_tensor(effective_weight)
             out['loss'] = out['loss'] + effective_weight * auxiliary['hier_loss']

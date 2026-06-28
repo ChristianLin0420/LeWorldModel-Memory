@@ -473,7 +473,7 @@ class HierarchicalActionConditionedMemory(nn.Module):
     TAUS = (2.0, 8.0, 32.0)
 
     def __init__(self, embed_dim: int, action_dim: int, mode: str = 'dynamic',
-                 rms_eps: float = 1e-6):
+                 rms_eps: float = 1e-6, taus=None):
         super().__init__()
         if not isinstance(embed_dim, int) or isinstance(embed_dim, bool) or embed_dim < 1:
             raise ValueError(f'embed_dim must be a positive integer, got {embed_dim!r}')
@@ -483,12 +483,15 @@ class HierarchicalActionConditionedMemory(nn.Module):
             raise ValueError(f"unknown HACSM-v4 mode '{mode}'")
         if not math.isfinite(float(rms_eps)) or rms_eps <= 0:
             raise ValueError(f'rms_eps must be positive and finite, got {rms_eps}')
+        selected_taus = self.TAUS if taus is None else tuple(float(tau) for tau in taus)
+        if not selected_taus or any(not math.isfinite(tau) or tau <= 0 for tau in selected_taus):
+            raise ValueError(f'taus must be a non-empty sequence of positive finite values, got {taus}')
 
         self.embed_dim = embed_dim
         self.action_dim = action_dim
         self.mode = mode
         self.rms_eps = float(rms_eps)
-        self.taus = list(self.TAUS)
+        self.taus = list(selected_taus)
         self.K = len(self.taus)
         self.register_buffer(
             'betas',
@@ -510,10 +513,11 @@ class HierarchicalActionConditionedMemory(nn.Module):
         nn.init.zeros_(self.W_o.weight)
 
     @classmethod
-    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int, taus=None) -> int:
         """Return ``2D^2 + 2AD + 2D + 2K``, the exact trainable parameter count."""
+        n_levels = len(cls.TAUS if taus is None else tuple(taus))
         return (2 * embed_dim * embed_dim + 2 * action_dim * embed_dim
-                + 2 * embed_dim + 2 * len(cls.TAUS))
+                + 2 * embed_dim + 2 * n_levels)
 
     def parameter_count(self) -> int:
         """Trainable parameter count, useful when constructing matched controls."""
@@ -822,6 +826,400 @@ class HierarchicalActionConditionedMemory(nn.Module):
 
 # Short name for experiment configuration and checkpoint metadata.
 HACSMv4Memory = HierarchicalActionConditionedMemory
+
+
+class HierarchicalActionConditionedSSMMemory(nn.Module):
+    """HACSSM-v5: a hard-monotone, action-conditioned two-level SSM memory.
+
+    V5 retains V4's causal action prior and selective observation correction, but replaces its
+    three fixed scalar rates with two learned *per-channel* rates.  The parameterization enforces
+    the fast/medium ordering for every channel throughout optimization::
+
+        beta_medium = sigmoid(theta_medium)
+        beta_fast   = beta_medium + (1-beta_medium) sigmoid(theta_gap)
+
+    Both rates are therefore in ``(0,1)`` and ``beta_fast >= beta_medium`` by construction.  The
+    initial rate spectra correspond to log-spaced fast horizons 1.5--8 and medium horizons 8--64;
+    these bands are initialization priors, not constraints on the learned horizons.  ``fixedbeta``
+    instantiates the same logits as every other mode but uses exact buffered initial rates.
+
+    For level ``k`` and transition action ``a_t: z_t -> z_{t+1}``, the recurrence is::
+
+        p_{t+1}^k = m_t^k + beta_k tanh(v_t + d_t * LN(m_t^k))
+        m_{t+1}^k = p_{t+1}^k + beta_k g_{t+1}^k (W_x z_{t+1} - p_{t+1}^k)
+
+    where ``(d_t,v_t)=split(W_a a_t)``.  Thus the same rate controls both action advance and
+    observation correction.  Dynamic gates use V4's shared ``w_z``/``w_e`` vectors and one scalar
+    bias per level.  A global simplex read, parameter-free RMS normalization, and zero-initialized
+    residual output projection complete the memory.
+
+    ``dynamic``, ``static``, ``noaction``, ``fixedbeta``, ``single``, and ``ssmcontrol`` instantiate
+    exactly the same tensors and trainable parameter count.  ``static`` uses only the learned gate
+    biases; ``noaction`` zeros the action features; ``single`` reads only the medium state;
+    ``ssmcontrol`` zeros action features and fixes both correction gates to one.  A supplied
+    ``memory_update_mask`` is validated but deliberately ignored in every mode.  Gate, action, and
+    beta overrides are analysis-only interventions; beta overrides may intentionally bypass the
+    learned monotonic constraint, but must remain finite rates in ``[0,1]``.
+    """
+
+    MODES = {'dynamic', 'static', 'noaction', 'fixedbeta', 'single', 'ssmcontrol'}
+    K = 2
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'dynamic',
+                 rms_eps: float = 1e-6):
+        super().__init__()
+        if not isinstance(embed_dim, int) or isinstance(embed_dim, bool) or embed_dim < 1:
+            raise ValueError(f'embed_dim must be a positive integer, got {embed_dim!r}')
+        if not isinstance(action_dim, int) or isinstance(action_dim, bool) or action_dim < 1:
+            raise ValueError(f'action_dim must be a positive integer, got {action_dim!r}')
+        if mode not in self.MODES:
+            raise ValueError(f"unknown HACSSM-v5 mode '{mode}'")
+        if not math.isfinite(float(rms_eps)) or rms_eps <= 0:
+            raise ValueError(f'rms_eps must be positive and finite, got {rms_eps}')
+
+        self.embed_dim = embed_dim
+        self.action_dim = action_dim
+        self.mode = mode
+        self.rms_eps = float(rms_eps)
+
+        fast_taus = torch.logspace(math.log10(1.5), math.log10(8.0), embed_dim)
+        medium_taus = torch.logspace(math.log10(8.0), math.log10(64.0), embed_dim)
+        beta_fast = 1.0 - torch.exp(-1.0 / fast_taus)
+        beta_medium = 1.0 - torch.exp(-1.0 / medium_taus)
+        gap_fraction = ((beta_fast - beta_medium) / (1.0 - beta_medium)).clamp(
+            torch.finfo(beta_fast.dtype).eps, 1.0 - torch.finfo(beta_fast.dtype).eps)
+
+        # These logits exist in every mode.  The fixedbeta control intentionally disconnects them
+        # from the recurrence and uses the exact pre-logit rates stored below.
+        self.theta_medium = nn.Parameter(torch.logit(beta_medium))
+        self.theta_gap = nn.Parameter(torch.logit(gap_fraction))
+        self.register_buffer('initial_fast_taus', fast_taus)
+        self.register_buffer('initial_medium_taus', medium_taus)
+        self.register_buffer('fixed_betas', torch.stack((beta_fast, beta_medium), dim=0))
+
+        self.W_x = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.W_a = nn.Linear(action_dim, 2 * embed_dim, bias=False)
+        self.w_z = nn.Parameter(torch.zeros(embed_dim))
+        self.w_e = nn.Parameter(torch.zeros(embed_dim))
+        self.gate_bias = nn.Parameter(torch.full((self.K,), 2.0))
+        self.route_logits = nn.Parameter(torch.zeros(self.K))
+        self.W_o = nn.Linear(embed_dim, embed_dim, bias=False)
+
+        nn.init.eye_(self.W_x.weight)
+        nn.init.zeros_(self.W_a.weight)
+        nn.init.zeros_(self.W_o.weight)
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return the exact count ``2D^2 + 2AD + 4D + 4``."""
+        return (2 * embed_dim * embed_dim + 2 * action_dim * embed_dim
+                + 4 * embed_dim + 4)
+
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters() if parameter.requires_grad)
+
+    @property
+    def betas(self) -> torch.Tensor:
+        """Current rates as ``(2,D)`` ordered fast, medium."""
+        if self.mode == 'fixedbeta':
+            return self.fixed_betas
+        beta_medium = torch.sigmoid(self.theta_medium)
+        beta_fast = beta_medium + (1.0 - beta_medium) * torch.sigmoid(self.theta_gap)
+        return torch.stack((beta_fast, beta_medium), dim=0)
+
+    def _validate_latents(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if not isinstance(z, torch.Tensor) or z.dim() != 3:
+            shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            raise ValueError(f'HACSSM-v5 expects z with shape (B,T,D), got {shape}')
+        B, T, D = z.shape
+        if B < 1 or T < 1:
+            raise ValueError(f'HACSSM-v5 requires non-empty batch and time dimensions, got {B}, {T}')
+        if D != self.embed_dim:
+            raise ValueError(f'HACSSM-v5 expected latent dim {self.embed_dim}, got {D}')
+        if not z.is_floating_point() or not torch.isfinite(z).all():
+            raise ValueError('z must contain finite floating-point values')
+        return B, T, D
+
+    def _validate_actions(self, actions: torch.Tensor, B: int, steps: int,
+                          *, name: str = 'actions') -> torch.Tensor:
+        expected = (B, steps, self.action_dim)
+        if not isinstance(actions, torch.Tensor) or tuple(actions.shape) != expected:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'{name} must have shape {expected}, got {shape}')
+        if not actions.is_floating_point() or not torch.isfinite(actions).all():
+            raise ValueError(f'{name} must contain finite floating-point values')
+        return actions
+
+    @staticmethod
+    def _check_unit_interval(values: torch.Tensor, name: str) -> None:
+        if not torch.isfinite(values).all():
+            raise ValueError(f'{name} contains non-finite values')
+        if bool((values < 0).any()) or bool((values > 1).any()):
+            raise ValueError(f'{name} must lie in [0,1]')
+
+    def _coerce_action_override(self, value, actions: torch.Tensor, name: str) -> torch.Tensor:
+        override = torch.as_tensor(value, device=actions.device, dtype=actions.dtype)
+        try:
+            override = torch.broadcast_to(override, actions.shape)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(override.shape)} is not broadcastable to '
+                f'{tuple(actions.shape)}') from exc
+        if not torch.isfinite(override).all():
+            raise ValueError(f'{name} contains non-finite values')
+        return override
+
+    def _coerce_gates(self, value, B: int, T: int, *, device, dtype,
+                      name: str) -> torch.Tensor:
+        gates = torch.as_tensor(value, device=device, dtype=dtype)
+        if gates.dim() == 1 and tuple(gates.shape) == (self.K,):
+            gates = gates.view(1, 1, self.K, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (T,):
+            gates = gates.view(1, T, 1, 1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (T, self.K):
+            gates = gates.unsqueeze(0).unsqueeze(-1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, T):
+            gates = gates.unsqueeze(-1).unsqueeze(-1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, self.K):
+            gates = gates.unsqueeze(1).unsqueeze(-1)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, 1):
+            gates = gates.unsqueeze(-2)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, self.K):
+            gates = gates.unsqueeze(-1)
+        target = (B, T, self.K, 1)
+        try:
+            gates = torch.broadcast_to(gates, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(gates.shape)} is not broadcastable to {target}') from exc
+        self._check_unit_interval(gates, name)
+        return gates
+
+    def _coerce_betas(self, value, B: int, T: int, *, device, dtype,
+                      name: str = 'beta_override') -> torch.Tensor:
+        """Canonicalize rate interventions to ``(B,T,2,D)``."""
+        rates = torch.as_tensor(value, device=device, dtype=dtype)
+        if rates.dim() == 1 and tuple(rates.shape) == (self.K,):
+            rates = rates.view(1, 1, self.K, 1)
+        elif rates.dim() == 1 and tuple(rates.shape) == (self.embed_dim,):
+            rates = rates.view(1, 1, 1, self.embed_dim)
+        elif rates.dim() == 2 and tuple(rates.shape) == (self.K, self.embed_dim):
+            rates = rates.view(1, 1, self.K, self.embed_dim)
+        elif rates.dim() == 2 and tuple(rates.shape) == (T, self.K):
+            rates = rates.view(1, T, self.K, 1)
+        elif rates.dim() == 3 and tuple(rates.shape) == (B, self.K, self.embed_dim):
+            rates = rates.unsqueeze(1)
+        elif rates.dim() == 3 and tuple(rates.shape) == (T, self.K, self.embed_dim):
+            rates = rates.unsqueeze(0)
+        target = (B, T, self.K, self.embed_dim)
+        try:
+            rates = torch.broadcast_to(rates, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(rates.shape)} is not broadcastable to {target}') from exc
+        self._check_unit_interval(rates, name)
+        return rates
+
+    def _beta_sequence(self, B: int, T: int, reference: torch.Tensor,
+                       beta_override=None) -> torch.Tensor:
+        if beta_override is not None:
+            return self._coerce_betas(
+                beta_override, B, T, device=reference.device, dtype=reference.dtype)
+        return self.betas.to(device=reference.device, dtype=reference.dtype).view(
+            1, 1, self.K, self.embed_dim).expand(B, T, -1, -1)
+
+    def route_weights(self) -> torch.Tensor:
+        """Global simplex route; ``single`` deterministically reads the medium state."""
+        if self.mode == 'single':
+            route = torch.zeros_like(self.route_logits)
+            route[1] = 1.0
+            return route
+        return torch.softmax(self.route_logits, dim=0)
+
+    def _validate_states(self, states: torch.Tensor) -> int:
+        expected_tail = (self.K, self.embed_dim)
+        if not isinstance(states, torch.Tensor) or states.dim() != 3:
+            shape = tuple(states.shape) if isinstance(states, torch.Tensor) else type(states).__name__
+            raise ValueError(f'states must have shape (B,{self.K},{self.embed_dim}), got {shape}')
+        B, K, D = states.shape
+        if B < 1 or (K, D) != expected_tail:
+            raise ValueError(
+                f'states must have shape (B,{self.K},{self.embed_dim}), got {tuple(states.shape)}')
+        if not states.is_floating_point() or not torch.isfinite(states).all():
+            raise ValueError('states must contain finite floating-point values')
+        return B
+
+    def _action_prior_unchecked(self, states: torch.Tensor, action: torch.Tensor,
+                                beta: torch.Tensor) -> torch.Tensor:
+        B = states.shape[0]
+        if self.mode in {'noaction', 'ssmcontrol'}:
+            action_features = states.new_zeros(B, 2 * self.embed_dim)
+        else:
+            action_features = self.W_a(action)
+        d, v = action_features.chunk(2, dim=-1)
+        normalized = F.layer_norm(states, (self.embed_dim,))
+        delta = torch.tanh(v.unsqueeze(1) + d.unsqueeze(1) * normalized)
+        return states + beta * delta
+
+    def transition(self, states: torch.Tensor, action: torch.Tensor,
+                   action_override=None, beta_override=None) -> torch.Tensor:
+        """Validated one-step action-only transition."""
+        B = self._validate_states(states)
+        if not isinstance(action, torch.Tensor) or tuple(action.shape) != (B, self.action_dim):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(f'action must have shape {(B, self.action_dim)}, got {shape}')
+        if not action.is_floating_point() or not torch.isfinite(action).all():
+            raise ValueError('action must contain finite floating-point values')
+        action = action.to(device=states.device, dtype=states.dtype)
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action, 'action_override')
+        beta = self._beta_sequence(B, 1, states, beta_override)[:, 0]
+        return self._action_prior_unchecked(states, action, beta)
+
+    def action_rollout(self, source_states: torch.Tensor, actions: torch.Tensor,
+                       action_override=None, beta_override=None) -> torch.Tensor:
+        """Advance source states with actions only; no future observation is consumed."""
+        B = self._validate_states(source_states)
+        if not isinstance(actions, torch.Tensor) or actions.dim() != 3:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(
+                f'rollout actions must have shape (B,H,{self.action_dim}), got {shape}')
+        H = actions.shape[1]
+        actions = self._validate_actions(actions, B, H, name='rollout actions')
+        actions = actions.to(device=source_states.device, dtype=source_states.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions, 'action_override')
+        beta_sequence = self._beta_sequence(B, H, source_states, beta_override)
+
+        state = source_states
+        trajectory = []
+        for step in range(H):
+            state = self._action_prior_unchecked(state, actions[:, step], beta_sequence[:, step])
+            trajectory.append(state)
+        if not trajectory:
+            return source_states.new_empty(B, 0, self.K, self.embed_dim)
+        return torch.stack(trajectory, dim=1)
+
+    def _dynamic_gate(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                      prior: torch.Tensor) -> torch.Tensor:
+        normalized_z = F.layer_norm(z_t, (self.embed_dim,))
+        normalized_error = F.layer_norm(x_t.unsqueeze(1) - prior, (self.embed_dim,))
+        z_score = torch.einsum('bd,d->b', normalized_z, self.w_z).unsqueeze(-1)
+        error_score = torch.einsum('bkd,d->bk', normalized_error, self.w_e)
+        logits = ((z_score + error_score) / math.sqrt(self.embed_dim)
+                  + self.gate_bias.view(1, self.K))
+        return torch.sigmoid(logits).unsqueeze(-1)
+
+    def forward(self, z: torch.Tensor, actions: torch.Tensor,
+                memory_update_mask: torch.Tensor = None, gate_override=None,
+                action_override=None, beta_override=None, return_details: bool = False):
+        """Return normalized memory and optionally exact states, gates, priors, and rates.
+
+        ``actions[:,t]`` strictly maps ``z[:,t]`` to ``z[:,t+1]``.  A supplied update mask is
+        shape/range checked but ignored, preventing visibility metadata from changing any V5 mode.
+        ``details['betas']`` has shape ``(B,T,2,D)`` and records rates actually used, including an
+        optional intervention.  The warm-start entry at index zero is recorded but not applied.
+        """
+        B, T, _ = self._validate_latents(z)
+        actions = self._validate_actions(actions, B, T - 1)
+        actions = actions.to(device=z.device, dtype=z.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions, 'action_override')
+
+        if memory_update_mask is not None:
+            self._coerce_gates(
+                memory_update_mask, B, T, device=z.device, dtype=z.dtype,
+                name='memory_update_mask')
+        override_gates = None
+        if gate_override is not None:
+            override_gates = self._coerce_gates(
+                gate_override, B, T, device=z.device, dtype=z.dtype, name='gate_override')
+        beta_sequence = self._beta_sequence(B, T, z, beta_override)
+
+        x = self.W_x(z)
+        initial = x[:, 0].unsqueeze(1).expand(-1, self.K, -1)
+        states = [initial]
+        priors = [initial]
+        if override_gates is not None:
+            gate_0 = override_gates[:, 0]
+        elif self.mode == 'static':
+            gate_0 = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand(B, -1, -1)
+        elif self.mode == 'ssmcontrol':
+            gate_0 = z.new_ones(B, self.K, 1)
+        else:
+            gate_0 = self._dynamic_gate(z[:, 0], x[:, 0], initial)
+        gates = [gate_0]
+
+        state = initial
+        for t in range(1, T):
+            beta = beta_sequence[:, t]
+            prior = self._action_prior_unchecked(state, actions[:, t - 1], beta)
+            if override_gates is not None:
+                gate = override_gates[:, t]
+            elif self.mode == 'static':
+                gate = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand(B, -1, -1)
+            elif self.mode == 'ssmcontrol':
+                gate = z.new_ones(B, self.K, 1)
+            else:
+                gate = self._dynamic_gate(z[:, t], x[:, t], prior)
+            state = prior + beta * gate * (x[:, t].unsqueeze(1) - prior)
+            priors.append(prior)
+            states.append(state)
+            gates.append(gate)
+
+        state_sequence = torch.stack(states, dim=1)
+        route = self.route_weights().to(dtype=z.dtype)
+        mixed = (state_sequence * route.view(1, 1, self.K, 1)).sum(dim=2)
+        mixed = mixed * torch.rsqrt(
+            mixed.square().mean(dim=-1, keepdim=True) + self.rms_eps)
+        if not return_details:
+            return mixed
+        return mixed, {
+            'x': x,
+            'priors': torch.stack(priors, dim=1),
+            'states': state_sequence,
+            'gates': torch.stack(gates, dim=1),
+            'route': route,
+            'betas': beta_sequence,
+        }
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        """Zero-initialized residual fusion ``z + W_o mixed``."""
+        if not isinstance(z, torch.Tensor) or not isinstance(mixed, torch.Tensor):
+            raise ValueError('z and mixed must be tensors with shape (B,T,D)')
+        if z.dim() != 3 or mixed.dim() != 3 or z.shape != mixed.shape:
+            z_shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            mixed_shape = tuple(mixed.shape) if isinstance(mixed, torch.Tensor) else type(mixed).__name__
+            raise ValueError(
+                f'z and mixed must have identical (B,T,D) shapes, got {z_shape} and {mixed_shape}')
+        if z.shape[-1] != self.embed_dim:
+            raise ValueError(f'HACSSM-v5 expected final dim {self.embed_dim}, got {z.shape[-1]}')
+        if not z.is_floating_point() or not mixed.is_floating_point():
+            raise ValueError('z and mixed must be floating-point tensors')
+        if not torch.isfinite(z).all() or not torch.isfinite(mixed).all():
+            raise ValueError('z and mixed must contain only finite values')
+        return z + self.W_o(mixed)
+
+    def horizons(self) -> Dict[str, float]:
+        """Summarize current per-channel rates/horizons for experiment logging."""
+        with torch.no_grad():
+            beta = self.betas
+            tau = alpha_to_tau(beta)
+            return {
+                'tau_fast': float(tau[0].median()),
+                'tau_slow': float(tau[1].median()),
+                'alpha_fast': float(beta[0].median()),
+                'alpha_slow': float(beta[1].median()),
+                'tau_fast_min': float(tau[0].min()),
+                'tau_fast_max': float(tau[0].max()),
+                'tau_medium_min': float(tau[1].min()),
+                'tau_medium_max': float(tau[1].max()),
+                'n_banks': self.K,
+            }
+
+
+# Short name used by experiment configuration and checkpoint metadata.
+HACSSMv5Memory = HierarchicalActionConditionedSSMMemory
 
 
 class OCSMTMemory(nn.Module):

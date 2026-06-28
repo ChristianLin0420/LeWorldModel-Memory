@@ -5,7 +5,7 @@ world model itself: (a) next-latent validation MSE (vanilla `none` vs memory), a
 (b) the memory-ablation influence ||f(full) - f(ablate bank)|| on the prediction.
 wandb project: lewm-memory-popgym; run name lewm-<EnvId>-<design>-s<seed>.
 """
-import os, sys, json, time, argparse, hashlib
+import os, sys, json, time, argparse, hashlib, math
 from pathlib import Path
 import numpy as np
 import torch
@@ -17,6 +17,28 @@ from lewm.data import PopgymDataset, PrecomputedFeatureDataset
 from lewm.eval.memory_probe import plot_memory_kernels
 
 
+def scheduled_hier_loss_weight(base_weight, schedule, epoch):
+    """Return the prospectively fixed auxiliary weight for a one-indexed epoch.
+
+    ``v5_frontload`` is intentionally absolute rather than relative to the run length:
+    weight is constant through epoch 20, follows a cosine to zero over epochs 21--120,
+    and is exactly zero thereafter.
+    """
+    base_weight = float(base_weight)
+    if schedule == 'fixed':
+        return base_weight
+    if schedule != 'v5_frontload':
+        raise ValueError(f'unknown hierarchical loss schedule {schedule!r}')
+    if epoch < 1:
+        raise ValueError(f'epoch must be one-indexed and positive, got {epoch}')
+    if epoch <= 20:
+        return base_weight
+    if epoch <= 120:
+        progress = (epoch - 20) / 100.0
+        return base_weight * 0.5 * (1.0 + math.cos(math.pi * progress))
+    return 0.0
+
+
 def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight=0.0):
     model.train(train)
     if not any(p.requires_grad for p in model.encoder.parameters()):
@@ -25,7 +47,7 @@ def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight
         'loss', 'pred_loss', 'sigreg_loss', 'pred_loss_all_valid',
         'pred_loss_first_post', 'hier_loss', 'hier_loss_fast',
         'hier_loss_medium', 'hier_loss_slow', 'hier_loss_h1', 'hier_loss_h2',
-        'hier_loss_h4', 'hier_loss_h8', 'hier_loss_h16',
+        'hier_loss_h4', 'hier_loss_h8', 'hier_loss_h16', 'hier_loss_weight',
     )
     tot = {name: 0.0 for name in metric_names}; counts = {name: 0 for name in metric_names}
     n = 0
@@ -177,7 +199,12 @@ def main():
                             'smt', 'smtv1', 'smtv2',
                             'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle',
                             'hacsmv4', 'hacsmv4_static', 'hacsmv4_noaction',
-                            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle'])
+                            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle',
+                            'hacsmv4_two_noaux',
+                            'hacssmv5', 'hacssmv5_static', 'hacssmv5_noaction',
+                            'hacssmv5_fixedbeta', 'hacssmv5_fixedbeta_noaux',
+                            'hacssmv5_noaux', 'hacssmv5_single',
+                            'hacssmv5_ssmcontrol'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -226,7 +253,10 @@ def main():
     p.add_argument('--sigreg-lambda', type=float, default=0.1)
     p.add_argument('--sigreg-projections', type=int, default=512)
     p.add_argument('--hier-loss-weight', type=float, default=0.1,
-                   help='HACSM-v4 action-rollout auxiliary weight; noaux forces effective zero')
+                   help='hierarchical action-rollout auxiliary base weight; noaux forces zero')
+    p.add_argument('--hier-loss-schedule', default='fixed',
+                   choices=['fixed', 'v5_frontload'],
+                   help='fixed, or V5: constant epochs 1-20, cosine to zero at 120, then zero')
     p.add_argument('--tau-fast', type=float, default=3.0)
     p.add_argument('--tau-slow', type=float, default=25.0)
     p.add_argument('--fixed-alpha', action='store_true')
@@ -241,6 +271,8 @@ def main():
         raise ValueError('--first-post-loss-weight must be in [0,1]')
     if not np.isfinite(args.hier_loss_weight) or args.hier_loss_weight < 0:
         raise ValueError('--hier-loss-weight must be non-negative and finite')
+    if args.hier_loss_schedule == 'v5_frontload' and args.epochs < 120:
+        raise ValueError('--hier-loss-schedule v5_frontload requires at least 120 epochs')
 
     feature_mode = any((args.train_feature_cache, args.val_feature_cache, args.feature_manifest))
     if feature_mode and not all((args.train_feature_cache, args.val_feature_cache, args.feature_manifest)):
@@ -334,7 +366,12 @@ def main():
             'multi', 'gru', 'ssm', 'retrieval', 'smt',
             'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle',
             'hacsmv4', 'hacsmv4_static', 'hacsmv4_noaction',
-            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle') else 'ema'
+            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle',
+            'hacsmv4_two_noaux',
+            'hacssmv5', 'hacssmv5_static', 'hacssmv5_noaction',
+            'hacssmv5_fixedbeta', 'hacssmv5_fixedbeta_noaux',
+            'hacssmv5_noaux', 'hacssmv5_single',
+            'hacssmv5_ssmcontrol') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
@@ -428,6 +465,8 @@ def main():
     best = {}
     history = []
     for epoch in range(1, args.epochs + 1):
+        model.hier_loss_weight = scheduled_hier_loss_weight(
+            args.hier_loss_weight, args.hier_loss_schedule, epoch)
         t0 = time.time()
         tr = run_epoch(model, train_loader, opt, device, True, use_amp,
                        args.first_post_loss_weight)
@@ -462,9 +501,15 @@ def main():
             'masked_clean_blackout_loss': bool(args.mask_occluded_target_loss),
             'first_post_loss_weight': float(args.first_post_loss_weight),
             'hier_loss_weight': float(args.hier_loss_weight),
+            'hier_loss_schedule': args.hier_loss_schedule,
+            'hier_loss_weight_final': float(model.hier_loss_weight),
             'hier_loss_weight_effective': (
-                0.0 if args.memory_mode == 'hacsmv4_noaux' else
-                float(args.hier_loss_weight) if args.memory_mode.startswith('hacsmv4') else 0.0),
+                0.0 if args.memory_mode in {
+                    'hacsmv4_noaux', 'hacsmv4_two_noaux',
+                    'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
+                    'hacssmv5_ssmcontrol'} else
+                float(model.hier_loss_weight) if args.memory_mode.startswith(
+                    ('hacsmv4', 'hacssmv5')) else 0.0),
             'val_pred_loss_target_kind': 'observed_pre_post_only' if args.mask_occluded_target_loss else 'all',
             'deep_blackout_target_kind': 'evaluation_only_hidden_clean',
             'primary_common_target_metric': 'clean_mse_first_post',
