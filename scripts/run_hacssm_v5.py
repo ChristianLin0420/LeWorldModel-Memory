@@ -381,7 +381,7 @@ def memory_contract() -> dict[str, Any]:
         for mode in v5_modes
     ]
     signatures = [
-        [(name, list(parameter.shape)) for name, parameter in model.named_parameters()]
+        [[name, list(parameter.shape)] for name, parameter in model.named_parameters()]
         for model in instances
     ]
     counts = [model.parameter_count() for model in instances]

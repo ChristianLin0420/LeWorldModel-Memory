@@ -2,6 +2,7 @@
 """Dependency-free tests for the locked V5 runner/analyzer contracts."""
 
 from pathlib import Path
+import json
 import sys
 import tempfile
 
@@ -54,6 +55,7 @@ def test_memory_and_schedule_contracts() -> None:
     contract = runner.memory_contract()
     assert contract['memory_parameters']['hacssmv5_all_modes'] == 34_820
     assert contract['streaming_recurrent_floats']['hacssmv5_all_modes'] == 256
+    assert runner.stable_equal(contract, json.loads(json.dumps(contract)))
     assert runner.scheduled_weight(0.05, 'v5_frontload', 20) == 0.05
     assert abs(runner.scheduled_weight(0.05, 'v5_frontload', 70) - 0.025) < 1e-12
     assert runner.scheduled_weight(0.05, 'v5_frontload', 120) == 0.0
