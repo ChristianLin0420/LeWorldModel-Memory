@@ -16,6 +16,7 @@ isolates the memory's contribution: it is the sole long-range channel.
 Loss is unchanged in form:  L = L_pred + lambda * SIGReg(Z)   (2 terms, 1 lambda).
 """
 
+import copy
 import math
 from typing import Dict, Optional
 
@@ -27,7 +28,8 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 GRUMemory, SSMMemory, RetrievalMemory,
                                 SelectiveMultiTimescaleMemory, SelectiveUpdateMemoryV3,
                                 HierarchicalActionConditionedMemory,
-                                HierarchicalActionConditionedSSMMemory, OCSMTMemory)
+                                HierarchicalActionConditionedSSMMemory,
+                                HierarchicalCounterfactualRecoveryMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -83,6 +85,22 @@ _HACSSMV6_MODES = {
 
 _HACSSMV6_HIERARCHICAL_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
 _HACSSMV6_UNIFORM_HORIZONS = tuple(
+    (level, horizon) for level in (0, 1) for horizon in (1, 2, 4, 8)
+)
+
+_HACSSMV7_MODES = {
+    'hacssmv7': 'dynamic',
+    'hacssmv7_noaux': 'noaux',
+    'hacssmv7_sharedaction': 'sharedaction',
+    'hacssmv7_noshrink': 'noshrink',
+    'hacssmv7_actiononly': 'actiononly',
+    'hacssmv7_uniform': 'uniform',
+    'hacssmv7_norecovery': 'norecovery',
+    'hacssmv7_noaction': 'noaction',
+    'hacssmv7_single': 'single',
+}
+_HACSSMV7_HIERARCHICAL_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
+_HACSSMV7_UNIFORM_HORIZONS = tuple(
     (level, horizon) for level in (0, 1) for horizon in (1, 2, 4, 8)
 )
 
@@ -164,6 +182,13 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_hacssmv6 = HierarchicalActionConditionedMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_HACSSMV6_MODES[memory_impl], taus=(2.0, 8.0))
+        elif memory_impl in _HACSSMV7_MODES:                # counterfactual-recovery hierarchy
+            self.mem_hacssmv7 = HierarchicalCounterfactualRecoveryMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_HACSSMV7_MODES[memory_impl])
+            self.mem_hacssmv7_teacher = copy.deepcopy(self.mem_hacssmv7)
+            self.mem_hacssmv7_teacher.requires_grad_(False)
+            self.hier_teacher_momentum = 0.99
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -186,9 +211,10 @@ class MemoryLeWorldModel(LeWorldModel):
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
         if (return_memory_details and self.memory_impl not in _HACSMV4_MODES
                 and self.memory_impl not in _HACSSMV5_MODES
-                and self.memory_impl not in _HACSSMV6_MODES):
+                and self.memory_impl not in _HACSSMV6_MODES
+                and self.memory_impl not in _HACSSMV7_MODES):
             raise ValueError(
-                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6')
+                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -237,6 +263,17 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_hacssmv6.fuse(z, mixed), details
             return self.mem_hacssmv6.fuse(z, result)
+        if self.memory_impl in _HACSSMV7_MODES:
+            if actions is None:
+                raise ValueError('HACSSM-v7 requires actions with a_t mapping z_t to z_{t+1}')
+            result = self.mem_hacssmv7(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_hacssmv7.fuse(z, mixed), details
+            return self.mem_hacssmv7.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -261,6 +298,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_hacssmv5.horizons()
         if self.memory_impl in _HACSSMV6_MODES:
             return self.mem_hacssmv6.horizons()
+        if self.memory_impl in _HACSSMV7_MODES:
+            return self.mem_hacssmv7.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -517,6 +556,181 @@ class MemoryLeWorldModel(LeWorldModel):
         result['hier_loss'] = torch.stack(active_level_losses).mean()
         return result
 
+    @torch.no_grad()
+    def update_hierarchical_teacher(self) -> None:
+        """EMA-update the V7 memory-only teacher after one optimizer step."""
+        if self.memory_impl not in _HACSSMV7_MODES:
+            return
+        momentum = float(self.hier_teacher_momentum)
+        if not 0.0 <= momentum < 1.0:
+            raise ValueError(f'invalid hierarchy teacher momentum {momentum}')
+        student_parameters = dict(self.mem_hacssmv7.named_parameters())
+        teacher_parameters = dict(self.mem_hacssmv7_teacher.named_parameters())
+        if student_parameters.keys() != teacher_parameters.keys():
+            raise RuntimeError('V7 teacher/student parameter schemas differ')
+        for name, teacher in teacher_parameters.items():
+            teacher.mul_(momentum).add_(student_parameters[name], alpha=1.0 - momentum)
+        student_buffers = dict(self.mem_hacssmv7.named_buffers())
+        teacher_buffers = dict(self.mem_hacssmv7_teacher.named_buffers())
+        if student_buffers.keys() != teacher_buffers.keys():
+            raise RuntimeError('V7 teacher/student buffer schemas differ')
+        for name, teacher in teacher_buffers.items():
+            teacher.copy_(student_buffers[name])
+
+    def _hierarchical_counterfactual_recovery_loss(
+        self,
+        states: torch.Tensor,
+        z: torch.Tensor,
+        actions: torch.Tensor,
+        target_valid_mask: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        """V7 visible-only counterfactual gap and recovery distillation.
+
+        The EMA teacher consumes the original *occluded* trajectory.  For every contiguous
+        window lying wholly inside an originally visible run, the student starts from a
+        detached online state, replaces the next ``h`` visible latents by the canonical black
+        latent already present in the input, and then consumes one restored visible latent.
+        Bridge and recovery states are matched to stop-gradient teacher posteriors.  Fixed
+        hidden clean frames are neither consumed by the teacher nor selected as targets.
+        """
+        if self.memory_impl not in _HACSSMV7_MODES:
+            raise ValueError('counterfactual recovery loss requires HACSSM-v7')
+        if states.dim() != 4:
+            raise ValueError(f'expected states (B,T,K,D), got {tuple(states.shape)}')
+        B, T, K, D = states.shape
+        if tuple(z.shape) != (B, T, D):
+            raise ValueError(f'z shape {tuple(z.shape)} != {(B, T, D)}')
+        if tuple(actions.shape) != (B, T - 1, self.action_dim):
+            raise ValueError(
+                f'action shape {tuple(actions.shape)} != {(B, T - 1, self.action_dim)}')
+        if K != self.mem_hacssmv7.K:
+            raise ValueError(f'state level count {K} != {self.mem_hacssmv7.K}')
+        if target_valid_mask is None or tuple(target_valid_mask.shape) != (B, T):
+            shape = None if target_valid_mask is None else tuple(target_valid_mask.shape)
+            raise ValueError(f'HACSSM-v7 requires target mask {(B, T)}, got {shape}')
+        mask = target_valid_mask.to(device=states.device, dtype=torch.bool)
+        hidden = ~mask
+        hidden_counts = hidden.sum(dim=1)
+        if bool((hidden_counts < 1).any()):
+            raise ValueError('HACSSM-v7 requires an observed canonical black interval')
+
+        # The black token comes only from the actually observed corrupted input.  All feature
+        # transforms used in this auxiliary are detached so W_x remains primary-only.
+        black = (z.detach() * hidden.unsqueeze(-1)).sum(dim=1)
+        black = black / hidden_counts.to(dtype=z.dtype).unsqueeze(-1)
+        with torch.no_grad():
+            x_all = self.mem_hacssmv7.W_x(z.detach())
+            x_black = self.mem_hacssmv7.W_x(black)
+            _, teacher_details = self.mem_hacssmv7_teacher(
+                z.detach(), actions.detach(), return_details=True)
+            teacher_states = teacher_details['states'].detach()
+
+        configured = (
+            _HACSSMV7_UNIFORM_HORIZONS
+            if self.memory_impl == 'hacssmv7_uniform'
+            else _HACSSMV7_HIERARCHICAL_HORIZONS
+        )
+        level_names = {0: 'fast', 1: 'medium'}
+        level_terms = {0: [], 1: []}
+        horizon_terms: Dict[int, list[torch.Tensor]] = {}
+        horizon_pairs: Dict[int, list[torch.Tensor]] = {}
+        bridge_terms = []
+        recovery_terms = []
+        result: Dict[str, torch.Tensor] = {}
+        total_pairs = states.new_zeros(())
+        overlap_count = states.new_zeros(())
+
+        for level, horizon in configured:
+            # Each eligible window is [source, h synthetically hidden frames, restore].
+            width = horizon + 2
+            if T < width:
+                raise ValueError(f'sequence length {T} is too short for V7 horizon {horizon}')
+            eligible = mask.unfold(1, width, 1).all(dim=-1)
+            batch_index, source_index = eligible.nonzero(as_tuple=True)
+            if batch_index.numel() == 0:
+                raise ValueError(f'no visible V7 counterfactual windows at horizon {horizon}')
+            pair_count = eligible.sum().to(dtype=states.dtype)
+            total_pairs = total_pairs + pair_count
+
+            source = states[batch_index, source_index].detach()
+            state = source
+            for step in range(1, horizon + 1):
+                action = actions[batch_index, source_index + step - 1]
+                state, _, _ = self.mem_hacssmv7.correction_step(
+                    state, black[batch_index], action,
+                    x_t=x_black[batch_index])
+            bridge = state[:, level]
+            bridge_target = teacher_states[
+                batch_index, source_index + horizon, level]
+            bridge_error = F.smooth_l1_loss(
+                F.layer_norm(bridge, (D,)),
+                F.layer_norm(bridge_target, (D,)), reduction='none').mean(dim=-1)
+            bridge_loss = bridge_error.mean()
+
+            recovery_time = source_index + horizon + 1
+            recovery_action = actions[batch_index, source_index + horizon]
+            recovered, _, _ = self.mem_hacssmv7.correction_step(
+                state, z[batch_index, recovery_time].detach(), recovery_action,
+                x_t=x_all[batch_index, recovery_time])
+            recovery_target = teacher_states[batch_index, recovery_time, level]
+            recovery_error = F.smooth_l1_loss(
+                F.layer_norm(recovered[:, level], (D,)),
+                F.layer_norm(recovery_target, (D,)), reduction='none').mean(dim=-1)
+            recovery_loss = recovery_error.mean()
+
+            if self.memory_impl == 'hacssmv7_actiononly':
+                action_windows = actions.unfold(1, horizon, 1)
+                action_windows = action_windows.permute(0, 1, 3, 2)
+                selected_actions = action_windows[batch_index, source_index]
+                prediction = self.mem_hacssmv7.action_rollout(
+                    source, selected_actions)[:, -1, level]
+                loss_h = F.smooth_l1_loss(
+                    F.layer_norm(prediction, (D,)),
+                    F.layer_norm(bridge_target, (D,)), reduction='none').mean(dim=-1).mean()
+                used_recovery = recovery_loss.detach() * 0.0
+            elif self.memory_impl == 'hacssmv7_norecovery':
+                loss_h = bridge_loss
+                used_recovery = recovery_loss.detach() * 0.0
+            else:
+                loss_h = 0.5 * (bridge_loss + recovery_loss)
+                used_recovery = recovery_loss
+
+            level_terms[level].append(loss_h)
+            horizon_terms.setdefault(horizon, []).append(loss_h)
+            horizon_pairs.setdefault(horizon, []).append(pair_count)
+            # Keep the aggregate diagnostic aligned with the loss actually optimized by each
+            # control.  In ``actiononly`` there is no counterfactual correction bridge; its
+            # action-rollout loss occupies the bridge slot so W&B cannot mislabel an unused
+            # counterfactual quantity as active supervision.
+            bridge_terms.append(
+                loss_h if self.memory_impl == 'hacssmv7_actiononly' else bridge_loss)
+            recovery_terms.append(used_recovery)
+            result[f'hier_loss_{level_names[level]}_h{horizon}'] = loss_h
+            result[f'hier_pairs_{level_names[level]}_h{horizon}'] = pair_count
+
+            # Eligibility requires every synthetically hidden token to have been visible.
+            for step in range(1, horizon + 1):
+                overlap_count = overlap_count + hidden[
+                    batch_index, source_index + step].sum().to(dtype=states.dtype)
+
+        if float(overlap_count.detach()) != 0.0:
+            raise RuntimeError('V7 counterfactual windows overlap original hidden targets')
+        fast = torch.stack(level_terms[0]).mean()
+        medium = torch.stack(level_terms[1]).mean()
+        result.update({
+            'hier_loss': torch.stack((fast, medium)).mean(),
+            'hier_loss_fast': fast,
+            'hier_loss_medium': medium,
+            'hier_loss_bridge': torch.stack(bridge_terms).mean(),
+            'hier_loss_recovery': torch.stack(recovery_terms).mean(),
+            'hier_pairs': total_pairs,
+            'hier_overlap': overlap_count,
+        })
+        for horizon, terms in horizon_terms.items():
+            result[f'hier_loss_h{horizon}'] = torch.stack(terms).mean()
+            result[f'hier_pairs_h{horizon}'] = torch.stack(horizon_pairs[horizon]).sum()
+        return result
+
     # ---- core training loss (sliding short-window over a long chunk) ---------------
     def compute_loss(
         self,
@@ -557,7 +771,8 @@ class MemoryLeWorldModel(LeWorldModel):
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
         if (self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES
-                or self.memory_impl in _HACSSMV6_MODES):
+                or self.memory_impl in _HACSSMV6_MODES
+                or self.memory_impl in _HACSSMV7_MODES):
             z_tilde, memory_details = self._inject(
                 z, actions=actions, memory_update_mask=memory_update_mask,
                 gate_override=gate_override, return_memory_details=True)
@@ -622,7 +837,10 @@ class MemoryLeWorldModel(LeWorldModel):
             out['l0_loss'] = l0
             out['loss'] = total + self.l0_lambda * l0
         if memory_details is not None:
-            if self.memory_impl in _HACSSMV6_MODES:
+            if self.memory_impl in _HACSSMV7_MODES:
+                auxiliary = self._hierarchical_counterfactual_recovery_loss(
+                    memory_details['states'], z, actions, target_valid_mask)
+            elif self.memory_impl in _HACSSMV6_MODES:
                 auxiliary = self._hierarchical_consistency_loss(
                     memory_details['states'], actions, target_valid_mask)
             elif self.memory_impl in _HACSSMV5_MODES:
@@ -635,7 +853,8 @@ class MemoryLeWorldModel(LeWorldModel):
             effective_weight = (0.0 if self.memory_impl in {
                                     'hacsmv4_noaux', 'hacsmv4_two_noaux',
                                     'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
-                                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'}
+                                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux',
+                                    'hacssmv7_noaux'}
                                 else self.hier_loss_weight)
             out['hier_loss_weight'] = auxiliary['hier_loss'].new_tensor(effective_weight)
             out['loss'] = out['loss'] + effective_weight * auxiliary['hier_loss']
@@ -674,13 +893,17 @@ class MemoryLeWorldModel(LeWorldModel):
 
             infl_fast = || f(full) - f(ablate fast) ||_2 ,   similarly for slow.
 
-        This is the empirical decision-influence of short- vs long-term memory.
+        EMA and hierarchical HACSM/HACSSM implementations expose distinct level ablations.
+        Every implementation also exposes ``infl_all`` for the complete memory-path ablation.
+        A single-state non-EMA memory reports only ``infl_all`` rather than duplicating one
+        quantity under misleading fast/slow names.
 
         Args:
             observations: (B, L, C, H, W), L >= history_len + 1.
             actions: (B, L-1, A).
         Returns:
-            dict: 'pred_full' (B, D), 'infl_fast' (B,), 'infl_slow' (B,).
+            dict: ``pred_full`` and ``infl_all``; additionally ``infl_fast`` and
+            ``infl_slow`` when distinct corresponding recurrent states exist.
         """
         h = self.history_len
         z = self.encode(observations)
@@ -699,14 +922,57 @@ class MemoryLeWorldModel(LeWorldModel):
             full = pred(False, False)
             return {'pred_full': full,
                     'infl_fast': (full - pred(True, False)).norm(dim=-1),
-                    'infl_slow': (full - pred(False, True)).norm(dim=-1)}
-        # non-EMA: total memory influence = ablate ALL memory (fused window vs raw window)
+                    'infl_slow': (full - pred(False, True)).norm(dim=-1),
+                    'infl_all': (full - pred(True, True)).norm(dim=-1)}
+
+        hierarchical = (
+            self.memory_impl in _HACSMV4_MODES
+            or self.memory_impl in _HACSSMV5_MODES
+            or self.memory_impl in _HACSSMV6_MODES
+            or self.memory_impl in _HACSSMV7_MODES
+        )
+        if hierarchical:
+            z_full, details = self._inject(
+                z, actions=actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_memory_details=True)
+            if self.memory_impl in _HACSMV4_MODES:
+                memory = self.mem_hacsmv4
+            elif self.memory_impl in _HACSSMV5_MODES:
+                memory = self.mem_hacssmv5
+            elif self.memory_impl in _HACSSMV6_MODES:
+                memory = self.mem_hacssmv6
+            else:
+                memory = self.mem_hacssmv7
+            states = details['states']
+            route = details['route'].to(device=states.device, dtype=states.dtype)
+
+            def ablated(level: int) -> torch.Tensor:
+                weights = route.clone()
+                weights[level] = 0.0
+                mixed = (states * weights.view(1, 1, memory.K, 1)).sum(dim=2)
+                mixed = mixed * torch.rsqrt(
+                    mixed.square().mean(dim=-1, keepdim=True) + memory.rms_eps)
+                return memory.fuse(z, mixed)
+
+            full = self.predictor(z_full[:, wsl], act)[:, -1, :]
+            fast = self.predictor(ablated(0)[:, wsl], act)[:, -1, :]
+            slow = self.predictor(ablated(memory.K - 1)[:, wsl], act)[:, -1, :]
+            nomem = self.predictor(z[:, wsl], act)[:, -1, :]
+            return {
+                'pred_full': full,
+                'infl_fast': (full - fast).norm(dim=-1),
+                'infl_slow': (full - slow).norm(dim=-1),
+                'infl_all': (full - nomem).norm(dim=-1),
+            }
+
+        # Other non-EMA memories have one undifferentiated or non-hierarchical memory path.
         full = self.predictor(self._inject(
             z, actions=actions, memory_update_mask=memory_update_mask,
             gate_override=gate_override, action_override=action_override)[:, wsl], act)[:, -1, :]
         nomem = self.predictor(z[:, wsl], act)[:, -1, :]
         infl_all = (full - nomem).norm(dim=-1)
-        return {'pred_full': full, 'infl_fast': infl_all, 'infl_slow': infl_all}
+        return {'pred_full': full, 'infl_all': infl_all}
 
     @torch.no_grad()
     def rollout_latents(

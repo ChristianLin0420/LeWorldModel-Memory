@@ -1,0 +1,4 @@
+reference,candidate,matched_cells,predictive_metrics_compared,exact_predictive_metric_cells,max_abs_predictive_metric_difference,exact_canonical_checkpoint_cells,max_abs_canonical_state_difference,exact_rollout_array_cells,max_abs_rollout_array_difference
+hacsmv4_two_noaux,hacssmv6_noaux,25,13,25,0.0,25,0.0,25,0.0
+hacssmv6_noaux,hacssmv6_aux_noaction,25,13,25,0.0,25,0.0,25,0.0
+hacsmv4_two_noaux,hacssmv6_aux_noaction,25,13,25,0.0,25,0.0,25,0.0

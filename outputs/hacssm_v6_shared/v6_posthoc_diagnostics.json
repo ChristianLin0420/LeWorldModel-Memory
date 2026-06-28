@@ -1,0 +1,443 @@
+{
+  "auxiliary_objective_checks": {
+    "full_v6_vs_noaux": {
+      "val_hier_loss_reduction": 0.013019132532244114,
+      "wins": 25
+    },
+    "noaux_real_action_vs_identical_zero_action": {
+      "fast_reduction": -0.05275028945773145,
+      "medium_reduction": -0.056417025561827906,
+      "val_hier_loss_reduction": -0.05492842552663015,
+      "wins": 0
+    }
+  },
+  "best_development_grid_design": {
+    "design": "hacssmv6_static",
+    "environment_rank_wins": 3,
+    "mean_environment_rank": 4.8,
+    "qualification": "Best by environment-rank wins on this locked development grid; not an untouched-test or paper-level claim.",
+    "vs_ssm": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.06066700308564576,
+      "n_pairs": 25,
+      "paired_wins": 19
+    },
+    "vs_v4_two_noaux": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.013164396263672431,
+      "n_pairs": 25,
+      "paired_wins": 13
+    }
+  },
+  "completed_runs": 325,
+  "convergence": {
+    "absolute_window_change_max": 0.02754212360044176,
+    "absolute_window_change_median": 0.004351256648732266,
+    "absolute_window_change_p95": 0.014421883671131647,
+    "passes_locked_bounds": true
+  },
+  "exact_identity_controls": [
+    {
+      "candidate": "hacssmv6_noaux",
+      "exact_canonical_checkpoint_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_array_cells": 25,
+      "matched_cells": 25,
+      "max_abs_canonical_state_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_array_difference": 0.0,
+      "predictive_metrics_compared": 13,
+      "reference": "hacsmv4_two_noaux"
+    },
+    {
+      "candidate": "hacssmv6_aux_noaction",
+      "exact_canonical_checkpoint_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_array_cells": 25,
+      "matched_cells": 25,
+      "max_abs_canonical_state_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_array_difference": 0.0,
+      "predictive_metrics_compared": 13,
+      "reference": "hacssmv6_noaux"
+    },
+    {
+      "candidate": "hacssmv6_aux_noaction",
+      "exact_canonical_checkpoint_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_array_cells": 25,
+      "matched_cells": 25,
+      "max_abs_canonical_state_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_array_difference": 0.0,
+      "predictive_metrics_compared": 13,
+      "reference": "hacsmv4_two_noaux"
+    }
+  ],
+  "failed_final_criteria": [
+    "locked_grid_envelope_wins_ge_4_of_5",
+    "vs_fastonly_wins_ge_13_of_25",
+    "vs_noaux_reduction_ge_1pct",
+    "vs_static_env_wins_ge_3_of_5",
+    "vs_static_positive",
+    "vs_static_wins_ge_13_of_25",
+    "vs_uniform_env_wins_ge_3_of_5",
+    "vs_v4_two_reduction_ge_1pct"
+  ],
+  "frozen_prelaunch_record": {
+    "primary_manifest_sha256": "915484f69ec78b4dead79a25e5fa096667a4c76034e88338bd46476f6fbc495c",
+    "producer_git_clean": true,
+    "producer_git_commit": "5ae7de8e31780a3892ebc08f250532fa5661e313"
+  },
+  "full_v6_aux_action_diagnostics": {
+    "action_weight_cosine_vs_noaux_mean": 0.9941980946957892,
+    "action_weight_delta_l2_vs_noaux_mean": 0.3524415695451764,
+    "action_weight_delta_l2_vs_noaux_population_std": 0.2625073043239145,
+    "action_weight_delta_relative_vs_noaux_mean": 0.08899601550930086,
+    "action_weight_delta_relative_vs_noaux_population_std": 0.06224331536736269,
+    "action_weight_fast_delta_l2_vs_noaux_mean": 0.29654819599587134,
+    "action_weight_fast_delta_l2_vs_noaux_population_std": 0.21319740151893565,
+    "action_weight_fast_l2_mean": 3.046313805595784,
+    "action_weight_fast_l2_population_std": 0.17091393614806907,
+    "action_weight_l2_mean": 3.777430235396098,
+    "action_weight_l2_population_std": 0.3951665362472449,
+    "action_weight_medium_delta_l2_vs_noaux_mean": 0.18878457153181388,
+    "action_weight_medium_delta_l2_vs_noaux_population_std": 0.15521457971335395,
+    "action_weight_medium_l2_mean": 2.1589411008872155,
+    "action_weight_medium_l2_population_std": 0.6744403026369934,
+    "active_aux_epochs_mean": 99.0,
+    "active_aux_epochs_population_std": 0.0,
+    "active_train_hier_loss_mean": 0.08232110489916587,
+    "active_weighted_aux_term_mean_mean": 0.0011488131361159651,
+    "active_weighted_aux_term_mean_population_std": 0.0004768988947365142,
+    "checkpoint_exact_vs_noaux_cells": 0,
+    "design": "hacssmv6",
+    "n_runs": 25,
+    "noaux_val_hier_loss_fast_pairs_vs_design": 25,
+    "noaux_val_hier_loss_fast_reduction_vs_design": -0.016197383346317325,
+    "noaux_val_hier_loss_fast_wins_vs_design": 0,
+    "noaux_val_hier_loss_medium_pairs_vs_design": 25,
+    "noaux_val_hier_loss_medium_reduction_vs_design": -0.011626236641393346,
+    "noaux_val_hier_loss_medium_wins_vs_design": 0,
+    "noaux_val_hier_loss_pairs_vs_design": 25,
+    "noaux_val_hier_loss_reduction_vs_design": -0.013378332499396677,
+    "noaux_val_hier_loss_wins_vs_design": 0,
+    "nonaction_parameter_delta_l2_vs_noaux_mean": 3.1860013837744043,
+    "nonaction_parameter_delta_l2_vs_noaux_population_std": 1.8554868511350604,
+    "val_hier_loss_fast_mean": 0.06908093628684679,
+    "val_hier_loss_fast_population_std": 0.03232753899633131,
+    "val_hier_loss_fast_reduction_vs_noaux": 0.015697450153021684,
+    "val_hier_loss_fast_wins_vs_noaux": 25,
+    "val_hier_loss_h1_mean": 0.04204284859895706,
+    "val_hier_loss_h1_population_std": 0.022069874454143,
+    "val_hier_loss_h2_mean": 0.09611902366479239,
+    "val_hier_loss_h2_population_std": 0.04285160817666016,
+    "val_hier_loss_h4_mean": 0.06776118657986323,
+    "val_hier_loss_h4_population_std": 0.03758406546072788,
+    "val_hier_loss_h8_mean": 0.15169881374835967,
+    "val_hier_loss_h8_population_std": 0.07507074894280723,
+    "val_hier_loss_mean": 0.08940546843806903,
+    "val_hier_loss_medium_mean": 0.10972999943494798,
+    "val_hier_loss_medium_population_std": 0.0562589457660324,
+    "val_hier_loss_medium_reduction_vs_noaux": 0.011332499304662829,
+    "val_hier_loss_medium_wins_vs_noaux": 25,
+    "val_hier_loss_population_std": 0.04348408703475944,
+    "val_hier_loss_reduction_vs_noaux": 0.013019132532244114,
+    "val_hier_loss_wins_vs_noaux": 25
+  },
+  "full_v6_by_prediction_phase": {
+    "hacsmv4_two_noaux": {
+      "clean_mse_all": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": -0.00020506319121238695,
+        "paired_wins": 14
+      },
+      "clean_mse_blackout_transition": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": -0.0028906677590530196,
+        "paired_wins": 17
+      },
+      "clean_mse_deep_blackout": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.002898742955707344,
+        "paired_wins": 14
+      },
+      "clean_mse_first_post": {
+        "environment_mean_wins": 5,
+        "mean_paired_relative_reduction": 0.003944414969626123,
+        "paired_wins": 15
+      },
+      "clean_mse_late_post": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.00022382853638246866,
+        "paired_wins": 10
+      },
+      "clean_mse_pre": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.00016320086828585978,
+        "paired_wins": 15
+      },
+      "clean_mse_recovery": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.0009525620959145481,
+        "paired_wins": 14
+      }
+    },
+    "hacssmv6_noaux": {
+      "clean_mse_all": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": -0.00020506319121238695,
+        "paired_wins": 14
+      },
+      "clean_mse_blackout_transition": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": -0.0028906677590530196,
+        "paired_wins": 17
+      },
+      "clean_mse_deep_blackout": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.002898742955707344,
+        "paired_wins": 14
+      },
+      "clean_mse_first_post": {
+        "environment_mean_wins": 5,
+        "mean_paired_relative_reduction": 0.003944414969626123,
+        "paired_wins": 15
+      },
+      "clean_mse_late_post": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.00022382853638246866,
+        "paired_wins": 10
+      },
+      "clean_mse_pre": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.00016320086828585978,
+        "paired_wins": 15
+      },
+      "clean_mse_recovery": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.0009525620959145481,
+        "paired_wins": 14
+      }
+    },
+    "hacssmv6_static": {
+      "clean_mse_all": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.00042769913037172744,
+        "paired_wins": 15
+      },
+      "clean_mse_blackout_transition": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": -0.055698267253008846,
+        "paired_wins": 12
+      },
+      "clean_mse_deep_blackout": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.04899987713492813,
+        "paired_wins": 11
+      },
+      "clean_mse_first_post": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.012493664253165653,
+        "paired_wins": 12
+      },
+      "clean_mse_late_post": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.03654480045113942,
+        "paired_wins": 20
+      },
+      "clean_mse_pre": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.034742127133890785,
+        "paired_wins": 20
+      },
+      "clean_mse_recovery": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.012401385430767861,
+        "paired_wins": 17
+      }
+    },
+    "ssm": {
+      "clean_mse_all": {
+        "environment_mean_wins": 5,
+        "mean_paired_relative_reduction": 0.03348646273051435,
+        "paired_wins": 22
+      },
+      "clean_mse_blackout_transition": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.09369302119673634,
+        "paired_wins": 19
+      },
+      "clean_mse_deep_blackout": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.03141440412821197,
+        "paired_wins": 9
+      },
+      "clean_mse_first_post": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.05187175345373103,
+        "paired_wins": 19
+      },
+      "clean_mse_late_post": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.04284624926578134,
+        "paired_wins": 19
+      },
+      "clean_mse_pre": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.03408741666800653,
+        "paired_wins": 16
+      },
+      "clean_mse_recovery": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.02095050845970318,
+        "paired_wins": 18
+      }
+    }
+  },
+  "full_v6_by_seed_stage": {
+    "all": {
+      "hacsmv4_two_noaux": {
+        "environment_mean_wins": 5,
+        "mean_paired_relative_reduction": 0.003944414969626123,
+        "n_pairs": 25,
+        "paired_wins": 15
+      },
+      "hacssmv6_noaux": {
+        "environment_mean_wins": 5,
+        "mean_paired_relative_reduction": 0.003944414969626123,
+        "n_pairs": 25,
+        "paired_wins": 15
+      },
+      "hacssmv6_static": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.012493664253165653,
+        "n_pairs": 25,
+        "paired_wins": 12
+      },
+      "ssm": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.05187175345373103,
+        "n_pairs": 25,
+        "paired_wins": 19
+      }
+    },
+    "completion": {
+      "hacsmv4_two_noaux": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.005108430987445288,
+        "n_pairs": 10,
+        "paired_wins": 7
+      },
+      "hacssmv6_noaux": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.005108430987445288,
+        "n_pairs": 10,
+        "paired_wins": 7
+      },
+      "hacssmv6_static": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": -0.007290097859334518,
+        "n_pairs": 10,
+        "paired_wins": 5
+      },
+      "ssm": {
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.05271492648575403,
+        "n_pairs": 10,
+        "paired_wins": 7
+      }
+    },
+    "pilot": {
+      "hacsmv4_two_noaux": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.0031684042910800126,
+        "n_pairs": 15,
+        "paired_wins": 8
+      },
+      "hacssmv6_noaux": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.0031684042910800126,
+        "n_pairs": 15,
+        "paired_wins": 8
+      },
+      "hacssmv6_static": {
+        "environment_mean_wins": 2,
+        "mean_paired_relative_reduction": -0.015962708515719744,
+        "n_pairs": 15,
+        "paired_wins": 7
+      },
+      "ssm": {
+        "environment_mean_wins": 4,
+        "mean_paired_relative_reduction": 0.05130963809904903,
+        "n_pairs": 15,
+        "paired_wins": 12
+      }
+    }
+  },
+  "interpretation": [
+    "The dense detached objective produces a small positive effect over the exact no-auxiliary anchor, but 0.39% misses the predeclared 1% requirement.",
+    "The V4-two, V6-noaux, and auxiliary-no-action controls are tensor- and rollout-identical in every matched cell; the no-action auxiliary has exactly zero gradient and therefore contributes no optimization effect.",
+    "Full V6 clears the SSM performance clauses, but static correction is stronger on three environments and beats full V6 overall, so the dynamic-gate hierarchy claim is not supported.",
+    "The action path and joint read remain important because deleting actions or using a single state causes large, consistent regressions; this is mechanism evidence rather than evidence for the dense objective.",
+    "Pilot and completion directions agree and convergence passes, so the failed screen is not explained by the two added seeds or the declared final-window convergence check."
+  ],
+  "key_primary_contrasts": {
+    "full_v6_vs_noaux": {
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.003944414969626123,
+      "n_pairs": 25,
+      "paired_wins": 15
+    },
+    "full_v6_vs_ssm": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.05187175345373103,
+      "n_pairs": 25,
+      "paired_wins": 19
+    },
+    "full_v6_vs_static": {
+      "environment_mean_wins": 2,
+      "mean_paired_relative_reduction": -0.012493664253165653,
+      "n_pairs": 25,
+      "paired_wins": 12
+    },
+    "full_v6_vs_v4_two_noaux": {
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.003944414969626123,
+      "n_pairs": 25,
+      "paired_wins": 15
+    }
+  },
+  "limitations": [
+    "All contrasts reuse adaptive-development trajectories and the exact black-sentinel corruption.",
+    "The study measures latent prediction only; it has no simulator-state metric or executed-control return.",
+    "The strongest observed static variant was selected descriptively after opening the grid and needs a separately frozen untouched test."
+  ],
+  "locked_final_decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "locked_pilot_decision": "NO_GO",
+  "primary_input_sha256": {
+    "convergence.csv": "1a88050944c3008abe552e2e4dce14cc7dddf8ffdf5f1afc31b9824ec429f238",
+    "decision.json": "21314a36ae09077ac89f0c097912eaab8479b406fa9161cd8312f194516f2fb4",
+    "grouped.csv": "6ee1ca4c72c72974b44ac784afa0f4d9683af09237b71d5c57f8b57266fc12fd",
+    "hacssm_v6_manifest.json": "915484f69ec78b4dead79a25e5fa096667a4c76034e88338bd46476f6fbc495c",
+    "hacssm_v6_manifest.sha256": "ec3bfbf000ac0228f9750b9a2a22cb267eededce6527a93248ffaad388d22534",
+    "paired_contrasts.csv": "54d69fee26262e178ae23856307f247b6bc6de98b1fbbdca7b79ddbc1a4f8af9",
+    "per_run.csv": "80b368bac7809ec0d3f744a76c3e691bb712299703df59bdb094cbd0bee18f47",
+    "pilot_decision.json": "505acbe662806479930cd1b6542ede03ba055d0d94cf5e173544c6f142d7ecc4",
+    "protocol.json": "25e8a58010637d41c4c8c667766b67953f5712cecd30a4d8956d090b8179ad6a"
+  },
+  "schema_version": 1,
+  "scope": "descriptive post-hoc diagnostics; cannot change the prospective pilot/final decisions",
+  "trigger_v7": true,
+  "wandb_cloud_verification": {
+    "entity": "crlc112358",
+    "project": "lewm-memory-popgym",
+    "study": "hacssm-v6",
+    "verified_at": "2026-06-28T19:38:32.619098+00:00",
+    "verified_complete_epoch_histories": 325,
+    "verified_finished_runs": 325,
+    "verified_rollout_artifacts": 325,
+    "verified_rollout_tables": 325,
+    "verified_rollout_videos": 325
+  }
+}

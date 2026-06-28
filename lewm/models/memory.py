@@ -828,6 +828,143 @@ class HierarchicalActionConditionedMemory(nn.Module):
 HACSMv4Memory = HierarchicalActionConditionedMemory
 
 
+class HierarchicalCounterfactualRecoveryMemory(HierarchicalActionConditionedMemory):
+    """HACSSM-v7 inference memory for hierarchical counterfactual recovery.
+
+    V7 keeps the successful fixed ``tau=(2,8)`` predict/correct hierarchy, but gives each
+    level its own action transition and learns a per-level shrinkage between the exact static
+    and dynamic correction experts::
+
+        static_k  = sigmoid(b_k)
+        dynamic_k = sigmoid(b_k + innovation_t^k)
+        gate_t^k  = (1-rho_k) static_k + rho_k dynamic_k
+
+    ``rho_k=sigmoid(shrink_logits_k)`` is initialized to one half.  The convex gate is useful
+    beyond the V7 objective: V6 found that static correction wins three environments while
+    dynamic correction wins two.  All modes instantiate the same tensors.  ``sharedaction``
+    averages the two level-specific action features before using them, ``noshrink`` fixes
+    ``rho=1``, ``noaction`` zeros the recurrent action features, and ``single`` fixes the read
+    to the medium state.  Other mode names are training-objective controls with identical
+    online inference.
+    """
+
+    MODES = {
+        'dynamic', 'noaux', 'sharedaction', 'noshrink', 'actiononly', 'uniform',
+        'norecovery', 'noaction', 'single',
+    }
+    TAUS = (2.0, 8.0)
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'dynamic',
+                 rms_eps: float = 1e-6):
+        if mode not in self.MODES:
+            raise ValueError(f"unknown HACSSM-v7 mode '{mode}'")
+        parent_mode = mode if mode in {'noaction', 'single'} else 'dynamic'
+        super().__init__(
+            embed_dim=embed_dim, action_dim=action_dim, mode=parent_mode,
+            rms_eps=rms_eps, taus=self.TAUS)
+        self.v7_mode = mode
+
+        # Replace V4's shared A->2D transition by one exactly matched A->(K*2D) tensor.
+        self.W_a = nn.Linear(action_dim, self.K * 2 * embed_dim, bias=False)
+        self.shrink_logits = nn.Parameter(torch.zeros(self.K))
+        nn.init.zeros_(self.W_a.weight)
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return ``2D^2 + 4AD + 2D + 3K`` for K=2."""
+        K = len(cls.TAUS)
+        return (2 * embed_dim * embed_dim + 2 * K * action_dim * embed_dim
+                + 2 * embed_dim + 3 * K)
+
+    def shrinkage(self) -> torch.Tensor:
+        if self.v7_mode == 'noshrink':
+            return torch.ones_like(self.shrink_logits)
+        return torch.sigmoid(self.shrink_logits)
+
+    def _action_prior_unchecked(self, states: torch.Tensor,
+                                action: torch.Tensor) -> torch.Tensor:
+        B = states.shape[0]
+        if self.v7_mode == 'noaction':
+            features = states.new_zeros(B, self.K, 2 * self.embed_dim)
+        else:
+            features = self.W_a(action).view(B, self.K, 2 * self.embed_dim)
+            if self.v7_mode == 'sharedaction':
+                features = features.mean(dim=1, keepdim=True).expand(-1, self.K, -1)
+        d, v = features.chunk(2, dim=-1)
+        normalized = F.layer_norm(states, (self.embed_dim,))
+        delta = torch.tanh(v + d * normalized)
+        beta = self.betas.to(device=states.device, dtype=states.dtype).view(1, self.K, 1)
+        return states + beta * delta
+
+    def _dynamic_gate(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                      prior: torch.Tensor) -> torch.Tensor:
+        dynamic = super()._dynamic_gate(z_t, x_t, prior)
+        static = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand_as(dynamic)
+        rho = self.shrinkage().to(device=z_t.device, dtype=z_t.dtype).view(1, self.K, 1)
+        return (1.0 - rho) * static + rho * dynamic
+
+    def correction_step(self, states: torch.Tensor, z_t: torch.Tensor,
+                        action: torch.Tensor, *, x_t: torch.Tensor = None,
+                        action_override=None, gate_override=None) -> tuple[torch.Tensor, ...]:
+        """Advance by one action and correct from one observation.
+
+        ``x_t`` may be a detached precomputed ``W_x z_t`` during V7 self-supervision,
+        preventing the auxiliary from updating ``W_x`` while retaining gradients to the
+        action and correction parameters.
+        """
+        B, _, _ = self._validate_states(states)
+        if not isinstance(z_t, torch.Tensor) or tuple(z_t.shape) != (B, self.embed_dim):
+            shape = tuple(z_t.shape) if isinstance(z_t, torch.Tensor) else type(z_t).__name__
+            raise ValueError(f'z_t must have shape {(B, self.embed_dim)}, got {shape}')
+        if not z_t.is_floating_point() or not torch.isfinite(z_t).all():
+            raise ValueError('z_t must contain finite floating-point values')
+        if not isinstance(action, torch.Tensor) or tuple(action.shape) != (B, self.action_dim):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(f'action must have shape {(B, self.action_dim)}, got {shape}')
+        if not action.is_floating_point() or not torch.isfinite(action).all():
+            raise ValueError('action must contain finite floating-point values')
+        action = action.to(device=states.device, dtype=states.dtype)
+        z_t = z_t.to(device=states.device, dtype=states.dtype)
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action, 'action_override')
+        prior = self._action_prior_unchecked(states, action)
+        if x_t is None:
+            x_t = self.W_x(z_t)
+        else:
+            if not isinstance(x_t, torch.Tensor) or tuple(x_t.shape) != (B, self.embed_dim):
+                shape = tuple(x_t.shape) if isinstance(x_t, torch.Tensor) else type(x_t).__name__
+                raise ValueError(f'x_t must have shape {(B, self.embed_dim)}, got {shape}')
+            x_t = x_t.to(device=states.device, dtype=states.dtype)
+        if gate_override is None:
+            gate = self._dynamic_gate(z_t, x_t, prior)
+        else:
+            gate = self._coerce_gates(
+                gate_override, B, 1, device=states.device, dtype=states.dtype,
+                name='gate_override')[:, 0]
+        beta = self.betas.to(device=states.device, dtype=states.dtype).view(1, self.K, 1)
+        posterior = prior + beta * gate * (x_t.unsqueeze(1) - prior)
+        return posterior, prior, gate
+
+    def horizons(self) -> Dict[str, float]:
+        result = super().horizons()
+        rho = self.shrinkage().detach()
+        action_heads = self.W_a.weight.detach().view(
+            self.K, 2 * self.embed_dim, self.action_dim)
+        result.update({
+            'rho_fast': float(rho[0]),
+            'rho_medium': float(rho[1]),
+            'action_head_fast_norm': float(action_heads[0].norm()),
+            'action_head_medium_norm': float(action_heads[1].norm()),
+            'action_head_cosine': float(F.cosine_similarity(
+                action_heads[0].reshape(1, -1),
+                action_heads[1].reshape(1, -1), dim=-1)[0]),
+        })
+        return result
+
+
+HCRDv7Memory = HierarchicalCounterfactualRecoveryMemory
+
+
 class HierarchicalActionConditionedSSMMemory(nn.Module):
     """HACSSM-v5: a hard-monotone, action-conditioned two-level SSM memory.
 

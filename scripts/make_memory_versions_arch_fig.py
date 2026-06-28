@@ -33,43 +33,46 @@ def arrow(ax, start, end, label=''):
 
 
 def main() -> None:
-    fig, ax = plt.subplots(figsize=(18, 19.5), dpi=180)
+    fig, ax = plt.subplots(figsize=(18, 23.2), dpi=180)
     fig.patch.set_facecolor('#fbfcfd')
     ax.set_xlim(0, 18)
-    ax.set_ylim(0, 19.5)
+    ax.set_ylim(0, 23.2)
     ax.axis('off')
 
-    ax.text(9, 19.08, 'Learnable-memory architecture map: V1–V6 and tested controls',
+    ax.text(9, 22.83, 'Learnable-memory architecture map: V1–V7 and tested controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
-    ax.text(9, 18.70,
+    ax.text(9, 22.45,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
             'mask shifts, and K/M/τ sweeps are experimental settings.',
             ha='center', fontsize=10.5, color='#607d8b')
 
-    xs = tuple(0.18 + index * 2.97 for index in range(6))
-    width, top_y, top_h = 2.70, 16.18, 2.05
+    xs = tuple(0.12 + index * 2.55 for index in range(7))
+    width, top_y, top_h = 2.28, 19.78, 2.05
     card(ax, xs[0], top_y, width, top_h, 'SMT-v1',
          r'value-gated EMA write' + '\n' + r'$i_t\odot z_t$; old state still decays' + '\n'
-         + 'softmax horizon read', '#e3f2fd', body_size=7.2)
+         + 'softmax horizon read', '#e3f2fd', body_size=6.7)
     card(ax, xs[1], top_y, width, top_h, 'SMT-v2',
          'same erasing write\nindependent sigmoid reads\n'
-         'larger mass; gates become static', '#dcedc8', body_size=7.2)
+         'larger mass; gates become static', '#dcedc8', body_size=6.7)
     card(ax, xs[2], top_y, width, top_h, 'SMT-v3-W',
          'whole-update scalar gate\n$g_t=0$ exactly freezes all EMA banks\n'
-         'global simplex; action-blind', '#fff3e0', body_size=7.2)
+         'global simplex; action-blind', '#fff3e0', body_size=6.7)
     card(ax, xs[3], top_y, width, top_h, 'HACSM-v4',
          'three belief levels $\\tau=\\{2,8,32\\}$\naction prior $p_t=T(m_{t-1},a_{t-1})$\n'
-         'selective correction + fixed auxiliary', '#e1bee7', body_size=6.9)
+         'selective correction + fixed auxiliary', '#e1bee7', body_size=6.4)
     card(ax, xs[4], top_y, width, top_h, 'HACSSM-v5',
          'two fast/medium states\nhard-monotone channel gains\n'
-         'action predict/correct\nboundary-only shaping', '#d1c4e9', body_size=6.9)
+         'action predict/correct\nboundary-only shaping', '#d1c4e9', body_size=6.4)
     card(ax, xs[5], top_y, width, top_h, 'HACSSM-v6',
          'fixed scalar $\\tau=\\{2,8\\}$ anchor\ndense visible-endpoint\n'
-         'same-level action consistency', '#c5cae9', body_size=7.1)
-    for index in range(5):
-        arrow(ax, (xs[index] + width, 17.20), (xs[index + 1], 17.20))
+         'same-level action consistency', '#c5cae9', body_size=6.5)
+    card(ax, xs[6], top_y, width, top_h, 'HACSSM-v7',
+         'level-specific action heads\nstatic/dynamic gate shrinkage\n'
+         'EMA counterfactual recovery', '#b39ddb', body_size=6.4)
+    for index in range(6):
+        arrow(ax, (xs[index] + width, 20.80), (xs[index + 1], 20.80))
 
-    ax.text(0.35, 15.78, 'Pre-V4 architecture controls used in the mechanism studies',
+    ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v3_controls = (
         ('scaled-softmax SMT', 'V1 softmax route × K/2\nmatched initial read mass\nisolates V1→V2 amplitude', '#e1f5fe'),
@@ -78,10 +81,10 @@ def main() -> None:
         ('V3 hard visibility', 'known black/visible mask\nforces freeze/update timing\nnominal parameter control', '#f3e5f5'),
     )
     for index, (title, body, color) in enumerate(v3_controls):
-        card(ax, 0.35 + index * 4.42, 14.00, 4.02, 1.42, title, body, color,
+        card(ax, 0.35 + index * 4.42, 17.60, 4.02, 1.42, title, body, color,
              title_size=10.2, body_size=7.6)
 
-    ax.text(0.35, 13.62, 'V4 controls and the slow-removal bridge into V5/V6',
+    ax.text(0.35, 17.22, 'V4 controls and the slow-removal bridge into V5/V6',
             fontsize=11.5, fontweight='bold', color='#37474f')
     controls = (
         ('full', 'dynamic correction\n+ action prior\n+ hierarchical auxiliary', '#d1c4e9'),
@@ -92,10 +95,10 @@ def main() -> None:
         ('two-level no-aux', '$\\tau=\\{2,8\\}$ only\nfixed scalar gains\nisolates slow removal', '#e0f2f1'),
     )
     for index, (title, body, color) in enumerate(controls):
-        card(ax, 0.20 + index * 2.97, 11.82, 2.70, 1.50, title, body, color,
+        card(ax, 0.20 + index * 2.97, 15.42, 2.70, 1.50, title, body, color,
              title_size=9.3, body_size=6.8)
 
-    ax.text(0.35, 11.43, 'V5 parameter-matched mechanism variants (34,820 memory parameters)',
+    ax.text(0.35, 15.03, 'V5 parameter-matched mechanism variants (34,820 memory parameters)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v5_controls = (
         ('full', 'learned gains + action\ndynamic correction\nboundary shaping', '#d1c4e9'),
@@ -107,10 +110,10 @@ def main() -> None:
         ('band-SSM', '$g=1$, action 0\nlearned two-state spectrum\nstate-matched control', '#eceff1'),
     )
     for index, (title, body, color) in enumerate(v5_controls):
-        card(ax, 0.15 + index * 2.55, 9.58, 2.30, 1.48, title, body, color,
+        card(ax, 0.15 + index * 2.55, 13.18, 2.30, 1.48, title, body, color,
              title_size=8.4, body_size=6.2)
 
-    ax.text(0.35, 9.18,
+    ax.text(0.35, 12.78,
             'V6 fixed-rate inference anchor + complete training-objective/mechanism map '
             '(34,564 memory parameters)',
             fontsize=11.5, fontweight='bold', color='#37474f')
@@ -128,10 +131,30 @@ def main() -> None:
     )
     for index, (title, body, color) in enumerate(v6_controls):
         row, col = divmod(index, 5)
-        card(ax, 0.20 + col * 3.55, 7.40 - row * 1.72, 3.22, 1.42,
+        card(ax, 0.20 + col * 3.55, 11.00 - row * 1.72, 3.22, 1.42,
              title, body, color, title_size=9.0, body_size=6.7)
 
-    ax.text(0.35, 5.28, 'External controls and historical memory families', fontsize=11.5,
+    ax.text(0.35, 8.88,
+            'V7 counterfactual-recovery inference/objective map '
+            '(36,102 trainable memory parameters)',
+            fontsize=11.5, fontweight='bold', color='#37474f')
+    v7_controls = (
+        ('full', 'level-specific action\nlearned gate shrinkage\nbridge + recovery', '#b39ddb'),
+        ('no-aux', 'same online inference\nauxiliary weight = 0', '#c8e6c9'),
+        ('shared-action', 'average both projected\naction heads per step', '#ffecb3'),
+        ('no-shrink', '$\\rho_f=\\rho_m=1$\ndynamic correction only', '#f8bbd0'),
+        ('action-only', 'V6-style action rollout\nno recovery correction', '#ffe0b2'),
+        ('uniform', 'both levels use\nh={1,2,4,8}', '#e1f5fe'),
+        ('no-recovery', 'counterfactual bridge only\nremove restored-frame loss', '#f3e5f5'),
+        ('no-action', 'actions zeroed in\ninference + auxiliary', '#fff3e0'),
+        ('single', 'medium-only read\nboth states/objectives retained', '#b2ebf2'),
+    )
+    for index, (title, body, color) in enumerate(v7_controls):
+        row, col = divmod(index, 5)
+        card(ax, 0.20 + col * 3.55, 7.10 - row * 1.72, 3.22, 1.42,
+             title, body, color, title_size=9.0, body_size=6.7)
+
+    ax.text(0.35, 4.98, 'External controls and historical memory families', fontsize=11.5,
             fontweight='bold', color='#37474f')
     baselines = (
         ('none', 'short predictor only\nno long-range channel'),
@@ -143,10 +166,10 @@ def main() -> None:
         ('OC-SMT', '$M=28$ EMA basis\nhard-concrete reads'),
     )
     for index, (title, body) in enumerate(baselines):
-        card(ax, 0.15 + index * 2.55, 3.52, 2.30, 1.42, title, body, '#eceff1',
+        card(ax, 0.15 + index * 2.55, 3.22, 2.30, 1.42, title, body, '#eceff1',
              title_size=9.0, body_size=6.8, edge='#607d8b', linewidth=1.2)
 
-    card(ax, 0.35, 1.83, 17.30, 1.12, 'Shared leakage-safe V5/V6 comparison contract',
+    card(ax, 0.35, 1.53, 17.30, 1.12, 'Shared leakage-safe V5/V6/V7 comparison contract',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
          'first-post-balanced objective • final epoch, no best-checkpoint selection\n'
@@ -154,17 +177,17 @@ def main() -> None:
          'trace / paired video / hashed artifact',
          '#e8eaf6', title_size=10.5, body_size=7.6, linewidth=1.4)
 
-    ax.text(9, 1.35,
-            'V5 complete: 5 × 12 × 5 = 300 runs.  Prospective V6: 5 × 13 × 5 = 325 runs; '
-            'all five seeds run regardless of the immutable three-seed screen (§7.8).',
+    ax.text(9, 1.05,
+            'V5 complete: 300 runs.  V6 complete: 325 runs.  '
+            'Prospective V7: 5 × 13 × 5 = 325 runs (§7.9).',
             ha='center', fontsize=8.8, color='#607d8b')
-    ax.text(9, 0.96,
+    ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
-    ax.text(9, 0.57,
-            'V6 full/no-aux/auxiliary controls share exact inference; objective variants are '
-            'architectural training interventions, not new online state transitions.',
+    ax.text(9, 0.27,
+            'V7 full/no-aux/objective controls share online inference; its EMA teacher is '
+            'training-only, frozen, and excluded from the trainable-memory count.',
             ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

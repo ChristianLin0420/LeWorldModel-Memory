@@ -1,6 +1,6 @@
-# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM-v4–v6
+# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM-v4–v7
 
-*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (V1/V2), `SelectiveUpdateMemoryV3`, `HierarchicalActionConditionedMemory` (HACSM-v4 and the fixed-rate V6 inference anchor), and `HierarchicalActionConditionedSSMMemory` (HACSSM-v5) in `lewm/models/memory.py`. Status as of 2026-06-29: every reported result through V5 is complete. The 300-cell V5 study returned immutable pilot `NO_GO`; full V5 is 3.27% worse than SSM, while the fixed-rate V4-two/no-aux bridge is the strongest V1–V5 development-grid design (§7.7). V6 is the prospectively frozen 325-cell follow-up (§2.5, §7.8): it preserves that exact inference anchor and tests dense, visible-endpoint hierarchical action consistency. Every cell logs online W&B training/validation epochs and a fixed evaluation rollout. All five seeds run regardless of the three-seed screen, and any final result below the frozen overall-best bar automatically triggers V7. No V6 performance claim is made before that grid completes.*
+*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (V1/V2), `SelectiveUpdateMemoryV3`, `HierarchicalActionConditionedMemory` (HACSM-v4 and the fixed-rate V6 inference anchor), `HierarchicalActionConditionedSSMMemory` (HACSSM-v5), and `HierarchicalCounterfactualRecoveryMemory` (HACSSM-v7/HCRD) in `lewm/models/memory.py`. Status as of 2026-06-29: every reported result through V6 is complete. The 325-cell V6 study returned immutable pilot `NO_GO` and locked final `PILOT_NO_GO_FINAL_DESCRIPTIVE`: full V6 beats SSM by 5.19% but improves only .39% over its inference-identical no-auxiliary anchor and loses 1.25% to static correction (§7.8). Static V6 is the strongest observed V1–V6 development-grid variant, but remains a post-open selection with task regressions. V7 is the prospectively specified response (§2.6): it tests level-specific action dynamics, learned shrinkage between the V6 static/dynamic correction experts, and visible-only counterfactual recovery distillation. No V7 performance claim is made before its frozen grid completes.*
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -15,12 +15,12 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 
 **Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
 
-**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5 confirms that action transport and a joint two-state read matter, but its wide learned channel spectrum and boundary-only auxiliary regress; full V5 loses to SSM and the fixed `τ={2,8}` no-aux bridge (§7.7). V6 therefore restores that best fixed-rate anchor and asks a narrower prospective question: can dense, causal posterior-state consistency improve the action dynamics without using hidden targets (§2.5, §7.8)? The defensible contribution remains a controlled study of when recurrent/action/selective paths are used—not a generally superior selective hierarchy or automatic memory sizing.
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5 confirms that action transport and a joint two-state read matter, but its wide learned channel spectrum and boundary-only auxiliary regress; full V5 loses to SSM and the fixed `τ={2,8}` no-aux bridge (§7.7). V6 restores that fixed-rate anchor and beats SSM, but dense action-only posterior consistency adds only .39%, degrades deep-blackout prediction, and loses to its static-correction control (§7.8). V7 therefore targets those two diagnosed failures: it learns a per-level convex choice between static and dynamic correction and trains on counterfactual occlusion plus restored-frame recovery inside originally visible runs (§2.6). The defensible contribution remains a controlled study of when recurrent/action/selective paths are used—not a generally superior selective hierarchy or automatic memory sizing.
 
 ## 2. The architecture
 
 ![Architecture map of tested memory designs](figures/fig_memory_versions_arch.png)
-*Figure 1. Consolidated map of the V1→V6 evolution, architecture-changing V3 controls, V4 controls, every V5 and V6 mechanism variant, and external/historical memory families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. The completed V5 grid (§7.7) and prospective 13-design V6 grid (§7.8) share the leakage-safe comparison contract; historical cards retain their documented protocols.*
+*Figure 1. Consolidated map of the V1→V7 evolution, architecture-changing V3 controls, V4 controls, every V5, V6, and V7 mechanism variant, and external/historical memory families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. The completed V5/V6 grids (§7.7–7.8) and prospective 13-design V7 grid share the leakage-safe comparison contract; historical cards retain their documented protocols.*
 
 ### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
 
@@ -82,7 +82,8 @@ The architectural distinction is easiest to see side by side:
 | **SMT-v3-W** | scalar gate multiplies the whole EMA update; `g_t=0` is exact freeze | one global simplex + RMS-normalized read | 16,647 | gate is causal and dynamic, but specializes to the exact black sentinel and returns `NO_GO` |
 | **HACSM-v4** | action prior advances three belief states, then a per-level gate corrects from the observation | one global simplex over `τ={2,8,32}` + RMS-normalized read | 34,566 | actions are causally necessary and V4 beats V3, but SSM wins 4/5 means and the fixed auxiliary fails |
 | **HACSSM-v5** | action prior + correction use hard-monotone learned per-channel gains over two states | one global simplex over fast/medium states + RMS-normalized read | 34,820 | complete: action/joint read matter, but wide channel spectra and boundary shaping regress; full V5 loses to SSM |
-| **HACSSM-v6** | exact V4-two fixed scalar `τ={2,8}` predict/correct recurrence; dense same-level consistency is training-only | one global simplex over fast/medium states + RMS-normalized read | 34,564 | prospective: restores the best V1–V5 inference anchor and isolates dense hierarchical action-consistency choices |
+| **HACSSM-v6** | exact V4-two fixed scalar `τ={2,8}` predict/correct recurrence; dense same-level consistency is training-only | one global simplex over fast/medium states + RMS-normalized read | 34,564 | complete: beats SSM, but the objective adds only .39% over no-aux and full V6 loses to static correction |
+| **HACSSM-v7 / HCRD** | fixed `τ={2,8}`, level-specific action heads, learned static/dynamic gate shrinkage; EMA counterfactual recovery is training-only | one global simplex over fast/medium states + RMS-normalized read | 36,102 | prospective: directly tests the action-sharing, static/dynamic, action-only-target, recovery, hierarchy, action, and joint-read mechanisms diagnosed by V6 |
 
 V3's simplification is deliberate: it removes content-dependent horizon routing so its experiment asks one clean question—**does input-conditioned update timing help beyond an equally parameterized static gate?** HACSM-v4 retains the global read but adds action prediction, a three-level hierarchy, and self-supervision. Sections 7.5–7.6 give the matched controls and results.
 
@@ -150,7 +151,7 @@ The parameter-matched V5 controls are `static`, `noaction`, `fixedbeta_noaux`, `
 ### 2.5 HACSSM-v6: dense hierarchical action consistency on the fixed-rate anchor
 
 ![HACSSM-v6 architecture](figures/fig_hacssm_v6_arch.png)
-*Figure 5b. Prospective HACSSM-v6 architecture and complete variant map. Online inference is exactly the strongest V1–V5 development-grid design: two fixed scalar levels `τ={2,8}`, causal action predict/correct updates, and a joint global read. V6 changes the training signal, not the default inference transition. Dense action-only rollouts match same-level online posterior states at originally visible endpoints; source and target are stop-gradient by default, the loss is scale-normalized, and hidden clean blackout targets never enter the objective.*
+*Figure 5b. Frozen prelaunch HACSSM-v6 architecture and complete variant map. Online inference is exactly the strongest V1–V5 development-grid design: two fixed scalar levels `τ={2,8}`, causal action predict/correct updates, and a joint global read. V6 changes the training signal, not the default inference transition. Dense action-only rollouts match same-level online posterior states at originally visible endpoints; source and target are stop-gradient by default, the loss is scale-normalized, and hidden clean blackout targets never enter the objective. The completed result and mechanism audit are in §7.8.*
 
 V5 supplies two unusually direct constraints on the next design. Replacing action transport or the joint fast/medium read loses about 11% in every paired cell, so V6 keeps both. Conversely, even frozen V5 channel spectra lose 7.30% to two fixed scalar rates, and V5's boundary-only auxiliary hurts all five environment means, so V6 restores the exact `hacsmv4_two_noaux` inference equations with `β_k=1-exp(-1/τ_k)` and `τ_f=2,τ_m=8`:
 
@@ -191,25 +192,75 @@ Every V6 variant is parameter-matched at `D=128,A=6` (34,564 memory parameters a
 
 This is self-supervised in the narrow, auditable sense that targets come from the model's own causal online posterior and require no labels, simulator state, or hidden clean observations. It is not yet evidence for general semantic hierarchy: the training/evaluation corruption family remains the same exact black sentinel, and only the prospective results and untouched follow-ups can support a stronger claim.
 
+### 2.6 HACSSM-v7 / HCRD: hierarchical counterfactual recovery distillation
+
+![HACSSM-v7 architecture](figures/fig_hacssm_v7_arch.png)
+*Figure 5c. Prospectively specified HACSSM-v7 architecture and complete variant map. V7 keeps the fixed `τ={2,8}` two-state hierarchy and joint read, gives each level its own action head, and learns a per-level convex shrinkage between V6's exact static and dynamic correction experts. Its training-only EMA teacher sees only the original occluded trajectory. The student synthesizes black spans wholly inside originally visible runs and matches both the bridge state and the posterior after one restored visible frame. Every V7 variant is shown; no V7 performance is implied by the diagram.*
+
+V6 supplies a specific failure diagnosis rather than a license for an unconstrained redesign. Actions and the two-level read are essential, but the action-only posterior target is mismatched: full V6 gains only .39% over its inference-identical no-auxiliary anchor, and using real actions makes the held-out consistency objective worse than zero actions. Static correction is the strongest V1–V6 development-grid design, while dynamic correction remains better on two task means. V7 therefore preserves the fixed rates and read, separates the fast/medium action maps, and makes the static-versus-dynamic choice a learned **shrinkage** rather than a single global architectural decision.
+
+For level `k∈{fast,medium}`, the online student uses
+
+```text
+level action       (d^k_{t-1},v^k_{t-1}) = W_a^k a_{t-1}
+action prior       p_t^k = m_{t-1}^k + β_k tanh(v^k_{t-1}+d^k_{t-1}⊙LN(m_{t-1}^k))
+static expert      s_k = sigmoid(b_k)
+dynamic expert     d_t^k = sigmoid(b_k + (w_z^T LN(z_t)+w_e^T LN(x_t-p_t^k))/sqrt(D))
+shrinkage          ρ_k = sigmoid(c_k)
+correction gate    g_t^k = (1-ρ_k)s_k + ρ_k d_t^k
+posterior          m_t^k = p_t^k + β_k g_t^k (x_t-p_t^k)
+```
+
+The two scalar `ρ_k` values initialize at `.5`. Thus `ρ_k→0` exactly recovers static correction and `ρ_k→1` recovers the dynamic V6 gate, while intermediate values regularize the input-conditioned innovation toward the stable expert. The `noshrink` control fixes both values to one. Level-specific `W_a^k` heads allow fast and medium dynamics to specialize; the `sharedaction` control averages their projected features before either transition. The rates remain fixed at `β_k=1-exp(-1/τ_k)` for `τ={2,8}`, and the read remains the joint global simplex used by V4-two and V6.
+
+The training-only objective creates deterministic counterfactual gaps without touching a hidden clean target. Let `M_t` be the original target-valid mask. For **every** source/horizon window `[t,t+h+1]` with `M_{t:t+h+2}=True`, the student starts from `stopgrad(m_t)`, applies the observed actions, replaces the next `h` visible latents by the canonical black latent already present in the corrupted input, and then consumes the actual visible latent at `t+h+1`. A momentum-`.99` EMA copy of the memory module processes only the original occluded input and supplies stop-gradient same-level posterior targets:
+
+```text
+student source     r_0 = stopgrad(m_t)
+counterfactual     r_j = Correct(T(r_{j-1},a_{t+j-1}), z_black),     j=1...h
+bridge loss        L_bridge = SmoothL1(LN(r_h^k), LN(stopgrad(m^k_teacher,t+h)))
+visible recovery   u = Correct(T(r_h,a_{t+h}), z_{t+h+1})
+recovery loss      L_recovery = SmoothL1(LN(u^k), LN(stopgrad(m^k_teacher,t+h+1)))
+hierarchy          fast: h={1,2}; medium: h={4,8}
+```
+
+Eligibility is computed from the **original** mask before synthetic corruption, so these windows have zero overlap with the real blackout. The black latent is the mean of the actually observed corrupted blackout inputs, not a clean frame. The teacher never receives the counterfactual student sequence, is frozen with respect to backpropagation, and never enters online inference. `W_x` outputs are detached inside the auxiliary, so its gradients are restricted to the action, correction-gate, and shrinkage parameters; `W_x`, `W_o`, and the route remain primary-objective only. The weight reuses V6's locked `.02` schedule through epoch 40, cosine decay to zero at epoch 100, and zero thereafter. This is self-supervised occlusion/recovery distillation, but it remains a synthetic missingness objective rather than evidence of semantic hierarchy or control performance.
+
+All nine V7 modes instantiate the same student tensors and have 36,102 trainable memory parameters at `D=128,A=6`; the frozen EMA teacher is checkpointed but excluded from that count and from inference:
+
+| design | exact change from full V7 |
+|---|---|
+| `hacssmv7` | level-specific action heads, learned static/dynamic shrinkage, hierarchical bridge and restored-frame recovery |
+| `hacssmv7_noaux` | identical online inference and computed diagnostics; effective auxiliary weight forced to zero |
+| `hacssmv7_sharedaction` | average the two projected action heads before applying either level transition |
+| `hacssmv7_noshrink` | fix `ρ_f=ρ_m=1`, recovering dynamic-only correction |
+| `hacssmv7_actiononly` | replace counterfactual correction/recovery with the V6-style action-only bridge target |
+| `hacssmv7_uniform` | assign every horizon `{1,2,4,8}` to both levels |
+| `hacssmv7_norecovery` | retain the counterfactual bridge loss but remove the restored-frame recovery term |
+| `hacssmv7_noaction` | zero recurrent action features in online inference and the auxiliary |
+| `hacssmv7_single` | fix the inference read to medium only while retaining both states and both-level objectives |
+
+The frozen comparison ladder uses four anchors—SSM, V4-two/no-aux, full V6, and static V6—plus these nine V7 designs, for `5 environments × 13 designs × 5 seeds = 325` required cells. Every cell retains 200 online W&B epoch records and a fixed evaluation-rollout table, paired video, and hashed artifact. These are prospective protocol facts; results belong in §7.9 only after the producer and audit complete.
+
 ## 3. Why it is scalable
 
-- **Linear time / memory.** Each bank/state is a diagonal recurrence: `O(L·K·D)` with `K` small (V5/V6 use `K=2`). V6's dense training objective adds four bounded action-rollout horizons but no `O(L²)` attention.
+- **Linear time / memory.** Each bank/state is a diagonal recurrence: `O(L·K·D)` with `K` small (V5–V7 use `K=2`). V6 adds bounded action rollouts; V7 adds bounded counterfactual predict/correct windows and a training-only EMA memory copy. Neither introduces `O(L²)` attention.
 - **Parallelizable in principle.** The recurrence `m^k_t = (1−a_k)m^k_{t−1} + a_k u_t` admits an associative scan. The current code uses a Python sequential scan for `L=32`; no parallel implementation or long-sequence benchmark exists yet.
-- **Explicit hierarchy with bounded state.** SMT-v1–v3 can be stacked by depth; V4 carries three fixed-rate belief levels, V5 carries two learned-rate levels with hard per-channel ordering, and V6 returns to two fixed scalar-rate levels while assigning different self-supervised horizons during training. None currently has a parallel implementation or long-sequence scaling benchmark.
+- **Explicit hierarchy with bounded state.** SMT-v1–v3 can be stacked by depth; V4 carries three fixed-rate belief levels, V5 carries two learned-rate levels with hard per-channel ordering, and V6/V7 use two fixed scalar-rate levels with different self-supervised horizons. V7 additionally specializes action heads and shrinkage by level. None currently has a parallel implementation or long-sequence scaling benchmark.
 - **Constant recurrent state in streaming form.** The recurrence needs `K·D` state regardless of sequence length. The current training implementation materializes the full sequential scan and its activations; the claimed constant state is algorithmic/streaming, not a measured peak-memory result for this code path.
 
 ## 4. Relation to prior work and revised positioning
 
 | Method | Decay/timescale | Input-dependent? | Our difference |
 |---|---|---|---|
-| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | V1–V4 and V6 fix rate bases; V5 learns channel gains but not token-dependent `Δ`, so neither our failed global scalar nor V5 tests/refutes Mamba selectivity |
+| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | V1–V4 and V6/V7 fix rate bases; V5 learns channel gains but not token-dependent `Δ`, so neither our failed global scalar nor V5 tests/refutes Mamba selectivity |
 | **Mega** (arXiv:2209.10655) | learned multi-dim EMA coefficients | no (static EMA) | V5 is closest in learned channel gains, but adds action prediction, correction gates, hard fast/medium ordering, and explicit causal interventions |
 | **HGRN2** (arXiv:2404.07904) | learned data-dependent decay, monotone by depth | yes | V5 enforces monotonicity between two within-layer states, while its gains are global parameters rather than token-dependent depth bounds |
-| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | our explicit recurrent states expose action/gate/rate counterfactuals; V5 learns gains, while V6 fixes two gains and tests training-only action consistency; both routes remain global |
+| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | our explicit recurrent states expose action/gate/rate counterfactuals; V5 learns gains, V6 fixes two gains, and V7 adds action-head/gate shrinkage plus training-only counterfactual recovery; all routes remain global |
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly separates an explicit black token from visible inputs (§7.5). V4 adds a genuine action-conditioned predict/correct path, but its slow level and fixed auxiliary fail and it trails SSM (§7.6). V5's learned spectrum and boundary shaping do not improve the strongest fixed-rate bridge (§7.7). V6 is therefore an objective study on that fixed-rate inference anchor: dense posterior-state action consistency is a familiar self-distillation/filtering hybrid whose scientific value depends on its predeclared controls, not architectural novelty alone. The ICLR audit (§10) continues to treat the contribution as diagnostic unless the prospective grid and untouched task-level tests succeed.
+**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly separates an explicit black token from visible inputs (§7.5). V4 adds a genuine action-conditioned predict/correct path, but its slow level and fixed auxiliary fail and it trails SSM (§7.6). V5's learned spectrum and boundary shaping do not improve the strongest fixed-rate bridge (§7.7). V6's dense posterior-state action consistency is a controlled negative objective result: the action/joint-read mechanisms survive, but the auxiliary barely moves the inference-identical anchor and static correction wins (§7.8). V7 is a prospective self-distillation/filtering hybrid designed around that diagnosis, not evidence of architectural novelty or general hierarchy by itself. The ICLR audit (§10) continues to treat the contribution as diagnostic unless the frozen grid and untouched task-level tests succeed.
 
 ## 5. Interpretability — little observed switching in the synthetic tasks
 
@@ -243,13 +294,14 @@ Across every individual intervention and checkpoint, the largest absolute valida
 
 1. **Headline comparison — complete.** `none` vs fixed `multi` vs SMT was run on the four synthetic memory environments, including harder interference variants. SMT does not consistently beat `multi` (§7).
 2. **Scalability — not established.** The current scan is sequential and was not benchmarked at `L∈{64,128}`. The dense basis-size factorial is complete, but it is a quality—not wall-clock or memory-scaling—study (§9.4).
-3. **Selectivity and mechanism ablations — complete through V5; V6 frozen.** Router mass matching, causal gate replacement, static/dynamic and old/new-recurrence controls, hard visibility, shifted masks, L0 cardinality, action/no-aux/single-level controls, and memory-only action interventions were tested. V5 adds learned/frozen-rate and boundary-objective controls; V6 prospectively adds dense-objective hierarchy, detach, and action controls (§7.5–7.8). A competitively tuned Mamba-style learned-`Δ` baseline remains undone.
-4. **Router/update/action diagnostics — complete through V5.** SMT-v2 gates are nearly static (§5); V3 gates are black-sentinel selective (§7.5). V4 adds a genuinely used action path: cross-episode blackout-action replacement raises first-post MSE 12.46% while no-action/SSM controls are invariant. V5 reproduces the importance of action and a two-level read in all 25 paired cells, while its wide spectrum and boundary auxiliary fail (§7.7).
+3. **Selectivity and mechanism ablations — complete through V6; V7 frozen.** Router mass matching, causal gate replacement, static/dynamic and old/new-recurrence controls, hard visibility, shifted masks, L0 cardinality, action/no-aux/single-level controls, and memory-only action interventions were tested. V5 adds learned/frozen-rate and boundary-objective controls; V6 completes dense-objective hierarchy, detach, and action controls; V7 prospectively adds action-head, shrinkage, recovery, and horizon controls (§7.5–7.9). A competitively tuned Mamba-style learned-`Δ` baseline remains undone.
+4. **Router/update/action diagnostics — complete through V6.** SMT-v2 gates are nearly static (§5); V3 gates are black-sentinel selective (§7.5). V4 adds a genuinely used action path: cross-episode blackout-action replacement raises first-post MSE 12.46% while no-action/SSM controls are invariant. V5 reproduces the importance of action and a two-level read in all 25 paired cells. V6 repeats those structural results while showing that its action-only consistency target has little primary effect and that static correction is stronger on this grid (§7.7–7.8).
 5. **Simulator/robotic diagnostic — complete, with a narrower outcome.** The old self-latent comparison was integrity-corrected but remains invalid across independently learned coordinate systems (§7.1). A new fixed-DINO, paired-clean-target factorial removes that flaw and evaluates shifted masks (§7.2); it is an offline latent-prediction diagnostic, not robot-control performance.
 6. **Optimization-budget and V3 factorial — complete.** The 125-cell 100-epoch audit shows the old 30-epoch ranking was undertrained and still not converged. The subsequent matched 225-cell, 200-epoch V3 grid, 900 mask evaluations, and 100 gate audits are complete and return `NO_GO` (§7.2, §7.5).
 7. **Causal-predictor V4 pilot — complete and stopped prospectively.** A four-run normalization calibration selected batch-independent `predictor_norm=none`; the 135-cell V4 pilot and post-decision mask/gate/action/level diagnostics are complete. V4 beats V3 but not SSM, and the auxiliary ablation is negative, so the locked protocol did not launch its 165-run expansion (§7.6).
 8. **Learned-rate V5 all-environment study — complete.** All 300 cells, 60,000 epoch records, and 300 fixed evaluation-rollout packages completed with online W&B receipts. The immutable pilot and final descriptive label are negative; the fixed-rate V4-two/no-aux bridge remains strongest (§2.4/§7.7).
-9. **Dense self-supervised V6 study — prospectively frozen.** The exact fixed-rate inference anchor, ten V6 variants, three historical/baseline anchors, 195-cell immutable pilot, required 130-cell completion, online W&B rollout contract, and automatic V7 trigger are specified before launch (§2.5/§7.8). No V6 result enters this document until the committed 325-cell producer completes.
+9. **Dense self-supervised V6 study — complete.** All 325 cells, 65,000 online W&B epoch records, fixed-rollout packages, and the provenance/identity audits completed. The pilot and final labels are negative; full V6 beats SSM but not static V6, and the dense auxiliary adds only .39% over no-aux (§2.5/§7.8).
+10. **Counterfactual-recovery V7 study — prospectively frozen.** The four anchors, nine V7 designs, 195-cell immutable pilot, mandatory 130-cell completion, visible-only teacher/student contract, and W&B epoch/rollout requirements are fixed before the official launch (§2.6/§7.9). The excluded engineering smoke checks plumbing only and cannot enter a result table or decision.
 
 ## 7. Initial validation results
 
@@ -727,9 +779,9 @@ The most defensible V5 conclusions are therefore narrow:
 
 The locked primary files remain `protocol.json`, `pilot_{per_run,grouped,paired_contrasts,convergence,decision}.*`, `{per_run,grouped,paired_contrasts,convergence,decision}.*`, and `hacssm_v5_manifest.json` under `outputs/hacssm_v5_shared`. The separate read-only post-hoc package is `v5_posthoc_diagnostics.json`, `v5_posthoc_{contrasts,env_ranks,phase_contrasts,seed_stage,rate_ranges,convergence}.csv`, and `v5_posthoc_diagnostics_manifest.json`. It re-verifies primary hashes before and after writing and cannot alter the locked decision or primary manifest.
 
-### 7.8 HACSSM-v6: prospectively frozen dense self-supervision study
+### 7.8 HACSSM-v6: completed dense self-supervision study
 
-**Status before launch.** No V6 decision-grid metric has been inspected. V5's completed failure analysis is legitimate design input: it identifies fixed `τ={2,8}`, action transport, and a joint read as the strongest tested anchor, while ruling out the V5 spectrum/boundary bundle as the next candidate. Section 2.5, the implementation, the 13-design ladder, every seed, the W&B rollout contract, and the pilot/final/V7 thresholds below are frozen together before any official V6 cell is launched. The default candidate is `hacssmv6`; positive full-versus-no-aux evidence is required because its online architecture is intentionally not new.
+**Frozen prelaunch record (preserved).** At clean producer commit `5ae7de8e31780a3892ebc08f250532fa5661e313`, no V6 decision-grid metric had been inspected. V5's completed failure analysis was legitimate design input: it identified fixed `τ={2,8}`, action transport, and a joint read as the strongest tested anchor, while ruling out the V5 spectrum/boundary bundle as the next candidate. Section 2.5, the implementation, the 13-design ladder, every seed, the W&B rollout contract, and the pilot/final/V7 thresholds below were frozen together before any official V6 cell was launched. The default candidate was `hacssmv6`; positive full-versus-no-aux evidence was required because its online architecture is intentionally not new. Figure 5b remains the frozen architecture and complete variant map; no architecture or threshold below was revised after seeing a V6 result.
 
 One excluded W&B engineering smoke run validated the revised producer before launch: run `8rwtvfir`, study `hacssm-v6-wandb-smoke`, seed 99, batch 600, and 100 epochs. The cloud run finished with exactly 100 epoch rows, the rollout table/video were present, and its rollout artifact SHA-256 was `4fb89a2deb192ad1ea5fdb5b0169dd2701f2de8cde9aa01160daed0ecdf07982`. It is tagged `engineering-smoke,excluded`; its training or evaluation values cannot enter a pilot, final table, design decision, or performance claim.
 
@@ -775,6 +827,127 @@ Any failed pilot clause emits immutable `NO_GO`; seeds `{3,4}` remain descriptiv
 If the pilot passes and the three primary directions—SSM, V4-two, and V6-no-aux—are positive but any stronger clause fails, the analyzer emits `PROMISING_NOT_OVERALL_BEST`; otherwise it emits `NO_GO`. A failed pilot forces `PILOT_NO_GO_FINAL_DESCRIPTIVE` regardless of final estimates. Every label except `OVERALL_BEST_IN_LOCKED_GRID` sets `trigger_v7=true`, so V7 must diagnose the observed V6 failure rather than retune this locked grid post hoc.
 
 Even `OVERALL_BEST_IN_LOCKED_GRID` is only a deterministic development-grid label. The seed-7777 trajectories and exact black corruption are adaptive data, and V6 measures neither simulator state nor executed-control return. It cannot by itself change the ICLR recommendation without untouched rollout seeds/corruptions, task outcomes, tuned contemporary baselines, and uncertainty reporting.
+
+#### Completed execution and locked decision
+
+All **325/325** required cells finished: 195 immutable-pilot cells and 130 mandatory completion cells. W&B project [`crlc112358/lewm-memory-popgym`](https://wandb.ai/crlc112358/lewm-memory-popgym), study `hacssm-v6`, verifies **325 finished runs**, **325 complete 200-epoch histories**, **325 rollout artifacts**, **325 rollout tables**, and **325 paired occluded/clean rollout videos**. The primary manifest contains 5,861 output artifacts and has SHA-256 `915484f69ec78b4dead79a25e5fa096667a4c76034e88338bd46476f6fbc495c`.
+
+The immutable pilot returned **`NO_GO`**. Completion could not rescue that decision, so the locked final label is **`PILOT_NO_GO_FINAL_DESCRIPTIVE`**, `good_enough_for_v6_stop=false`, and `trigger_v7=true`. Full V6 cleared every SSM clause, but failed eight final clauses: the ≥1% effects versus V4-two and V6-noaux, the fast-only win count, all three static-control clauses, uniform's environment-win clause, and the 4/5 locked-grid envelope.
+
+| full V6 reference | paired reduction | wins | environment means |
+|---|---:|---:|---:|
+| SSM | **+5.187%** | 19/25 | 4/5 |
+| V4-two/noaux | +0.394% | 15/25 | 5/5 |
+| V5-noaux | **+7.020%** | 20/25 | 4/5 |
+| inference-identical V6-noaux | +0.394% | 15/25 | 5/5 |
+| auxiliary-no-action | +0.394% | 15/25 | 5/5 |
+| uniform horizons | +0.069% | 13/25 | 2/5 |
+| source-gradient | +0.370% | 13/25 | 3/5 |
+| fast-only | +0.300% | 12/25 | 3/5 |
+| medium-only | +0.093% | 15/25 | 3/5 |
+| no-action inference | **+15.703%** | 21/25 | 4/5 |
+| static correction | **−1.249%** | 12/25 | 2/5 |
+| single-level read | **+8.951%** | 24/25 | 5/5 |
+
+The pilot and completion estimates agree rather than showing a seed-stage reversal:
+
+| seed stage | cells | V6 vs SSM | V6 vs V4-two/V6-noaux |
+|---|---:|---:|---:|
+| pilot, seeds 0–2 | 195 | +5.131%, 12/15, 4/5 env | +0.317%, 8/15, 4/5 env |
+| completion, seeds 3–4 | 130 | +5.271%, 7/10, 3/5 env | +0.511%, 7/10, 4/5 env |
+| all seeds | 325 | +5.187%, 19/25, 4/5 env | +0.394%, 15/25, 5/5 env |
+
+The primary metric gain over V6-noaux is positive in every environment mean but practically concentrated in Ball-in-Cup: Reacher `+.019%`, Ball-in-Cup `+1.418%`, Finger `+.004%`, Cheetah `+.468%`, and OGBench `+.063%`. A 15/25 sign count therefore overstates how broadly meaningful the magnitude is.
+
+#### Full locked-grid ranking
+
+The table below evaluates every predeclared design against the two principal references. Cross-environment entries are means of matched relative reductions; raw PCA MSE is not pooled.
+
+| design | vs SSM | vs V4-two/noaux |
+|---|---:|---:|
+| SSM | 0 | −5.508%, 6/25, 2/5 env |
+| V4-two/noaux | +4.784%, 19/25, 3/5 env | 0 |
+| V5-noaux | −2.180%, 9/25, 2/5 env | −7.476%, 5/25, 1/5 env |
+| V6-noaux | +4.784%, 19/25, 3/5 env | **exact tie** |
+| V6 auxiliary-no-action | +4.784%, 19/25, 3/5 env | **exact tie** |
+| V6 uniform | +5.100%, 19/25, 3/5 env | +.324%, 16/25, 5/5 env |
+| V6 source-gradient | +4.827%, 18/25, 3/5 env | +.008%, 15/25, 2/5 env |
+| V6 fast-only | +4.869%, 18/25, 3/5 env | +.092%, 12/25, 3/5 env |
+| V6 medium-only | +5.077%, 18/25, 3/5 env | +.298%, 15/25, 3/5 env |
+| V6 no-action | −13.447%, 2/25, 0/5 env | −19.982%, 4/25, 1/5 env |
+| **V6 static** | **+6.067%, 19/25, 4/5 env** | **+1.316%, 13/25, 3/5 env** |
+| V6 single | −4.352%, 6/25, 1/5 env | −9.743%, 1/25, 0/5 env |
+| **full V6** | **+5.187%, 19/25, 4/5 env** | +.394%, 15/25, 5/5 env |
+
+No design wins every task. The environment winners are V5-noaux on Reacher (`.815383`), static V6 on Ball-in-Cup (`.893515`), source-gradient V6 on Finger (`1.127008`), static V6 on Cheetah (`.529781`), and static V6 on OGBench (`1.364510`). Full V6 ranks 7th, 2nd, 3rd, 5th, and 3rd respectively and is the envelope winner on **0/5** tasks. By the same environment-win-first descriptive rule used in §7.7, **`hacssmv6_static` is the strongest observed V1–V6 development-grid variant**: it wins three task envelopes, improves over SSM by 6.07%, and improves over V4-two by 1.32%. This is a post-open descriptive selection, not the prospectively nominated candidate or an untouched-test winner; its Finger/Reacher regressions also rule out a universal claim.
+
+#### Phase and mechanism diagnosis
+
+Against SSM, full V6 improves pre-blackout by 3.41%, the blackout transition by **9.37%**, first-post by **5.19%**, recovery by 2.10%, late post-blackout by 4.28%, and all targets by 3.35%, but degrades deep-blackout prediction by **3.14%**. Against the exact no-auxiliary anchor, the differences are much smaller: `+.02%`, `−.29%`, `+.29%`, `+.39%`, `+.10%`, `−.02%`, and `−.02%` over those same phases. Dense consistency therefore moves the boundary metric slightly without improving the trajectory as a whole.
+
+The exact-identity audit makes the causal interpretation unusually clean. For every one of 25 matched environment/seed cells:
+
+- V4-two/noaux and V6-noaux have identical values for all 13 predictive metrics, identical canonical checkpoint tensors after only renaming the memory namespace, and identical arrays in the fixed evaluation rollout.
+- V6-noaux and V6 auxiliary-no-action are also tensor-, metric-, and rollout-identical. With detached source/target states and zero auxiliary actions, the auxiliary gradient to `W_a` is exactly zero.
+
+Full V6 changes the final action map by `||ΔW_a||F = .3524 ± .2625` relative to matched noaux, or `8.90% ± 6.22%` of the noaux norm; the fast/medium block deltas are `.2965/.1888`. It lowers its own held-out consistency loss versus noaux by **1.30% in all 25 cells**, so optimization is not completely inert. The stronger diagnostic is the tensor-identical noaux/aux-no-action comparison: using real actions makes the action-only posterior-state objective **5.49% worse** than zero actions (0/25 wins), with fast/medium changes of `−5.28%/−5.64%`. At the same time, removing actions from online inference costs 15.70%, and a medium-only read costs 8.95%. Actions and the joint read are thus genuine mechanisms, but **action-only prediction of a future posterior state is a mismatched/noisy self-supervised target**.
+
+The frozen convergence test passes. Across all 325 cells, absolute epoch-window change has median `.435%`, p95 `1.442%`, and maximum `2.754%`; full V6 alone has median `.293%`, p95 `.707%`, and maximum `1.309%`. The negative decision is not attributable to the declared final-window check.
+
+#### Post-hoc package and ICLR implication
+
+The locked primary files remain `protocol.json`, `pilot_{per_run,grouped,paired_contrasts,convergence,decision}.*`, `{per_run,grouped,paired_contrasts,convergence,decision}.*`, and `hacssm_v6_manifest.json` under `outputs/hacssm_v6_shared`. The separate read-only package is `v6_posthoc_diagnostics.json`, `v6_posthoc_{contrasts,env_ranks,phase_contrasts,seed_stage,identity_controls,aux_action,convergence}.csv`, and `v6_posthoc_diagnostics_manifest.json` (SHA-256 `7d1b93e7e0a88b4dff1a7f4d480f9f96009416db852ed8ccf5bb1231626b1f7a`). It re-verifies all primary hashes plus every checkpoint/rollout input it reads before and after writing; it cannot alter the pilot, final decision, or primary manifest.
+
+For ICLR, V6 improves the empirical story but not the submission verdict. It supplies credible replicated evidence that action transport and a joint two-rate read matter, and it beats SSM on this fixed development grid. It does **not** establish the proposed self-supervised hierarchy: the objective effect is only .39% on the primary metric, the candidate loses to its static control, deep-blackout/all-target behavior does not improve, and all data still use the adaptive seed-7777 black-sentinel regime. A main-track performance claim remains premature without a separately frozen untouched corruption/trajectory test, simulator-state and executed-return outcomes, and tuned contemporary baselines. The defensible current paper angle is a controlled failure/mechanism study; the locked result itself prospectively requires a new version rather than retrospective V6 retuning.
+
+### 7.9 HACSSM-v7 / HCRD: prospectively frozen counterfactual-recovery study
+
+**Prelaunch record.** No official V7 decision-grid metric has been inspected. V7 is the predeclared response to V6's locked failure, not a post-hoc reinterpretation of the V6 grid. The architecture, nine V7 modes, four anchors, self-supervision/leakage contract, all five seeds, 200-epoch budget, W&B rollout requirements, and pilot/final thresholds below are fixed together before the official namespace launches. Figure 5c and §2.6 give the equations and the exact change made by every variant.
+
+The final excluded engineering run validated the audited source's end-to-end online logging path before launch: W&B run [`6nngk9pp`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/6nngk9pp), study `hacssm-v7-wandb-smoke`, seed 992, 100 epochs. The cloud audit found exactly 100 epoch rows, one rollout table, one paired rollout video, and one rollout artifact with SHA-256 `bf78bcc55af34a5aca0b8ca9d545bb853bbc31be1e86427373c86379d92242fc`; the artifact also carries the complete teacher/student, action-kind, horizon, shrinkage, and no-hidden-target contract. The local checkpoint and metrics were persisted before the W&B run was marked finished. Its engineering diagnostics include a validation hidden-overlap count of zero and the new unambiguous total/per-level influence schema. It is tagged `excluded-smoke,current-source-final`: none of its training/evaluation values may tune the design, enter a result table, or support a performance claim. An earlier superseded plumbing smoke (`v6igyy41`) is likewise excluded.
+
+The official ladder is five environments × thirteen designs × five optimizer seeds = **325 independent cells**:
+
+| group | designs | question |
+|---|---|---|
+| external/prior anchors | `ssm`, `hacsmv4_two_noaux` | does V7 beat the learned diagonal SSM and the exact fixed-rate no-auxiliary anchor? |
+| completed V6 anchors | `hacssmv6`, `hacssmv6_static` | does V7 improve both the nominated V6 candidate and the strongest observed V1–V6 design? |
+| V7 objective anchor | `hacssmv7_noaux` | does counterfactual recovery add value beyond the same V7 online architecture? |
+| V7 mechanism controls | `sharedaction`, `noshrink`, `actiononly`, `uniform`, `norecovery` | are level-specific action, learned static/dynamic shrinkage, corrected counterfactual bridges, hierarchical horizon assignment, and visible recovery each useful? |
+| V7 structural controls | `noaction`, `single` | are action transport and the joint fast/medium read still necessary? |
+| candidate | `hacssmv7` | level-specific action + learned shrinkage + hierarchical counterfactual bridge and recovery |
+
+Every cell reuses the exact fixed DINO-PCA feature artifacts and paired clean targets of V5/V6: 600/150 episodes, `L=32`, `D=128`, predictor history 3, batch 64, AdamW `3e-4/1e-5`, `predictor_norm=none`, hidden-target exclusion, first-post weight `.5`, and final-epoch evaluation without best-checkpoint selection. V7 and both V6 anchors use the `.02→0` bootstrap schedule; V7-noaux has zero effective auxiliary gradients, V4-two/noaux has no active auxiliary, and SSM has none. Raw PCA MSE is never pooled across environments; cross-environment summaries are paired relative reductions on `clean_mse_first_post`.
+
+The self-supervision contract is fail-closed. All V7 spans are selected from windows wholly inside the **originally visible** mask; required overlap with the real hidden interval is exactly zero. The EMA teacher consumes only the original occluded trajectory and never a synthetic clean blackout. Student source state, teacher targets, and auxiliary `W_x` outputs are detached; hidden clean frames cannot enter the objective. Full V7 auxiliary gradients are restricted to the level-specific action heads, correction parameters, and shrinkage. V7 modes are parameter-matched at 36,102 trainable memory parameters and `2D` recurrent floats. The frozen teacher copy is stored in checkpoints but is non-trainable and absent from online inference.
+
+All cells must log online to W&B project [`crlc112358/lewm-memory-popgym`](https://wandb.ai/crlc112358/lewm-memory-popgym), study `hacssm-v7`. A valid cell has exactly 200 cloud epoch indices and the fixed evaluation-rollout NPZ, table, paired occluded/clean video, and hash-bound artifact. Local JSON/NPZ files alone are insufficient. Seeds `{0,1,2}` form the immutable **195-cell pilot**; seeds `{3,4}` form a mandatory **130-cell completion** and run regardless of the pilot decision.
+
+**Immutable pilot screen.** Full V7 must simultaneously satisfy:
+
+1. versus SSM: at least 5% paired reduction, 10/15 wins, and 3/5 environment-mean wins;
+2. versus V4-two/noaux: at least 1% reduction, 9/15 wins, and 3/5 environment wins;
+3. versus full V6: at least .5% reduction, 9/15 wins, and 3/5 environment wins;
+4. versus static V6: positive reduction and at least 8/15 wins;
+5. versus V7-noaux: at least 1% reduction, 9/15 wins, and 3/5 environment wins;
+6. versus each of shared-action, no-shrink, action-only, uniform, no-recovery, no-action, and single: positive reduction and at least 8/15 wins; and
+7. absolute final-window change across pilot cells: median `<1%`, p95 `<3%`, and maximum `<5%`.
+
+The pilot result is `PILOT_PASS` only if every clause passes; otherwise it is immutable `NO_GO`. Completion cannot rewrite a failed pilot.
+
+**Frozen final “overall best” bar.** `OVERALL_BEST_IN_LOCKED_GRID` requires a passed pilot and every following five-seed condition:
+
+1. versus SSM: at least 6% reduction, 20/25 wins, and 4/5 environment wins;
+2. versus V4-two/noaux: at least 1.5% reduction, 17/25 wins, and 4/5 environment wins;
+3. versus full V6: at least 1% reduction, 15/25 wins, and 3/5 environment wins;
+4. versus static V6: positive reduction, 13/25 wins, and 3/5 environment wins;
+5. versus V7-noaux: at least 1% reduction, 15/25 wins, and 3/5 environment wins;
+6. versus each of shared-action, no-shrink, action-only, uniform, and no-recovery: positive reduction, 13/25 wins, and 3/5 environment wins;
+7. versus no-action and single separately: at least 3% reduction, 17/25 wins, and 3/5 environment wins;
+8. full V7 wins the thirteen-design task envelope on at least 3/5 environments and beats last-visible hold on at least 4/5; and
+9. absolute final-window change across all cells retains median `<1%`, p95 `<3%`, and maximum `<5%`.
+
+A failed pilot forces `PILOT_NO_GO_FINAL_DESCRIPTIVE`. With a passed pilot, positive directions against SSM, V4-two, both V6 anchors, and V7-noaux but a missed stronger clause yield `PROMISING_NOT_OVERALL_BEST`; other failures yield `NO_GO`. Even `OVERALL_BEST_IN_LOCKED_GRID` is only a deterministic development-grid label. The corruption, seed-7777 validation trajectories, DINO-PCA targets, and metric remain adaptive; untouched corruption/rollout seeds, simulator-state or task-return outcomes, competitive tuned baselines, and uncertainty analysis are still required for an ICLR performance claim.
 
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
@@ -913,7 +1086,7 @@ There is a worthwhile controlled finding here, but the current `paper/main.pdf` 
 5. V4 supplies a second positive mechanism result: it improves causally retrained V3 by 12.49%, and replacing only memory-path blackout actions from other episodes worsens it by 12.46% while SSM/no-action controls are invariant (§7.6). It also exposes the limit cleanly: SSM wins 4/5 canonical means, the hierarchical auxiliary loses to `noaux`, and the slow read has no positive marginal contribution.
 6. V5 strengthens that mechanism diagnosis over five seeds: removing action or the joint two-state read loses about 11% in all 25 pairs, but the learned channel spectrum loses decisively to the fixed `τ={2,8}` bridge and boundary shaping hurts all five environment means (§7.7). Full V5 is 3.27% worse than SSM; its negative result is complete and convergence-audited.
 7. The negative mechanisms are unusually clear: SMT-v2 gates are static, mass explains most of its router gain, L0 auto-sizing has no useful sparse point, the OC-SMT lead is dense, V3 selection specializes to missingness, V4's action hierarchy is real without becoming the best predictor, and V5's learned-rate/boundary bundle regresses.
-8. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, while the V4/V5 common-target cohorts—and the prospective V6 protocol—remove the predictor's separate cross-window BatchNorm coupling entirely. The original singleton-inference and representation-conditioning failure remains unresolved for the synthetic pixel encoder. V6 is prospective and contributes no positive evidence yet.
+8. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, while the V4–V6 common-target cohorts—and prospective V7 protocol—remove the predictor's separate cross-window BatchNorm coupling entirely. The original singleton-inference and representation-conditioning failure remains unresolved for the synthetic pixel encoder. V6 contributes positive evidence for action transport and the two-rate read, but its self-supervised-objective effect is only .39% and its locked label is negative.
 
 That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language.
 
@@ -924,7 +1097,7 @@ That is a coherent **diagnostic study**. It is not yet the broad “learnable se
 3. **The manuscript misstates its DINO representation.** DINOv2 ViT-S/14 was trained/distilled on LVD-142M, not “distilled on ImageNet” ([Oquab et al., 2023](https://arxiv.org/abs/2304.07193)). The experiment uses a global CLS feature, whereas DINO-WM operates on frozen spatial patch embeddings; calling the CLS setup “the DINO-WM recipe” is inaccurate ([Zhou et al., 2024](https://arxiv.org/abs/2411.04983)).
 4. **The original synthetic encoder is not deployable causally as implemented.** Its stateless BatchNorm pools over episode×time, including future frames; singleton online encoding fails. The no-retraining time-slice audit shows that this leakage does not explain the archived usage gaps, but it remains transductive over 256 episodes and reveals pre-BN variance `5.78e-12` with median effective rank 5.86/128. The paper needs retraining with causal/fixed normalization and a batch-size-one streaming evaluation, not only a sensitivity re-encoding.
 5. **The stronger common-target result is still bounded by simple controls and optimization sensitivity.** The 100-epoch grid changes the winning architecture and is still improving late. In the matched 200-epoch V3 cohort SSM wins all five means; in V4 it wins four of five; and full V5 loses to SSM on four of five means despite passing its frozen convergence audit. The strongest V1–V5 design is the simple fixed-rate V4-two/no-aux bridge, and even it wins only three of five environment means. Deep-blackout targets remain off-objective, every mask uses the same extreme black sentinel on reused validation trajectories, and no result is state decoding or return.
-6. **The broad learned-selectivity/hierarchy thesis is still unsupported, despite real action mechanisms.** V3 and every V4 correction level have causal-prefix visible-token AUROC exactly 1.0 because they separate one conspicuous black token. V4/V5 establish a real action path and useful joint read, but V4's slow state, both tested V4/V5 auxiliaries, and V5's wide learned spectrum fail. Prospective V6 tests a cleaner self-supervised objective; until it completes, it is a protocol rather than evidence. This supports a black-sentinel predict/correct diagnostic—not a generally superior content-selective or automatically sized hierarchy.
+6. **The broad learned-selectivity/hierarchy thesis is still unsupported, despite real action mechanisms.** V3 and every V4 correction level have causal-prefix visible-token AUROC exactly 1.0 because they separate one conspicuous black token. V4/V5 establish a real action path and useful joint read, but V4's slow state, both tested V4/V5 auxiliaries, and V5's wide learned spectrum fail. V6 beats SSM but its dense self-supervised objective adds only .39%, hurts deep-blackout prediction, and loses to static correction. V7's visible-only counterfactual recovery remains prospective. This supports a black-sentinel predict/correct diagnostic—not yet a generally superior content-selective or automatically sized hierarchy.
 7. **Baselines and task outcomes are below the main-track bar for the broad claim.** Current learned GRU/SSM/retrieval comparisons use one matched training budget rather than competitive per-baseline tuning. POPGym/Memory-Maze results emphasize next-latent MSE or influence under random policies rather than standard task returns. Raw MSE from separately trained encoders should not be compared as if it shared a scale. A convincing world-model/control paper needs standard POMDP returns or success, tuned recurrent/SSM/Transformer memory baselines, and parameter/compute-matched fixed-bank ablations.
 
 ### Novelty and positioning risk
@@ -951,9 +1124,9 @@ If targeting ICLR, reframe the work around a title such as **“When Does a JEPA
 4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, V4/V5's causally necessary action path and joint read, the failed slow state/rate spectrum/auxiliaries, and the conditions where SSM/hold win. Remove “general input-conditioned selectivity,” “overall best,” and “automatic sizing” as achieved contributions.
 5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
 6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
-7. Complete the frozen V6 grid without post-hoc retuning and treat its automatic V7 trigger as development only. Whichever design survives must then be frozen before an untouched rollout-seed/corruption-family test and evaluated on simulator-state prediction and executed return—not only CLS-feature MSE.
+7. Complete the prospectively frozen V7 grid without post-hoc retuning and treat both the V6 trigger and any V7 development-grid label as development only. Any surviving design must then be frozen before an untouched rollout-seed/corruption-family test and evaluated on simulator-state prediction and executed return—not only CLS-feature MSE.
 
-**Recommendation.** The 225-run V3 grid, 135-run V4 pilot, and 300-run V5 study all return prospectively negative labels; V5 completion further rules out the learned-spectrum/boundary bundle while preserving the action-path mechanism. V6 is frozen but has no result yet. The expected main-track outcome remains rejection on task validity, baseline strength, and novelty/positioning. Do **not** submit the current version to the ICLR main track. Either (a) complete V6/V7 development plus untouched tests, state/return outcomes, and tuned baselines before rebuilding around causal memory diagnostics, or (b) submit a narrower workshop paper centered on static V2, black-sentinel V3, action-sensitive V4/V5, and the stronger SSM/simple controls.
+**Recommendation.** The 225-run V3 grid, 135-run V4 pilot, 300-run V5 study, and 325-run V6 study all return prospectively negative labels. V6 nevertheless strengthens the action/joint-read mechanism result and identifies static correction as the strongest observed V1–V6 development-grid variant; it does not validate hierarchical self-supervision. V7 is prospectively frozen but has no official result yet. The expected main-track outcome remains rejection on task validity, baseline strength, and novelty/positioning. Do **not** submit the current version to the ICLR main track. Either (a) complete V7 development plus untouched tests, state/return outcomes, and tuned baselines before rebuilding around causal memory diagnostics, or (b) submit a narrower workshop paper centered on static V2, black-sentinel V3, action-sensitive V4–V6, and the stronger SSM/simple controls.
 
 ## References
 

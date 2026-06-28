@@ -1140,10 +1140,8 @@ def validate_job(job: Job, *, allow_missing: bool) -> bool:
             raise RunnerError(
                 f"{job.run_name}: metric {key}={metrics.get(key)!r}, expected {wanted!r}"
             )
-    required_finite = (
+    required_finite = [
         "val_pred_loss",
-        "infl_fast",
-        "infl_slow",
         "clean_mse_deep_blackout",
         "clean_mse_deep_blackout_ablated",
         "clean_mse_first_post",
@@ -1152,7 +1150,23 @@ def validate_job(job: Job, *, allow_missing: bool) -> bool:
         "persistence_mse_first_post",
         "last_visible_mse_first_post",
         "clean_input_mse_first_post",
-    )
+    ]
+    if metrics.get("influence_schema_version") == 2:
+        required_finite.append("infl_all")
+        influence_kind = metrics.get("influence_kind")
+        if influence_kind == "per_level_and_total":
+            required_finite.extend(("infl_fast", "infl_slow"))
+        elif influence_kind == "single_or_undifferentiated_total":
+            if metrics.get("infl_fast") is not None or metrics.get("infl_slow") is not None:
+                raise RunnerError(
+                    f"{job.run_name}: undifferentiated influence must not be duplicated "
+                    "as fast/slow")
+        else:
+            raise RunnerError(
+                f"{job.run_name}: invalid influence_kind={influence_kind!r}")
+    else:
+        # Historical V5/V6 checkpoints predate the explicit total-influence schema.
+        required_finite.extend(("infl_fast", "infl_slow"))
     for key in required_finite:
         value = metrics.get(key)
         if type(value) not in (int, float) or not math.isfinite(float(value)):

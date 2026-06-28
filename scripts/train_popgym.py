@@ -76,6 +76,40 @@ def hierarchical_objective_metadata(memory_mode):
     }
 
 
+def counterfactual_recovery_metadata(memory_mode):
+    """Machine-readable HACSSM-v7 teacher/student and leakage contract."""
+    if not memory_mode.startswith('hacssmv7'):
+        return {}
+    horizons = ({'fast': [1, 2, 4, 8], 'medium': [1, 2, 4, 8]}
+                if memory_mode == 'hacssmv7_uniform'
+                else {'fast': [1, 2], 'medium': [4, 8]})
+    action_kind = (
+        'none' if memory_mode == 'hacssmv7_noaction'
+        else 'shared' if memory_mode == 'hacssmv7_sharedaction'
+        else 'level_specific'
+    )
+    return {
+        'hier_objective_schema_version': 2,
+        'hier_target_kind': 'ema_teacher_same_level_posterior_stop_gradient',
+        'hier_endpoint_kind': 'synthetic_spans_inside_original_visible_runs_only',
+        'hier_distance': 'affine_free_layer_norm_smooth_l1',
+        'hier_teacher_momentum': 0.99,
+        'hier_black_token_kind': 'mean_observed_original_blackout_input',
+        'hier_aux_horizons': horizons,
+        'hier_inference_taus': [2.0, 8.0],
+        'hier_action_kind': action_kind,
+        'hier_level_specific_action': action_kind == 'level_specific',
+        'hier_shrinkage_kind': (
+            'dynamic_only' if memory_mode == 'hacssmv7_noshrink'
+            else 'learned_static_dynamic_convex'),
+        'hier_aux_kind': (
+            'action_only' if memory_mode == 'hacssmv7_actiononly'
+            else 'bridge_only' if memory_mode == 'hacssmv7_norecovery'
+            else 'counterfactual_bridge_and_recovery'),
+        'hier_hidden_clean_targets_used': False,
+    }
+
+
 def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight=0.0):
     model.train(train)
     if not any(p.requires_grad for p in model.encoder.parameters()):
@@ -93,7 +127,15 @@ def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight
         'hier_pairs_fast_h1', 'hier_pairs_fast_h2', 'hier_pairs_fast_h4',
         'hier_pairs_fast_h8', 'hier_pairs_medium_h1', 'hier_pairs_medium_h2',
         'hier_pairs_medium_h4', 'hier_pairs_medium_h8',
+        'hier_loss_bridge', 'hier_loss_recovery', 'hier_overlap',
     )
+    # ``hier_pairs*`` and ``hier_overlap`` are batch-total event counts returned by the model,
+    # unlike the loss scalars, which are batch means.  Preserve event-count semantics across
+    # uneven final batches instead of size-weighting the totals a second time.
+    event_count_metrics = {
+        name for name in metric_names
+        if name.startswith('hier_pairs') or name == 'hier_overlap'
+    }
     tot = {name: 0.0 for name in metric_names}; counts = {name: 0 for name in metric_names}
     n = 0
     ctx = torch.enable_grad() if train else torch.no_grad()
@@ -123,13 +165,16 @@ def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight
             if train:
                 opt.zero_grad(set_to_none=True); losses['loss'].backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step()
+                model.update_hierarchical_teacher()
             batch_n = obs.shape[0]
             for name in metric_names:
                 if name in losses:
-                    tot[name] += float(losses[name].detach()) * batch_n
+                    value = float(losses[name].detach())
+                    tot[name] += value if name in event_count_metrics else value * batch_n
                     counts[name] += batch_n
             n += batch_n
-    return {name: tot[name] / max(counts[name], 1)
+    return {name: (tot[name] if name in event_count_metrics
+                   else tot[name] / max(counts[name], 1))
             for name in metric_names if counts[name]}
 
 
@@ -371,7 +416,11 @@ def main():
                             'hacssmv6', 'hacssmv6_noaux', 'hacssmv6_aux_noaction',
                             'hacssmv6_uniform', 'hacssmv6_sourcegrad',
                             'hacssmv6_fastonly', 'hacssmv6_mediumonly',
-                            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single'])
+                            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single',
+                            'hacssmv7', 'hacssmv7_noaux', 'hacssmv7_sharedaction',
+                            'hacssmv7_noshrink', 'hacssmv7_actiononly',
+                            'hacssmv7_uniform', 'hacssmv7_norecovery',
+                            'hacssmv7_noaction', 'hacssmv7_single'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -559,7 +608,8 @@ def main():
             job_type=args.memory_mode,
             tags=tags, dir=str(wandb_dir),
             config=(vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'}
-                    | hierarchical_objective_metadata(args.memory_mode)),
+                    | hierarchical_objective_metadata(args.memory_mode)
+                    | counterfactual_recovery_metadata(args.memory_mode)),
             settings=wandb.Settings(init_timeout=120),
         )
         if args.wandb_mode is not None:
@@ -601,7 +651,10 @@ def main():
             'hacssmv6', 'hacssmv6_noaux', 'hacssmv6_aux_noaction',
             'hacssmv6_uniform', 'hacssmv6_sourcegrad',
             'hacssmv6_fastonly', 'hacssmv6_mediumonly',
-            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single') else 'ema'
+            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single',
+            'hacssmv7', 'hacssmv7_noaux', 'hacssmv7_sharedaction',
+            'hacssmv7_noshrink', 'hacssmv7_actiononly', 'hacssmv7_uniform',
+            'hacssmv7_norecovery', 'hacssmv7_noaction', 'hacssmv7_single') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
@@ -708,10 +761,15 @@ def main():
               f"| val pred {va['pred_loss']:.4f}{aux_text} | "
               f"tau_f={tau['tau_fast']:.1f} tau_s={tau['tau_slow']:.1f}", flush=True)
         if wb is not None:
+            memory_log = {
+                f'mem/{key}': value for key, value in tau.items()
+                if key.startswith(('rho_', 'action_head_'))
+            }
             wb.log({'epoch': epoch,
                     **{f'train/{key}': value for key, value in tr.items()},
                     **{f'val/{key}': value for key, value in va.items()},
-                    'mem/tau_fast': tau['tau_fast'], 'mem/tau_slow': tau['tau_slow']}, step=epoch)
+                    'mem/tau_fast': tau['tau_fast'], 'mem/tau_slow': tau['tau_slow'],
+                    **memory_log}, step=epoch)
         history.append({'epoch': epoch, 'train': tr, 'val': va})
 
     # final eval: influence of each memory bank on the prediction
@@ -720,9 +778,18 @@ def main():
         memory_update_mask=(vb_update_mask.to(device) if vb_update_mask is not None else None))
     tau = model.horizons()
     tau_json = {k: (float(v) if np.isfinite(v) else None) for k, v in tau.items()}
+    influence_kind = ('per_level_and_total'
+                      if 'infl_fast' in infl and 'infl_slow' in infl
+                      else 'single_or_undifferentiated_total')
     best = {'env': args.env_id, 'design': args.memory_mode, 'n_actions': n_actions,
-            'val_pred_loss': va['pred_loss'], 'infl_fast': float(infl['infl_fast'].mean()),
-            'infl_slow': float(infl['infl_slow'].mean()),
+            'val_pred_loss': va['pred_loss'],
+            'influence_schema_version': 2,
+            'influence_kind': influence_kind,
+            'infl_all': float(infl['infl_all'].mean()),
+            'infl_fast': (float(infl['infl_fast'].mean())
+                          if 'infl_fast' in infl else None),
+            'infl_slow': (float(infl['infl_slow'].mean())
+                          if 'infl_slow' in infl else None),
             'prototype_seed': args.prototype_seed,
             'dataset_schema_version': 3 if args.env_id.startswith(('dmc:', 'ogbench:')) else 1,
             'feature_schema_version': 1 if feature_mode else None,
@@ -738,16 +805,16 @@ def main():
                 0.0 if args.memory_mode in {
                     'hacsmv4_noaux', 'hacsmv4_two_noaux',
                     'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
-                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'} else
+                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux', 'hacssmv7_noaux'} else
                 float(args.hier_loss_weight) if args.memory_mode.startswith(
-                    ('hacsmv4', 'hacssmv5', 'hacssmv6')) else 0.0),
+                    ('hacsmv4', 'hacssmv5', 'hacssmv6', 'hacssmv7')) else 0.0),
             'hier_loss_weight_effective': (
                 0.0 if args.memory_mode in {
                     'hacsmv4_noaux', 'hacsmv4_two_noaux',
                     'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
-                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'} else
+                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux', 'hacssmv7_noaux'} else
                 float(model.hier_loss_weight) if args.memory_mode.startswith(
-                    ('hacsmv4', 'hacssmv5', 'hacssmv6')) else 0.0),
+                    ('hacsmv4', 'hacssmv5', 'hacssmv6', 'hacssmv7')) else 0.0),
             'val_pred_loss_target_kind': 'observed_pre_post_only' if args.mask_occluded_target_loss else 'all',
             'deep_blackout_target_kind': 'evaluation_only_hidden_clean',
             'primary_common_target_metric': 'clean_mse_first_post',
@@ -760,6 +827,7 @@ def main():
             'encoder_stats_sha256': getattr(args, 'encoder_stats_sha256', None),
             'trainable_parameters': model.num_parameters(),
             **hierarchical_objective_metadata(args.memory_mode),
+            **counterfactual_recovery_metadata(args.memory_mode),
             **tau_json}
     for key, value in va.items():
         if key.startswith('hier_'):
@@ -831,7 +899,8 @@ def main():
                     'episode': args.eval_rollout_episode,
                     'sha256': best['eval_rollout_sha256'],
                     'semantics': 'closed-loop-on-observations clean-next-latent evaluation trace',
-                } | hierarchical_objective_metadata(args.memory_mode),
+                } | hierarchical_objective_metadata(args.memory_mode)
+                  | counterfactual_recovery_metadata(args.memory_mode),
             )
             rollout_artifact.add_file(str(rollout_path), name='eval_rollout.npz')
             wb.log_artifact(rollout_artifact)
@@ -868,23 +937,31 @@ def main():
                 int(args.eval_rollout_episode) if rollout_path is not None else None
             ),
         }
-        wb.finish(exit_code=0)
 
     if args.wandb and wandb_record is None:
         raise RuntimeError('W&B run did not finish successfully')
     if args.wandb and args.wandb_mode == 'online' and not best.get('synced_online'):
         raise RuntimeError('required online W&B run did not finish successfully')
-    if wandb_record is not None:
-        with open(out_dir / 'wandb_run.json', 'w') as stream:
-            json.dump(wandb_record, stream, indent=2, sort_keys=True)
-            stream.write('\n')
+    # Persist the scientific checkpoint and exact metrics before declaring the remote run
+    # successful.  If either local write fails, process failure leaves W&B non-finished rather
+    # than creating a remotely green cell with no recoverable local payload.
     torch.save({'model_state_dict': model.state_dict(), 'args': vars(args),
                 'final_metrics': best, 'history': history}, out_dir / 'model.pt')
     with open(out_dir / 'metrics.json', 'w') as stream:
         json.dump(best, stream, indent=2)
         stream.write('\n')
-    print(f"=== done {run_name}: val_pred={best['val_pred_loss']:.4f} infl_fast={best['infl_fast']:.3f} "
-          f"infl_slow={best['infl_slow']:.3f} ===", flush=True)
+    if wb is not None:
+        wb.finish(exit_code=0)
+    if wandb_record is not None:
+        with open(out_dir / 'wandb_run.json', 'w') as stream:
+            json.dump(wandb_record, stream, indent=2, sort_keys=True)
+            stream.write('\n')
+    influence_text = f"infl_all={best['infl_all']:.3f}"
+    if best['infl_fast'] is not None and best['infl_slow'] is not None:
+        influence_text += (
+            f" infl_fast={best['infl_fast']:.3f} infl_slow={best['infl_slow']:.3f}")
+    print(f"=== done {run_name}: val_pred={best['val_pred_loss']:.4f} "
+          f"{influence_text} ===", flush=True)
 
 
 if __name__ == '__main__':
