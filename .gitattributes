@@ -1,0 +1,3 @@
+# Python's csv module emits RFC-style CRLF. Preserve the attested bytes and
+# treat the carriage return as part of the line terminator during whitespace checks.
+outputs/hacsm_v4_shared/*.csv -text whitespace=cr-at-eol

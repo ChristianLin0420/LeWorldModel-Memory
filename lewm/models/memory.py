@@ -440,6 +440,390 @@ class SelectiveUpdateMemoryV3(nn.Module):
                 'n_banks': self.K}
 
 
+class HierarchicalActionConditionedMemory(nn.Module):
+    """HACSM-v4: hierarchical selective memory with a causal action prior.
+
+    Three full-width states use fixed structural horizons ``(2, 8, 32)``.  The action that maps
+    observation ``t-1`` to observation ``t`` first advances every state, after which a selective
+    observation correction is applied::
+
+        x_t       = W_x z_t
+        (d, v)    = split(W_a a_{t-1})
+        p_t^k     = m_{t-1}^k + beta_k tanh(v + d * LN(m_{t-1}^k))
+        g_t^k     = sigmoid((w_z . LN(z_t) + w_e . LN(x_t - p_t^k)) / sqrt(D) + b_k)
+        m_t^k     = p_t^k + beta_k g_t^k (x_t - p_t^k)
+
+    Here ``beta_k = 1-exp(-1/tau_k)`` is fixed.  The first state is warm-started with ``m_0=x_0``.
+    A global simplex route mixes the levels, a parameter-free RMS normalization fixes its scale,
+    and a zero-initialized bias-free projection provides identity-at-initialization residual fusion.
+
+    ``dynamic``, ``static``, ``noaction``, ``single``, and ``oracle`` deliberately instantiate
+    exactly the same parameters.  Static gates use only ``sigmoid(b_k)``; noaction retains the
+    dynamic correction but zeros the action contribution; single retains the full recurrence but
+    fixes the read route to the middle (tau=8) level; oracle gates require an explicit mask and
+    fails closed.  Gate and action overrides are analysis-only inputs and are validated before use.
+    In particular, an override never bypasses the oracle's explicit-mask requirement.
+
+    ``forward`` returns the normalized mixed memory, matching the other memory classes in this
+    module; call :meth:`fuse` for ``z + W_o mixed``.  ``action_rollout`` advances source states using
+    only future actions, providing a leakage-free primitive for hierarchical self-supervised losses.
+    """
+
+    MODES = {'dynamic', 'static', 'noaction', 'single', 'oracle'}
+    TAUS = (2.0, 8.0, 32.0)
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'dynamic',
+                 rms_eps: float = 1e-6):
+        super().__init__()
+        if not isinstance(embed_dim, int) or isinstance(embed_dim, bool) or embed_dim < 1:
+            raise ValueError(f'embed_dim must be a positive integer, got {embed_dim!r}')
+        if not isinstance(action_dim, int) or isinstance(action_dim, bool) or action_dim < 1:
+            raise ValueError(f'action_dim must be a positive integer, got {action_dim!r}')
+        if mode not in self.MODES:
+            raise ValueError(f"unknown HACSM-v4 mode '{mode}'")
+        if not math.isfinite(float(rms_eps)) or rms_eps <= 0:
+            raise ValueError(f'rms_eps must be positive and finite, got {rms_eps}')
+
+        self.embed_dim = embed_dim
+        self.action_dim = action_dim
+        self.mode = mode
+        self.rms_eps = float(rms_eps)
+        self.taus = list(self.TAUS)
+        self.K = len(self.taus)
+        self.register_buffer(
+            'betas',
+            torch.tensor([tau_to_alpha(tau) for tau in self.taus], dtype=torch.float32),
+        )
+
+        # All transforms are shared across levels.  Functional layer normalization below is
+        # intentionally affine-free: it keeps the hierarchy's parameter count transparent.
+        self.W_x = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.W_a = nn.Linear(action_dim, 2 * embed_dim, bias=False)
+        self.w_z = nn.Parameter(torch.zeros(embed_dim))
+        self.w_e = nn.Parameter(torch.zeros(embed_dim))
+        self.gate_bias = nn.Parameter(torch.full((self.K,), 2.0))
+        self.route_logits = nn.Parameter(torch.zeros(self.K))
+        self.W_o = nn.Linear(embed_dim, embed_dim, bias=False)
+
+        nn.init.eye_(self.W_x.weight)
+        nn.init.zeros_(self.W_a.weight)
+        nn.init.zeros_(self.W_o.weight)
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return ``2D^2 + 2AD + 2D + 2K``, the exact trainable parameter count."""
+        return (2 * embed_dim * embed_dim + 2 * action_dim * embed_dim
+                + 2 * embed_dim + 2 * len(cls.TAUS))
+
+    def parameter_count(self) -> int:
+        """Trainable parameter count, useful when constructing matched controls."""
+        return sum(parameter.numel() for parameter in self.parameters() if parameter.requires_grad)
+
+    def _validate_latents(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if not isinstance(z, torch.Tensor) or z.dim() != 3:
+            shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            raise ValueError(f'HACSM-v4 expects z with shape (B,T,D), got {shape}')
+        B, T, D = z.shape
+        if B < 1 or T < 1:
+            raise ValueError(f'HACSM-v4 requires non-empty batch and time dimensions, got {B}, {T}')
+        if D != self.embed_dim:
+            raise ValueError(f'HACSM-v4 expected latent dim {self.embed_dim}, got {D}')
+        if not z.is_floating_point():
+            raise ValueError(f'HACSM-v4 requires floating-point latents, got {z.dtype}')
+        if not torch.isfinite(z).all():
+            raise ValueError('z contains non-finite values')
+        return B, T, D
+
+    def _validate_actions(self, actions: torch.Tensor, B: int, steps: int,
+                          *, name: str = 'actions') -> torch.Tensor:
+        expected = (B, steps, self.action_dim)
+        if not isinstance(actions, torch.Tensor) or tuple(actions.shape) != expected:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'{name} must have shape {expected}, got {shape}')
+        if not actions.is_floating_point():
+            raise ValueError(f'{name} must be floating point, got {actions.dtype}')
+        if not torch.isfinite(actions).all():
+            raise ValueError(f'{name} contains non-finite values')
+        return actions
+
+    def _coerce_action_override(self, value, actions: torch.Tensor, name: str) -> torch.Tensor:
+        """Replace actions with a finite scalar/broadcastable tensor for interventions."""
+        override = torch.as_tensor(value, device=actions.device, dtype=actions.dtype)
+        try:
+            override = torch.broadcast_to(override, actions.shape)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(override.shape)} is not broadcastable to '
+                f'{tuple(actions.shape)}') from exc
+        if not torch.isfinite(override).all():
+            raise ValueError(f'{name} contains non-finite values')
+        return override
+
+    @staticmethod
+    def _check_unit_interval(values: torch.Tensor, name: str) -> None:
+        if not torch.isfinite(values).all():
+            raise ValueError(f'{name} contains non-finite values')
+        if bool((values < 0).any()) or bool((values > 1).any()):
+            raise ValueError(f'{name} must lie in [0,1]')
+
+    def _coerce_gates(self, value, B: int, T: int, *, device, dtype,
+                      name: str) -> torch.Tensor:
+        """Canonicalize scalar/per-step/per-level gates to ``(B,T,K,1)``."""
+        gates = torch.as_tensor(value, device=device, dtype=dtype)
+        if gates.dim() == 1 and tuple(gates.shape) == (self.K,):
+            gates = gates.view(1, 1, self.K, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (T,):
+            gates = gates.view(1, T, 1, 1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (T, self.K):
+            gates = gates.unsqueeze(0).unsqueeze(-1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, T):
+            gates = gates.unsqueeze(-1).unsqueeze(-1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, self.K):
+            gates = gates.unsqueeze(1).unsqueeze(-1)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, 1):
+            gates = gates.unsqueeze(-2)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, self.K):
+            gates = gates.unsqueeze(-1)
+        target = (B, T, self.K, 1)
+        try:
+            gates = torch.broadcast_to(gates, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(gates.shape)} is not broadcastable to {target}') from exc
+        self._check_unit_interval(gates, name)
+        return gates
+
+    def route_weights(self) -> torch.Tensor:
+        """Return the learned global simplex route over the three levels, shape ``(K,)``."""
+        if self.mode == 'single':
+            # Keep route_logits instantiated for an exactly parameter-matched hierarchy ablation,
+            # but make its read path a fixed one-hot selection of the middle (tau=8) state.
+            route = torch.zeros_like(self.route_logits)
+            route[self.K // 2] = 1.0
+            return route
+        return torch.softmax(self.route_logits, dim=0)
+
+    def _validate_states(self, states: torch.Tensor) -> Tuple[int, int, int]:
+        expected_tail = (self.K, self.embed_dim)
+        if not isinstance(states, torch.Tensor) or states.dim() != 3:
+            shape = tuple(states.shape) if isinstance(states, torch.Tensor) else type(states).__name__
+            raise ValueError(f'states must have shape (B,{self.K},{self.embed_dim}), got {shape}')
+        B, K, D = states.shape
+        if B < 1 or (K, D) != expected_tail:
+            raise ValueError(
+                f'states must have shape (B,{self.K},{self.embed_dim}), got {tuple(states.shape)}')
+        if not states.is_floating_point() or not torch.isfinite(states).all():
+            raise ValueError('states must be finite floating-point values')
+        return B, K, D
+
+    def _action_prior_unchecked(self, states: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        """Internal transition after public boundaries have validated states/actions once."""
+        B = states.shape[0]
+        if self.mode == 'noaction':
+            action_features = states.new_zeros(B, 2 * self.embed_dim)
+        else:
+            action_features = self.W_a(action)
+        d, v = action_features.chunk(2, dim=-1)
+        normalized = F.layer_norm(states, (self.embed_dim,))
+        delta = torch.tanh(
+            v.unsqueeze(1) + d.unsqueeze(1) * normalized
+        )
+        beta = self.betas.to(dtype=states.dtype).view(1, self.K, 1)
+        return states + beta * delta
+
+    def _action_prior(self, states: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        """Validated one-step transition; ``action`` maps source to returned state."""
+        B, _, _ = self._validate_states(states)
+        if not isinstance(action, torch.Tensor) or tuple(action.shape) != (B, self.action_dim):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(f'action must have shape {(B, self.action_dim)}, got {shape}')
+        if not action.is_floating_point() or not torch.isfinite(action).all():
+            raise ValueError('action must contain finite floating-point values')
+        action = action.to(device=states.device, dtype=states.dtype)
+        return self._action_prior_unchecked(states, action)
+
+    def transition(self, states: torch.Tensor, action: torch.Tensor,
+                   action_override=None) -> torch.Tensor:
+        """Public one-step action-only transition used by causal auxiliary objectives."""
+        B, _, _ = self._validate_states(states)
+        if not isinstance(action, torch.Tensor) or tuple(action.shape) != (B, self.action_dim):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(f'action must have shape {(B, self.action_dim)}, got {shape}')
+        if not action.is_floating_point() or not torch.isfinite(action).all():
+            raise ValueError('action must contain finite floating-point values')
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action, 'action_override')
+        return self._action_prior(states, action)
+
+    def action_rollout(self, source_states: torch.Tensor, actions: torch.Tensor,
+                       action_override=None) -> torch.Tensor:
+        """Roll source states forward using actions only.
+
+        ``actions[:, j]`` maps rollout state ``j`` to ``j+1``.  The returned tensor has shape
+        ``(B,H,K,D)`` and excludes the supplied source, so index ``h-1`` is the horizon-``h`` state.
+        No observation at or after the source is consumed.
+        """
+        B, _, _ = self._validate_states(source_states)
+        if not isinstance(actions, torch.Tensor) or actions.dim() != 3:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(
+                f'rollout actions must have shape (B,H,{self.action_dim}), got {shape}')
+        actions = self._validate_actions(actions, B, actions.shape[1], name='rollout actions')
+        actions = actions.to(device=source_states.device, dtype=source_states.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions, 'action_override')
+
+        state = source_states
+        trajectory = []
+        for step in range(actions.shape[1]):
+            state = self._action_prior_unchecked(state, actions[:, step])
+            trajectory.append(state)
+        if not trajectory:
+            return source_states.new_empty(B, 0, self.K, self.embed_dim)
+        return torch.stack(trajectory, dim=1)
+
+    def _dynamic_gate(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                      prior: torch.Tensor) -> torch.Tensor:
+        normalized_z = F.layer_norm(z_t, (self.embed_dim,))
+        normalized_error = F.layer_norm(x_t.unsqueeze(1) - prior, (self.embed_dim,))
+        z_score = torch.einsum('bd,d->b', normalized_z, self.w_z).unsqueeze(-1)
+        error_score = torch.einsum('bkd,d->bk', normalized_error, self.w_e)
+        logits = ((z_score + error_score) / math.sqrt(self.embed_dim)
+                  + self.gate_bias.view(1, self.K))
+        return torch.sigmoid(logits).unsqueeze(-1)
+
+    def forward(self, z: torch.Tensor, actions: torch.Tensor,
+                memory_update_mask: torch.Tensor = None, gate_override=None,
+                action_override=None, return_details: bool = False):
+        """Return mixed memory, and optionally its complete causal trajectory.
+
+        Args:
+            z: latent observations ``(B,T,D)``.
+            actions: transitions ``(B,T-1,A)``; ``actions[:,t]`` maps ``z_t`` to ``z_{t+1}``.
+            memory_update_mask: explicit oracle correction mask.  Non-oracle modes ignore it.
+            gate_override: scalar/tensor broadcastable to ``(B,T,K,1)``.
+            action_override: finite scalar/tensor broadcastable to the action tensor; replaces it.
+            return_details: return ``(mixed, details)`` when true.  Because ``m_0=x_0`` is an
+                unconditional warm start, ``details['gates'][:,0]`` records the gate that would
+                apply at that step for analysis but does not alter the initial state.
+        """
+        B, T, _ = self._validate_latents(z)
+        actions = self._validate_actions(actions, B, T - 1)
+        actions = actions.to(device=z.device, dtype=z.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions, 'action_override')
+
+        # Validate the oracle mask before considering an override: interventions may modify an
+        # explicitly specified oracle, but can never turn it into an implicit one.
+        oracle_gates = None
+        if self.mode == 'oracle':
+            if memory_update_mask is None:
+                raise ValueError(
+                    'HACSM-v4 oracle requires an explicit memory_update_mask; refusing to infer '
+                    'visibility from targets or inputs')
+            oracle_gates = self._coerce_gates(
+                memory_update_mask, B, T, device=z.device, dtype=z.dtype,
+                name='memory_update_mask')
+        elif memory_update_mask is not None:
+            # Non-oracle controls remain invariant to mask values, but validating a supplied mask
+            # catches malformed shared batch plumbing instead of silently hiding it.
+            self._coerce_gates(
+                memory_update_mask, B, T, device=z.device, dtype=z.dtype,
+                name='memory_update_mask')
+        override_gates = None
+        if gate_override is not None:
+            override_gates = self._coerce_gates(
+                gate_override, B, T, device=z.device, dtype=z.dtype, name='gate_override')
+
+        x = self.W_x(z)
+        initial = x[:, 0].unsqueeze(1).expand(-1, self.K, -1)
+        states = [initial]
+        priors = [initial]
+
+        if override_gates is not None:
+            gate_0 = override_gates[:, 0]
+        elif self.mode == 'oracle':
+            gate_0 = oracle_gates[:, 0]
+        elif self.mode == 'static':
+            gate_0 = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand(B, -1, -1)
+        else:
+            gate_0 = self._dynamic_gate(z[:, 0], x[:, 0], initial)
+        gates = [gate_0]
+
+        state = initial
+        beta = self.betas.to(dtype=z.dtype).view(1, self.K, 1)
+        for t in range(1, T):
+            prior = self._action_prior_unchecked(state, actions[:, t - 1])
+            if override_gates is not None:
+                gate = override_gates[:, t]
+            elif self.mode == 'oracle':
+                gate = oracle_gates[:, t]
+            elif self.mode == 'static':
+                gate = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand(B, -1, -1)
+            else:
+                gate = self._dynamic_gate(z[:, t], x[:, t], prior)
+            state = prior + beta * gate * (x[:, t].unsqueeze(1) - prior)
+            priors.append(prior)
+            states.append(state)
+            gates.append(gate)
+
+        state_sequence = torch.stack(states, dim=1)
+        prior_sequence = torch.stack(priors, dim=1)
+        gate_sequence = torch.stack(gates, dim=1)
+        route = self.route_weights().to(dtype=z.dtype)
+        mixed = (state_sequence * route.view(1, 1, self.K, 1)).sum(dim=2)
+        mixed = mixed * torch.rsqrt(
+            mixed.square().mean(dim=-1, keepdim=True) + self.rms_eps)
+
+        if not return_details:
+            return mixed
+        details = {
+            'x': x,
+            'priors': prior_sequence,
+            'states': state_sequence,
+            'gates': gate_sequence,
+            'route': route,
+        }
+        return mixed, details
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        """Zero-initialized residual fusion ``z + W_o mixed``."""
+        if not isinstance(z, torch.Tensor) or not isinstance(mixed, torch.Tensor):
+            raise ValueError('z and mixed must be tensors with shape (B,T,D)')
+        if z.dim() != 3 or mixed.dim() != 3:
+            raise ValueError(
+                f'z and mixed must have shape (B,T,D), got {tuple(z.shape)} and '
+                f'{tuple(mixed.shape)}')
+        if z.shape != mixed.shape:
+            raise ValueError(
+                f'z and mixed must have identical shapes, got {tuple(z.shape)} and '
+                f'{tuple(mixed.shape)}')
+        if z.shape[-1] != self.embed_dim:
+            raise ValueError(f'HACSM-v4 expected final dim {self.embed_dim}, got {z.shape[-1]}')
+        if not z.is_floating_point() or not mixed.is_floating_point():
+            raise ValueError('z and mixed must be floating-point tensors')
+        if not torch.isfinite(z).all() or not torch.isfinite(mixed).all():
+            raise ValueError('z and mixed must contain only finite values')
+        return z + self.W_o(mixed)
+
+    def horizons(self) -> Dict[str, float]:
+        result = {
+            'tau_fast': self.taus[0],
+            'tau_slow': self.taus[-1],
+            'alpha_fast': float(self.betas[0]),
+            'alpha_slow': float(self.betas[-1]),
+            'n_banks': self.K,
+        }
+        for index, (tau, beta) in enumerate(zip(self.taus, self.betas)):
+            result[f'tau_{index}'] = float(tau)
+            result[f'beta_{index}'] = float(beta)
+        return result
+
+
+# Short name for experiment configuration and checkpoint metadata.
+HACSMv4Memory = HierarchicalActionConditionedMemory
+
+
 class OCSMTMemory(nn.Module):
     """OC-SMT: Over-Complete fixed log-spaced EMA basis + L0 (hard-concrete) sparse READ gates.
 

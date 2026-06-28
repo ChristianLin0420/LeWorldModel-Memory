@@ -1,0 +1,19 @@
+{
+  "analysis_script": {
+    "scripts/analyze_hacsm_v4.py": "3bb1ead76b4c469c9ecd28dd8c66b955575c8599439f5b4202cdc73892858d6b",
+    "scripts/analyze_hacsm_v4_pilot_diagnostics.py": "6f97e02263179a99154849c459382a2835bb815672997015ec9e07b9549a4c3b"
+  },
+  "inputs": {
+    "hacsm_v4_manifest.json": "b461d87d53e85fcc9e17e3b5213328cfe0caa8686459e35cc4d8385179b48d6b",
+    "pilot_decision.json": "2ca24d53c88146de53255ede6520660fce6d20343be8fccfc331e5ade8c57482",
+    "protocol.json": "206a60066072e4002502096bcbea5bfd4fd230e6ea7e4bae87e998a022075921"
+  },
+  "outputs": {
+    "pilot_diagnostics.json": "594aa54e58c481744855dabd1195841541c83252eedcbbc52869c5552cd059d8",
+    "pilot_mask_generalization_per_run.csv": "e1048c758d99f160060d44fd153469669a4987d54c554e494bf4b46da77090e2",
+    "pilot_v4_action_interventions.csv": "858f913d6b437cb1e10666bd35da4ca84741837f60316dceac1b9ef776cf2227",
+    "pilot_v4_gate_per_run.csv": "1a4989a5fef9ba6ba1508123b7c9490a31ceca9b007a85cb6badade6098d0aa9",
+    "pilot_v4_level_ablations.csv": "594fcf7eaadfd6d53073f865b5d1f4eccdce5763c466c955d68eed22ed0cba8b"
+  },
+  "schema_version": 1
+}

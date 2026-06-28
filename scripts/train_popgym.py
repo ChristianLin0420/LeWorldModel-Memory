@@ -21,8 +21,12 @@ def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight
     model.train(train)
     if not any(p.requires_grad for p in model.encoder.parameters()):
         model.encoder.eval()  # a frozen shared target must also have deterministic dropout/norm behavior
-    metric_names = ('loss', 'pred_loss', 'sigreg_loss',
-                    'pred_loss_all_valid', 'pred_loss_first_post')
+    metric_names = (
+        'loss', 'pred_loss', 'sigreg_loss', 'pred_loss_all_valid',
+        'pred_loss_first_post', 'hier_loss', 'hier_loss_fast',
+        'hier_loss_medium', 'hier_loss_slow', 'hier_loss_h1', 'hier_loss_h2',
+        'hier_loss_h4', 'hier_loss_h8', 'hier_loss_h16',
+    )
     tot = {name: 0.0 for name in metric_names}; counts = {name: 0 for name in metric_names}
     n = 0
     ctx = torch.enable_grad() if train else torch.no_grad()
@@ -84,10 +88,11 @@ def phase_mse(model, loader, device, use_amp, length, history_len, constant_late
         with amp_ctx:
             z = model.encode(obs)
             z_target = model.encode(target_obs)
-            z_full = model._inject(z, memory_update_mask=target_mask)
+            z_full = model._inject(z, actions=act, memory_update_mask=target_mask)
             clean_update_mask = (torch.ones_like(target_mask)
                                  if target_mask is not None else None)
-            z_clean_full = model._inject(z_target, memory_update_mask=clean_update_mask)
+            z_clean_full = model._inject(
+                z_target, actions=act, memory_update_mask=clean_update_mask)
             B, L, D = z.shape; h = history_len; W = L - h
             full_win = z_full.unfold(1, h, 1)[:, :W].permute(0, 1, 3, 2).reshape(B * W, h, D)
             raw_win = z.unfold(1, h, 1)[:, :W].permute(0, 1, 3, 2).reshape(B * W, h, D)
@@ -169,7 +174,10 @@ def main():
     p.add_argument('--env-id', required=True)
     p.add_argument('--memory-mode', default='both',
                    choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval',
-                            'smt', 'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle'])
+                            'smt', 'smtv1', 'smtv2',
+                            'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle',
+                            'hacsmv4', 'hacsmv4_static', 'hacsmv4_noaction',
+                            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -210,10 +218,15 @@ def main():
     p.add_argument('--encoder-heads', type=int, default=4)
     p.add_argument('--predictor-layers', type=int, default=4)
     p.add_argument('--predictor-heads', type=int, default=8)
+    p.add_argument('--predictor-norm', default='batch', choices=['batch', 'layer', 'none'],
+                   help='predictor output normalization; layer is independent across '
+                        'flattened sliding windows, batch preserves legacy behavior')
     p.add_argument('--history-len', type=int, default=3)
     p.add_argument('--dropout', type=float, default=0.1)
     p.add_argument('--sigreg-lambda', type=float, default=0.1)
     p.add_argument('--sigreg-projections', type=int, default=512)
+    p.add_argument('--hier-loss-weight', type=float, default=0.1,
+                   help='HACSM-v4 action-rollout auxiliary weight; noaux forces effective zero')
     p.add_argument('--tau-fast', type=float, default=3.0)
     p.add_argument('--tau-slow', type=float, default=25.0)
     p.add_argument('--fixed-alpha', action='store_true')
@@ -226,6 +239,8 @@ def main():
 
     if not 0.0 <= args.first_post_loss_weight <= 1.0:
         raise ValueError('--first-post-loss-weight must be in [0,1]')
+    if not np.isfinite(args.hier_loss_weight) or args.hier_loss_weight < 0:
+        raise ValueError('--hier-loss-weight must be non-negative and finite')
 
     feature_mode = any((args.train_feature_cache, args.val_feature_cache, args.feature_manifest))
     if feature_mode and not all((args.train_feature_cache, args.val_feature_cache, args.feature_manifest)):
@@ -311,18 +326,26 @@ def main():
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                             pin_memory=pin, persistent_workers=args.num_workers > 0)
 
-    impl = args.memory_mode if args.memory_mode in (
-        'multi', 'gru', 'ssm', 'retrieval', 'smt',
-        'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle') else 'ema'
+    if args.memory_mode in ('smtv1', 'smtv2'):
+        impl = 'smt'
+        args.smt_router = 'softmax' if args.memory_mode == 'smtv1' else 'sigmoid'
+    else:
+        impl = args.memory_mode if args.memory_mode in (
+            'multi', 'gru', 'ssm', 'retrieval', 'smt',
+            'smtv3', 'smtv3_static', 'smtv3_old', 'smtv3_oracle',
+            'hacsmv4', 'hacsmv4_static', 'hacsmv4_noaction',
+            'hacsmv4_noaux', 'hacsmv4_single', 'hacsmv4_oracle') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
         encoder_layers=args.encoder_layers, encoder_heads=args.encoder_heads,
         predictor_layers=args.predictor_layers, predictor_heads=args.predictor_heads,
+        predictor_norm=args.predictor_norm,
         history_len=args.history_len, dropout=args.dropout, sigreg_lambda=args.sigreg_lambda,
         sigreg_projections=args.sigreg_projections, memory_mode=ema_mode, memory_impl=impl,
         tau_fast=args.tau_fast, tau_slow=args.tau_slow, learnable_alpha=not args.fixed_alpha,
         smt_router=getattr(args, 'smt_router', 'softmax'),
+        hier_loss_weight=args.hier_loss_weight,
         encoder_type=args.encoder_type).to(device)
     constant_latent = (torch.from_numpy(train_ds.constant_target).to(device)
                        if feature_mode else None)
@@ -411,11 +434,13 @@ def main():
         va = run_epoch(model, val_loader, opt, device, False, use_amp,
                        args.first_post_loss_weight)
         tau = model.horizons()
+        aux_text = (f" hier={va['hier_loss']:.4f}" if 'hier_loss' in va else '')
         print(f"e{epoch:3d}/{args.epochs} ({time.time()-t0:.1f}s) train {tr['loss']:.4f}(pred {tr['pred_loss']:.4f}) "
-              f"| val pred {va['pred_loss']:.4f} | tau_f={tau['tau_fast']:.1f} tau_s={tau['tau_slow']:.1f}", flush=True)
+              f"| val pred {va['pred_loss']:.4f}{aux_text} | "
+              f"tau_f={tau['tau_fast']:.1f} tau_s={tau['tau_slow']:.1f}", flush=True)
         if wb is not None:
-            wb.log({'train/loss': tr['loss'], 'train/pred_loss': tr['pred_loss'],
-                    'val/loss': va['loss'], 'val/pred_loss': va['pred_loss'],
+            wb.log({**{f'train/{key}': value for key, value in tr.items()},
+                    **{f'val/{key}': value for key, value in va.items()},
                     'mem/tau_fast': tau['tau_fast'], 'mem/tau_slow': tau['tau_slow']}, step=epoch)
         history.append({'epoch': epoch, 'train': tr, 'val': va})
 
@@ -436,17 +461,25 @@ def main():
             'target_env': args.target_env_id,
             'masked_clean_blackout_loss': bool(args.mask_occluded_target_loss),
             'first_post_loss_weight': float(args.first_post_loss_weight),
+            'hier_loss_weight': float(args.hier_loss_weight),
+            'hier_loss_weight_effective': (
+                0.0 if args.memory_mode == 'hacsmv4_noaux' else
+                float(args.hier_loss_weight) if args.memory_mode.startswith('hacsmv4') else 0.0),
             'val_pred_loss_target_kind': 'observed_pre_post_only' if args.mask_occluded_target_loss else 'all',
             'deep_blackout_target_kind': 'evaluation_only_hidden_clean',
             'primary_common_target_metric': 'clean_mse_first_post',
             'encoder_frozen': bool(args.freeze_encoder),
             'encoder_type': args.encoder_type,
+            'predictor_norm': args.predictor_norm,
             'external_features_fixed': bool(feature_mode),
             'encoder_checkpoint': args.encoder_checkpoint,
             'encoder_stats': args.encoder_stats,
             'encoder_stats_sha256': getattr(args, 'encoder_stats_sha256', None),
             'trainable_parameters': model.num_parameters(),
             **tau_json}
+    for key, value in va.items():
+        if key.startswith('hier_'):
+            best[f'val_{key}'] = float(value)
     if args.target_env_id is not None:
         best.update(phase_mse(
             model, val_loader, device, use_amp, args.length, args.history_len,

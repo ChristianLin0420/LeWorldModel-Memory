@@ -243,10 +243,24 @@ class Predictor(nn.Module):
         num_heads: int = 16,
         history_len: int = 3,
         dropout: float = 0.1,
+        output_norm: str = 'batch',
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.history_len = history_len
+        self.output_norm = output_norm
+
+        if output_norm == 'batch':
+            projector_norm = nn.BatchNorm1d(embed_dim, track_running_stats=False)
+        elif output_norm == 'layer':
+            # Per-token normalization: unlike batch-stat BN, this cannot couple one
+            # sliding prediction window to other (including later) windows in a batch.
+            projector_norm = nn.LayerNorm(embed_dim)
+        elif output_norm == 'none':
+            projector_norm = nn.Identity()
+        else:
+            raise ValueError(
+                f"unknown predictor output_norm {output_norm!r}; expected batch, layer, or none")
 
         # Learned positional embeddings
         self.pos_embed = nn.Parameter(torch.zeros(1, history_len + 1, embed_dim))
@@ -265,10 +279,11 @@ class Predictor(nn.Module):
 
         self.norm = nn.LayerNorm(embed_dim)
 
-        # Projector (same as encoder); batch-stat BN in both modes (see ViTTinyEncoder note).
+        # Legacy checkpoints use batch-stat BN.  Causal sliding-window experiments should use
+        # ``output_norm='layer'`` so each token is normalized independently of other windows.
         self.projector = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
-            nn.BatchNorm1d(embed_dim, track_running_stats=False),
+            projector_norm,
         )
 
     def _causal_mask(self, seq_len: int, device: torch.device) -> torch.Tensor:
@@ -303,8 +318,8 @@ class Predictor(nn.Module):
 
         x = self.norm(x)
 
-        # Project
-        # Reshape for BatchNorm1d: (B*N, D) -> project -> (B, N, D)
+        # Project. Flattening also supports the legacy BatchNorm1d implementation; LayerNorm
+        # and Identity operate independently on each row.
         x_flat = x.reshape(B * N, D)
         z_pred = self.projector(x_flat).reshape(B, N, D)
 

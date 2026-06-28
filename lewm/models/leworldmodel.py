@@ -44,6 +44,7 @@ class LeWorldModel(nn.Module):
         predictor_heads: int = 16,
         history_len: int = 3,
         dropout: float = 0.1,
+        predictor_norm: str = 'batch',
         sigreg_lambda: float = 0.1,
         sigreg_projections: int = 1024,
     ):
@@ -51,6 +52,7 @@ class LeWorldModel(nn.Module):
         self.embed_dim = embed_dim
         self.action_dim = action_dim
         self.history_len = history_len
+        self.predictor_norm = predictor_norm
         self.sigreg_lambda = sigreg_lambda
 
         # Encoder: ViT-Tiny
@@ -72,6 +74,7 @@ class LeWorldModel(nn.Module):
             num_heads=predictor_heads,
             history_len=history_len,
             dropout=dropout,
+            output_norm=predictor_norm,
         )
 
         # SIGReg regularizer

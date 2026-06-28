@@ -1,12 +1,12 @@
-# Selective Multi-Timescale Memory (SMT): a learnable, scalable short/long memory
+# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM-v4
 
-*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (`--memory-mode smt`) and the true-update `SelectiveUpdateMemoryV3` (`--memory-mode smtv3`) in `lewm/models/memory.py`. Status as of 2026-06-28: all experiment batches reported below are complete. V3 learns causally important black-sentinel gating, but it loses to SSM on every environment mean and to last-visible hold on two of five; the evidence does not support general selective memory or a main-track ICLR submission in the manuscript's present form (§7.5, §10).*
+*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (V1/V2), `SelectiveUpdateMemoryV3`, and `HierarchicalActionConditionedMemory` (HACSM-v4) in `lewm/models/memory.py`. Status as of 2026-06-28: every reported batch is complete. V4 causally uses blackout actions and improves causally retrained V3 by 12.49% over paired cells, but it is 3.43% worse than SSM, wins only 3/15 SSM pairs, and its fixed hierarchical auxiliary loses to `noaux`. The staged analyzer returns `NO_GO`; the evidence still does not support an overall-best learned memory or a main-track ICLR submission in the current form (§7.6, §10).*
 
 ## 1. Motivation — what our study tells us to do next
 
 The companion paper (`docs/ICLR.md`) establishes two empirical facts that, together, point directly at this design:
 
-1. **A fixed log-spaced bank of EMA horizons is the best memory we tested** — it beats a learned GRU, a learned diagonal-SSM/RetNet-lite, and episodic retrieval on the long-gap tasks, *without any per-task tuning* (§5.11). *Spanning* horizons beats picking one.
+1. **In the companion synthetic study, a fixed log-spaced bank of EMA horizons was the best memory tested** — it beat a learned GRU, a learned diagonal-SSM/RetNet-lite, and episodic retrieval on the long-gap tasks, *without any per-task tuning* (§5.11). Later common-target cohorts in this document do not preserve that global ranking (§7.2, §7.5–7.6). *Spanning* horizons nevertheless motivated the first design.
 2. **A learnable scalar decay does not self-tune in this setup** — making the one global EMA rate `α` learnable leaves the horizon near its initialization regardless of the task gap (§5.4). This observation does not by itself diagnose whether gradient magnitude, parameterization, optimization, or another cause is responsible.
 
 The naive reading is "memory should be fixed." But this repository's ungated fixed-bank baseline cannot allocate capacity or vary its bank mixture with the input, and it does not obviously scale (it reads the same spectrum of horizons at every step). Other fixed-decay architectures can still have content-dependent reads, as RetNet illustrates (§4). The research question is therefore:
@@ -15,14 +15,17 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 
 **Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
 
-**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 corrects the old erasing write rule and finally learns a causally important dynamic gate, improving its matched static control by 9.91% on average (§7.5). That gate is an exact detector for one extreme black DINO token, however; V3 remains action-blind, loses to SSM on all five environment means, and beats last-visible hold on only three. The defensible contribution is therefore a controlled study of fixed exponential memory and causal diagnostics—including a narrow positive missingness-gating result—not general input-dependent selection or automatic memory sizing.
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). Yet SSM still wins four of five environment means, the V4 auxiliary is negative on average, and the slow level has no positive marginal read contribution. The defensible contribution is a controlled study of when recurrent/action/selective paths are used—not a generally superior selective hierarchy or automatic memory sizing.
 
 ## 2. The architecture
+
+![Architecture map of tested memory designs](figures/fig_memory_versions_arch.png)
+*Figure 1. Consolidated map of the V1→V4 evolution, every architecture-changing V3 control in the 225-cell factorial, every V4 variant in the 135-cell pilot, and the external/historical memory families used in this study. Seeds, optimizer settings, mask placements, and basis-size/horizon grids are experiment settings rather than new architectures and are intentionally omitted. The bottom contract applies only to the nine leakage-safe V4 Stage-A designs; historical V1–V3 results retain their documented protocols.*
 
 ### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
 
 ![SMT architecture](figures/fig_smt_arch.png)
-*Figure 1. SMT-v1/v2 data flow. The latent `z_t` is gated by a learned **write gate** `i_t` and written into `K` **fixed** log-spaced EMA banks (`τ=2…64`); a learned **read router** `r_t` weights the banks; the weighted read-out is projected by learned `W_o` and added back residually. V1 uses a softmax router and V2 independent sigmoid read gates. Blue = learned (`W_i,W_r,W_o`); gray = fixed decays.*
+*Figure 2. SMT-v1/v2 data flow. The latent `z_t` is gated by a learned **write gate** `i_t` and written into `K` **fixed** log-spaced EMA banks (`τ=2…64`); a learned **read router** `r_t` weights the banks; the weighted read-out is projected by learned `W_o` and added back residually. V1 uses a softmax router and V2 independent sigmoid read gates. Blue = learned (`W_i,W_r,W_o`); gray = fixed decays.*
 
 Compact data flow:
 
@@ -58,7 +61,7 @@ Only `W_i` (D×D), `W_r` (D×K), `W_o` (D×D), and the write/router biases (D+K)
 ### 2.2 SMT-v3-W: whole-update gating + global normalized read
 
 ![SMT-v3-W architecture](figures/fig_smtv3_arch.png)
-*Figure 2. SMT-v3-W (“whole-update”) data flow. A learned scalar `g_t` changes the complete update rate of every EMA state with a fixed decay, so `g_t=0` freezes old state exactly. A learned but time-independent simplex `π` mixes the six banks, the read is RMS-normalized, and one shared `W_o` injects it residually. Actions enter only the short-context predictor; they do not propagate the recurrent state. The controls isolate conditioning, recurrence semantics, and known visibility; dynamic/static is the clean active-parameter match, while the hard-visibility control is only nominally parameter-matched.*
+*Figure 3. SMT-v3-W (“whole-update”) data flow. A learned scalar `g_t` changes the complete update rate of every EMA state with a fixed decay, so `g_t=0` freezes old state exactly. A learned but time-independent simplex `π` mixes the six banks, the read is RMS-normalized, and one shared `W_o` injects it residually. Actions enter only the short-context predictor; they do not propagate the recurrent state. The controls isolate conditioning, recurrence semantics, and known visibility; dynamic/static is the clean active-parameter match, while the hard-visibility control is only nominally parameter-matched.*
 
 V3 is not merely a new router setting. It changes where selection acts:
 
@@ -77,14 +80,46 @@ The architectural distinction is easiest to see side by side:
 | **SMT-v1** | vector gate scales the new value; old state still decays | per-step softmax, total mass 1 | 33,670 | weak initial result; unit-mass amplitude confound |
 | **SMT-v2** | same gated-value write | per-step independent sigmoids, initial mass ≈`K/2` | 33,670 | stronger usage, but learned read/write gates are nearly static |
 | **SMT-v3-W** | scalar gate multiplies the whole EMA update; `g_t=0` is exact freeze | one global simplex + RMS-normalized read | 16,647 | gate is causal and dynamic, but specializes to the exact black sentinel and returns `NO_GO` |
+| **HACSM-v4** | action prior advances three belief states, then a per-level gate corrects from the observation | one global simplex over `τ={2,8,32}` + RMS-normalized read | 34,566 | actions are causally necessary and V4 beats V3, but SSM wins 4/5 means and the fixed auxiliary fails |
 
-This simplification is deliberate. V3 removes content-dependent horizon routing so the experiment asks one clean question: **does input-conditioned update timing help beyond an equally parameterized static gate?** The controls are `smtv3_static` (no input conditioning), `smtv3_old` (dynamic gate with the V1/V2 erasing recurrence), and `smtv3_oracle` (known visibility). Section 7.5 gives the full derivation, parameter accounting, protocol, and results.
+V3's simplification is deliberate: it removes content-dependent horizon routing so its experiment asks one clean question—**does input-conditioned update timing help beyond an equally parameterized static gate?** HACSM-v4 retains the global read but adds action prediction, a three-level hierarchy, and self-supervision. Sections 7.5–7.6 give the matched controls and results.
+
+### 2.3 HACSM-v4: hierarchical action predict/correct memory
+
+![HACSM-v4 architecture](figures/fig_hacsm_v4_arch.png)
+*Figure 4. HACSM-v4 replaces V3's action-blind EMA with three full-width belief states at fixed structural horizons `τ={2,8,32}`. The previous action first predicts each state forward; a learned reliability gate then controls the observation correction. Training-only action rollouts supervise the fast, medium, and slow states at horizons `{1,2}`, `{4,8}`, and `{16}` without consuming intervening observations or hidden clean blackout targets.*
+
+For level `k`, let `β_k=1-exp(-1/τ_k)`, `x_t=W_x z_t`, and split the shared action projection as `(d_{t-1},v_{t-1})=W_a a_{t-1}`. The strictly causal update is
+
+```text
+action prior       p_t^k = m_{t-1}^k + β_k tanh(v_{t-1} + d_{t-1} ⊙ LayerNorm(m_{t-1}^k))
+correction gate    g_t^k = sigmoid((w_z^T LN(z_t) + w_e^T LN(x_t-p_t^k))/sqrt(D) + b_k)
+posterior          m_t^k = p_t^k + β_k g_t^k (x_t-p_t^k)
+global read        q_t   = RMSNorm(sum_k softmax(r)_k m_t^k)
+residual input     z_tilde_t = z_t + W_o q_t
+```
+
+The timing convention is explicit: `a_t` maps `z_t → z_{t+1}`. When a correction closes, the action prior still evolves the belief through missing observations—the capability V3 lacks. The global route intentionally remains time-independent, so any dynamic mechanism claim belongs to action evolution or correction timing rather than a confounded per-token horizon router.
+
+The hierarchical self-supervised target is an observation-free rollout from the online posterior:
+
+```text
+r^k_{t,0}   = m^k_t
+r^k_{t,j+1} = T_k(r^k_{t,j}, a_{t+j})
+target      = stopgrad(z_clean_{t+h})
+```
+
+Fast uses `h={1,2}`, medium `h={4,8}`, and slow `h=16`. For each horizon, the loss is `0.5*mean(all valid endpoints)+0.5*mean(first-post endpoints)`; the three level losses are averaged and enter the total objective with the prospectively fixed weight `0.1`. Endpoint validity alone controls inclusion, so a source may lie inside the blackout while no hidden target at `t=10…15` is ever used. At `L=32` with blackout `[10,16)`, the eligible endpoint counts per episode are respectively `25,24,22,18,16`, and every first-post target is exactly time 16 with source times `15,14,12,8,0`.
+
+At `D=128,A=6,K=3`, HACSM-v4 has `2D²+2AD+2D+2K = 34,566` memory parameters, versus 33,024 for the diagonal SSM (+4.67%). It carries three recurrent `D`-states rather than one, but does not add prediction heads: states live directly in the shared target coordinates. `W_x=I`, `W_a=0`, `W_o=0`, `b_k=2`, and a uniform route make the fused predictor exactly memoryless at initialization while the auxiliary objective immediately supplies gradients to the action dynamics.
+
+The matched controls retain the same nominal parameters: `hacsmv4_static` removes input conditioning from correction gates, `hacsmv4_noaction` zeros only the recurrent action path, `hacsmv4_noaux` sets the auxiliary weight to zero, and `hacsmv4_single` fixes the read to the middle `τ=8` state. Full experiment protocol and results are in §7.6.
 
 ## 3. Why it is scalable
 
 - **Linear time / memory.** Each bank is a diagonal linear recurrence: `O(L·K·D)` with `K` small (log-spacing covers `τ∈[2,256]` with `K=8`). No `O(L²)` attention.
 - **Parallelizable in principle.** The recurrence `m^k_t = (1−a_k)m^k_{t−1} + a_k u_t` admits an associative scan. The current code uses a Python sequential scan for `L=32`; no parallel implementation or long-sequence benchmark exists yet.
-- **Stackable → hierarchy by depth.** SMT is a layer. Stacking it (as HGRN2 stacks gated recurrences) yields a depth hierarchy of timescales on top of the within-layer spectrum — a route to deeper memory without growing `K`.
+- **Two distinct hierarchy routes.** SMT-v1–v3 can be stacked by depth; HACSM-v4 instead carries three explicit within-layer belief levels with fixed structural horizons. Neither route currently has a parallel scan or long-sequence scaling benchmark.
 - **Constant recurrent state in streaming form.** The recurrence needs `K·D` state regardless of sequence length. The current training implementation materializes the full sequential scan and its activations; the claimed constant state is algorithmic/streaming, not a measured peak-memory result for this code path.
 
 ## 4. Relation to prior work and revised positioning
@@ -98,14 +133,14 @@ This simplification is deliberate. V3 removes content-dependent horizon routing 
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning, revised after the experiments.** Architecturally, SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 does not become meaningfully input-dependent; V3 does, but only by separating an explicit black missingness token from visible inputs, with no action-conditioned transition or SSM advantage (§7.5). Fixed EMA banks are also a simple diagonal-SSM/RetNet special case. The ICLR novelty audit (§10) therefore treats this as an implementation distinction and diagnostic finding, not a defensible novelty claim by itself.
+**Net positioning, revised after the experiments.** Architecturally, SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 does not become meaningfully input-dependent; V3 does, but only by separating an explicit black missingness token from visible inputs (§7.5). V4 adds a genuine action-conditioned predict/correct path and explicit self-supervised levels, but its slow level and fixed auxiliary do not establish a useful hierarchy, and it still trails SSM (§7.6). Fixed EMA banks are also a simple diagonal-SSM/RetNet special case. The ICLR novelty audit (§10) therefore treats these as diagnostic mechanisms, not a defensible superiority or missing-quadrant claim.
 
 ## 5. Interpretability — little observed switching in the synthetic tasks
 
 Because the horizons are fixed and known, the router output `r_t` is directly plottable as a **read preference over known horizons** (`route_weights()`). The diagnostic below uses the seed-0 `smt` sigmoid/v2 checkpoints; it normalizes the six independent gates to sum to one before plotting them:
 
 ![SMT router](figures/fig_smt_router.png)
-*Figure 3. Normalized read preferences for three seed-0 SMT-v2 checkpoints. Mean preferences are close to uniform, and the temporal standard deviation of the episode-averaged weights is ≈10⁻⁵. This diagnostic shows little shared time-dependent switching; averaging episodes can hide episode-specific variation.*
+*Figure 5. Normalized read preferences for three seed-0 SMT-v2 checkpoints. Mean preferences are close to uniform, and the temporal standard deviation of the episode-averaged weights is ≈10⁻⁵. This diagnostic shows little shared time-dependent switching; averaging episodes can hide episode-specific variation.*
 
 **Honest finding: useful switching did not emerge.** An all-seed audit still finds extremely small normalized within-episode router variation (≈10⁻⁵–5×10⁻⁵) and write-gate variation (≈3×10⁻⁵–10⁻⁴) on these synthetic tasks. This is an output-level result, not evidence that `W_r≈0`: the final router-weight norms remain near ordinary initialization. The supported conclusion is that neither learned gate developed meaningful input/time dependence under this evaluation.
 
@@ -132,10 +167,11 @@ Across every individual intervention and checkpoint, the largest absolute valida
 
 1. **Headline comparison — complete.** `none` vs fixed `multi` vs SMT was run on the four synthetic memory environments, including harder interference variants. SMT does not consistently beat `multi` (§7).
 2. **Scalability — not established.** The current scan is sequential and was not benchmarked at `L∈{64,128}`. The dense basis-size factorial is complete, but it is a quality—not wall-clock or memory-scaling—study (§9.4).
-3. **Selectivity ablations — complete for SMT-v2/OC-SMT and extended by V3.** Router mass matching, causal gate replacement, static/dynamic and old/new-recurrence retraining controls, hard visibility, shifted masks, and L0 cardinality were tested. SMT-v2/OC-SMT reject useful dynamic selection (§5, §9); V3 learns black-token update timing but fails the broader performance screen (§7.5). A competitively tuned Mamba-style learned-`Δ` baseline remains undone.
-4. **Router/update diagnostics — complete.** SMT-v2 read/write trajectories and interventions are nearly static (§5). V3 is the opposite: its scalar update gate perfectly separates the exact black sentinel from visible tokens and is causally necessary, but this does not generalize the claim beyond explicit missingness (§7.5).
+3. **Selectivity ablations — complete through V4.** Router mass matching, causal gate replacement, static/dynamic and old/new-recurrence controls, hard visibility, shifted masks, L0 cardinality, V4 action/no-aux/single-level controls, and memory-only action interventions were tested. V3/V4 gates detect the black token and matter causally; neither beats the SSM performance bar (§7.5–7.6). A competitively tuned Mamba-style learned-`Δ` baseline remains undone.
+4. **Router/update/action diagnostics — complete.** SMT-v2 gates are nearly static (§5); V3 gates are black-sentinel selective (§7.5). V4 adds a genuinely used action path: cross-episode blackout-action replacement raises first-post MSE 12.46% while no-action/SSM controls are invariant. The slow level has no positive marginal read contribution (§7.6).
 5. **Simulator/robotic diagnostic — complete, with a narrower outcome.** The old self-latent comparison was integrity-corrected but remains invalid across independently learned coordinate systems (§7.1). A new fixed-DINO, paired-clean-target factorial removes that flaw and evaluates shifted masks (§7.2); it is an offline latent-prediction diagnostic, not robot-control performance.
 6. **Optimization-budget and V3 factorial — complete.** The 125-cell 100-epoch audit shows the old 30-epoch ranking was undertrained and still not converged. The subsequent matched 225-cell, 200-epoch V3 grid, 900 mask evaluations, and 100 gate audits are complete and return `NO_GO` (§7.2, §7.5).
+7. **Causal-predictor V4 pilot — complete and stopped prospectively.** A four-run normalization calibration selected batch-independent `predictor_norm=none`; the 135-cell V4 pilot and post-decision mask/gate/action/level diagnostics are complete. V4 beats V3 but not SSM, and the auxiliary ablation is negative, so the locked protocol did not launch its 165-run expansion (§7.6).
 
 ## 7. Initial validation results
 
@@ -357,7 +393,7 @@ The causal-in-time encoder audit shows that future-frame BatchNorm statistics do
 
 The shared-DINO study (§7.2) removes that coordinate flaw and supplies a real positive result: across five environments, recurrent designs improve first-post means over an independently trained memoryless predictor and the effect survives shifted masks. The 100-epoch rerun changes the ranking materially—SSM is best on three environments and `multi` on two—and is still improving in 117/125 cells over epochs 90→100. This supports recurrent memory generally, not a fixed-bank winner. It also bounds the claim: last-visible hold remains best on Reacher, deep-blackout zero-shot tracking usually degrades, clean-input behavior is worse, and equal-budget training is not competitive baseline tuning.
 
-Before V3, the evidence therefore supported only a fixed exponential feature path for short-horizon post-occlusion prediction, with no useful content-dependent selection, automatic sizing, general hidden-state tracking, or downstream control. Dense OC-SMT (§9) adds one lead—an over-complete M=28 configuration improves synthetic Occlusion usage—but M also changes parameter count and readout initialization and interacts with horizon range and stochastic hard-concrete training. V3 (§7.5) narrows the negative statement: dynamic gating can help when missingness is an explicit, easily detected sentinel, but it still does not establish semantic selection, action-conditioned belief tracking, or an advantage over SSM/simple hold.
+Before V3, the evidence therefore supported only a fixed exponential feature path for short-horizon post-occlusion prediction, with no useful content-dependent selection, automatic sizing, general hidden-state tracking, or downstream control. Dense OC-SMT (§9) adds one lead—an over-complete M=28 configuration improves synthetic Occlusion usage—but M also changes parameter count and readout initialization and interacts with horizon range and stochastic hard-concrete training. V3 (§7.5) narrows the negative statement: dynamic gating can help when missingness is an explicit sentinel. V4 (§7.6) narrows it again: an action-conditioned hierarchical state really uses controls outside the short predictor window and helps on longer gaps, but its fixed auxiliary does not help overall and SSM remains stronger on four of five canonical environment means. Neither result establishes semantic selection, general hidden-state tracking, or downstream control.
 
 ### 7.5 SMT-v3-W: true selective update
 
@@ -436,11 +472,96 @@ The analyzer's locked output is therefore **`NO_GO`**. It fails the ≥4/5 large
 1. **Whole-update gating fixes a mismatch with the intended freeze semantics of V1/V2.** Scaling only the incoming value does not mean “do not write”; it writes zero while old state decays. V1/V2 implement their stated equation correctly, but that equation cannot freeze memory. V3's rate-gated recurrence can and beats the matched old-erasing control by 4.19% on average, although Cheetah is a counterexample.
 2. **A causal dynamic gate is not automatically semantic selectivity.** Static retraining and mean-gate intervention show that timing genuinely matters, but AUROC 1.0 reveals what was learned: detect one extreme missingness token. General selectivity requires training/testing across unseen corruptions and task-relevant distractors.
 3. **The simpler read is sufficient for the mechanism test, not for winning the benchmark.** V3 removes the per-token horizon router, uses half the memory parameters of SMT-v2, and still produces the strongest gating evidence. Yet SSM wins 22/25 paired cells, so gate interpretability is not a substitute for predictive quality.
-4. **Actions are the architectural ceiling.** V3 can retain the pre-gap appearance and the predictor can use only its last three actions, but the recurrent state cannot evolve through the full blackout. The next serious design should be an action-conditioned predict/correct belief state, not another black-token gate sweep.
+4. **Actions were the architectural ceiling.** V3 can retain the pre-gap appearance and the predictor can use only its last three actions, but the recurrent state cannot evolve through the full blackout. This finding directly motivated HACSM-v4's action-conditioned predict/correct belief state rather than another black-token gate sweep.
 5. **Training budget changes the apparent winner.** The 30→100 epoch rerun changes design rankings, while the 200-epoch endpoint remains noisy under a brittle cellwise rule. Future comparisons need per-baseline tuning, stable window-based convergence criteria, and an untouched test split selected before architecture iteration.
 6. **Publication value is diagnostic.** The useful story is why V2 appears selective but is static, why true-update V3 becomes dynamic on explicit missingness, and why that still fails against SSM/hold. It is not evidence for general learned memory, automatic sizing, or control.
 
 All primary artifacts are in `outputs/smt_v3_shared`: `grouped.csv`, `v3_contrasts.csv`, `v3_gate_grouped.csv`, `convergence.csv`, `mask_generalization_per_run.csv`, `decision.json`, and the hash-complete `v3_manifest.json`. The operator log records a 0/225 clear start, and launch/final SHA-256 snapshots match for the producer sources. The final manifest attests all 225 checkpoint pairs, five environment feature bundles (15 files), 12 outputs, analysis code, and producer sources. Checkpoints do not embed their producer-code hashes, so the clear start and unchanged-during-training claim remain an operator-record attestation rather than cryptographic source binding.
+
+### 7.6 HACSM-v4: action-conditioned hierarchy fixes V3's ceiling, but is not the overall winner
+
+HACSM-v4 (§2.3) was the direct follow-up to V3 insight 4: let every recurrent state evolve under the complete action stream, then selectively correct it from observations. The experiment also tests the stronger idea in the question motivating this version—whether memory can become **self-supervised and hierarchical**, rather than receiving only the one-step predictor gradient.
+
+#### Causal predictor repair and prospective normalization choice
+
+Before launch, an implementation audit found a new leakage path independent of the memory recurrence. `MemoryLeWorldModel.compute_loss` flattens all sliding windows into a `B×W` batch, while the legacy predictor ends in `BatchNorm1d(track_running_stats=False)`. Consequently, every prediction uses statistics from later windows even in evaluation. Archived V1–V3 numbers remain valid descriptions of their implemented protocols, but they are not numerically pooled with the new cohort.
+
+Both per-token LayerNorm and no output normalization remove this coupling. A four-run, explicitly exploratory Reacher calibration (`seed=98`, 30 epochs; not part of the decision grid) found that LayerNorm's per-token scale constraint hurt both architectures:
+
+| design | final LayerNorm first-post MSE | no output norm first-post MSE | relative change |
+|---|---:|---:|---:|
+| SSM | .8573 | **.7738** | −9.75% |
+| HACSM-v4 | .7829 | **.7035** | −10.14% |
+
+We therefore locked `predictor_norm=none` for **every** main-cohort design before creating any main checkpoint. Focused tests verify that an anchor window is unchanged when unrelated/later windows are appended, while the legacy BatchNorm test changes as expected. The causal mode also preserves target magnitude, which varies substantially across the non-whitened DINO-PCA vectors.
+
+#### Locked staged protocol
+
+Stage A was five environments × nine designs × seeds `{0,1,2}` = **135 independent 200-epoch runs**. Designs were `none`, fixed `multi`, SSM, causally retrained V3, and full/static/no-action/no-aux/single-level HACSM-v4. All use the exact V3 DINO-PCA artifacts, 600/150 train/validation episodes, `L=32`, `D=128`, history 3, batch 64, the balanced first-post weight `.5`, final-epoch checkpoints, and no best-validation selection. HACSM-v4 uses auxiliary weight `.1` and the fixed horizons in §2.3.
+
+The permissive expansion screen was fixed in code and source-hashed before launch. Expansion to seeds 3–4 plus GRU and causally retrained V1/V2 required, among other checks, V4 to beat SSM by at least 1% over paired cells, win at least 9/15 pairs and 3/5 environment means, and show positive action and auxiliary ablations. A failed Stage A stops rather than spending another 165 runs. This is an internal deterministic screen on reused validation trajectories, not a hypothesis test or external preregistration.
+
+#### Completed 135-run result
+
+All 135 checkpoints completed, strictly reloaded, matched their JSON metrics, contained 200 finite epochs, and passed source/feature hash revalidation. The tables report clean-target first-post MSE, population mean±std over three optimizer seeds (lower is better); hold is deterministic. Every value is from the same causal-predictor cohort.
+
+| environment | hold | none | fixed multi | SSM | V3 dynamic | **V4 full** |
+|---|---:|---:|---:|---:|---:|---:|
+| Reacher | **.717** | 1.177±.001 | .848±.008 | .819±.015 | .871±.010 | .872±.008 |
+| Ball-in-Cup | 2.290 | 1.158±.002 | 1.213±.023 | **.978±.031** | 1.171±.028 | 1.028±.014 |
+| Finger-spin | 1.254 | 1.815±.001 | 1.475±.001 | **1.202±.015** | 1.429±.024 | 1.282±.018 |
+| Cheetah | 1.014 | .635±.005 | .782±.013 | .656±.004 | .835±.019 | **.607±.011** |
+| OGBench-Cube | 1.778 | 2.224±.008 | 1.889±.015 | **1.483±.008** | 1.807±.019 | 1.577±.018 |
+
+| environment | static correction | no action | no auxiliary | single `τ=8` read | **V4 full** |
+|---|---:|---:|---:|---:|---:|
+| Reacher | .898±.018 | **.867±.007** | .870±.009 | .891±.006 | .872±.008 |
+| Ball-in-Cup | **.980±.013** | 1.120±.022 | 1.049±.011 | .984±.004 | 1.028±.014 |
+| Finger-spin | 1.424±.040 | 1.452±.014 | 1.288±.017 | 1.314±.022 | **1.282±.018** |
+| Cheetah | .605±.026 | .794±.011 | **.588±.012** | .609±.012 | .607±.011 |
+| OGBench-Cube | 1.691±.015 | 1.829±.019 | **1.544±.017** | 1.627±.015 | 1.577±.018 |
+
+V4 is a real improvement over V3, but not over the strongest baseline. Across the 15 paired environment/seed cells, full V4 reduces first-post MSE versus causally retrained V3 by **12.49% with 13/15 wins**. The per-environment reductions are 12.15% Ball, 27.39% Cheetah, 10.26% Finger, −.06% Reacher, and 12.72% Cube. This directly validates the diagnosis that V3's action-blind recurrence is a ceiling.
+
+Against SSM, however, V4 is **3.43% worse on mean paired relative change**, wins only **3/15** cells, and has the lower environment mean only on Cheetah. It beats last-visible hold on Ball, Cheetah, and Cube—again 3/5, not a general win. Clean-input first-post MSE is 4.76% better than SSM on paired relative average, so an across-the-board clean-input regression does not explain the failure.
+
+The component ablations are informative:
+
+- **Actions work.** Full V4 improves over `noaction` by 11.34% over paired cells with 12/15 wins. The largest environment-level effects occur on Finger, Cheetah, Ball, and Cube; Reacher is effectively action-insensitive under this target.
+- **Dynamic correction is useful on average but not universal.** Full improves over static by 2.81% with 11/15 wins, yet static is substantially better on Ball and marginally better on Cheetah.
+- **The hierarchy is modestly useful.** Full improves over the single-middle-level read by .73% with 12/15 paired wins, but Ball again reverses the effect.
+- **The fixed auxiliary objective does not earn its cost.** Full is .65% worse than `noaux` on mean paired relative change and wins only 6/15 cells. It helps Ball and some Finger cells, is nearly neutral on Reacher, and hurts Cheetah/Cube. Thus the states can be trained self-supervised and do learn action dynamics, but the equal-level `{1,2}/{4,8}/{16}` raw-feature MSE is not a generally beneficial regularizer.
+
+Late training is stable enough that extension is not the explanation: the absolute change between mean validation prediction loss over epochs 181–190 and 191–200 has median .441%, p95 1.976%, and maximum 2.212%. Only 50/135 signed changes are improvements; many cells mildly deteriorate, consistent with generalization rather than unfinished optimization.
+
+The locked analyzer returns **`NO_GO`** and `expand=false`. It fails all three SSM-performance conditions and the auxiliary-mechanism condition; it passes the action condition, the 3/5 hold condition, and the clean-input condition. The 165-run expansion was therefore not launched. This prevents an adaptive five-seed search from turning one Cheetah success into an “overall best” claim.
+
+#### Post-decision causal diagnostics
+
+After the decision was frozen, we replayed all 135 checkpoints under shifted masks and ran gate/action/level interventions on the V4 family. These diagnostics are explicitly descriptive and cannot change `expand=false`. Original-mask replay matches every saved primary metric within the evaluator tolerance.
+
+| mask condition | V4 paired relative reduction vs SSM | interpretation |
+|---|---:|---|
+| original `[10,16)` | −3.43% | V4 worse |
+| early `[6,12)` | −2.25% | V4 worse |
+| late `[14,20)` | −5.53% | V4 worse |
+| longer `[10,19)` | **+5.08%** | V4 better |
+
+The longer blackout is the one robustness condition where action-evolving hierarchy overtakes SSM on pooled paired relative change. This is consistent with the intended mechanism, but it was inspected after the pilot stopped and still uses the same black sentinel and trajectories.
+
+The learned correction gates also remain sentinel detectors. On the causal prefix `t=1…15`, visible/black means are `.845/.159` for `τ=2`, `.890/.204` for `τ=8`, and `.905/.237` for `τ=32`; all three have visible-token AUROC 1.000. Replacing all three gate trajectories by per-level causal-prefix means calibrated on 600 training episodes raises full-V4 first-post MSE by **41.27%** on average. Dynamic correction is therefore causally important, but—as in V3—the classifier is still distinguishing the exact projected black image from visible features.
+
+The action intervention is stronger evidence for the new capability. Predictor actions are held correct while only the memory path's early-blackout actions `a_10:a_12` are replaced by same-time actions from deterministically paired other episodes. This in-distribution swap changes 8.47% of complete-sequence action tokens and raises V4 first-post MSE by **12.46%**. Zeroing the same early actions raises it 7.17%; zeroing the full memory-path gap raises it 10.72%. `hacsmv4_noaction` and SSM change by exactly zero under every memory-only action override. Thus V4 genuinely transports control information outside the predictor's three-action window; the gain is not merely a different observation gate.
+
+Level-read ablations show an asymmetric hierarchy. Dropping fast memory worsens first-post MSE by 10.93%, dropping medium by .56%, and dropping slow *improves* it by .12% on average. Fast-only, medium-only, and slow-only reads worsen by 22.05%, 2.96%, and 24.49%. Multiple levels are useful jointly, but the slow level has no positive marginal read contribution under this metric; the equal slow auxiliary is therefore a plausible source of the negative `noaux` contrast.
+
+#### V4 insights and next architecture
+
+1. **Hierarchical self-supervised memory is technically and causally possible.** The action-only rollouts are leak-free, targets are stop-gradient, hidden blackout targets never enter, and action-transition parameters receive immediate gradients. The action ablation confirms that the online model uses the path.
+2. **Self-supervision must be scheduled or uncertainty-weighted.** A fixed `.1` weight and equal averaging give the difficult `h=16` slow objective one third of auxiliary mass. The results favor auxiliary pretraining/annealing, learned uncertainty weights, or a separate target head over forcing every state directly into raw DINO-PCA coordinates throughout training.
+3. **The publication bar remains unmet.** V4 repairs action blindness and substantially beats V3, which is a useful architectural result. It still loses the primary SSM direction, the auxiliary ablation is negative, all corruptions use one black sentinel, and no result measures simulator state or executed return.
+
+Primary artifacts are in `outputs/hacsm_v4_shared`: `protocol.json`, `pilot_per_run.csv`, `pilot_grouped.csv`, `pilot_paired_contrasts.csv`, `pilot_convergence.csv`, `pilot_decision.json`, and the hash-complete `hacsm_v4_manifest.json`. The manifest attests 135 checkpoint/metric pairs, all fixed feature inputs, producer sources, analysis outputs, and logs. Post-decision outputs are `pilot_mask_generalization_per_run.csv`, `pilot_v4_gate_per_run.csv`, `pilot_v4_action_interventions.csv`, `pilot_v4_level_ablations.csv`, `pilot_diagnostics.json`, and `pilot_diagnostics_manifest.json`; they cannot change the locked `NO_GO`. These compact protocol/result/manifest files are versioned with the study despite the general `outputs/` ignore rule. The 135 checkpoints and execution logs remain uncommitted because of size; the primary manifest retains their exact hashes, so a durable external checkpoint bundle is still required for independent replay.
 
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
@@ -502,7 +623,7 @@ The experiments use `M=28`, an 8× gate learning-rate multiplier, and output-pro
 They are not interchangeable: an expected-open count above zero can coexist with zero deterministic gates. All three are analysis statistics. The current code still instantiates and computes all 28 banks.
 
 ![OC-SMT architecture](figures/fig_ocsmt_arch.png)
-*Figure 4. OC-SMT places hard-concrete read gates over a fixed M=28 EMA basis. Green/white gates illustrate the intended selected/masked read set; they do not depict the observed solution, and a masked read is not a removed state or skipped computation in the current implementation.*
+*Figure 6. OC-SMT places hard-concrete read gates over a fixed M=28 EMA basis. Green/white gates illustrate the intended selected/masked read set; they do not depict the observed solution, and a masked read is not a removed state or skipped computation in the current implementation.*
 
 ### 9.2 Engineering finding: a narrow cardinality transition with no useful sparse point
 
@@ -576,8 +697,9 @@ There is a worthwhile controlled finding here, but the current `paper/main.pdf` 
 2. Counterfactual bank swaps and test-time ablations show that trained predictors can rely on the recurrent path.
 3. In a common fixed DINO target space, every recurrent design beats a learned memoryless predictor in all 25 paired cells after 100 epochs, and the relative effects persist under shifted masks (§7.2). The rerun also overturns the 30-epoch ranking—SSM is best on three environment means and `multi` on two—while still failing its convergence audit. This is evidence for recurrent memory generally, not a particular bank design.
 4. V3 supplies a genuine but narrow mechanism result: a true selective-update gate beats its static control by a mean 9.91% across paired cells, wins 23/25 pairs, and is causally necessary under mean replacement (§7.5). It is also a perfect classifier for the exact black sentinel, remains action-blind, loses to SSM on every environment mean, and beats hold on only three of five.
-5. The negative mechanisms are unusually clear: SMT-v2 gates are static, mass explains most of its router gain, L0 auto-sizing has no useful sparse point, the OC-SMT lead is dense, and V3 shows the narrow boundary where selection does emerge without meeting the broader performance bar.
-6. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, so future-frame BatchNorm mixing is not their material source; the same audit identifies a separate singleton-inference and representation-conditioning failure.
+5. V4 supplies a second positive mechanism result: it improves causally retrained V3 by 12.49%, and replacing only memory-path blackout actions from other episodes worsens it by 12.46% while SSM/no-action controls are invariant (§7.6). It also exposes the limit cleanly: SSM wins 4/5 canonical means, the hierarchical auxiliary loses to `noaux`, and the slow read has no positive marginal contribution.
+6. The negative mechanisms are unusually clear: SMT-v2 gates are static, mass explains most of its router gain, L0 auto-sizing has no useful sparse point, the OC-SMT lead is dense, V3 selection specializes to missingness, and V4's action hierarchy is real without becoming the best predictor.
+7. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, while the V4 cohort removes the predictor's separate cross-window BatchNorm coupling entirely. The original singleton-inference and representation-conditioning failure remains unresolved for the synthetic pixel encoder.
 
 That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language.
 
@@ -587,13 +709,13 @@ That is a coherent **diagnostic study**. It is not yet the broad “learnable se
 2. **The original robot/OGBench headline is invalid and partly stale.** The action-prototype bug is fixed (§7.1), but those checkpoints still use incomparable private encoder coordinates, target black-frame latents during the blackout, and measure influence only at the last frame. The paper's Cheetah row still reports the superseded `.240/.201` none/`multi` values and claims improvement; the corrected consistent-prototype held-out evaluation is `.122/.155`, so `multi` is worse. DeepMind Control Suite tasks are MuJoCo simulations—not “four real robots” or hardware ([Tassa et al., 2018](https://arxiv.org/abs/1801.00690)). The fixed-DINO replacement is valid in one common coordinate system, but it measures prototype-randomized next-feature prediction, not manipulation/control success.
 3. **The manuscript misstates its DINO representation.** DINOv2 ViT-S/14 was trained/distilled on LVD-142M, not “distilled on ImageNet” ([Oquab et al., 2023](https://arxiv.org/abs/2304.07193)). The experiment uses a global CLS feature, whereas DINO-WM operates on frozen spatial patch embeddings; calling the CLS setup “the DINO-WM recipe” is inaccurate ([Zhou et al., 2024](https://arxiv.org/abs/2411.04983)).
 4. **The original synthetic encoder is not deployable causally as implemented.** Its stateless BatchNorm pools over episode×time, including future frames; singleton online encoding fails. The no-retraining time-slice audit shows that this leakage does not explain the archived usage gaps, but it remains transductive over 256 episodes and reveals pre-BN variance `5.78e-12` with median effective rank 5.86/128. The paper needs retraining with causal/fixed normalization and a batch-size-one streaming evaluation, not only a sensitivity re-encoding.
-5. **The stronger common-target result is still bounded by simple controls and optimization sensitivity.** The 100-epoch grid improves every matched first-post cell over its 30-epoch counterpart, changes the winning architecture, and still improves in 117/125 cells over epochs 90→100. At 200 epochs under the first-post-weighted objective, SSM is the best learned environment mean on all five tasks; V3 and its hard visibility control each beat last-visible hold on only Ball, Cheetah, and Cube. Deep-blackout targets remain off-objective, every mask uses the same extreme black sentinel on reused validation trajectories, and no result is state decoding or return. The supported claim is boundary prediction after an explicit missingness token—not general hidden-state tracking.
-6. **The broad learned-selectivity thesis is still unsupported, despite a narrow V3 success.** SMT-v2 gate replacement and shuffling remain negligible (maximum absolute MSE change `1.09e-5` across the archived intervention grid), and useful sparse cardinality never emerges. V3's dynamic gate is different: it matters causally and improves a retrained static control. But its causal-prefix AUROC is exactly 1.0 because it separates visible features from one conspicuous black token; it is scalar, uses a global bank mixture, does not see actions, and does not beat SSM. This can support a black-sentinel selective-update diagnostic, not a general content-selective or automatically sized memory claim.
+5. **The stronger common-target result is still bounded by simple controls and optimization sensitivity.** The 100-epoch grid changes the winning architecture and is still improving late. In the matched 200-epoch V3 cohort SSM wins all five means; in the new leakage-safe V4 cohort it still wins four of five. V4 beats hold on only Ball, Cheetah, and Cube, and its advantage over SSM appears only on the post-decision longer-mask condition. Deep-blackout targets remain off-objective, every mask uses the same extreme black sentinel on reused validation trajectories, and no result is state decoding or return.
+6. **The broad learned-selectivity/hierarchy thesis is still unsupported, despite real V3/V4 mechanisms.** V3 and every V4 correction level have causal-prefix visible-token AUROC exactly 1.0 because they separate one conspicuous black token. V4 adds a real action path, but its full model is worse than `noaux` on paired average, the slow read is dispensable, and it loses the SSM performance direction. This supports a black-sentinel predict/correct diagnostic—not a generally superior content-selective or automatically sized hierarchy.
 7. **Baselines and task outcomes are below the main-track bar for the broad claim.** Current learned GRU/SSM/retrieval comparisons use one matched training budget rather than competitive per-baseline tuning. POPGym/Memory-Maze results emphasize next-latent MSE or influence under random policies rather than standard task returns. Raw MSE from separately trained encoders should not be compared as if it shared a scale. A convincing world-model/control paper needs standard POMDP returns or success, tuned recurrent/SSM/Transformer memory baselines, and parameter/compute-matched fixed-bank ablations.
 
 ### Novelty and positioning risk
 
-The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, while V3's true-update gate mainly recovers the standard idea of freezing state under an explicit missingness signal. Perfect detection of one black token is useful diagnostic evidence but does not create a defensible architectural “missing quadrant.” The related-work comparison must also include at least:
+The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4 is a compact predict/correct recurrent filter with hand-set levels. Perfect sentinel detection and a useful action path are diagnostic contributions, but neither creates a defensible architectural “missing quadrant” without stronger performance/tasks. The related-work comparison must also include at least:
 
 - [ELMUR: External Layer Memory with Update/Rewrite for Long-Horizon RL Problems](https://openreview.net/forum?id=bm3rbtEMFj), an ICLR 2026 poster that evaluates long-horizon POMDP control on T-Maze, POPGym, and visual robotic manipulation with task success/return.
 - [seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models](https://proceedings.neurips.cc/paper_files/paper/2025/hash/2f63d2963526bdd9ff1b8bcc2dc9905a-Abstract-Conference.html), a NeurIPS 2025 paper whose JEPA world model uses a Transformer to aggregate short action-conditioned observation sequences.
@@ -611,13 +733,13 @@ If targeting ICLR, reframe the work around a title such as **“When Does a JEPA
 
 1. Implement actual online T-Maze/POPGym/Memory-Maze control: choose actions from the model, execute them, and report return/success over at least five seeds with test-time memory ablations.
 2. Use shared, demonstrably state-sensitive targets or simulator state for visual tracking; add a pose/state linear probe for DINO features. Train on randomized mask locations and multiple pixel-level corruptions, then reserve unseen rollout seeds and unseen corruption families for confirmation.
-3. Tune GRU, modern SSM, Transformer/recurrent-state, and last-observation baselines separately; match parameters, training compute, and context. The completed equal-budget grid makes SSM—not the fixed bank or V3—the baseline to beat. Separate basis size, horizon range, readout parameterization, and stochastic training.
-4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, and the conditions where SSM/last-visible hold win. Remove “general input-conditioned selectivity” and “automatic sizing” as achieved contributions.
+3. Tune GRU, modern SSM, Transformer/recurrent-state, and last-observation baselines separately; match parameters, training compute, recurrent state, and context. The completed cohorts make SSM—not the fixed bank, V3, or full V4—the baseline to beat. Separate basis size, horizon range, readout parameterization, auxiliary schedule, and stochastic training.
+4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, V4's causally necessary blackout actions, the negative slow/auxiliary ablations, and the conditions where SSM/hold win. Remove “general input-conditioned selectivity,” “overall best,” and “automatic sizing” as achieved contributions.
 5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
 6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
-7. If pursuing another architecture, stop extending the action-blind black-token V3 grid. Use an action-conditioned predict/correct belief update: propagate recurrent state with every action while observations are missing, then learn an observation-correction gate when evidence returns. Evaluate simulator-state prediction and executed return, not only CLS-feature MSE.
+7. If pursuing another architecture, treat V4—not V3—as the starting point. Anneal or uncertainty-weight the hierarchical auxiliary, give each level a target head instead of forcing raw target coordinates, and test a regularized SSM+HAC mixture on a development split. Freeze every choice before an untouched rollout-seed/corruption-family test, then evaluate simulator-state prediction and executed return—not only CLS-feature MSE.
 
-**Recommendation.** The new 225-run V3 experiment does not change the submission decision; its own internally fixed analyzer returns `NO_GO`. The expected main-track outcome remains rejection on task validity, baseline strength, and novelty/positioning, with possible desk-rejection risk if the next guide retains a comparable page limit. Do **not** submit this version. Either (a) complete the action-conditioned control/benchmark program above and rebuild the paper around causal memory diagnostics, or (b) submit a much narrower workshop paper whose central result is the contrast between static SMT-v2, black-sentinel-selective V3, and the stronger SSM/hold controls.
+**Recommendation.** The 225-run V3 grid and the new 135-run leakage-safe V4 pilot both return `NO_GO`; V4's prospective gate correctly stops the 165-run expansion. The expected main-track outcome remains rejection on task validity, baseline strength, and novelty/positioning. Do **not** submit the current version to the ICLR main track. Either (a) complete the untouched-test, state/return, tuned-baseline, and auxiliary/hybrid program above and rebuild around causal memory diagnostics, or (b) submit a narrower workshop paper centered on static V2, black-sentinel V3, action-sensitive V4, and the stronger SSM/simple controls.
 
 ## References
 

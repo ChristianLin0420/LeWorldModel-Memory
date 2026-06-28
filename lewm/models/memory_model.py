@@ -16,6 +16,7 @@ isolates the memory's contribution: it is the sole long-range channel.
 Loss is unchanged in form:  L = L_pred + lambda * SIGReg(Z)   (2 terms, 1 lambda).
 """
 
+import math
 from typing import Dict, Optional
 
 import torch
@@ -25,7 +26,7 @@ from lewm.models.leworldmodel import LeWorldModel
 from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
                                 GRUMemory, SSMMemory, RetrievalMemory,
                                 SelectiveMultiTimescaleMemory, SelectiveUpdateMemoryV3,
-                                OCSMTMemory)
+                                HierarchicalActionConditionedMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -34,6 +35,18 @@ _SMTV3_MODES = {
     'smtv3_oracle': 'oracle',
     'smtv3_old': 'old_update',
 }
+
+_HACSMV4_MODES = {
+    'hacsmv4': 'dynamic',
+    'hacsmv4_static': 'static',
+    'hacsmv4_noaction': 'noaction',
+    'hacsmv4_noaux': 'dynamic',
+    'hacsmv4_single': 'single',
+    'hacsmv4_oracle': 'oracle',
+}
+
+# Each level is supervised only at horizons appropriate to its structural timescale.
+_HACSMV4_AUX_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8), (2, 16))
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -62,6 +75,7 @@ class MemoryLeWorldModel(LeWorldModel):
         oc_tau_max: float = 256.0,
         oc_stochastic_gates: bool = True,
         l0_lambda: float = 0.0,
+        hier_loss_weight: float = 0.1,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -69,6 +83,9 @@ class MemoryLeWorldModel(LeWorldModel):
         self.memory_impl = memory_impl
         self.encoder_type = encoder_type
         self.l0_lambda = l0_lambda
+        if not math.isfinite(float(hier_loss_weight)) or float(hier_loss_weight) < 0.0:
+            raise ValueError('hier_loss_weight must be non-negative and finite')
+        self.hier_loss_weight = float(hier_loss_weight)
         if encoder_type == 'dino':                          # frozen pretrained DINOv2 backbone
             from lewm.models.encoder import FrozenDINOEncoder
             self.encoder = FrozenDINOEncoder(embed_dim=self.embed_dim)
@@ -94,6 +111,10 @@ class MemoryLeWorldModel(LeWorldModel):
         elif memory_impl in _SMTV3_MODES:                   # true selective-update SMT-v3 + controls
             self.mem_smtv3 = SelectiveUpdateMemoryV3(
                 embed_dim=self.embed_dim, taus=multi_taus, mode=_SMTV3_MODES[memory_impl])
+        elif memory_impl in _HACSMV4_MODES:                 # hierarchical action predict/correct memory
+            self.mem_hacsmv4 = HierarchicalActionConditionedMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_HACSMV4_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -110,9 +131,12 @@ class MemoryLeWorldModel(LeWorldModel):
             return observations
         return super().encode(observations)
 
-    def _inject(self, z: torch.Tensor, memory_update_mask: torch.Tensor = None,
-                gate_override=None) -> torch.Tensor:
+    def _inject(self, z: torch.Tensor, actions: torch.Tensor = None,
+                memory_update_mask: torch.Tensor = None, gate_override=None,
+                action_override=None, return_memory_details: bool = False):
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
+        if return_memory_details and self.memory_impl not in _HACSMV4_MODES:
+            raise ValueError('memory details are currently available only for HACSM-v4')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -128,6 +152,17 @@ class MemoryLeWorldModel(LeWorldModel):
             mixed = self.mem_smtv3(
                 z, memory_update_mask=memory_update_mask, gate_override=gate_override)
             return self.mem_smtv3.fuse(z, mixed)
+        if self.memory_impl in _HACSMV4_MODES:
+            if actions is None:
+                raise ValueError('HACSM-v4 requires actions with a_t mapping z_t to z_{t+1}')
+            result = self.mem_hacsmv4(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_hacsmv4.fuse(z, mixed), details
+            return self.mem_hacsmv4.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -146,9 +181,90 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_smt.horizons()
         if self.memory_impl in _SMTV3_MODES:
             return self.mem_smtv3.horizons()
+        if self.memory_impl in _HACSMV4_MODES:
+            return self.mem_hacsmv4.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
+
+    def _hierarchical_auxiliary_loss(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        targets: torch.Tensor,
+        target_valid_mask: torch.Tensor = None,
+    ) -> Dict[str, torch.Tensor]:
+        """Observation-free multi-horizon prediction from online posterior states.
+
+        A source state at time ``t`` is rolled only with ``a_t ... a_{t+h-1}``; it never reuses
+        an online state at the endpoint because that state has already consumed intervening
+        observations.  Only endpoint validity determines whether a pair is supervised.
+        """
+        if self.memory_impl not in _HACSMV4_MODES:
+            raise ValueError('hierarchical auxiliary loss requires HACSM-v4')
+        if states.dim() != 4:
+            raise ValueError(f'expected states (B,T,K,D), got {tuple(states.shape)}')
+        B, T, K, D = states.shape
+        if tuple(targets.shape) != (B, T, D):
+            raise ValueError(f'target shape {tuple(targets.shape)} != {(B, T, D)}')
+        if tuple(actions.shape) != (B, T - 1, self.action_dim):
+            raise ValueError(
+                f'action shape {tuple(actions.shape)} != {(B, T - 1, self.action_dim)}')
+        if K != self.mem_hacsmv4.K:
+            raise ValueError(f'state level count {K} != {self.mem_hacsmv4.K}')
+
+        if target_valid_mask is None:
+            mask = torch.ones(B, T, device=states.device, dtype=torch.bool)
+            use_first_post = False
+        else:
+            if tuple(target_valid_mask.shape) != (B, T):
+                raise ValueError(
+                    f'target_valid_mask shape {tuple(target_valid_mask.shape)} != {(B, T)}')
+            mask = target_valid_mask.to(device=states.device, dtype=torch.bool)
+            use_first_post = True
+
+        detached_targets = targets.detach()
+        horizon_losses = {}
+        level_terms = {0: [], 1: [], 2: []}
+        for level, horizon in _HACSMV4_AUX_HORIZONS:
+            n_sources = T - horizon
+            if n_sources < 1:
+                raise ValueError(
+                    f'sequence length {T} is too short for HACSM-v4 horizon {horizon}')
+            source = states[:, :n_sources].reshape(B * n_sources, K, D)
+            action_windows = actions.unfold(1, horizon, 1)
+            action_windows = action_windows.permute(0, 1, 3, 2).reshape(
+                B * n_sources, horizon, self.action_dim)
+            prediction = self.mem_hacsmv4.action_rollout(source, action_windows)[:, -1, level]
+            prediction = prediction.reshape(B, n_sources, D)
+            endpoint_targets = detached_targets[:, horizon:]
+            per_pair = (prediction - endpoint_targets).square().mean(dim=-1)
+            valid = mask[:, horizon:]
+            if not bool(valid.any()):
+                raise ValueError(f'no valid HACSM-v4 auxiliary targets at horizon {horizon}')
+            all_valid = per_pair[valid].mean()
+            loss_h = all_valid
+            if use_first_post:
+                first_post = valid & ~mask[:, horizon - 1:T - 1]
+                if not bool(first_post.any()):
+                    raise ValueError(
+                        f'no masked-to-valid HACSM-v4 auxiliary target at horizon {horizon}')
+                loss_h = 0.5 * all_valid + 0.5 * per_pair[first_post].mean()
+            horizon_losses[f'hier_loss_h{horizon}'] = loss_h
+            horizon_losses[f'hier_pairs_h{horizon}'] = valid.sum().to(dtype=states.dtype)
+            level_terms[level].append(loss_h)
+
+        fast = torch.stack(level_terms[0]).mean()
+        medium = torch.stack(level_terms[1]).mean()
+        slow = torch.stack(level_terms[2]).mean()
+        hierarchy = torch.stack((fast, medium, slow)).mean()
+        return {
+            'hier_loss': hierarchy,
+            'hier_loss_fast': fast,
+            'hier_loss_medium': medium,
+            'hier_loss_slow': slow,
+            **horizon_losses,
+        }
 
     # ---- core training loss (sliding short-window over a long chunk) ---------------
     def compute_loss(
@@ -188,8 +304,15 @@ class MemoryLeWorldModel(LeWorldModel):
         z_target = z if target_observations is None else self.encode(target_observations)
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
-        z_tilde = self._inject(
-            z, memory_update_mask=memory_update_mask, gate_override=gate_override)  # (B,L,D)
+        memory_details = None
+        if self.memory_impl in _HACSMV4_MODES:
+            z_tilde, memory_details = self._inject(
+                z, actions=actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, return_memory_details=True)
+        else:
+            z_tilde = self._inject(
+                z, memory_update_mask=memory_update_mask,
+                gate_override=gate_override)  # (B,L,D)
 
         # Sliding windows of length h: window s = z~[s : s+h] predicts z_{s+h}.
         # Number of windows W = L - h (s = 0 .. L-h-1).
@@ -246,6 +369,14 @@ class MemoryLeWorldModel(LeWorldModel):
             l0 = self.mem_ocsmt.last_l0                     # expected #open gates (set in _inject)
             out['l0_loss'] = l0
             out['loss'] = total + self.l0_lambda * l0
+        if memory_details is not None:
+            auxiliary = self._hierarchical_auxiliary_loss(
+                memory_details['states'], actions, z_target, target_valid_mask)
+            out.update(auxiliary)
+            effective_weight = (0.0 if self.memory_impl == 'hacsmv4_noaux'
+                                else self.hier_loss_weight)
+            out['hier_loss_weight'] = auxiliary['hier_loss'].new_tensor(effective_weight)
+            out['loss'] = out['loss'] + effective_weight * auxiliary['hier_loss']
         return out
 
     def forward(self, observations, actions):
@@ -253,15 +384,17 @@ class MemoryLeWorldModel(LeWorldModel):
 
     # ---- analysis utilities (used by probing / visualization) ----------------------
     @torch.no_grad()
-    def encode_with_memory(self, observations: torch.Tensor,
-                           memory_update_mask: torch.Tensor = None, gate_override=None):
+    def encode_with_memory(self, observations: torch.Tensor, actions: torch.Tensor = None,
+                           memory_update_mask: torch.Tensor = None, gate_override=None,
+                           action_override=None):
         """Return (z, m_fast, m_slow, z_tilde). m_fast/m_slow are None for non-EMA impls."""
         z = self.encode(observations)
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return z, m_fast, m_slow, self.fusion(z, m_fast, m_slow)
         return z, None, None, self._inject(
-            z, memory_update_mask=memory_update_mask, gate_override=gate_override)
+            z, actions=actions, memory_update_mask=memory_update_mask,
+            gate_override=gate_override, action_override=action_override)
 
     @torch.no_grad()
     def memory_influence(
@@ -270,6 +403,7 @@ class MemoryLeWorldModel(LeWorldModel):
         actions: torch.Tensor,
         memory_update_mask: torch.Tensor = None,
         gate_override=None,
+        action_override=None,
     ) -> Dict[str, torch.Tensor]:
         """Causal influence of each memory bank on the predicted next latent.
 
@@ -306,7 +440,8 @@ class MemoryLeWorldModel(LeWorldModel):
                     'infl_slow': (full - pred(False, True)).norm(dim=-1)}
         # non-EMA: total memory influence = ablate ALL memory (fused window vs raw window)
         full = self.predictor(self._inject(
-            z, memory_update_mask=memory_update_mask, gate_override=gate_override)[:, wsl], act)[:, -1, :]
+            z, actions=actions, memory_update_mask=memory_update_mask,
+            gate_override=gate_override, action_override=action_override)[:, wsl], act)[:, -1, :]
         nomem = self.predictor(z[:, wsl], act)[:, -1, :]
         infl_all = (full - nomem).norm(dim=-1)
         return {'pred_full': full, 'infl_fast': infl_all, 'infl_slow': infl_all}

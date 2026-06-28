@@ -1,0 +1,115 @@
+{
+  "architecture_contrasts": {
+    "hacsmv4_noaction": {
+      "mean_paired_relative_reduction": 0.113379794349269,
+      "n_pairs": 15,
+      "paired_wins": 12
+    },
+    "hacsmv4_noaux": {
+      "mean_paired_relative_reduction": -0.006479563432953481,
+      "n_pairs": 15,
+      "paired_wins": 6
+    },
+    "hacsmv4_single": {
+      "mean_paired_relative_reduction": 0.007263722670075742,
+      "n_pairs": 15,
+      "paired_wins": 12
+    },
+    "hacsmv4_static": {
+      "mean_paired_relative_reduction": 0.02809082996603887,
+      "n_pairs": 15,
+      "paired_wins": 11
+    },
+    "smtv3": {
+      "mean_paired_relative_reduction": 0.12491708232275979,
+      "n_pairs": 15,
+      "paired_wins": 13
+    },
+    "ssm": {
+      "mean_paired_relative_reduction": -0.03430096303207973,
+      "n_pairs": 15,
+      "paired_wins": 3
+    }
+  },
+  "changed_action_fraction": {
+    "hacsmv4:cross_episode_early_blackout": 0.08473118394613266,
+    "hacsmv4:zero_early_blackout": 0.09677419066429138,
+    "hacsmv4:zero_full_gap": 0.19354838132858276,
+    "hacsmv4_noaction:cross_episode_early_blackout": 0.08473118394613266,
+    "hacsmv4_noaction:zero_early_blackout": 0.09677419066429138,
+    "hacsmv4_noaction:zero_full_gap": 0.19354838132858276,
+    "hacsmv4_noaux:cross_episode_early_blackout": 0.08473118394613266,
+    "hacsmv4_noaux:zero_early_blackout": 0.09677419066429138,
+    "hacsmv4_noaux:zero_full_gap": 0.19354838132858276,
+    "hacsmv4_single:cross_episode_early_blackout": 0.08473118394613266,
+    "hacsmv4_single:zero_early_blackout": 0.09677419066429138,
+    "hacsmv4_single:zero_full_gap": 0.19354838132858276,
+    "hacsmv4_static:cross_episode_early_blackout": 0.08473118394613266,
+    "hacsmv4_static:zero_early_blackout": 0.09677419066429138,
+    "hacsmv4_static:zero_full_gap": 0.19354838132858276,
+    "ssm:cross_episode_early_blackout": 0.08473118394613266,
+    "ssm:zero_early_blackout": 0.09677419066429138,
+    "ssm:zero_full_gap": 0.19354838132858276
+  },
+  "changes_prospective_decision": false,
+  "full_v4_gate_summary": {
+    "tau_2": {
+      "black_mean": 0.15894173284371693,
+      "mean_gate_relative_change": 0.4126662085453669,
+      "visible_auroc": 1.0,
+      "visible_mean": 0.8445662975311279,
+      "visible_minus_black": 0.6856245517730712
+    },
+    "tau_32": {
+      "black_mean": 0.23708463907241822,
+      "mean_gate_relative_change": 0.4126662085453669,
+      "visible_auroc": 1.0,
+      "visible_mean": 0.9046494404474894,
+      "visible_minus_black": 0.6675648013750712
+    },
+    "tau_8": {
+      "black_mean": 0.20415092209974925,
+      "mean_gate_relative_change": 0.4126662085453669,
+      "visible_auroc": 1.0,
+      "visible_mean": 0.8898726383845011,
+      "visible_minus_black": 0.6857217093308766
+    }
+  },
+  "full_v4_level_ablations": {
+    "drop_fast": 0.10925594952617151,
+    "drop_medium": 0.00558906419610139,
+    "drop_slow": -0.0011575369940449794,
+    "fast_only": 0.22054272970805566,
+    "medium_only": 0.029566590487957,
+    "slow_only": 0.244935172299544
+  },
+  "label": "descriptive_post_decision_pilot_diagnostics",
+  "mask_v4_vs_ssm_mean_paired_relative_reduction": {
+    "early": -0.0224969692342054,
+    "late": -0.05532769828377561,
+    "longer": 0.05076743553819892,
+    "original": -0.0343009762844728
+  },
+  "memory_only_action_interventions": {
+    "hacsmv4:cross_episode_early_blackout": 0.12463436958690484,
+    "hacsmv4:zero_early_blackout": 0.07166044861078262,
+    "hacsmv4:zero_full_gap": 0.10717647684117158,
+    "hacsmv4_noaction:cross_episode_early_blackout": 0.0,
+    "hacsmv4_noaction:zero_early_blackout": 0.0,
+    "hacsmv4_noaction:zero_full_gap": 0.0,
+    "hacsmv4_noaux:cross_episode_early_blackout": 0.12810078924521803,
+    "hacsmv4_noaux:zero_early_blackout": 0.07652498446404934,
+    "hacsmv4_noaux:zero_full_gap": 0.11895969038208326,
+    "hacsmv4_single:cross_episode_early_blackout": 0.10659050003935894,
+    "hacsmv4_single:zero_early_blackout": 0.0648847496137023,
+    "hacsmv4_single:zero_full_gap": 0.09574172825862964,
+    "hacsmv4_static:cross_episode_early_blackout": 0.08898482869068781,
+    "hacsmv4_static:zero_early_blackout": 0.05356926357684036,
+    "hacsmv4_static:zero_full_gap": 0.08724834288780887,
+    "ssm:cross_episode_early_blackout": 0.0,
+    "ssm:zero_early_blackout": 0.0,
+    "ssm:zero_full_gap": 0.0
+  },
+  "pilot_decision_sha256": "2ca24d53c88146de53255ede6520660fce6d20343be8fccfc331e5ade8c57482",
+  "schema_version": 1
+}

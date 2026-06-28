@@ -1,0 +1,30 @@
+{
+  "criteria": {
+    "clean_input_worsening_vs_ssm_le_10pct": true,
+    "v4_beats_hold_in_ge_3_of_5_env_means": true,
+    "v4_vs_noaction_positive_and_wins_ge_8_of_15": true,
+    "v4_vs_noaux_positive_and_wins_ge_8_of_15": false,
+    "v4_vs_ssm_env_mean_wins_ge_3_of_5": false,
+    "v4_vs_ssm_mean_paired_reduction_ge_1pct": false,
+    "v4_vs_ssm_wins_ge_9_of_15": false
+  },
+  "decision": "NO_GO",
+  "expand": false,
+  "note": "Prospective permissive screen. A pass authorizes the five-seed/full-baseline expansion; it is not an overall-best or publication claim.",
+  "observed": {
+    "clean_input_relative_worsening_vs_ssm": -0.04762412433548768,
+    "descriptive_convergence_max_last10_vs_previous10": 0.012498759244647292,
+    "descriptive_convergence_median_last10_vs_previous10": -0.001607294270410362,
+    "descriptive_convergence_p95_last10_vs_previous10": 0.00571152993187257,
+    "v4_hold_env_wins": 3,
+    "v4_vs_noaction_mean_paired_relative_reduction": 0.113379794349269,
+    "v4_vs_noaction_paired_wins": 12,
+    "v4_vs_noaux_mean_paired_relative_reduction": -0.006479563432953481,
+    "v4_vs_noaux_paired_wins": 6,
+    "v4_vs_ssm_env_mean_wins": 1,
+    "v4_vs_ssm_mean_paired_relative_reduction": -0.03430096303207973,
+    "v4_vs_ssm_paired_wins": 3
+  },
+  "phase": "pilot",
+  "schema_version": 1
+}
