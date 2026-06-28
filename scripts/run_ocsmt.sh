@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# OC-SMT (§8/§9): over-complete fixed basis + L0 sparse gates. Sweep lambda0 to trace the
-# auto-sizing curve (usage vs mean active-bank count): l0=0 is the dense over-complete bank;
-# l0>0 anneals in the L0 prune. 4 envs x {0, 0.05, 0.2} x 3 seeds -> outputs/ocsmt.
-set -u
+# OC-SMT (§8/§9): over-complete fixed basis + L0 sparse gates. Coarse test of usage versus
+# deterministic active count: l0=0 is the dense upper bound; positive l0 tests whether annealed
+# sparsification finds a useful subset. 4 envs x {0, 0.05, 0.2} x 3 seeds -> outputs/ocsmt.
+set -euo pipefail
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python; mkdir -p logs outputs/ocsmt
 GPU_LIST=(${GPUS:-1 1 2 2 3 3}); NG=${#GPU_LIST[@]}
@@ -18,34 +18,39 @@ worker(){ local slot=$1; local gpu=${GPU_LIST[$slot]}
     echo "$(date +%T) [gpu $gpu] >>> ${SK[$idx]}"
     CUDA_VISIBLE_DEVICES=$gpu $PY ${JOBS[$idx]} > "logs/ocsmt_${idx}.log" 2>&1
   fi; done; }
-for s in $(seq 0 $((NG-1))); do worker "$s" & done
-wait
+PIDS=()
+for s in $(seq 0 $((NG-1))); do worker "$s" & PIDS+=("$!"); done
+status=0
+for pid in "${PIDS[@]}"; do
+  if ! wait "$pid"; then status=1; fi
+done
+if (( status != 0 )); then
+  echo "one or more OC-SMT workers failed; inspect logs/ocsmt_*" >&2
+  exit "$status"
+fi
 echo "=== OC-SMT RUNS COMPLETE ==="
+$PY - "$PWD/outputs/ocsmt" <<'PY'
+import itertools, sys, torch
+from pathlib import Path
+root = Path(sys.argv[1])
+expected = set(itertools.product(('tmaze','distractor','recall','occlusion'), (0,1,2), (0.0,0.05,0.2)))
+seen = set()
+for path in sorted(root.glob('*/model.pt')):
+    cfg = torch.load(path, map_location='cpu', weights_only=False)['args']
+    key = (cfg.get('env'), int(cfg.get('seed', -1)), float(cfg.get('l0_lambda', float('nan'))))
+    if key not in expected or key in seen:
+        raise SystemExit(f'unexpected/duplicate OC-SMT checkpoint {path}: {key}')
+    checks = {'memory_mode':'ocsmt', 'oc_num':28, 'gate_lr_mult':8.0,
+              'epochs':30, 'num_episodes':4000, 'batch_size':64}
+    for name, want in checks.items():
+        if cfg.get(name) != want:
+            raise SystemExit(f'{path}: {name}={cfg.get(name)!r}, expected {want!r}')
+    seen.add(key)
+if seen != expected:
+    raise SystemExit(f'incomplete OC-SMT factorial: {len(seen)}/{len(expected)}')
+print(f'validated exact OC-SMT factorial: {len(seen)} checkpoints')
+PY
 $PY scripts/analyze_runs.py outputs/ocsmt
-# active-bank count aggregation (the learned effective size)
-CUDA_VISIBLE_DEVICES=${GPU_LIST[0]} $PY - <<'PYEOF'
-import torch, csv, glob, statistics as st, sys
-from collections import defaultdict
-sys.path.insert(0,'.')
-from scripts.analyze_runs import build_model
-from lewm.data import generate_eval_batch
-usage={}
-for r in csv.DictReader(open('outputs/ocsmt/master_metrics.csv')):
-    usage[r['run']]=float(r['usage_matched'])
-agg=defaultdict(lambda: defaultdict(list))
-for d in sorted(glob.glob('outputs/ocsmt/*/')):
-    mp=d+'model.pt'
-    try: ck=torch.load(mp,map_location='cuda',weights_only=False)
-    except: continue
-    a=ck['args']; name=d.split('/')[-2]
-    m=build_model(a).cuda(); m.load_state_dict(ck['model_state_dict']); m.eval()
-    b=generate_eval_batch(a['env'],128,img_size=a['img_size'],length=a['length'],seed=4242)
-    z=m.encode(b['obs'].cuda()); ac=float(m.mem_ocsmt.active_count(z))
-    agg[(a['env'],a.get('run_suffix',''))]['act'].append(ac)
-    agg[(a['env'],a.get('run_suffix',''))]['use'].append(usage.get(name,float('nan')))
-print("\n=== OC-SMT auto-sizing: usage vs mean active banks (/28), 3 seeds ===")
-print(f"{'env':<11}{'l0':<7}{'usage':>10}{'active/28':>12}")
-for (env,suf),m in sorted(agg.items()):
-    print(f"{env:<11}{suf:<7}{st.mean(m['use']):>10.2f}{st.mean(m['act']):>12.1f}")
-PYEOF
+CUDA_VISIBLE_DEVICES=${GPU_LIST[0]} $PY scripts/analyze_ocsmt.py \
+  outputs/ocsmt --device cuda --eval-n 128
 echo "=== OC-SMT AGG COMPLETE ==="

@@ -20,9 +20,11 @@ def _parse(spec: str):
     return f'{base}-v0', occ
 
 
-def collect_ogbench(spec: str, num_episodes: int, length: int, img_size: int = 64, seed: int = 0):
+def collect_ogbench(spec: str, num_episodes: int, length: int, img_size: int = 64,
+                    seed: int = 0, prototype_seed: int = 0):
     """spec e.g. 'cube-single' or 'cube-single.occ'. Returns
-    (obs uint8 (E,L,H,W,3), actions int (E,L-1) in [0,K), n_actions=K)."""
+    (obs uint8 (E,L,H,W,3), actions int (E,L-1) in [0,K), n_actions=K,
+    action_prototypes). ``prototype_seed`` is independent of the rollout/env seed."""
     os.environ.setdefault('MUJOCO_GL', 'egl')
     import gymnasium as gym
     import cv2
@@ -36,8 +38,9 @@ def collect_ogbench(spec: str, num_episodes: int, length: int, img_size: int = 6
     hi = np.asarray(env.action_space.high, dtype=np.float32)
     lo = np.nan_to_num(lo, neginf=-1.0); hi = np.nan_to_num(hi, posinf=1.0)
 
-    rng = np.random.default_rng(seed)
-    protos = lo + (hi - lo) * rng.random((K_PROTOTYPES, *lo.shape)).astype(np.float32)
+    proto_rng = np.random.default_rng(prototype_seed)
+    rollout_rng = np.random.default_rng(seed)
+    protos = lo + (hi - lo) * proto_rng.random((K_PROTOTYPES, *lo.shape)).astype(np.float32)
 
     occ_start = length // 3
     occ_end = min(length, occ_start + max(4, length // 5))
@@ -53,7 +56,7 @@ def collect_ogbench(spec: str, num_episodes: int, length: int, img_size: int = 6
         env.reset(seed=seed + ep)
         frames = [frame()]; acts = []
         for _t in range(length - 1):
-            k = int(rng.integers(0, K_PROTOTYPES))
+            k = int(rollout_rng.integers(0, K_PROTOTYPES))
             _, _, term, trunc, _ = env.step(protos[k])
             if term or trunc:
                 env.reset(seed=seed + ep)
@@ -63,4 +66,4 @@ def collect_ogbench(spec: str, num_episodes: int, length: int, img_size: int = 6
             o[occ_start:occ_end] = 0
         obs_all.append(o); act_all.append(np.array(acts, dtype=np.int32))
     env.close()
-    return np.stack(obs_all), np.stack(act_all), K_PROTOTYPES
+    return np.stack(obs_all), np.stack(act_all), K_PROTOTYPES, protos

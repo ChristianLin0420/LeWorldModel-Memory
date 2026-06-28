@@ -1,7 +1,8 @@
 """Render the OC-SMT architecture schematic for docs/LEARNABLE_MEMORY.md §9.
 Contrast with SMT (Fig 1): an OVER-COMPLETE fixed basis (M=28) with per-bank L0 hard-concrete
-gates that PRUNE to a learnable, variable-size active set (no constant K).
-Color: blue = learned (W_i, W_g, W_o), gray = fixed decays, green = gate OPEN, faded = pruned."""
+gates that learn an effective read cardinality under a fixed M ceiling. The current implementation
+masks closed reads but still computes every bank.
+Color: blue = learned (W_i, W_g, W_o), gray = fixed decays, green = gate OPEN, faded = masked."""
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -42,9 +43,9 @@ box(2.0, 1.25, 2.25, 0.8, r'L0 gate $W_g z_t$', LEARN, fs=8.5)
 ax.text(2.0, 0.9, 'LEARNED', fontsize=7.5, color=LEARN, weight='bold')
 arrow(1.0, 3.6, 1.0, 1.65); arrow(1.0, 1.65, 2.0, 1.65)
 
-# over-complete fixed bank column (show 12 representative of M=28), with L0 gates (open/closed)
+# Over-complete fixed bank column (show 12 representative of M=28), with L0 gates (open/closed).
 taus_shown = [1.5, 2.5, 4, 6, 10, 16, 26, 42, 68, 110, 175, 256]
-# illustrative emergent active set: a few open (e.g. one short + a couple long), rest pruned
+# Illustrative active set; the fine sweep finds static subsets but no useful sparse operating point.
 open_idx = {1, 6, 9, 11}
 n = len(taus_shown); y0, bh, gap = 0.45, 0.50, 0.085
 ax.text(6.5, 7.55, r'OVER-COMPLETE fixed basis  ($M{=}28$, $\tau\!=\!1.5\ldots256$)',
@@ -65,7 +66,7 @@ for gy in gate_y:
 # L0 gate logits drive the per-bank gates
 for gy in gate_y:
     ax.add_patch(FancyArrowPatch((4.25, 1.65), (5.63, gy), arrowstyle='-', color=LEARN, lw=0.4, alpha=0.4))
-ax.text(3.0, 2.4, r'L0 penalty $\lambda_0\sum_m P(g_{t,m}{>}0)$' + '\n(annealed) prunes banks',
+ax.text(3.0, 2.4, r'L0 penalty $\lambda_0\sum_m P(g_{t,m}{>}0)$' + '\n(annealed) penalizes open gates',
         fontsize=7.5, color=LEARN)
 
 # weighted sum over OPEN banks -> W_o (learned) -> residual
@@ -76,7 +77,7 @@ for k, gy in enumerate(gate_y):
     lw = 1.3 if k in open_idx else 0.5
     ax.add_patch(FancyArrowPatch((7.55, gy), (8.13, 4.0), arrowstyle='-|>', mutation_scale=8,
                                  color=c, lw=lw, alpha=1.0 if k in open_idx else 0.5))
-ax.text(7.7, 5.7, r'only OPEN banks' + '\n' + r'(active set, size learned)', fontsize=7.5, color=GATE)
+ax.text(7.7, 5.7, r'only OPEN reads contribute' + '\n' + r'(all banks still computed)', fontsize=7.5, color=GATE)
 box(8.85, 3.6, 0.95, 0.8, r'$W_o$', LEARN, fs=10)
 ax.text(8.85, 4.55, 'LEARNED', fontsize=7.5, color=LEARN, weight='bold')
 arrow(8.59, 4.0, 8.85, 4.0)
@@ -91,10 +92,10 @@ ax.text(10.65, 4.0, r'$\tilde z_t$', fontsize=9, color='#333', ha='center')
 
 # legend
 ax.add_patch(plt.Circle((0.35, 0.35), 0.1, fc=OPEN, ec=GATE)); ax.text(0.55, 0.35, 'gate OPEN (active)', fontsize=7.5, va='center')
-ax.add_patch(plt.Circle((2.7, 0.35), 0.1, fc='white', ec=SHUT)); ax.text(2.9, 0.35, 'gate closed (pruned)', fontsize=7.5, va='center')
+ax.add_patch(plt.Circle((2.7, 0.35), 0.1, fc='white', ec=SHUT)); ax.text(2.9, 0.35, 'gate closed (read masked)', fontsize=7.5, va='center')
 ax.add_patch(FancyBboxPatch((5.2, 0.25), 0.25, 0.2, boxstyle="round,pad=0.02", fc=FIXED, ec='#333')); ax.text(5.5, 0.35, 'fixed decay', fontsize=7.5, va='center')
 ax.add_patch(FancyBboxPatch((6.9, 0.25), 0.25, 0.2, boxstyle="round,pad=0.02", fc=LEARN, ec='#333')); ax.text(7.2, 0.35, 'learned', fontsize=7.5, va='center')
-ax.set_title('OC-SMT: over-complete fixed basis + L0 sparse gates → learnable variable-size active set (no constant K)',
+ax.set_title('OC-SMT: over-complete fixed basis + L0 gates → learned read cardinality (fixed M ceiling)',
              fontsize=10.5, weight='bold')
 plt.tight_layout()
 plt.savefig('docs/figures/fig_ocsmt_arch.png', dpi=150, bbox_inches='tight')

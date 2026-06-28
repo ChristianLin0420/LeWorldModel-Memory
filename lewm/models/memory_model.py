@@ -24,7 +24,16 @@ import torch.nn.functional as F
 from lewm.models.leworldmodel import LeWorldModel
 from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescaleMemory,
                                 GRUMemory, SSMMemory, RetrievalMemory,
-                                SelectiveMultiTimescaleMemory, OCSMTMemory)
+                                SelectiveMultiTimescaleMemory, SelectiveUpdateMemoryV3,
+                                OCSMTMemory)
+
+
+_SMTV3_MODES = {
+    'smtv3': 'dynamic',
+    'smtv3_static': 'static',
+    'smtv3_oracle': 'oracle',
+    'smtv3_old': 'old_update',
+}
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -49,6 +58,9 @@ class MemoryLeWorldModel(LeWorldModel):
         encoder_type: str = 'vit',
         smt_router: str = 'softmax',
         oc_num: int = 28,
+        oc_tau_min: float = 1.5,
+        oc_tau_max: float = 256.0,
+        oc_stochastic_gates: bool = True,
         l0_lambda: float = 0.0,
         **kwargs,
     ):
@@ -60,6 +72,8 @@ class MemoryLeWorldModel(LeWorldModel):
         if encoder_type == 'dino':                          # frozen pretrained DINOv2 backbone
             from lewm.models.encoder import FrozenDINOEncoder
             self.encoder = FrozenDINOEncoder(embed_dim=self.embed_dim)
+        elif encoder_type == 'precomputed':                 # fixed external features loaded by dataset
+            self.encoder = torch.nn.Identity()
         # 'ema' is the default two-timescale design (unchanged param names -> old checkpoints load).
         # 'multi' (E3, log-spaced K-bank) and 'gru' (E2 learned-recurrent baseline) are additive.
         if memory_impl == 'ema':
@@ -77,12 +91,27 @@ class MemoryLeWorldModel(LeWorldModel):
         elif memory_impl == 'smt':                          # learnable selective multi-timescale
             self.mem_smt = SelectiveMultiTimescaleMemory(embed_dim=self.embed_dim, taus=multi_taus,
                                                          router_mode=smt_router)
+        elif memory_impl in _SMTV3_MODES:                   # true selective-update SMT-v3 + controls
+            self.mem_smtv3 = SelectiveUpdateMemoryV3(
+                embed_dim=self.embed_dim, taus=multi_taus, mode=_SMTV3_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
-            self.mem_ocsmt = OCSMTMemory(embed_dim=self.embed_dim, M=oc_num)
+            self.mem_ocsmt = OCSMTMemory(
+                embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
+                tau_max=oc_tau_max, stochastic_gates=oc_stochastic_gates)
         else:
             raise ValueError(f"unknown memory_impl '{memory_impl}'")
 
-    def _inject(self, z: torch.Tensor) -> torch.Tensor:
+    def encode(self, observations: torch.Tensor) -> torch.Tensor:
+        if self.encoder_type == 'precomputed':
+            if observations.dim() != 3 or observations.shape[-1] != self.embed_dim:
+                raise ValueError(
+                    f'precomputed encoder expects (B,L,{self.embed_dim}), got '
+                    f'{tuple(observations.shape)}')
+            return observations
+        return super().encode(observations)
+
+    def _inject(self, z: torch.Tensor, memory_update_mask: torch.Tensor = None,
+                gate_override=None) -> torch.Tensor:
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
@@ -95,6 +124,10 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_ssm.fuse(z, self.mem_ssm(z))
         if self.memory_impl == 'smt':
             return self.mem_smt.fuse(z, self.mem_smt(z))
+        if self.memory_impl in _SMTV3_MODES:
+            mixed = self.mem_smtv3(
+                z, memory_update_mask=memory_update_mask, gate_override=gate_override)
+            return self.mem_smtv3.fuse(z, mixed)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -111,6 +144,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_ssm.horizons()
         if self.memory_impl == 'smt':
             return self.mem_smt.horizons()
+        if self.memory_impl in _SMTV3_MODES:
+            return self.mem_smtv3.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -120,12 +155,26 @@ class MemoryLeWorldModel(LeWorldModel):
         self,
         observations: torch.Tensor,
         actions: torch.Tensor,
+        target_observations: torch.Tensor = None,
+        target_valid_mask: torch.Tensor = None,
+        memory_update_mask: torch.Tensor = None,
+        gate_override=None,
+        first_post_loss_weight: float = 0.0,
     ) -> Dict[str, torch.Tensor]:
         """Two-term loss over a length-L chunk.
 
         Args:
             observations: (B, L, C, H, W) -- a contiguous chunk (L can be >> history_len).
             actions: (B, L-1, A) -- action a_t maps obs_t -> obs_{t+1}.
+            target_observations: optional synchronized clean frames. When provided, memory is
+                driven by ``observations`` but prediction targets and SIGReg use these frames.
+            target_valid_mask: optional (B,L) bool mask; false target frames do not contribute
+                to prediction loss (used to keep hidden clean blackout frames evaluation-only).
+            memory_update_mask: optional (B,L) visibility/update mask for an oracle memory. It is
+                never inferred from ``target_valid_mask``; the oracle fails if it is omitted.
+            gate_override: optional scalar/tensor SMT-v3 gate override for counterfactual analysis.
+            first_post_loss_weight: convex weight on the first valid target immediately after a
+                masked interval. Zero preserves the legacy all-valid prediction objective.
         Returns:
             dict with 'loss', 'pred_loss', 'sigreg_loss'.
         """
@@ -136,9 +185,11 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Encode all frames (memoryless, per-frame).
         z = self.encode(observations)                      # (B, L, D)
+        z_target = z if target_observations is None else self.encode(target_observations)
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
-        z_tilde = self._inject(z)                          # (B, L, D)
+        z_tilde = self._inject(
+            z, memory_update_mask=memory_update_mask, gate_override=gate_override)  # (B,L,D)
 
         # Sliding windows of length h: window s = z~[s : s+h] predicts z_{s+h}.
         # Number of windows W = L - h (s = 0 .. L-h-1).
@@ -147,15 +198,50 @@ class MemoryLeWorldModel(LeWorldModel):
         zt_win = zt_win.permute(0, 1, 3, 2).reshape(B * W, h, D)
         act_win = actions.unfold(1, h, 1)[:, :W]           # (B, W, A, h)
         act_win = act_win.permute(0, 1, 3, 2).reshape(B * W, h, A)
-        targets = z[:, h:L].reshape(B * W, D)              # z_{s+h}
+        targets = z_target[:, h:L].reshape(B * W, D)       # clean/shared z_{s+h}, when requested
 
         z_pred = self.predictor(zt_win, act_win)           # (B*W, h, D)
         z_pred_last = z_pred[:, -1, :]                     # predict next from last token
 
-        pred_loss = F.mse_loss(z_pred_last, targets)
-        sigreg_loss = self.sigreg(z.reshape(B * L, D))     # Gaussianize all latents
+        if not 0.0 <= float(first_post_loss_weight) <= 1.0:
+            raise ValueError('first_post_loss_weight must lie in [0,1]')
+        per_window_error = (z_pred_last - targets).square().mean(dim=-1).reshape(B, W)
+        pred_loss_first_post = None
+        if target_valid_mask is None:
+            if first_post_loss_weight:
+                raise ValueError(
+                    'first_post_loss_weight requires target_valid_mask to identify reappearance')
+            pred_loss_all_valid = per_window_error.mean()
+            pred_loss = pred_loss_all_valid
+        else:
+            if target_valid_mask.shape != (B, L):
+                raise ValueError(
+                    f'target_valid_mask shape {tuple(target_valid_mask.shape)} != {(B, L)}')
+            mask = target_valid_mask.to(z_pred_last.device, dtype=torch.bool)
+            valid = mask[:, h:L]
+            if not valid.any():
+                raise ValueError('target_valid_mask excludes every prediction target')
+            pred_loss_all_valid = per_window_error[valid].mean()
+            # A target at time t is first-post exactly when t is valid and t-1 was masked.
+            first_post = mask[:, h:L] & ~mask[:, h - 1:L - 1]
+            counts = first_post.sum(dim=1)
+            if bool((counts != 1).any()):
+                raise ValueError(
+                    'target_valid_mask must contain exactly one masked-to-valid transition per '
+                    f'episode for first-post accounting; got counts={counts.tolist()}')
+            pred_loss_first_post = per_window_error[first_post].mean()
+            pred_loss = ((1.0 - first_post_loss_weight) * pred_loss_all_valid +
+                         first_post_loss_weight * pred_loss_first_post)
+        if target_valid_mask is None:
+            sigreg_features = z_target.reshape(B * L, D)
+        else:
+            sigreg_features = z_target[target_valid_mask.to(z_target.device, dtype=torch.bool)]
+        sigreg_loss = self.sigreg(sigreg_features)              # never regularize hidden clean targets
         total = pred_loss + self.sigreg_lambda * sigreg_loss
-        out = {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss}
+        out = {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss,
+               'pred_loss_all_valid': pred_loss_all_valid}
+        if pred_loss_first_post is not None:
+            out['pred_loss_first_post'] = pred_loss_first_post
         if self.memory_impl == 'ocsmt' and self.l0_lambda > 0 and self.mem_ocsmt.last_l0 is not None:
             l0 = self.mem_ocsmt.last_l0                     # expected #open gates (set in _inject)
             out['l0_loss'] = l0
@@ -167,19 +253,23 @@ class MemoryLeWorldModel(LeWorldModel):
 
     # ---- analysis utilities (used by probing / visualization) ----------------------
     @torch.no_grad()
-    def encode_with_memory(self, observations: torch.Tensor):
+    def encode_with_memory(self, observations: torch.Tensor,
+                           memory_update_mask: torch.Tensor = None, gate_override=None):
         """Return (z, m_fast, m_slow, z_tilde). m_fast/m_slow are None for non-EMA impls."""
         z = self.encode(observations)
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return z, m_fast, m_slow, self.fusion(z, m_fast, m_slow)
-        return z, None, None, self._inject(z)
+        return z, None, None, self._inject(
+            z, memory_update_mask=memory_update_mask, gate_override=gate_override)
 
     @torch.no_grad()
     def memory_influence(
         self,
         observations: torch.Tensor,
         actions: torch.Tensor,
+        memory_update_mask: torch.Tensor = None,
+        gate_override=None,
     ) -> Dict[str, torch.Tensor]:
         """Causal influence of each memory bank on the predicted next latent.
 
@@ -215,7 +305,8 @@ class MemoryLeWorldModel(LeWorldModel):
                     'infl_fast': (full - pred(True, False)).norm(dim=-1),
                     'infl_slow': (full - pred(False, True)).norm(dim=-1)}
         # non-EMA: total memory influence = ablate ALL memory (fused window vs raw window)
-        full = self.predictor(self._inject(z)[:, wsl], act)[:, -1, :]
+        full = self.predictor(self._inject(
+            z, memory_update_mask=memory_update_mask, gate_override=gate_override)[:, wsl], act)[:, -1, :]
         nomem = self.predictor(z[:, wsl], act)[:, -1, :]
         infl_all = (full - nomem).norm(dim=-1)
         return {'pred_full': full, 'infl_fast': infl_all, 'infl_slow': infl_all}

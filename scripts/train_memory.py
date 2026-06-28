@@ -48,7 +48,11 @@ def build_model(args, device) -> MemoryLeWorldModel:
         learnable_alpha=not args.fixed_alpha,
         memory_impl=impl, multi_taus=tuple(args.multi_taus), encoder_type=args.encoder,
         smt_router=getattr(args, 'smt_router', 'softmax'),
-        oc_num=getattr(args, 'oc_num', 28), l0_lambda=getattr(args, 'l0_lambda', 0.0),
+        oc_num=getattr(args, 'oc_num', 28),
+        oc_tau_min=getattr(args, 'oc_tau_min', 1.5),
+        oc_tau_max=getattr(args, 'oc_tau_max', 256.0),
+        oc_stochastic_gates=getattr(args, 'oc_gate_mode', 'stochastic') == 'stochastic',
+        l0_lambda=getattr(args, 'l0_lambda', 0.0),
     ).to(device)
     return model
 
@@ -85,9 +89,15 @@ def main():
     p.add_argument('--memory-mode', default='both',
                    choices=['none', 'short', 'long', 'both', 'multi', 'gru', 'ssm', 'retrieval', 'smt', 'ocsmt'])
     p.add_argument('--multi-taus', type=float, nargs='+', default=[2, 4, 8, 16, 32, 64])
-    p.add_argument('--smt-router', default='softmax', choices=['softmax', 'sigmoid'],
-                   help="SMT read-out: softmax mixture (v1) or independent additive sigmoid gates (v2)")
+    p.add_argument('--smt-router', default='softmax',
+                   choices=['softmax', 'scaled_softmax', 'sigmoid'],
+                   help="SMT read-out: softmax (v1), mass-matched scaled softmax control, or "
+                        "independent additive sigmoid gates (v2)")
     p.add_argument('--oc-num', type=int, default=28, help='OC-SMT: # over-complete fixed horizons (M)')
+    p.add_argument('--oc-tau-min', type=float, default=1.5, help='OC-SMT: shortest fixed horizon')
+    p.add_argument('--oc-tau-max', type=float, default=256.0, help='OC-SMT: longest fixed horizon')
+    p.add_argument('--oc-gate-mode', choices=['stochastic', 'deterministic'], default='stochastic',
+                   help='OC-SMT training gate: sampled hard-concrete or deterministic stretched sigmoid')
     p.add_argument('--l0-lambda', type=float, default=0.0, help='OC-SMT: L0 sparsity weight on #open gates')
     p.add_argument('--gate-lr-mult', type=float, default=20.0, help='OC-SMT: LR multiplier for gate logits')
     p.add_argument('--freeze-encoder', action='store_true', help='freeze the encoder (train only memory+predictor)')

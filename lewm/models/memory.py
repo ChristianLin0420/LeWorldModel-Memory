@@ -39,6 +39,7 @@ from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 def tau_to_alpha(tau: float) -> float:
@@ -205,7 +206,7 @@ class MultiTimescaleMemory(nn.Module):
 
 
 class SelectiveMultiTimescaleMemory(nn.Module):
-    """Selective Multi-Timescale (SMT) memory -- a *learnable, scalable* short/long memory.
+    """Selective Multi-Timescale (SMT) memory over a fixed short/long basis.
 
     Motivation (from our controlled study): a FIXED log-spaced bank of EMA horizons beats every
     *learned* memory here, and a learnable scalar decay alpha does NOT self-tune (weak gradient on
@@ -214,19 +215,20 @@ class SelectiveMultiTimescaleMemory(nn.Module):
 
         write/input gate   i_t   = sigmoid(W_i z_t)                         (what to store)
         bank-k recurrence  m^k_t = (1-a_k) m^k_{t-1} + a_k (i_t ⊙ z_t)      (a_k FIXED, log-spaced)
-        read router        r_t   = softmax(W_r z_t / T)  ∈ Δ^{K-1}          (which horizon to read)
-        memory read-out    o_t   = W_o ( Σ_k r_{t,k} · m^k_t )              (W_o zero-init)
+        read router        r_t   = g(W_r z_t / T), g=softmax or sigmoid      (which horizon to read)
+        memory read-out    o_t   = W_o ( Σ_k r_{t,k} · m^k_t )              (W_o small-init)
 
-    This is a *selective diagonal linear SSM over a fixed timescale basis*: O(L·K·D), linear in
-    sequence length and parallelizable via an associative scan; the only learned, content-dependent
-    parts are a small write gate and a K-way router (a "mixture of timescales" with learned, per-step
-    routing). Decays stay fixed, so horizons are known and the router r_t is a per-step distribution
-    over KNOWN horizons -> directly interpretable as short-vs-long selection. W_o is zero-initialized,
-    so training begins exactly at the memoryless baseline (same philosophy as MemoryFusion).
+    This is a diagonal linear SSM over a fixed timescale basis: O(L·K·D), linear in sequence
+    length. The recurrence admits an associative scan, although this implementation is sequential.
+    A write gate and K-way router are learned functions of the input; that mechanism permits
+    content dependence but does not guarantee it. In the experiments recorded in
+    docs/LEARNABLE_MEMORY.md, their outputs become almost static. Decays stay fixed, so horizons
+    are known and the router remains directly measurable. W_o uses a small nonzero initialization
+    so the upstream router and write gate receive gradients from step one.
 
     Differs from: Mamba/S6 (learns input-dependent timescale Delta), Mega (learns EMA coefficients),
-    HGRN2 (learns data-dependent decay), RetNet (fixed multi-scale decay, no selectivity). Here the
-    decays are fixed and the *selection over* them is what is learned.
+    HGRN2 (learns data-dependent decay), RetNet (fixed multi-scale decay with content-dependent
+    Q/K/V). Here the decays are fixed and explicit write/read gates over EMA banks are learned.
     """
 
     def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64), router_temp: float = 1.0,
@@ -236,8 +238,11 @@ class SelectiveMultiTimescaleMemory(nn.Module):
         self.taus = list(taus)
         self.K = len(self.taus)
         self.router_temp = router_temp
-        # 'softmax' = convex mixture over horizons (v1); 'sigmoid' = independent additive gates so
-        # every bank can contribute fully (v2) -- like the fixed K-bank but input-conditioned.
+        # 'softmax' = convex mixture over horizons (v1); 'scaled_softmax' keeps the same convex
+        # relative weights but matches sigmoid's initial total read mass (K/2), separating routing
+        # geometry from the v1-v2 amplitude change; 'sigmoid' = independent additive gates (v2).
+        if router_mode not in {'softmax', 'scaled_softmax', 'sigmoid'}:
+            raise ValueError(f"unknown SMT router mode '{router_mode}'")
         self.router_mode = router_mode
         alphas = [tau_to_alpha(t) for t in self.taus]
         self.register_buffer('alphas', torch.tensor(alphas, dtype=torch.float32))  # FIXED
@@ -252,9 +257,14 @@ class SelectiveMultiTimescaleMemory(nn.Module):
 
     def route_weights(self, z: torch.Tensor) -> torch.Tensor:
         """Per-step router weights over the K fixed horizons (B,L,K) -- for read-out & interpretability.
-        softmax -> convex mixture (sums to 1); sigmoid -> independent additive gates."""
+        softmax -> convex mixture (sums to 1); scaled_softmax -> the same relative mixture with
+        total mass K/2; sigmoid -> independent additive gates."""
         s = self.router(z) / self.router_temp
-        return torch.softmax(s, dim=-1) if self.router_mode == 'softmax' else torch.sigmoid(s)
+        if self.router_mode == 'softmax':
+            return torch.softmax(s, dim=-1)
+        if self.router_mode == 'scaled_softmax':
+            return torch.softmax(s, dim=-1) * (self.K / 2.0)
+        return torch.sigmoid(s)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         """Return the routed memory read-out (B,L,D) to be fused into the predictor input."""
@@ -273,13 +283,170 @@ class SelectiveMultiTimescaleMemory(nn.Module):
                 'n_banks': self.K}
 
 
+class SelectiveUpdateMemoryV3(nn.Module):
+    """Fixed EMA basis with a scalar *true selective-update* gate.
+
+    SMT-v1/v2 multiplies the value being written but leaves the old state decay active.  A closed
+    gate therefore writes zero while erasing the stored state.  V3 instead gates the complete EMA
+    update:
+
+        g_t = sigmoid(w_g^T (LayerNorm(z_t) + e) + b_g)
+        m_t^k = (1 - a_k g_t) m_{t-1}^k + a_k g_t z_t
+
+    Thus ``g_t=0`` exactly freezes every bank and ``g_t=1`` recovers the ordinary fixed EMA.  The
+    ``old_update`` control uses the same dynamic conditioner but the old erasing recurrence,
+    ``m_t^k=(1-a_k)m_{t-1}^k+a_k(g_t z_t)``.
+
+    All variants instantiate exactly the same parameters.  ``static`` removes only the input
+    conditioning by evaluating the same gate at the learned offset ``e``.  ``oracle`` replaces the
+    learned gate with an explicit visibility/update mask and fails closed when that mask is absent.
+    A global simplex mixture and parameter-free RMS normalization prevent per-step read mass from
+    changing the residual amplitude.  One shared zero-initialized output projection is used for all
+    banks and variants.
+    """
+
+    MODES = {'dynamic', 'static', 'oracle', 'old_update'}
+
+    def __init__(self, embed_dim: int, taus=(2, 4, 8, 16, 32, 64),
+                 mode: str = 'dynamic', rms_eps: float = 1e-6):
+        super().__init__()
+        if mode not in self.MODES:
+            raise ValueError(f"unknown SMT-v3 mode '{mode}'")
+        if not taus:
+            raise ValueError('SMT-v3 requires at least one fixed horizon')
+        if any(float(tau) <= 0 for tau in taus):
+            raise ValueError(f'SMT-v3 horizons must be positive, got {tuple(taus)}')
+        if rms_eps <= 0:
+            raise ValueError(f'rms_eps must be positive, got {rms_eps}')
+
+        self.embed_dim = embed_dim
+        self.taus = list(taus)
+        self.K = len(self.taus)
+        self.mode = mode
+        self.rms_eps = float(rms_eps)
+        self.register_buffer(
+            'alphas', torch.tensor([tau_to_alpha(t) for t in self.taus], dtype=torch.float32))
+
+        # Every mode owns these exact parameters.  The learned offset gives the static control an
+        # active, trainable conditioner without adding parameters that the dynamic model lacks.
+        self.conditioner_offset = nn.Parameter(torch.zeros(embed_dim))
+        self.write_gate = nn.Linear(embed_dim, 1)
+        nn.init.constant_(self.write_gate.bias, 2.0)       # start mostly open: sigmoid(2)=0.881
+        self.route_logits = nn.Parameter(torch.zeros(self.K))
+        self.out = nn.Linear(embed_dim, embed_dim, bias=False)
+        nn.init.zeros_(self.out.weight)
+
+    def _validate_z(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if z.dim() != 3:
+            raise ValueError(f'SMT-v3 expects z with shape (B,T,D), got {tuple(z.shape)}')
+        B, T, D = z.shape
+        if T < 1:
+            raise ValueError('SMT-v3 requires a non-empty time dimension')
+        if D != self.embed_dim:
+            raise ValueError(f'SMT-v3 expected latent dim {self.embed_dim}, got {D}')
+        return B, T, D
+
+    @staticmethod
+    def _check_unit_interval(values: torch.Tensor, name: str) -> None:
+        if not torch.isfinite(values).all():
+            raise ValueError(f'{name} contains non-finite values')
+        if bool((values < 0).any()) or bool((values > 1).any()):
+            raise ValueError(f'{name} must lie in [0,1]')
+
+    def _coerce_gate(self, value, z: torch.Tensor, name: str) -> torch.Tensor:
+        """Convert a scalar/broadcastable gate to the canonical ``(B,T,1)`` shape."""
+        B, T, _ = z.shape
+        gate = torch.as_tensor(value, device=z.device, dtype=z.dtype)
+        if gate.dim() == 2 and tuple(gate.shape) == (B, T):
+            gate = gate.unsqueeze(-1)
+        target = (B, T, 1)
+        try:
+            gate = torch.broadcast_to(gate, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(gate.shape)} is not broadcastable to {target}') from exc
+        self._check_unit_interval(gate, name)
+        return gate
+
+    def gate_values(self, z: torch.Tensor,
+                    memory_update_mask: torch.Tensor = None) -> torch.Tensor:
+        """Return scalar write/update gates with shape ``(B,T,1)``.
+
+        ``memory_update_mask`` is used only by the oracle variant.  True/one means update from the
+        current observation and false/zero means freeze.  Other variants deliberately ignore it so
+        callers may pass a common batch structure without leaking visibility into learned controls.
+        """
+        self._validate_z(z)
+        if self.mode == 'oracle':
+            if memory_update_mask is None:
+                raise ValueError(
+                    'SMT-v3 oracle requires an explicit memory_update_mask; refusing to infer '
+                    'visibility from targets or inputs')
+            return self._coerce_gate(memory_update_mask, z, 'memory_update_mask')
+
+        if self.mode == 'static':
+            conditioner = self.conditioner_offset.view(1, 1, -1).expand(
+                z.shape[0], z.shape[1], -1)
+        else:                                               # dynamic and old_update
+            conditioner = F.layer_norm(z, (self.embed_dim,))
+            conditioner = conditioner + self.conditioner_offset.view(1, 1, -1)
+        return torch.sigmoid(self.write_gate(conditioner))
+
+    def route_weights(self) -> torch.Tensor:
+        """Global simplex weights over the fixed horizons, shape ``(K,)``."""
+        return torch.softmax(self.route_logits, dim=0)
+
+    def _scan_banks(self, z: torch.Tensor, gates: torch.Tensor) -> torch.Tensor:
+        """Return all recurrent states as ``(B,T,K,D)`` for the supplied canonical gates."""
+        B, T, D = self._validate_z(z)
+        if gates.shape != (B, T, 1):
+            raise ValueError(f'expected gates {(B, T, 1)}, got {tuple(gates.shape)}')
+        alpha = self.alphas.to(dtype=z.dtype).view(1, self.K, 1)
+        m_prev = z[:, 0].unsqueeze(1).expand(-1, self.K, -1)
+        states = [m_prev]
+        for t in range(1, T):
+            z_t = z[:, t].unsqueeze(1)                    # (B,1,D)
+            g_t = gates[:, t].unsqueeze(1)                # (B,1,1)
+            if self.mode == 'old_update':
+                m_prev = (1.0 - alpha) * m_prev + alpha * (g_t * z_t)
+            else:
+                rate = alpha * g_t
+                m_prev = (1.0 - rate) * m_prev + rate * z_t
+            states.append(m_prev)
+        return torch.stack(states, dim=1)
+
+    def forward(self, z: torch.Tensor, memory_update_mask: torch.Tensor = None,
+                gate_override=None) -> torch.Tensor:
+        """Return the globally mixed, RMS-normalized memory read ``(B,T,D)``.
+
+        ``gate_override`` accepts a scalar or any tensor broadcastable to ``(B,T,1)`` and is used
+        for calibrated-mean counterfactuals.  The oracle remains strict: it validates that an
+        explicit visibility mask was supplied before applying an override.
+        """
+        gates = self.gate_values(z, memory_update_mask=memory_update_mask)
+        if gate_override is not None:
+            gates = self._coerce_gate(gate_override, z, 'gate_override')
+        banks = self._scan_banks(z, gates)
+        route = self.route_weights().to(dtype=z.dtype).view(1, 1, self.K, 1)
+        mixed = (banks * route).sum(dim=2)
+        return mixed * torch.rsqrt(mixed.square().mean(dim=-1, keepdim=True) + self.rms_eps)
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        return z + self.out(mixed)
+
+    def horizons(self):
+        return {'tau_fast': float(self.taus[0]), 'tau_slow': float(self.taus[-1]),
+                'alpha_fast': float(self.alphas[0]), 'alpha_slow': float(self.alphas[-1]),
+                'n_banks': self.K}
+
+
 class OCSMTMemory(nn.Module):
     """OC-SMT: Over-Complete fixed log-spaced EMA basis + L0 (hard-concrete) sparse READ gates.
 
-    Makes the bank a *learnable, variable-size* active set with NO constant K (docs/LEARNABLE_MEMORY.md
-    §8). We keep the decays FIXED (learning them fails, §5.4) but enlarge the basis to an over-complete
-    grid of M horizons and learn a per-bank hard-concrete L0 gate, so 'how many banks are on' is a
-    differentiable, penalized quantity rather than a hand-set constant:
+    Learns an effective read-bank cardinality under a fixed over-complete ceiling M
+    (docs/LEARNABLE_MEMORY.md §8). We keep the decays FIXED (learning them fails, §5.4), enlarge the
+    basis, and learn a per-bank hard-concrete L0 gate, so 'how many banks are read' is a
+    differentiable, penalized quantity rather than a hand-set K:
 
         gate logit   l_{t,m} = (W_g z_t)_m
         hard-concrete g_{t,m} ∈ {0} ∪ (0,1]   (exact zeros via the stretch [gamma,zeta], Louizos 2018)
@@ -287,16 +454,23 @@ class OCSMTMemory(nn.Module):
         read-out     o_t = W_o( Σ_m g_{t,m} m^m_t ) ;  z~_t = z_t + o_t        (additive, as SMT-v2)
         L0 penalty   λ0 · Σ_m P(g_{t,m} > 0)                                   (cost for being dense)
 
-    The L0 penalty is the anti-collapse pressure the SMT softmax router lacked: a uniform/dense gate
-    now *costs* loss, so SGD turns banks off and the effective size emerges from data (≈0 on a Markov
-    env, a few long horizons on T-Maze/Distractor). Decays never change; state M·D (constant in L)."""
+    The L0 penalty makes a uniform/dense gate costly, but does not guarantee a useful sparse set: the
+    experiments find only a narrow band of static partial masks after task utility largely collapses.
+    Decays never change. The current full-sequence code computes all M banks and treats gate
+    cardinality as an analysis statistic; physical pruning or sparse evaluation is future work."""
 
     BETA, GAMMA, ZETA = 2.0 / 3.0, -0.1, 1.1            # hard-concrete temperature + stretch
 
-    def __init__(self, embed_dim: int, M: int = 28, tau_min: float = 1.5, tau_max: float = 256.0):
+    def __init__(self, embed_dim: int, M: int = 28, tau_min: float = 1.5,
+                 tau_max: float = 256.0, stochastic_gates: bool = True):
         super().__init__()
+        if M < 1:
+            raise ValueError(f"M must be positive, got {M}")
+        if not 0 < tau_min <= tau_max:
+            raise ValueError(f"expected 0 < tau_min <= tau_max, got {tau_min}, {tau_max}")
         self.embed_dim = embed_dim
         self.M = M
+        self.stochastic_gates = stochastic_gates
         taus = torch.logspace(math.log10(tau_min), math.log10(tau_max), M)
         self.register_buffer('taus', taus)
         self.register_buffer('alphas', 1.0 - torch.exp(-1.0 / taus))   # (M,) FIXED
@@ -305,14 +479,18 @@ class OCSMTMemory(nn.Module):
         self.gate = nn.Linear(embed_dim, M)               # W_g: hard-concrete gate logits
         nn.init.constant_(self.gate.bias, 1.0)            # start banks OPEN so memory is used; an ANNEALED
         #   L0 (populate-then-sparsify, in train_memory) then prunes. NOTE (empirical): on clean short
-        #   tasks the L0 is bistable (dense-or-collapse) -- the over-complete banks are cheap+useful, so
-        #   aggressive pruning collapses memory; the practical operating point keeps most banks. See §9.
+        #   tasks useful performance remains near-dense; a narrow lambda band yields static partial
+        #   masks only after long-gap usage largely collapses. See docs/LEARNABLE_MEMORY.md §9.
         self.out = nn.Linear(embed_dim, embed_dim, bias=False)
-        nn.init.normal_(self.out.weight, std=5e-4)        # small: M~28 open banks sum -> keep near baseline
+        # Keep the initial summed residual approximately invariant when ablating M. M=28 exactly
+        # preserves the checkpoints reported in §9; smaller banks receive a proportionally larger
+        # projection because fewer gated states are summed.
+        self.readout_init_std = 5e-4 * (28.0 / M)
+        nn.init.normal_(self.out.weight, std=self.readout_init_std)
         self.last_l0 = None                               # stashed expected #open gates (for the loss)
 
     def _sample_gate(self, logits: torch.Tensor) -> torch.Tensor:
-        if self.training:
+        if self.training and self.stochastic_gates:
             u = torch.rand_like(logits).clamp(1e-6, 1 - 1e-6)
             s = torch.sigmoid((torch.log(u) - torch.log(1 - u) + logits) / self.BETA)
         else:
@@ -338,8 +516,8 @@ class OCSMTMemory(nn.Module):
         return z + self.out(mixed)
 
     @torch.no_grad()
-    def active_count(self, z: torch.Tensor, thresh: float = 1e-3) -> torch.Tensor:
-        """Mean number of active (gate>thresh) banks per step -- the learned effective bank size."""
+    def active_count(self, z: torch.Tensor, thresh: float = 0.0) -> torch.Tensor:
+        """Mean number of read gates above ``thresh`` per step (not physical state pruning)."""
         return (self.route_weights(z) > thresh).float().sum(-1).mean()
 
     def horizons(self):

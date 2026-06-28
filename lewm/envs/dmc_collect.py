@@ -29,9 +29,12 @@ def _parse(spec: str):
     return domain, task, occ
 
 
-def collect_dmc(spec: str, num_episodes: int, length: int, img_size: int = 64, seed: int = 0):
+def collect_dmc(spec: str, num_episodes: int, length: int, img_size: int = 64,
+                seed: int = 0, prototype_seed: int = 0):
     """spec e.g. 'reacher.hard' or 'reacher.hard.occ'. Returns
-    (obs uint8 (E,L,H,W,3), actions int (E,L-1) in [0,K), n_actions=K)."""
+    (obs uint8 (E,L,H,W,3), actions int (E,L-1) in [0,K), n_actions=K,
+    action_prototypes). ``prototype_seed`` is deliberately independent of the
+    rollout/environment seed so action index k has identical semantics in train and val."""
     os.environ.setdefault('MUJOCO_GL', 'egl')
     from dm_control import suite
 
@@ -42,9 +45,10 @@ def collect_dmc(spec: str, num_episodes: int, length: int, img_size: int = 64, s
     hi = np.broadcast_to(aspec.maximum, aspec.shape).astype(np.float32)
     lo = np.nan_to_num(lo, neginf=-1.0); hi = np.nan_to_num(hi, posinf=1.0)
 
-    rng = np.random.default_rng(seed)
-    # K fixed continuous action prototypes (shared across episodes for a given seed)
-    protos = lo + (hi - lo) * rng.random((K_PROTOTYPES, *aspec.shape)).astype(np.float32)
+    proto_rng = np.random.default_rng(prototype_seed)
+    rollout_rng = np.random.default_rng(seed)
+    # K fixed continuous action prototypes shared across train/val rollout seeds.
+    protos = lo + (hi - lo) * proto_rng.random((K_PROTOTYPES, *aspec.shape)).astype(np.float32)
 
     # occlusion window (middle third-ish of the episode)
     occ_start = length // 3
@@ -57,7 +61,7 @@ def collect_dmc(spec: str, num_episodes: int, length: int, img_size: int = 64, s
         frames = [env.physics.render(img_size, img_size, camera_id=0)]
         acts = []
         for _t in range(length - 1):
-            k = int(rng.integers(0, K_PROTOTYPES))
+            k = int(rollout_rng.integers(0, K_PROTOTYPES))
             ts = env.step(protos[k])
             if ts.last():
                 ts = env.reset()
@@ -68,4 +72,4 @@ def collect_dmc(spec: str, num_episodes: int, length: int, img_size: int = 64, s
             o[occ_start:occ_end] = 0                        # blank the window (memory must bridge)
         obs_all.append(o)
         act_all.append(np.array(acts, dtype=np.int32))
-    return np.stack(obs_all), np.stack(act_all), K_PROTOTYPES
+    return np.stack(obs_all), np.stack(act_all), K_PROTOTYPES, protos

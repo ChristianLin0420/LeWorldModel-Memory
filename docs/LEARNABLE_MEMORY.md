@@ -1,24 +1,28 @@
 # Selective Multi-Timescale Memory (SMT): a learnable, scalable short/long memory
 
-*Proposal / design note. Branch: `learnable-memory`. Implementation: `lewm/models/memory.py::SelectiveMultiTimescaleMemory`, wired as `memory_impl='smt'` (`--memory-mode smt`).*
+*Design and experiment record. Branch: `learnable-memory`. Implementations: `SelectiveMultiTimescaleMemory` (`--memory-mode smt`) and the true-update `SelectiveUpdateMemoryV3` (`--memory-mode smtv3`) in `lewm/models/memory.py`. Status as of 2026-06-28: all experiment batches reported below are complete. V3 learns causally important black-sentinel gating, but it loses to SSM on every environment mean and to last-visible hold on two of five; the evidence does not support general selective memory or a main-track ICLR submission in the manuscript's present form (§7.5, §10).*
 
 ## 1. Motivation — what our study tells us to do next
 
 The companion paper (`docs/ICLR.md`) establishes two empirical facts that, together, point directly at this design:
 
 1. **A fixed log-spaced bank of EMA horizons is the best memory we tested** — it beats a learned GRU, a learned diagonal-SSM/RetNet-lite, and episodic retrieval on the long-gap tasks, *without any per-task tuning* (§5.11). *Spanning* horizons beats picking one.
-2. **A learnable scalar decay does not self-tune** — making the EMA rate `α` learnable leaves the horizon stuck near its initialization regardless of the task gap (§5.4); the gradient signal on a raw decay rate is too weak.
+2. **A learnable scalar decay does not self-tune in this setup** — making the one global EMA rate `α` learnable leaves the horizon near its initialization regardless of the task gap (§5.4). This observation does not by itself diagnose whether gradient magnitude, parameterization, optimization, or another cause is responsible.
 
-The naive reading is "memory should be fixed." But fixed memory cannot *allocate* capacity, cannot be *input-dependent*, and does not obviously *scale* (it reads the same spectrum of horizons at every step for every input). The research question is therefore:
+The naive reading is "memory should be fixed." But this repository's ungated fixed-bank baseline cannot allocate capacity or vary its bank mixture with the input, and it does not obviously scale (it reads the same spectrum of horizons at every step). Other fixed-decay architectures can still have content-dependent reads, as RetNet illustrates (§4). The research question is therefore:
 
-> **How do we make short/long memory learnable and scalable *without* re-introducing the thing that failed — learning the decay rates?**
+> **How do we make short/long memory learnable and scalable without relying on the global learned scalar decay that failed in this setup?**
 
-**Answer (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis has a well-conditioned gradient (it is a function of the input, like attention), whereas learning the decay itself does not.
+**Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
+
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 corrects the old erasing write rule and finally learns a causally important dynamic gate, improving its matched static control by 9.91% on average (§7.5). That gate is an exact detector for one extreme black DINO token, however; V3 remains action-blind, loses to SSM on all five environment means, and beats last-visible hold on only three. The defensible contribution is therefore a controlled study of fixed exponential memory and causal diagnostics—including a narrow positive missingness-gating result—not general input-dependent selection or automatic memory sizing.
 
 ## 2. The architecture
 
+### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
+
 ![SMT architecture](figures/fig_smt_arch.png)
-*Figure 1. SMT data flow. The latent `z_t` is gated by a learned **write gate** `i_t` and written into `K` **fixed** log-spaced EMA banks (`τ=2…64`); a learned **read router** `r_t` weights the banks; the weighted read-out is projected by `W_o` and added back residually. Blue = learned (`W_i,W_r,W_o`, ~1.5% of params); gray = fixed decays. All learnability is in the input-conditioned gating, never in the decay rates.*
+*Figure 1. SMT-v1/v2 data flow. The latent `z_t` is gated by a learned **write gate** `i_t` and written into `K` **fixed** log-spaced EMA banks (`τ=2…64`); a learned **read router** `r_t` weights the banks; the weighted read-out is projected by learned `W_o` and added back residually. V1 uses a softmax router and V2 independent sigmoid read gates. Blue = learned (`W_i,W_r,W_o`); gray = fixed decays.*
 
 Compact data flow:
 
@@ -40,55 +44,98 @@ Let `z_t ∈ R^D` be the encoder latent. SMT maintains `K` EMA banks at **fixed*
 ```
 write / input gate     i_t   = σ(W_i z_t)                       ∈ (0,1)^D     (what to store)
 bank-k recurrence      m^k_t = (1 − a_k) m^k_{t−1} + a_k (i_t ⊙ z_t)         (a_k FIXED)
-read router            r_t   = softmax(W_r z_t / T)             ∈ Δ^{K−1}     (which horizon)
+read router            r_t   = g(W_r z_t / T), g=softmax or sigmoid           (which horizon)
 memory read-out        o_t   = W_o ( Σ_k r_{t,k} · m^k_t )
 injected latent        z̃_t   = z_t + o_t
 ```
 
-Only `W_i` (D×D), `W_r` (D×K) and `W_o` (D×D) are learned — about `2D² + DK` parameters (~1.5% of the model). The decays `a_k` are buffers. Three design choices matter:
+Only `W_i` (D×D), `W_r` (D×K), `W_o` (D×D), and the write/router biases (D+K) are learned — `2D² + DK + D + K` parameters (33,670 at D=128, K=6; about 1.5–1.6% of the original full-ViT synthetic model, not of every configuration). The decays `a_k` are buffers. Three design choices matter:
 
-- **Fixed basis, learned selection.** The model never learns a timescale; it learns *which* of the known timescales to read and *what* to write into them. This sidesteps the weak-decay-gradient failure of §5.4 while keeping the spanning-horizons prior of §5.11.
-- **Input-conditioned write gate** `i_t`. Mamba-style selectivity, but on *what to store* rather than *how fast to forget*: the model can ignore distractors and write only decision-relevant content into the (fixed-horizon) banks.
+- **Fixed basis, learned selection.** The model never learns a timescale; it parameterizes *which* known timescales to read and *what* to write into them. This avoids relying on the global learned scalar `α` that stayed near initialization in §5.4 while keeping the spanning-horizons prior of §5.11.
+- **Input-conditioned write gate** `i_t`. Mamba-style selectivity, but on *what to store* rather than *how fast to forget*: in principle the model can ignore distractors and write only decision-relevant content into the (fixed-horizon) banks. Section 5 shows that this behavior did not emerge in the saved models.
 - **Small (not zero) read-out init.** The EMA/`multi` designs zero-init their read-outs to start exactly at the memoryless baseline. SMT cannot: the router and write gate sit *upstream* of the multiplicative read-out, so a zero read-out gives them *exactly zero gradient at step 0*. We instead use a small read-out init (≈5% deviation from baseline) so every learned part trains from the first step. *(Verified: with zero-init the router/gate gradients are 0; with small init they are non-zero.)*
+
+### 2.2 SMT-v3-W: whole-update gating + global normalized read
+
+![SMT-v3-W architecture](figures/fig_smtv3_arch.png)
+*Figure 2. SMT-v3-W (“whole-update”) data flow. A learned scalar `g_t` changes the complete update rate of every EMA state with a fixed decay, so `g_t=0` freezes old state exactly. A learned but time-independent simplex `π` mixes the six banks, the read is RMS-normalized, and one shared `W_o` injects it residually. Actions enter only the short-context predictor; they do not propagate the recurrent state. The controls isolate conditioning, recurrence semantics, and known visibility; dynamic/static is the clean active-parameter match, while the hard-visibility control is only nominally parameter-matched.*
+
+V3 is not merely a new router setting. It changes where selection acts:
+
+```text
+conditioned update gate  g_t = sigmoid(w_g^T [LayerNorm(z_t) + e] + b_g)       scalar
+true bank update         m_t^k = (1-a_k g_t)m_{t-1}^k + a_k g_t z_t            a_k fixed
+global horizon mixture   pi = softmax(r)                                        time-independent
+normalized read          q_t = RMSNorm(sum_k pi_k m_t^k)
+residual injection       z_tilde_t = z_t + W_o q_t
+```
+
+The architectural distinction is easiest to see side by side:
+
+| version | write/update semantics | horizon read | memory parameters (`D=128,K=6`) | observed behavior |
+|---|---|---|---:|---|
+| **SMT-v1** | vector gate scales the new value; old state still decays | per-step softmax, total mass 1 | 33,670 | weak initial result; unit-mass amplitude confound |
+| **SMT-v2** | same gated-value write | per-step independent sigmoids, initial mass ≈`K/2` | 33,670 | stronger usage, but learned read/write gates are nearly static |
+| **SMT-v3-W** | scalar gate multiplies the whole EMA update; `g_t=0` is exact freeze | one global simplex + RMS-normalized read | 16,647 | gate is causal and dynamic, but specializes to the exact black sentinel and returns `NO_GO` |
+
+This simplification is deliberate. V3 removes content-dependent horizon routing so the experiment asks one clean question: **does input-conditioned update timing help beyond an equally parameterized static gate?** The controls are `smtv3_static` (no input conditioning), `smtv3_old` (dynamic gate with the V1/V2 erasing recurrence), and `smtv3_oracle` (known visibility). Section 7.5 gives the full derivation, parameter accounting, protocol, and results.
 
 ## 3. Why it is scalable
 
 - **Linear time / memory.** Each bank is a diagonal linear recurrence: `O(L·K·D)` with `K` small (log-spacing covers `τ∈[2,256]` with `K=8`). No `O(L²)` attention.
-- **Parallelizable.** The recurrence `m^k_t = (1−a_k)m^k_{t−1} + a_k u_t` is an associative scan (prefix-sum form), so it parallelizes across the sequence exactly like S5/Mamba (the current code uses a simple sequential scan for the short `L=32` chunks; the parallel scan is a drop-in for long sequences).
+- **Parallelizable in principle.** The recurrence `m^k_t = (1−a_k)m^k_{t−1} + a_k u_t` admits an associative scan. The current code uses a Python sequential scan for `L=32`; no parallel implementation or long-sequence benchmark exists yet.
 - **Stackable → hierarchy by depth.** SMT is a layer. Stacking it (as HGRN2 stacks gated recurrences) yields a depth hierarchy of timescales on top of the within-layer spectrum — a route to deeper memory without growing `K`.
-- **Constant state.** State is `K·D` regardless of sequence length (unlike retrieval/attention caches that grow with `L`).
+- **Constant recurrent state in streaming form.** The recurrence needs `K·D` state regardless of sequence length. The current training implementation materializes the full sequential scan and its activations; the claimed constant state is algorithmic/streaming, not a measured peak-memory result for this code path.
 
-## 4. Relation to prior work (and what is new)
+## 4. Relation to prior work and revised positioning
 
 | Method | Decay/timescale | Input-dependent? | Our difference |
 |---|---|---|---|
-| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | we *fix* the timescale basis and learn the *selection over* it — learning `Δ` is the very thing that failed to self-tune in our regime (§5.4) |
+| **Mamba / S6** (Gu & Dao 2023) | learned input-dependent `Δ` | yes (learns timescale) | we fix the timescale basis to isolate selection; our failed global scalar-`α` experiment does **not** test or refute input-dependent `Δ` |
 | **Mega** (arXiv:2209.10655) | learned multi-dim EMA coefficients | no (static EMA) | we fix the EMA coefficients; learnability is in per-step routing + write gating |
 | **HGRN2** (arXiv:2404.07904) | learned data-dependent decay, monotone by depth | yes | decays fixed; hierarchy optional via stacking, not via learned decay bounds |
-| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | no | we add input-conditioned read routing + write gating over the fixed scales |
+| **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | we use explicit EMA banks and expose gate interventions; V2 becomes static, while V3 is dynamic only for the black sentinel |
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning.** The literature either *learns the decays* (Mamba, Mega, HGRN2) — unreliable here — or uses *fixed multi-scale decays without selectivity* (RetNet). SMT is the missing quadrant: **fixed decay basis + learned input-conditioned selectivity (write + read)**, motivated by a controlled finding that this is exactly the split that works. To our knowledge this specific combination has not been proposed as a sequence-memory module for (JEPA) world models.
+**Net positioning, revised after the experiments.** Architecturally, SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 does not become meaningfully input-dependent; V3 does, but only by separating an explicit black missingness token from visible inputs, with no action-conditioned transition or SSM advantage (§7.5). Fixed EMA banks are also a simple diagonal-SSM/RetNet special case. The ICLR novelty audit (§10) therefore treats this as an implementation distinction and diagnostic finding, not a defensible novelty claim by itself.
 
-## 5. Interpretability — and an honest negative finding about the router
+## 5. Interpretability — little observed switching in the synthetic tasks
 
-Because the horizons are fixed and known, the router output `r_t` is directly plottable as a **read preference over known horizons** (`route_weights()`), a learned analogue of the short-vs-long dissociation (§5.1). We visualize the trained `smt` (sigmoid/v2) router on three envs:
+Because the horizons are fixed and known, the router output `r_t` is directly plottable as a **read preference over known horizons** (`route_weights()`). The diagnostic below uses the seed-0 `smt` sigmoid/v2 checkpoints; it normalizes the six independent gates to sum to one before plotting them:
 
 ![SMT router](figures/fig_smt_router.png)
-*Figure 2. SMT learned read router. (a) per-horizon mean read weight ≈ uniform (1/6) with only tiny, weakly task-appropriate deviations (Distractor leans slightly toward the longest τ=64). (b) the temporal std of the router is ~10⁻⁵ — i.e. essentially **constant over time**.*
+*Figure 3. Normalized read preferences for three seed-0 SMT-v2 checkpoints. Mean preferences are close to uniform, and the temporal standard deviation of the episode-averaged weights is ≈10⁻⁵. This diagnostic shows little shared time-dependent switching; averaging episodes can hide episode-specific variation.*
 
-**Honest finding: the router collapsed to a near-static, input-independent mixture.** On these clean tasks the trained read router barely deviates from a uniform, time-constant weighting (`W_r ≈ 0`; only its bias matters). This *explains why SMT-v2 matches `multi`*: with near-uniform additive gates it effectively **becomes a static additive K-bank with learned constant weights** — i.e. it recovered `multi`'s read-out rather than learning per-step content routing. The hypothesized selectivity *did not emerge* — the same weak-gradient degeneracy we saw for learned decay (§5.4), now for the router: when a static mixture already solves an easy task, there is no pressure to be input-dependent.
+**Honest finding: useful switching did not emerge.** An all-seed audit still finds extremely small normalized within-episode router variation (≈10⁻⁵–5×10⁻⁵) and write-gate variation (≈3×10⁻⁵–10⁻⁴) on these synthetic tasks. This is an output-level result, not evidence that `W_r≈0`: the final router-weight norms remain near ordinary initialization. The supported conclusion is that neither learned gate developed meaningful input/time dependence under this evaluation.
 
-This sharpens the proposal's central question and motivates the next experiments (§6–§7): does input-dependent routing (and the write gate) *emerge and help* when a static mixture is **not** sufficient — i.e. on harder, interference-heavy tasks? (It also suggests an architectural lever: a router temperature / entropy or load-balancing pressure to encourage peakier, content-dependent routing.)
+Even exactly constant SMT gates would not make SMT equivalent to `multi`. SMT keeps an input write gate and applies one shared projection after the weighted bank sum, `W_o Σ_k r_k m_t^k`; `multi` instead has a separate `D×D` readout for every bank. Static routing therefore gives a weakly varying shared-projection mixture, not `multi`'s parameterization.
 
-## 6. Experiment plan
+This sharpens the central question: can a task or intervention elicit content dependence that improves predictions over a static-gate control? Harder interference (§7.3) does not, and the direct interventions below now answer the question negatively for the saved checkpoints.
 
-1. **Headline comparison** — `none` vs fixed `multi` vs **`smt`** on the four memory envs × 3–5 seeds (usage, availability, influence). Hypothesis: SMT matches `multi` on the clean long-gap tasks and *beats* it on **Distractor** (write gate should suppress distractor flashes) and **Recall** (router should switch horizons across the sequence).
-2. **Scalability** — longer chunks `L ∈ {32,64,128}` and the parallel-scan path; SMT vs `multi` vs a long-context predictor in time/quality.
-3. **Selectivity ablations** — write-gate-only, router-only, both; vs Mamba-style learned-`Δ` under matched budget (does fixed-basis+selection beat learned-`Δ`, as §5.4 predicts?).
-4. **Router visualization** — per-step `r_t` over the cue→decision gap and over the dm_control/OGBench occlusion rollouts (does the model route to long memory exactly across the blackout?).
-5. **Real robots** — `smt` on the dm_control/OGBench occlusion suite (§5.15–5.16): does learned write-gating improve post-occlusion prediction over the fixed K-bank?
+### Direct gate interventions: dynamic conditioning is dispensable in the saved models
+
+We evaluated all 12 sigmoid-SMT checkpoints under eight no-retraining conditions: original gates; read, write, or both gates replaced by their means from 256 disjoint calibration episodes; read/write gates resampled from strictly earlier times in the same episode; and gates shuffled across episodes at the same time index. Evaluation uses the canonical 256 episodes and matched usage probe. Mean replacement preserves learned static per-bank/per-channel amplitudes while removing dynamic input/time conditioning.
+
+| task | original usage | both gates replaced by means | paired Δ usage | paired Δ validation MSE |
+|---|---:|---:|---:|---:|
+| T-Maze | 0.9610 | 0.9610 | +0.0000 | +1.57×10⁻⁶ |
+| Distractor | 0.9740 | 0.9740 | +0.0000 | −1.38×10⁻⁶ |
+| Recall | 0.4242 | 0.4199 | −0.0043 | −0.72×10⁻⁶ |
+| Occlusion | 0.6147 | 0.6364 | +0.0216 | −2.92×10⁻⁶ |
+
+Across every individual intervention and checkpoint, the largest absolute validation-MSE change is **1.09×10⁻⁵**. Read/write mean replacement changes the gate outputs by only ≈6.2×10⁻⁵ / 4.2×10⁻⁵ on average; past-only time resampling and episode shuffles are similarly tiny and do not systematically hurt usage. An earlier full-sequence time-shuffle diagnostic was discarded because it could move a future/post-reveal gate backward; the reported CSV was regenerated with strictly causal time donors and retains the same conclusion. Two complete runs of the corrected protocol produced byte-identical per-run and grouped CSVs. A backend diagnostic changed one T-Maze probe label out of 77 when cuDNN TF32 was disabled, so the manifest preserves the canonical analysis backend.
+
+**Conclusion.** These checkpoints do not use meaningful dynamic read routing or write selection. SMT-v2 is empirically a fixed timescale basis with learned, nearly static additive amplitudes. This does not prove that all static gates can be removed without retraining, but it rules out attributing the reported gains to input- or time-selective gating.
+
+## 6. Original experiment plan and completion status
+
+1. **Headline comparison — complete.** `none` vs fixed `multi` vs SMT was run on the four synthetic memory environments, including harder interference variants. SMT does not consistently beat `multi` (§7).
+2. **Scalability — not established.** The current scan is sequential and was not benchmarked at `L∈{64,128}`. The dense basis-size factorial is complete, but it is a quality—not wall-clock or memory-scaling—study (§9.4).
+3. **Selectivity ablations — complete for SMT-v2/OC-SMT and extended by V3.** Router mass matching, causal gate replacement, static/dynamic and old/new-recurrence retraining controls, hard visibility, shifted masks, and L0 cardinality were tested. SMT-v2/OC-SMT reject useful dynamic selection (§5, §9); V3 learns black-token update timing but fails the broader performance screen (§7.5). A competitively tuned Mamba-style learned-`Δ` baseline remains undone.
+4. **Router/update diagnostics — complete.** SMT-v2 read/write trajectories and interventions are nearly static (§5). V3 is the opposite: its scalar update gate perfectly separates the exact black sentinel from visible tokens and is causally necessary, but this does not generalize the claim beyond explicit missingness (§7.5).
+5. **Simulator/robotic diagnostic — complete, with a narrower outcome.** The old self-latent comparison was integrity-corrected but remains invalid across independently learned coordinate systems (§7.1). A new fixed-DINO, paired-clean-target factorial removes that flaw and evaluates shifted masks (§7.2); it is an offline latent-prediction diagnostic, not robot-control performance.
+6. **Optimization-budget and V3 factorial — complete.** The 125-cell 100-epoch audit shows the old 30-epoch ranking was undertrained and still not converged. The subsequent matched 225-cell, 200-epoch V3 grid, 900 mask evaluations, and 100 gate audits are complete and return `NO_GO` (§7.2, §7.5).
 
 ## 7. Initial validation results
 
@@ -102,12 +149,12 @@ This sharpens the proposal's central question and motivates the next experiments
 | Occlusion (Δ5) | 0.48 ±.06 | **0.71 ±.02** | 0.59 ±.02 | 0.50 |
 
 Two honest takeaways:
-1. **SMT is the strongest *learnable* memory so far.** On T-Maze it reaches 0.80, clearly above the paper's learned baselines (GRU 0.54, SSM 0.58, retrieval 0.72) and approaching the fixed-EMA `both` (0.84) — learning *selection over a fixed basis* is a real improvement over learning the dynamics.
-2. **But it does not yet beat the fixed K-bank** (0.80 vs 0.99; 0.79 vs 1.00). The "fixed structure is a remarkably strong prior" thesis (§5.11) survives this stronger learnable challenger.
+1. **In this initial K=6 comparison, SMT is the strongest learned memory on T-Maze.** It reaches 0.80, above GRU 0.54, learned SSM 0.58, and retrieval 0.72. The later dense M=28 OC-SMT sweep is stronger (§9), so this is not a global ranking across the completed study. The result supports retaining a fixed timescale basis while learning around it; it does not by itself show content-dependent selection.
+2. **It does not beat the fixed K-bank** (0.80 vs 0.99; 0.79 vs 1.00). The fixed basis with per-bank readouts remains a strong baseline.
 
-**Diagnosis.** `multi` reads *all* banks **additively** (each fully contributes via its own read-out); SMT-v1's **softmax** router is a *convex mixture*, so reading the decisive long bank requires *down-weighting* the others, attenuating exactly the signal that matters. This predicts a fix: replace the softmax mixture with **independent additive sigmoid gates** (every fixed-horizon bank can contribute fully, but input-conditioned) — i.e. `multi`'s additive read-out made content-selective.
+**Initial diagnosis.** A unit-mass softmax may attenuate the bank signals relative to independent additive gates. This motivated replacing it with sigmoid gates, but that change also raises total read mass from exactly 1 to roughly `K/2=3` at initialization. Softmax-vs-sigmoid therefore confounds routing geometry with amplitude; the mass-matched control below resolves that confound.
 
-**v2 (additive sigmoid gates, `--smt-router sigmoid`) — the diagnosis was correct.** Replacing the convex softmax mixture with independent input-conditioned sigmoid gates (every fixed-horizon bank can contribute fully) closes most of the gap to the fixed K-bank, 4 envs × 3 seeds:
+**v2 (additive sigmoid gates, `--smt-router sigmoid`).** Independent sigmoid gates close much of the usage gap to the fixed K-bank, 4 envs × 3 seeds:
 
 | env | none | **multi (fixed)** | smt-v1 (softmax) | **smt-v2 (sigmoid)** | chance |
 |---|---:|---:|---:|---:|---:|
@@ -116,25 +163,180 @@ Two honest takeaways:
 | Recall (Δ15) | 0.32 | 0.47 | 0.40 | 0.42 ±.03 | 0.33 |
 | Occlusion (Δ5) | 0.48 | 0.71 | 0.59 | 0.61 ±.04 | 0.50 |
 
-The change is large exactly where predicted — **+0.16 on T-Maze and +0.18 on Distractor** — confirming that the softmax mixture was the bottleneck (it down-weighted the decisive long bank). **SMT-v2 now matches the fixed K-bank on the clean long-gap tasks (0.96 vs 0.99; 0.97 vs 1.00) while being fully learnable, input-conditioned, and interpretable.** On the harder Recall (3-way) and short-gap Occlusion it narrows the gap but still trails slightly.
+The mean change is large on T-Maze (+0.16) and Distractor (+0.18), bringing SMT-v2 within 0.03 of `multi` on both. These are differences in means, not an equivalence test, and “input-conditioned” describes the mechanism rather than the nearly static learned behavior (§5). Recall and Occlusion still trail.
 
-### 7.1 Real-robot SMT (exp #5)
+### Mass-matched router control
 
-On the cached dm_control + OGBench occlusion data, learnable `smt` (sigmoid) vs the fixed `multi` (next-latent val MSE, lower = better, 3 seeds):
+`--smt-router scaled_softmax` preserves softmax's relative horizon weights but multiplies them by `K/2`, matching sigmoid's initial total mass. This isolates read amplitude from independent gating (4 environments × 3 seeds; population mean±std; `outputs/smt_scaled_softmax/master_metrics.csv`):
 
-| env (occluded) | none | **multi (fixed)** | **smt (learnable)** |
+| env | unit-mass softmax | mass-matched softmax | sigmoid |
 |---|---:|---:|---:|
-| Reacher | 0.328 | **0.175** | 0.182 |
-| Ball-in-Cup | 0.331 | 0.173 | **0.135** |
-| Finger-spin | 0.333 | **0.175** | 0.176 |
-| Cheetah | 0.240 | **0.201** | 0.227 |
-| OGBench-Cube | 0.329 | **0.177** | 0.178 |
+| T-Maze | 0.797±.058 | 0.879±.052 | **0.961±.021** |
+| Distractor | 0.792±.038 | 0.961±.028 | **0.974±.028** |
+| Recall | 0.398±.034 | **0.502±.016** | 0.424±.034 |
+| Occlusion | 0.593±.016 | **0.723±.054** | 0.615±.043 |
 
-SMT generalizes to real robots and **matches `multi`** — one clear win (Ball-in-Cup, −22% vs multi, where selectively storing the ball's trajectory through the blackout helps), otherwise ties/slight losses; all far below memoryless `none`.
+**Revised diagnosis.** Read amplitude explains much of the original v1→v2 improvement: scaled softmax nearly reaches sigmoid on Distractor and exceeds it on Recall and Occlusion. T-Maze retains a sigmoid advantage (+0.082 over scaled softmax), so independent gates can still matter there, but the old claim that convex mixing alone was the bottleneck is not supported. None of these aggregate results demonstrates content-dependent routing; the gates remain nearly static (§5).
 
-### 7.2 Selectivity under harder interference (exp #1, harder variants)
+### Synthetic encoder normalization audit
 
-The decisive test set up by §5: does the learnable gating *beat* the fixed K-bank once a static mixture is no longer sufficient? Harder Distractor (more interference flashes) and Recall (longer sequence), usage (mean±std; chance Distractor 0.50, Recall 0.33):
+The synthetic checkpoints use `BatchNorm1d(track_running_stats=False)` after the ViT projector. The canonical encoder flattens the episode and time axes, so each frame's normalization statistics include future frames and other evaluation episodes. We audited 36 saved checkpoints without retraining: seeds 0–2 from `outputs/smt` for `none`/`multi` and from `outputs/smt_v2` for sigmoid SMT. All use the same 4,000-episode, 30-epoch budget as the comparison immediately above. Within this matched cohort, we first exactly reproduced every source-master usage and validation-MSE value, then encoded one time slice at a time so that time `t` could not affect any earlier latent. Each slice still contains all 256 evaluation episodes, so this is a causal-in-time sensitivity analysis—not a deployable streaming fix.
+
+An earlier exploratory audit used 5,000-episode `outputs/4ens` `none`/`multi` checkpoints with the 4,000-episode SMT checkpoints. Its within-checkpoint normalization sensitivity agrees with the matched audit, but its cross-design gaps are not controlled and are not used below. Those original records are retained in `outputs/causal_encoder_audit`; the matched primary records are in `outputs/causal_encoder_audit_matched`.
+
+Population-mean usage over three seeds per environment was:
+
+| environment | none: canonical → time-slice | multi: canonical → time-slice | SMT: canonical → time-slice |
+|---|---:|---:|---:|
+| T-Maze | .489 → .498 | .987 → .987 | .961 → .948 |
+| Distractor | .554 → .554 | 1.000 → 1.000 | .974 → .978 |
+| Recall | .325 → .329 | .472 → .459 | .424 → .424 |
+| Occlusion | .481 → .489 | .710 → .732 | .615 → .636 |
+| **overall (12 runs/design)** | **.462 → .468** | **.792 → .794** | **.744 → .747** |
+
+The overall paired advantage over `none` changes only from +.330 to +.327 for `multi` and from +.281 to +.279 for SMT. Every per-environment memory advantage stays positive; the largest absolute per-environment gap change is .022, and the largest per-run usage change is .052 (4 of 77 probe episodes). Canonical versus time-slice latents have mean MSE `2.54e-7` and cosine similarity .999955; reveal-history latent MSE is `7.51e-8`, and the resulting reveal prediction has MSE `1.39e-5` and cosine .999992 between protocols. The largest absolute self-consistent validation-MSE change is `1.34e-3`. Future-time normalization leakage is therefore structurally present, but it does not materially explain the saved synthetic usage advantages.
+
+The audit exposes a separate representation/deployment problem. Mean pre-BN channel variance is only `5.78e-12`, far below BN's `1e-5` epsilon, and the median entropy effective rank is 5.86/128 (per-run range 1.50–15.90). A single-frame, single-episode call fails because stateless BatchNorm has only one sample; time-slice evaluation remains transductive across 256 episodes. Before making an online or causal-world-model claim, the synthetic encoder should be retrained with a fixed-statistics or per-sample normalization and evaluated at batch size one. The complete analysis is reproducible with `scripts/analyze_causal_encoder_normalization.py`; full run-, time-, contrast-, representation-, hash-, and environment-level records are in `outputs/causal_encoder_audit_matched`.
+
+### 7.1 Simulator/OGBench integrity audit and corrected descriptive re-evaluation
+
+The original dm_control/OGBench evaluation had a data-integrity bug: the rollout seed also generated the continuous-action prototypes, so action index `k` meant one continuous action in training (seed 0) and a different action in validation (seed 7777). We separated `prototype_seed=0` from the rollout seed, use independent RNGs, persist the prototypes and provenance, and version the cache as schema v3. Every `.occ` trajectory is now an exact masked copy of one clean cached rollout; this is necessary because independently resetting OGBench did not reproduce pixel-identical trajectories.
+
+Training used the correct seed-0 prototypes and saved the final epoch without validation selection, so the existing weights did not need retraining. We regenerated validation data and re-evaluated all 75 checkpoints (60 dm_control, 15 OGBench). Corrected all-window **self-latent** MSE means are:
+
+| env (occluded) | none | multi | SMT |
+|---|---:|---:|---:|
+| Reacher | .328 | .175 | .182 |
+| Ball-in-Cup | .331 | .173 | .136 |
+| Finger-spin | .333 | .175 | .175 |
+| Cheetah | .122 | .155 | **.108** |
+| OGBench-Cube | .329 | .177 | .177 |
+
+The first, second, third, and fifth rows barely move, but Cheetah changes materially from the superseded `.240/.201/.227` table: `multi` is now worse than `none`, and SMT is lowest. Full per-phase values and paired deltas are in `outputs/action_semantics_fix`.
+
+This is a fresh corrected held-out set, not a one-variable causal intervention on the old validation set. Historically one RNG drew the prototypes and then the action indices; separating those streams changes the seed-7777 action-index sequence and resulting state trajectory as well as fixing prototype semantics. Differences from the superseded table therefore cannot be attributed solely to the prototype correction. The revised evaluator now binds both checkpoints and evaluation caches by SHA-256.
+
+**These corrected numbers are still not a valid cross-model performance comparison.** Each checkpoint predicts in its independently learned encoder coordinates, and the middle-window target is the latent of the black frame—not the hidden clean scene. The existing influence metric is measured only at the final frame, long after the blackout, so it cannot show that memory was recruited during occlusion. The table is retained only as an integrity-corrected description of the old checkpoints; no percentage-improvement or robotic-tracking claim should be based on it. Section 7.2 reports the completed fixed-feature, paired-clean-target replacement.
+
+### 7.2 Fixed-feature, paired-clean-target occlusion study
+
+We completed the required replacement experiment. Its purpose is narrow: compare memory designs in **one immutable target coordinate system per environment**, using the clean scene as the target while the model input is blacked out. It is an offline next-feature-prediction test under uniformly random indices over six fixed continuous-action prototypes shared across training and validation—not native continuous random control, robot return, or a control benchmark.
+
+#### Target audit and protocol
+
+The first candidate target—each environment's seed-0 learned LeWM encoder—failed a predeclared quality audit on all five environments. The source projector uses `BatchNorm1d(track_running_stats=False)`, so even `eval()` latents depend on the other frames in the evaluation batch. We estimated fixed clean-train moments from all 19,200 training frames and then measured the pre-BN representation. The quality gate required mean channel variance ≥`1e-5` and covariance effective rank ≥2:
+
+| clean environment | pre-BN mean channel variance | variance after fixed BN | covariance effective rank | failure |
+|---|---:|---:|---:|---|
+| Reacher | 6.95×10⁻¹¹ | 6.72×10⁻⁶ | 12.21 | variance collapse |
+| Ball-in-Cup | 1.31×10⁻¹⁰ | 1.27×10⁻⁵ | 14.03 | variance collapse |
+| Finger-spin | 2.96×10⁻¹⁰ | 2.86×10⁻⁵ | 3.06 | variance collapse |
+| Cheetah | .1159 | .9749 | 1.03 | rank collapse |
+| OGBench-Cube | .2826 | .9745 | 1.34 | rank collapse |
+
+The ranks in the first three rows do not rescue representations whose total variance is numerically negligible. The complete records are in `outputs/shared_encoder_audit`. This also makes the original private-latent MSE tables weaker than a coordinate mismatch alone would suggest: some learned targets are batch-dependent or collapsed.
+
+We therefore froze the exact cached `vit_small_patch14_dinov2.lvd142m` DINOv2 ViT-S/14 weights and preprocessing, extracted the 384-D CLS feature from **clean pixels only**, and fit one deterministic, non-whitened PCA per environment using only visible positions from the 600 clean training trajectories. Validation data and blackout positions were excluded from the PCA fit. The occluded input stream was derived afterward by replacing `[10,16)` with the exact DINO feature of an all-black frame; targets remained the paired clean features. Model, preprocessing, pixel-cache, PCA, and semantic-content hashes are recorded in each manifest.
+
+The predeclared 64-D target gate required ≥95% retained variance and failed on four of five environments, so no 64-D predictor was trained. We moved to 128 dimensions before model training:
+
+| environment | raw mean channel variance | raw effective rank | variance retained at 64-D | retained at 128-D | 128-D clean-val rank |
+|---|---:|---:|---:|---:|---:|
+| Reacher | .404 | 41.24 | 92.32% | 97.26% | 32.01 |
+| Ball-in-Cup | .455 | 21.06 | 94.63% | 97.99% | 17.97 |
+| Finger-spin | .615 | 28.76 | 94.86% | 98.21% | 24.54 |
+| Cheetah | .225 | 18.15 | 96.72% | 98.91% | 16.40 |
+| OGBench-Cube | .771 | 39.39 | 90.86% | 96.34% | 30.49 |
+
+These checks establish non-collapsed, shared targets; they do not prove that DINO CLS preserves every simulator state variable. A simulator-state or pose-decoding audit is still needed before calling the metric physical state tracking.
+
+The exact black-frame feature is also a conspicuous synthetic missingness sentinel rather than a natural occlusion. Across environments its projected norm is 39.5–44.4, versus a mean clean-feature norm of 9.0–16.7, and its MSE to the paired clean blackout features is 13.86–16.44. It is produced through the exact declared DINO preprocessing—not hand-constructed corruption—but the resulting distribution shift helps explain severe blackout-transition errors (up to MSE 13.09 and `R²=−18.15`). Conclusions from this experiment apply to explicit black-token missingness.
+
+We then trained `none`, GRU, diagonal SSM, fixed six-bank `multi`, and sigmoid SMT for five optimizer seeds on each of the five environments: **5×5×5 = 125 runs**, 30 epochs each. One DINO-PCA artifact is shared by all 25 runs in an environment. Hidden clean targets inside the blackout are masked out of the training loss; first-post-blackout prediction is the predeclared primary outcome, while deep-blackout clean-target error is explicitly zero-shot/off-objective. Raw MSE is compared only within an environment because PCA scales differ.
+
+#### Primary result: memory helps the learned predictor at reappearance, but not every simple control
+
+The table reports clean-target first-post-blackout MSE, population mean±std over five training seeds; lower is better. `constant` and `last-visible` are deterministic feature-space controls rather than trained models.
+
+| environment | constant | last-visible hold | none | GRU | SSM | multi | SMT |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Reacher | 1.162 | **.717** | 2.118±.556 | 1.673±.455 | 1.156±.003 | 1.054±.012 | 1.046±.029 |
+| Ball-in-Cup | 1.264 | 2.290 | 1.253±.006 | 1.229±.008 | 1.201±.004 | 1.079±.022 | **1.073±.036** |
+| Finger-spin | 1.799 | **1.254** | 3.268±.312 | 2.511±.234 | 1.784±.003 | 1.638±.038 | 1.549±.098 |
+| Cheetah | 0.689 | 1.014 | .689±.004 | .679±.005 | .661±.004 | **.645±.004** | .649±.004 |
+| OGBench-Cube | 2.174 | **1.778** | 3.994±.373 | 3.767±.354 | 2.138±.004 | 1.889±.041 | 1.804±.049 |
+
+Paired by optimizer seed, `multi` and SMT beat the independently trained `none` model in all 25/25 environment-seed pairs. SSM also wins 25/25, while GRU improves every environment mean and 24/25 pairs. `multi`/SMT have the largest descriptive first-post reductions under this budget (6–55% by environment), and their within-environment paired bootstrap intervals in `outputs/shared_clean_occlusion/paired_grouped.csv` exclude zero; SSM's do as well. Both `multi` and SMT also achieve positive constant-normalized first-post `R²` on every environment (SMT .058–.170). This supports recurrent memory generally—not fixed EMA uniquely—as a useful path for the first visible target after a blackout.
+
+Those intervals are descriptive, not definitive significance tests: each environment has only five optimization seeds, for which even 5/5 wins have a minimum two-sided exact sign-test `p=0.0625`. Validation trajectories are shared across seeds, per-trajectory errors were not retained for a trajectory bootstrap, and no multiplicity correction was applied across methods, phases, environments, and masks.
+
+It is **not** evidence that SMT's learned gates are selective, nor that learned memory universally tracks hidden state. SMT and `multi` are very close: SMT wins 17/25 original-mask seed pairs and four of five environment means, but the within-environment SMT−`multi` mean differences are only −.008 (Reacher), −.006 (Ball), −.089 (Finger), +.004 (Cheetah), and −.086 (Cube). These small, mixed five-seed differences do not establish SMT superiority. SMT uses fewer trainable parameters than `multi` (850,438 vs 915,072), which is a parameter-count advantage only; runtime, recurrent state, and memory use were not benchmarked. More importantly, last-visible hold is better than both learned models on Reacher and Finger and slightly better on the original OGBench-Cube mask—three of five environments. On the 25 original-mask seed cells, SMT beats hold in only 12, while GRU, SSM, and `multi` each do so in 10. The learned models beat that control reliably only on Ball-in-Cup and Cheetah.
+
+The auxiliary phases sharpen the limitation:
+
+- Test-time removal of the memory injection raises `multi`/SMT first-post MSE to 4.23–5.45, so those predictors genuinely rely on the recurrent path. Reliance is not the same as superiority to a simple control.
+- That reliance is phase-localized: across all 100 GRU/SSM/`multi`/SMT runs, ablation *improves* blackout-transition error in 90 and makes whole-sequence error worse in only 56. Ablation is itself a distribution shift; the independently trained `none` model remains the performance counterfactual.
+- Deep-blackout targets were excluded from training. In that off-objective phase, 9 of the 10 `multi`/SMT environment cells are worse than the corresponding `none` model; Finger, Reacher, and Cube degrade strongly. Recovery errors differ little and have no consistent winner.
+- Supplying clean rather than blacked-out inputs makes `multi` and SMT worse than `none` in all five environments. This out-of-distribution control warns that the learned behavior is mask/training-regime specific rather than a generic next-feature improvement.
+- All five downstream seeds share one fixed target artifact per environment. Their spread estimates optimization variability only, not uncertainty from choosing the visual representation.
+- Training had not visibly converged at the fixed 30-epoch budget: every run's validation loss at epoch 30 is lower than at epoch 25, and 120/125 improve from epoch 29 to 30. Some between-design differences may therefore reflect optimization speed.
+
+#### Shifted and longer blackout masks
+
+Without retraining, all 125 checkpoints were evaluated on the original mask, two shifted six-frame masks, and a longer nine-frame mask (**500 evaluations**). Original-mask values reproduce the training analyzer within tolerance. The cells below are paired mean first-post MSE changes relative to `none`; negative is better:
+
+| environment | original `[10,16)` | early `[6,12)` | late `[14,20)` | longer `[10,19)` |
+|---|---:|---:|---:|---:|
+| Reacher | −1.065 / −1.072 | −1.067 / −1.075 | −1.061 / −1.066 | −.712 / −.689 |
+| Ball-in-Cup | −.174 / −.179 | −.048 / −.057 | −.145 / −.158 | −.129 / −.194 |
+| Finger-spin | −1.630 / −1.719 | −1.631 / −1.718 | −1.626 / −1.719 | −1.069 / −1.112 |
+| Cheetah | −.044 / −.040 | −.041 / −.037 | −.041 / −.040 | −.019 / −.035 |
+| OGBench-Cube | −2.104 / −2.190 | −2.108 / −2.196 | −2.104 / −2.188 | −1.401 / −1.437 |
+
+*Each cell is `multi / SMT`. Full GRU, SSM, ablation, deep-blackout, recovery, constant, and last-visible results are in `outputs/shared_clean_occlusion/mask_generalization_per_run.csv` and `mask_generalization_grouped.csv`.*
+
+For completeness, averaging the paired **within-environment relative improvement over `none`** across the 25 environment-seed cells gives:
+
+| mask condition | GRU | SSM | multi | SMT |
+|---|---:|---:|---:|---:|
+| original `[10,16)` | 10.6% | 28.3% | 33.8% | 34.9% |
+| early `[6,12)` | 10.1% | 26.7% | 31.6% | 32.8% |
+| late `[14,20)` | 10.9% | 28.8% | 33.0% | 34.3% |
+| longer `[10,19)` | 8.9% | 21.3% | 26.3% | 28.0% |
+
+These are descriptive averages of relative paired effects; raw MSE is not pooled across environments.
+
+The mean advantage over the trained `none` predictor survives all 20 environment×mask combinations, so the first-post effect is not tied only to the training blackout's absolute position. It still does not overcome last-visible hold on Reacher or Finger under any tested mask; OGBench-Cube crosses that baseline only for the longer mask. This is a limited robustness test: early/late masks overlap the training interval, the longer mask contains it, all conditions reuse the same 150 validation trajectories, and every mask uses the same extreme black token. The robust statement is therefore **first-post improvement over a learned memoryless predictor under several deterministic black-token masks**, not universal hidden-state reconstruction, natural-occlusion robustness, or control.
+
+#### Artifact integrity and known packaging caveats
+
+The audit found all 125 factorial cells and all 500 mask-evaluation rows complete. Checkpoints agree exactly with their `metrics.json`; source-cache and feature hashes, schemas, manifests, and within-environment shared-feature invariants validate; and original-mask re-evaluation parity is better than `9.2e-7` for every checked metric. The three files under `dino_features/` are the Cheetah-only 64-D feature pilot—the sole environment that passed the 95% gate—not a trained model sensitivity study; no 64-D predictor was trained, and the complete factorial uses `dino_features_d128/` only.
+
+Two packaging issues remain. Fifty GRU/SSM `metrics.json` files contain non-RFC `NaN` literals only in inapplicable tau/alpha fields (all core outcomes are finite; future saves emit `null`). The aggregate CSVs do not yet carry their own checksum/provenance manifest, and mask rows do not repeat checkpoint/feature hashes even though the evaluator validates those inputs. Also, `grouped.csv` reports population standard deviations while paired tables report sample standard deviations; every table above states which convention it uses.
+
+#### 100-epoch optimization-budget audit
+
+We repeated the complete five-environment × five-design × five-seed fixed-DINO grid for 100 epochs (`outputs/shared_clean_occlusion_100`; 125 checkpoints and 500 shifted-mask evaluations). This audit retains the legacy `first_post_loss_weight=0`: it trains the mean over all visible targets rather than the balanced SMT-v3 objective below. It therefore diagnoses the earlier 30-epoch budget, but its absolute values should not be compared with a differently weighted cohort except through baselines retrained inside that cohort. The DINO/PCA output-content and PCA-component hashes match the 30-epoch artifacts for all five environments.
+
+Clean-target first-post MSE, population mean±std over five optimizer seeds (lower is better):
+
+| environment | constant | last-visible | none | GRU | SSM | multi | SMT |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Reacher | 1.162 | **.717** | 1.174±.001 | .993±.082 | .896±.025 | **.750±.006** | .761±.004 |
+| Ball-in-Cup | 1.264 | 2.290 | 1.236±.001 | 1.150±.087 | **.941±.010** | .958±.005 | .953±.008 |
+| Finger-spin | 1.799 | 1.254 | 1.807±.000 | 1.537±.148 | **1.238±.021** | 1.247±.010 | 1.261±.022 |
+| Cheetah | .689 | 1.014 | .670±.001 | .657±.005 | .641±.002 | **.608±.007** | .611±.008 |
+| OGBench-Cube | 2.174 | 1.778 | 2.182±.002 | 1.977±.045 | **1.496±.040** | 1.638±.033 | 1.641±.011 |
+
+All four recurrent designs beat the same-seed `none` predictor in 25/25 environment-seed cells. SSM and `multi` each beat last-visible hold in four of five environment means; SMT does so in three and GRU in two. Reacher hold remains best. SSM is the best learned design on Ball, Finger, and Cube, while `multi` is best on Reacher and Cheetah. Thus longer training strengthens the recurrent-memory result but weakens any fixed-bank-specific story: no one architecture dominates, and the simple hold control still wins one task.
+
+Relative to the 30-epoch artifacts, all 125 matched environment/design/seed first-post errors are lower; the 25 environment×design means fall by 1.36%–47.51%. More importantly, 100 epochs still fail a convergence audit. Validation prediction loss falls from epoch 90 to 100 in 117/125 cells; the median relative fall is 1.546%, the maximum is 3.406%, and three cells exceed 3%. Median falls by design are GRU 1.346%, `multi` 1.480%, `none` 1.513%, SMT 1.563%, and SSM 1.977%. Every checkpoint's best validation epoch lies in 91–100, and 79/125 attain it at epoch 100. The 30-epoch ranking was therefore optimization-budget dependent, and even 100 epochs is not a credible convergence endpoint; this motivated the fixed 200-epoch SMT-v3 protocol rather than validating a final ranking.
+
+The four-mask re-evaluation tells the same bounded story. Mean paired relative first-post gains over `none` for GRU / SSM / `multi` / SMT are 9.76 / 22.93 / 24.76 / 24.36% on the original mask, 8.90 / 16.50 / 21.85 / 21.00% early, 9.76 / 21.77 / 21.79 / 21.37% late, and 6.12 / 13.61 / 18.37 / 17.10% on the longer mask. These reuse the same 150 validation trajectories and extreme black token and do not repair the convergence failure. Five seeds quantify optimizer variability only; they do not cover the target representation, trajectory sample, or environment. Deep-blackout targets remain off-objective, and the experiment remains feature prediction rather than state decoding or control. This 100-epoch cohort also lacks a cohort-level source/output manifest; its checkpoint histories, metrics, and feature hashes pass semantic checks, but its producer provenance is weaker than the V3 cohort's.
+
+### 7.3 Selectivity under harder interference (exp #1, harder variants)
+
+The decisive test set up by §5: does the learnable gating *beat* the fixed K-bank once a static mixture is no longer sufficient? Harder Distractor (more interference flashes) and Recall (longer sequence), usage (population means over three seeds; chance Distractor 0.50, Recall 0.33):
 
 | task (hardness) | none | **multi (fixed)** | **smt (learnable)** | smt − multi |
 |---|---:|---:|---:|---:|
@@ -145,55 +347,142 @@ The decisive test set up by §5: does the learnable gating *beat* the fixed K-ba
 
 *(3 seeds each, full 36-run sweep.)*
 
-**The selectivity hypothesis is largely not confirmed.** Under *heavier* distractor interference SMT does **not** beat `multi`; the gap actually *widens against* SMT at n=16 (−0.08) — the opposite of the predicted "write gate suppresses distractors" effect. The lone positive is harder Recall (seq=7, +0.06), but in a regime where every method sits near 3-way chance. This is fully coherent with the router-collapse finding (§5): SMT's learnable selectivity does not strongly activate, so the extra machinery matches `multi` at best and slightly underperforms it under heavy interference (harder optimization, no selectivity payoff).
+**The selectivity hypothesis is largely not confirmed.** Under *heavier* distractor interference SMT does **not** beat `multi`; the gap actually *widens against* SMT at n=16 (−0.08) — the opposite of the predicted "write gate suppresses distractors" effect. The lone positive is harder Recall (seq=7, +0.06), but in a regime where every method sits near 3-way chance. This is consistent with the nearly static gate outputs (§5): the extra machinery does not reliably beat `multi` and underperforms it under heavy interference, without a demonstrated selectivity payoff.
 
-### 7.3 Conclusion (honest)
+### 7.4 Conclusion (honest)
 
-A learnable short/long memory can **match** the strong fixed K-bank — on clean tasks (§7 v2), on real robots (1 win / 2 ties / 2 slight losses, §7.1), and under moderate interference — *provided* learnability is placed on input-conditioned gating over a fixed timescale basis, not on the decays. But across every setting it does **not yet beat** the fixed prior, and under heavy interference it slightly trails (§7.2). The diagnosis is consistent end to end: the learned router collapses to a near-static, input-independent mixture (§5), so SMT mostly **recovers `multi`'s additive K-bank** rather than exploiting content-dependent selectivity. The fixed log-spaced K-bank thus **remains the prior to beat** — a striking reaffirmation of the paper's thesis (§5.11), now against a strong learnable challenger.
+Under the controlled usage metric, learned gating over a fixed decay basis is competitive with—but does not consistently outperform—the K=6 `multi` prior. SMT-v2 approaches `multi` on T-Maze and Distractor, remains lower on Recall and Occlusion, and trails under heavier distractor interference. The mass-matched control shows that read amplitude, not demonstrated selectivity, explains most of the softmax→sigmoid gain. The original simulator MSE table is descriptive and is not evidence of cross-model equivalence.
 
-This sharpens the real open problem into two levers: **(i) make selectivity actually emerge** (sparsity/entropy or load-balancing pressure on the gates, temperature, or curriculum/harder training so a static mixture cannot win); and **(ii) relax the constant-size constraint** — replace the fixed K=6 bank with a **learnable, variable-size** multi-scale bank (an over-complete fixed-decay basis with *sparse, learned* selection to an emergent active set), so capacity is allocated by content rather than hand-set. That second lever is exactly the question explored in §8.
+The causal-in-time encoder audit shows that future-frame BatchNorm statistics do not materially explain the saved synthetic usage gaps, but it does not validate online inference: the current encoder is severely low-variance/low-rank, depends on other evaluation episodes, and fails on a singleton frame. This is a robustness result for the archived checkpoints, not a substitute for retraining a deployable causal encoder.
 
-## 8. Toward a learnable, variable-size bank (no constant K)
+The shared-DINO study (§7.2) removes that coordinate flaw and supplies a real positive result: across five environments, recurrent designs improve first-post means over an independently trained memoryless predictor and the effect survives shifted masks. The 100-epoch rerun changes the ranking materially—SSM is best on three environments and `multi` on two—and is still improving in 117/125 cells over epochs 90→100. This supports recurrent memory generally, not a fixed-bank winner. It also bounds the claim: last-visible hold remains best on Reacher, deep-blackout zero-shot tracking usually degrades, clean-input behavior is worse, and equal-budget training is not competitive baseline tuning.
 
-**Question:** the bank is currently a *fixed, constant-size* set of K=6 log-spaced EMA horizons (τ∈{2,4,8,16,32,64}). Can it instead be a **multi-scale-sized, learnable bank with no constant size**? **Yes** — and our own evidence dictates *how*: do **not** learn the decays (§5.4 says that fails), but make the **active set** (which/how-many horizons) learnable. (Grounded in a literature sweep; see references.)
+Before V3, the evidence therefore supported only a fixed exponential feature path for short-horizon post-occlusion prediction, with no useful content-dependent selection, automatic sizing, general hidden-state tracking, or downstream control. Dense OC-SMT (§9) adds one lead—an over-complete M=28 configuration improves synthetic Occlusion usage—but M also changes parameter count and readout initialization and interacts with horizon range and stochastic hard-concrete training. V3 (§7.5) narrows the negative statement: dynamic gating can help when missingness is an explicit, easily detected sentinel, but it still does not establish semantic selection, action-conditioned belief tracking, or an advantage over SSM/simple hold.
 
-**What the literature does (and the one thing to avoid).**
+### 7.5 SMT-v3-W: true selective update
 
-| method | how it makes size variable | learns decays? | basis fixed? |
+The earlier SMT write rule, `m_t^k=(1-a_k)m_{t-1}^k+a_k(g_t z_t)`, does not preserve memory when its write gate closes: `g_t=0` still decays the old state. SMT-v3-W (“whole-update”; `SelectiveUpdateMemoryV3`; `--memory-mode smtv3`) instead gates the complete EMA update:
+
+```text
+g_t       = sigmoid(w_g^T [LayerNorm(z_t) + e] + b_g)
+m_t^k     = (1 - a_k g_t) m_{t-1}^k + a_k g_t z_t
+a_k       = 1 - exp(-1/tau_k),  tau = {2,4,8,16,32,64} fixed
+pi        = softmax(r)                                      (global bank mixture)
+m_bar_t   = sum_k pi_k m_t^k
+z_tilde_t = z_t + W_o [m_bar_t / sqrt(mean(m_bar_t^2)+eps)]
+```
+
+Thus `g_t=0` exactly freezes every bank and `g_t=1` recovers the ordinary fixed EMA. The gate is one scalar per time step, shared by channels and banks. All banks warm-start from `z_0`, so `g_0` is deliberately unused. The global simplex and parameter-free RMS normalization remove the read-mass/amplitude confound exposed by the scaled-softmax ablation; `W_o` is shared and zero-initialized.
+
+Four separately trained, nominally parameter-matched variants isolate the mechanism:
+
+- `smtv3`: content-conditioned gate with the true freeze recurrence above.
+- `smtv3_static`: the same gate parameters evaluated only at learned offset `e`, producing a learned constant across examples and time; this removes input conditioning.
+- `smtv3_old`: the same dynamic conditioner with the old erasing recurrence, isolating complete-update gating from gated-value writing.
+- `smtv3_oracle`: an explicit visibility mask forces update on visible tokens and freeze on black tokens; the implementation fails if the mask is omitted. This is a visibility control, not a capability upper bound.
+
+At `D=128,K=6`, every variant instantiates `D^2+2D+K+1=16,647` memory parameters: `D` for `e`, `D+1` for the scalar gate, `K` route logits, and `D^2` for the bias-free output projection. The oracle does not execute the 257 conditioner/gate parameters, so nominal parameter equality is not equality of active gradients; dynamic versus static is the clean matched comparison. Sigmoid SMT-v2 has 33,670 memory parameters and six-bank `multi` has 98,304. In this fixed-feature setup, the effective predictor-only count is 816,768 and V3 has 833,415 active trainable parameters. The legacy `none` object reports 849,536 only because it instantiates two inactive `128×128` fusion projections, so that raw count is not a fairness advantage.
+
+The V3 factorial uses the literal objective `0.5*mean(MSE over all valid targets) + 0.5*mean(first-post MSE)`. First-post is itself one of the 23 valid targets, giving it an effective coefficient of `0.5+0.5/23=52.17%`, not an exclusive 50/50 split. Hidden blackout targets remain excluded. With precomputed identity features, SIGReg is constant with respect to model parameters, so this cohort optimizes prediction loss only.
+
+The exact factorial is five environments × nine designs (`none`, GRU, SSM, `multi`, SMT-v2, and the four V3 variants) × five optimizer seeds = **225 independently trained checkpoints**, each for 200 epochs, followed by four-mask evaluation and gate counterfactuals (`scripts/run_smt_v3.sh`, `scripts/analyze_smt_v3.py`, `outputs/smt_v3_shared`). The numeric thresholds were recorded internally before launch and left unchanged, but were neither externally preregistered nor cryptographically timestamped; causal-window and provenance fixes to the analyzer were finalized while training ran. The primary matched test is dynamic versus static first-post MSE; supporting checks include dynamic versus old recurrence, the visibility control, a calibration-mean gate intervention restricted to the causal prefix `t=1…15`, shifted masks, last-visible hold, clean-input behavior, and convergence. Gate AUROC/gap used for the decision likewise excludes unused `t=0` and post-target gates; full-sequence values are descriptive only.
+
+The scope is intentionally narrow. The recurrence sees observations but not actions; actions enter only the length-three predictor, so it cannot integrate controls throughout the six-step blackout. A positive result would show selective retention and/or recognition of the conspicuous all-black DINO token, not controlled hidden dynamics. Gate AUROC would measure missingness-sentinel detection rather than semantic/task relevance, the route is global, the gate is scalar, and all six horizons remain hand-set. All epochs also monitor the same 150 validation trajectories used by the analyses. Any promising result therefore remains exploratory until confirmed on untouched rollout seeds and, ultimately, task return/control.
+
+#### Completed 225-run result: real black-token gating, but `NO_GO`
+
+The full grid completed and passed exact validation: 225/225 checkpoints, 900 checkpoint×mask evaluations, 100 V3 gate audits, and 15,000 per-episode gate/intervention rows. The two tables report clean-target first-post MSE, population mean±std over five optimizer seeds (lower is better). They are all from the same 200-epoch, first-post-weighted cohort; `hold` is deterministic.
+
+| environment | hold | none | GRU | SSM | multi | SMT-v2 |
+|---|---:|---:|---:|---:|---:|---:|
+| Reacher | **.717** | 1.182±.003 | .818±.042 | .774±.009 | .856±.020 | .915±.011 |
+| Ball-in-Cup | 2.290 | 1.164±.003 | 1.173±.030 | **.930±.024** | 1.128±.038 | 1.198±.050 |
+| Finger-spin | 1.254 | 1.816±.001 | 1.274±.016 | **1.207±.019** | 1.474±.010 | 1.561±.027 |
+| Cheetah | 1.014 | .632±.001 | .861±.039 | **.599±.012** | .623±.023 | .640±.017 |
+| OGBench-Cube | 1.778 | 2.185±.002 | 1.751±.027 | **1.540±.053** | 1.870±.021 | 1.958±.019 |
+
+| environment | V3 static | V3 old-erasing | **V3 dynamic** | hard visibility |
+|---|---:|---:|---:|---:|
+| Reacher | .888±.030 | .839±.032 | .778±.033 | **.774±.011** |
+| Ball-in-Cup | 1.124±.041 | 1.070±.029 | **1.048±.018** | 1.091±.025 |
+| Finger-spin | 1.619±.031 | 1.465±.029 | 1.356±.037 | **1.341±.012** |
+| Cheetah | .629±.009 | **.615±.011** | .624±.022 | .657±.019 |
+| OGBench-Cube | 1.977±.009 | 1.812±.016 | **1.706±.020** | 1.764±.016 |
+
+V3 does produce the first convincing dynamic-gate effect in this repository. Relative improvement of the dynamic environment mean over its static control, paired-win count, and the descriptive dynamic-versus-old recurrence effect are:
+
+| environment | dynamic vs static | paired wins | dynamic vs old-erasing | paired wins |
+|---|---:|---:|---:|---:|
+| Reacher | 12.38% | 5/5 | 7.27% | 5/5 |
+| Ball-in-Cup | 6.69% | 5/5 | 2.05% | 3/5 |
+| Finger-spin | 16.27% | 5/5 | 7.47% | 5/5 |
+| Cheetah | .75% | 3/5 | −1.51% | 2/5 |
+| OGBench-Cube | 13.68% | 5/5 | 5.84% | 5/5 |
+
+Across the 25 paired cells, the mean within-pair dynamic-versus-static reduction is **9.91% with 23/25 wins**; dynamic versus old-erasing is 4.19% with 20/25 wins. The latter was not part of the locked decision criteria and is supporting evidence, not a confirmatory test. Dynamic also beats `none` in every environment mean and 22/25 pairs. This establishes that the learned timing matters in this training/evaluation setup; unlike SMT-v2, the gate is not functionally static.
+
+The intervention and gate traces agree, but identify a very specific mechanism. On the causal prefix `t=1…15`, dynamic gates average `.932` on visible tokens and `.075` on the exact black token: gap `.857`, AUROC **1.000** in all 25 runs. Replacing every dynamic gate in a checkpoint by one checkpoint-specific scalar—its arithmetic mean over all 600 training episodes and `t=1…15`—raises first-post MSE by a mean 86.6% across paired cells and erases 7.70× the dynamic-static gain. This is a strong causal intervention, although the arithmetic mean is not matched for nonlinear recurrent retention mass. The result is best described as **learning to freeze on a conspicuous black sentinel**, not semantic content selection.
+
+Temporal mask shifts do not remove the pooled effect: mean paired dynamic-versus-static reductions are 9.91% on `[10,16)`, 7.38% on early `[6,12)`, 11.47% on late `[14,20)`, and 7.98% on longer `[10,19)`. They are not uniformly robust: Cheetah changes by +.76%, −1.70%, −7.04%, and −3.64% respectively, and all masks reuse the same sentinel and validation trajectories. The hard visibility control beats static on four environment means but beats hold on only three; it is a separately optimized mechanism control, not an upper bound.
+
+The broader performance test fails. SSM has lower environment-mean MSE than dynamic V3 on **all five** tasks and wins 22/25 paired cells. V3 beats last-visible hold only on Ball, Cheetah, and Cube; it loses on Reacher and Finger. Only three environments, rather than the required four, clear a 10% dynamic-static gain. Clean-input MSE is 10.6% better than static on average, so clean-input regression is not the reason for failure.
+
+The locked convergence rule also fails: median epoch-190→200 validation-prediction improvement is only `.034%`, but 14/225 cells exceed the 3% point-to-point threshold and the maximum, a Reacher/old-erasing cell, is 8.67%. More robust descriptive windows indicate a near plateau: comparing means over epochs 181–190 and 191–200 gives median −.155%, p95 +.913%, and maximum +1.397% improvement. The brittle single-epoch maximum is retained as the internally fixed screen, not treated as evidence that every cell needs extension. Because the scientific screen already fails and the robust summaries are close to flat, we did not spend another full grid on longer training.
+
+The analyzer's locked output is therefore **`NO_GO`**. It fails the ≥4/5 large-gain criterion, the ≥4/5 hold criterion, and the pointwise convergence rule; its terminal oracle heuristic also fires. Oracle failure alone should not reject an architecture, and the thresholds are deterministic screens on reused validation data rather than hypothesis tests. The independent substantive conclusion is nevertheless the same: V3 learns useful black-sentinel timing, but does not beat the matched-budget diagonal SSM, does not consistently beat a trivial hold, cannot propagate actions through the gap, and has no natural-occlusion or return evidence. The protocol therefore did not trigger an untouched-test or control-return expansion.
+
+#### V3 insights
+
+1. **Whole-update gating fixes a mismatch with the intended freeze semantics of V1/V2.** Scaling only the incoming value does not mean “do not write”; it writes zero while old state decays. V1/V2 implement their stated equation correctly, but that equation cannot freeze memory. V3's rate-gated recurrence can and beats the matched old-erasing control by 4.19% on average, although Cheetah is a counterexample.
+2. **A causal dynamic gate is not automatically semantic selectivity.** Static retraining and mean-gate intervention show that timing genuinely matters, but AUROC 1.0 reveals what was learned: detect one extreme missingness token. General selectivity requires training/testing across unseen corruptions and task-relevant distractors.
+3. **The simpler read is sufficient for the mechanism test, not for winning the benchmark.** V3 removes the per-token horizon router, uses half the memory parameters of SMT-v2, and still produces the strongest gating evidence. Yet SSM wins 22/25 paired cells, so gate interpretability is not a substitute for predictive quality.
+4. **Actions are the architectural ceiling.** V3 can retain the pre-gap appearance and the predictor can use only its last three actions, but the recurrent state cannot evolve through the full blackout. The next serious design should be an action-conditioned predict/correct belief state, not another black-token gate sweep.
+5. **Training budget changes the apparent winner.** The 30→100 epoch rerun changes design rankings, while the 200-epoch endpoint remains noisy under a brittle cellwise rule. Future comparisons need per-baseline tuning, stable window-based convergence criteria, and an untouched test split selected before architecture iteration.
+6. **Publication value is diagnostic.** The useful story is why V2 appears selective but is static, why true-update V3 becomes dynamic on explicit missingness, and why that still fails against SSM/hold. It is not evidence for general learned memory, automatic sizing, or control.
+
+All primary artifacts are in `outputs/smt_v3_shared`: `grouped.csv`, `v3_contrasts.csv`, `v3_gate_grouped.csv`, `convergence.csv`, `mask_generalization_per_run.csv`, `decision.json`, and the hash-complete `v3_manifest.json`. The operator log records a 0/225 clear start, and launch/final SHA-256 snapshots match for the producer sources. The final manifest attests all 225 checkpoint pairs, five environment feature bundles (15 files), 12 outputs, analysis code, and producer sources. Checkpoints do not embed their producer-code hashes, so the clear start and unchanged-during-training claim remain an operator-record attestation rather than cryptographic source binding.
+
+## 8. Toward learned effective read cardinality under a fixed ceiling
+
+**Question:** can the hand-set K=6 read set be replaced by a learned active subset of an over-complete fixed-decay basis? OC-SMT tests this by fixing a ceiling `M` and learning penalized read gates. This makes the **effective read-gate cardinality** learnable; it does not yet make the physical state or dense computation variable-sized. Fixed decays are a deliberate experimental control motivated by our failed global scalar-`α` run—not a claim that every adaptive-decay parameterization fails.
+
+**Related variable-size/adaptive-memory mechanisms.**
+
+| method | what adapts | learns decays? | basis fixed? |
 |---|---|---|---|
 | **Log-Linear Attention** (2506.04761) | Fenwick-tree of power-of-2 buckets; #active buckets grows ~log T with position | no | yes (structural) |
 | **MoM: Mixture-of-Memories** (2025) | input router activates **top-k of K** memory states (+1 always-on) | no | yes |
 | **Routing Mamba** (NeurIPS'25, 2506.18145) | top-k router over experts; **SSM core/decays stay fixed** | no | yes |
 | **DynMoE** (ICLR'25) / **ReMoE** (ICLR'25) | **learns the number of active experts** (top-any / ReLU+L1); grow/prune | no | yes |
 | **LAST** (NeurIPS'24) / **SparseSSM** (2025) | prune SSM modes by energy/saliency → variable state size | no | yes |
-| *Adaptive Memory Decay* (2605.06946) | input-conditioned decays | **yes ← avoid** | no |
+| **Adaptive Memory Decay** (2605.06946) | per-token, per-level input-conditioned decay; reports gains over fixed decay | yes | no |
 
-The convergent pattern: **route/sparsify over a fixed-decay basis; never relearn the decays** — exactly our finding. The last row is the negative control (the thing §5.4 says breaks).
+Several variable-size methods route or prune over fixed dynamics, which motivates OC-SMT as a clean cardinality experiment. That pattern is not universal: Adaptive Memory Decay reports that a richer per-token/per-level decay beats its fixed baseline. Our evidence is narrower—the one learned global scalar `α` did not self-tune here. Input-dependent Mamba `Δ` and Adaptive Memory Decay were not tested, so they must not be presented as negative controls or ruled out by §5.4.
 
 **Three designs (workflow-vetted).**
 
-1. **OC-SMT (recommended).** Replace K=6 with an **over-complete** fixed log-spaced basis (M≈24–32 spanning τ∈[1.5,256], decays still fixed buffers), and learn a **per-bank L0 / hard-concrete gate** (Louizos et al. 2018) instead of the softmax/sigmoid router:
+1. **OC-SMT (implemented test).** Replace K=6 with an **over-complete** fixed log-spaced basis (M≈24–32 spanning τ∈[1.5,256], decays still fixed buffers), and learn a **per-bank L0 / hard-concrete gate** (Louizos et al. 2018) instead of the softmax/sigmoid router:
    ```
    logit  l_{t,m} = (W_g z_t)_m            gate g_{t,m} = hardconcrete(l_{t,m})  ∈ {0}∪(0,1]
    banks  m^m_t  = (1−a_m) m^m_{t−1} + a_m (i_t ⊙ z_t)        (a_m FIXED, i_t = write gate)
    read   o_t    = W_o( Σ_m g_{t,m} · m^m_t ),   z̃_t = z_t + o_t        (additive, as in v2)
    loss   L += λ₀ Σ_m P(g_{t,m}>0)          (L0 penalty on the # of open gates)
    ```
-   The **effective bank size = expected #open gates**, a differentiable quantity the L0 term directly penalizes → SGD trades task loss against active-set cardinality, driving most of the M gates to **exact zero**. No constant K: M is just a ceiling; the realized active set is data-determined (≈0 on the Markov control, a few long horizons on T-Maze/Distractor). **This is the diff the rest of the doc set up**: the L0 penalty is precisely the *anti-collapse pressure* the §5 router lacked (a uniform/dense gate now *costs* loss, unlike the softmax that drifted to `W_r≈0`). It's a ~few-line change to `SelectiveMultiTimescaleMemory` (enlarge `taus`, swap `route_weights` for a hard-concrete gate, add the L0 term to `compute_loss`). State M·D (still constant in L), compute O(L·M·D), eval skips closed gates → O(L·k_active·D).
+   The L0 term penalizes the differentiable **expected-open count**, allowing SGD to trade task loss against read-gate cardinality. This is a mechanism and objective, not a guarantee that a useful interior subset will emerge. In the current implementation, `M` is a real fixed ceiling: all `M` EMA states are instantiated and every bank is computed before its read is masked. State is `M·D` for streaming recurrence and dense training compute is `O(L·M·D)`; no sparse evaluation or physical pruning path is implemented.
 
 2. **DA-Route** — a scalar "size head" picks a per-step top-k over the fixed bank. Smaller, but lower novelty and the size head likely re-collapses to a constant (same failure as §5). *Not recommended first.*
 
 3. **GP-SMT** — physically grow/prune banks (mutable module list, optimizer surgery). Most novel ("size truly discovered from data") but fights the codebase and, by its own admission, likely just rediscovers the fixed bank on these short tasks. *High risk.*
 
-**Honest caveat (the critique's main point).** OC-SMT cleanly delivers *learnable **cardinality*** (variable, sparse, no constant K) — but on our **clean, short (L=32)** tasks a *static* sparse mask already wins (the §5/§7 evidence that a constant solution suffices), so it will most likely learn a **fixed** sparse subset rather than a genuinely **input-dependent** active set. That still yields a real result — *match `multi` at a lower mean active-bank count* (an efficiency/auto-sizing win) and an emergent, plottable active set per env — but the stronger "input-dependent size" claim needs the harder/longer/curriculum tasks (and the active-set viz) to actually elicit it. This is the same lesson as §7, now built into the design: **the mechanism for variable size is straightforward; making the variation *content-dependent* is the open research problem.**
+**Operational caveat.** “Active” means that a deterministic read gate exceeds the stated analysis threshold; it does not mean that a bank was removed or skipped. Physical auto-sizing would require compiling/pruning closed banks or adding sparse execution and then measuring actual state, latency, and memory. The fine sweep in §9 finds partial deterministic subsets only in a narrow λ band, after useful long-gap performance has mostly collapsed; neither efficiency gains at matched quality nor content-dependent cardinality have been demonstrated.
 
-Recommended next step: implement OC-SMT (`memory_impl='ocsmt'`, `--l0-lambda`), reuse `run_memory_eval` + `smt_router_viz` (deterministic gate), and report *usage vs mean-active-count* against none/multi/smt — framed as auto-sizing, with the input-dependence question as the honest open axis.
+The implemented test and its negative result follow in §9. A more promising next step is static/global bank selection with physical pruning, followed by a separate test of whether input-dependent gates add anything over that subset.
 
 ## 9. OC-SMT: implementation and findings
 
 §8 proposed OC-SMT; this section reports the **implemented** architecture (`memory_impl='ocsmt'`, `lewm/models/memory.py::OCSMTMemory`) and what we learned making it train.
 
-### 9.1 Implementation
+### 9.1 Implementation and measurement
 
 ```
 fixed basis   M=28 horizons, τ = logspace(1.5 … 256)         (decays a_m FIXED buffers)
@@ -202,29 +491,136 @@ hard-concrete g_{t,m} = clamp( σ((logit_{t,m}+noise)/β)·(ζ−γ)+γ , 0, 1 )
 banks/read    m^m_t = (1−a_m)m^m_{t−1}+a_m(i_t⊙z_t);  o_t = W_o(Σ_m g_{t,m} m^m_t);  z̃_t = z_t+o_t
 L0 penalty    L += λ0(t)·Σ_m P(g_{t,m}>0)      (annealed: λ0=0 for 40% of training, ramp over next 30%)
 ```
-Knobs: `--l0-lambda`, `--oc-num` (M), `--gate-lr-mult` (separate, higher LR for the gate logits). The L0 term is folded into `compute_loss`; `active_count()` / `route_weights()` expose the learned effective size. State is M·D (constant in L); a bank is "active" iff its deterministic gate > 0, and the **effective bank size = number of active banks** — learnable and with no constant K.
+Knobs: `--l0-lambda`, `--oc-num` (M), and `--gate-lr-mult` (a separate LR for gate logits). The L0 term is folded into `compute_loss`; `active_count()` / `route_weights()` expose read-gate statistics under the fixed ceiling M.
+
+The experiments use `M=28`, an 8× gate learning-rate multiplier, and output-projection initialization std `5×10⁻⁴`. The L0 coefficient is zero for the first 40% of training, ramps over the next 30%, and then holds. At evaluation we keep three quantities separate:
+
+- **deterministic active count:** number of clamped read gates `g>0`, averaged over evaluation inputs;
+- **gate mass:** `Σ_m g_m`, a continuous deterministic read-strength measure;
+- **expected-open count:** `Σ_m P(g_m>0)`, the stochastic hard-concrete surrogate used in the training loss.
+
+They are not interchangeable: an expected-open count above zero can coexist with zero deterministic gates. All three are analysis statistics. The current code still instantiates and computes all 28 banks.
 
 ![OC-SMT architecture](figures/fig_ocsmt_arch.png)
-*Figure 3. OC-SMT (contrast with Fig 1's fixed K=6 SMT). The latent feeds an **over-complete** fixed basis of M=28 log-spaced EMA banks (gray, decays fixed); a learned **L0 gate** (`W_g`, blue) opens/closes each bank via a hard-concrete gate, so only an **emergent, data-chosen active set** (green = open, faded = pruned) is summed, projected by `W_o`, and added residually. The L0 penalty (annealed) prunes banks → the bank size is learnable with no constant K. Blue = learned (`W_i, W_g, W_o`); gray = fixed decays.*
+*Figure 4. OC-SMT places hard-concrete read gates over a fixed M=28 EMA basis. Green/white gates illustrate the intended selected/masked read set; they do not depict the observed solution, and a masked read is not a removed state or skipped computation in the current implementation.*
 
-### 9.2 Engineering findings (the hard part is *not* the mechanism)
+### 9.2 Engineering finding: a narrow cardinality transition with no useful sparse point
 
-Getting OC-SMT to *train* surfaced three non-obvious facts, each verified directly:
+Three engineering facts emerged:
 
 1. **Read-out init must shrink with M.** Summing M=28 open banks makes the residual injection ~120% of `‖z‖` at the SMT init; we use read-out std `5e-4` (vs SMT's `1e-2`) to restore the ≈baseline start.
-2. **L0 sparsification is *bistable* under Adam on these tasks.** With a dense start, even **λ0=2.0 does not close any bank** — Adam caps per-step logit movement and the over-complete banks are individually cheap+useful, so the task gradient holds them open. With a start-closed init + high gate-LR, the L0 instead **collapses memory to zero** (banks never open; usage → chance). The window that yields a *small-but-useful* active set is knife-edge.
-3. **Fixes that help (partially):** a separate higher LR for the gate logits (so they can traverse the wide range), and **annealing λ0** (populate at λ0=0 so the model first learns which banks help, then ramp to prune). These make the mechanism *function*, but do not, on these clean short tasks, manufacture a clean small active set — exactly the critique's predicted risk.
+2. **Early optimizer configurations were bistable.** A dense start with the base gate LR stayed open even at large nominal penalties; a closed start with high gate LR stayed collapsed. Raising only the gate LR and annealing the penalty made the gates move, but did not yield a useful sparse subset.
+3. **The coarse λ grid was badly scaled.** The loss uses `λ0 Σ_m P(g_m>0)`, so `λ0=0.05` can contribute about `0.05×28=1.4` at a dense start, versus a typical late-training task loss around 0.08. The grid therefore skipped over the transition rather than establishing that it was intrinsically knife-edge.
 
-**This is itself the result.** The mechanism for a learnable, variable-size bank is straightforward and correct; what is *hard* — and remains open — is making a small, useful, content-dependent active set actually emerge when the over-complete banks are cheap and a dense (or collapsed) solution already wins. It is the same lesson as §5 (router collapse) and §7 (selectivity didn't pay off), now for cardinality: **the fixed, well-chosen K-bank is a remarkably strong prior, and "let the data choose the size" does not beat it on these tasks without a setting where size actually matters** (longer sequences, tighter capacity budgets, curriculum).
+The coarse sweep reaches only the two endpoints. A much finer T-Maze sweep does reveal interior cardinalities, but utility collapses first: 16 active gates give usage 0.571 and 5 gates give 0.468 (chance 0.50). Both high-usage refined points retain ≈28/28 gates. Under this initialization, schedule, optimizer, task, and budget, L0 gating can move cardinality but fails to discover a useful sparse Pareto point. The active-count standard deviation is zero at the 16- and 5-gate points and the raw gate variability is ≈10⁻⁴ or smaller, so these are effectively static subsets rather than input-dependent sizes.
 
-### 9.3 Auto-sizing sweep
+### 9.3 Completed coarse sweep and fine pilot
 
-We sweep the (annealed) L0 weight λ0 ∈ {0, 0.05, 0.2} over the 4 memory envs × 3 seeds, reporting **usage** and the **mean active-bank count** (out of M=28). λ0=0 is the dense over-complete bank (the SMT-style upper bound on usage); larger λ0 trades active-count for usage.
+The coarse sweep covers four environments × three training seeds. Usage is recomputed from the saved checkpoints with the matched probe (`outputs/ocsmt/master_metrics.csv`); gate statistics use 128 generated evaluation episodes at seed 4242 (`outputs/ocsmt/ocsmt_gate_metrics_grouped.csv`). Values below are population mean±std; each cell is **usage / deterministic active gates**.
 
-*Results (sweep `outputs/ocsmt`, in progress — table to be filled on completion).*
+| env | λ0=0 | λ0=0.05 | λ0=0.2 |
+|---|---:|---:|---:|
+| T-Maze | **0.996±.006 / 28** | 0.468±.011 / 0 | 0.494±.011 / 0 |
+| Distractor | **1.000±.000 / 28** | 0.524±.032 / 0 | 0.584±.021 / 0 |
+| Recall | **0.468±.021 / 28** | 0.381±.027 / 0 | 0.394±.012 / 0 |
+| Occlusion | **0.900±.058 / 28** | 0.558±.038 / 0 | 0.524±.048 / 0 |
+
+This is not an auto-sizing frontier: every unpenalized checkpoint is dense, every penalized checkpoint is closed, and positive-λ usage is not even monotonic in λ. The dense result is still a useful lead. Relative to the K=6 `multi` baseline, dense OC-SMT usage is 0.996 vs 0.987 (T-Maze), 1.000 vs 1.000 (Distractor), 0.468 vs 0.472 (Recall), and **0.900 vs 0.710 (Occlusion)**. The Occlusion gain is consistent across the three paired seeds, but it confounds 28 vs 6 horizons, τmax 256 vs 64, stochastic hard-concrete training, and the shared-readout architecture. It does not demonstrate a benefit from sparse or content-dependent selection.
+
+The T-Maze seed-0 fine sweep (`outputs/ocsmt_refine`) lowers λ by two orders of magnitude:
+
+| λ0 | usage | active / 28 | gate mass | expected open |
+|---:|---:|---:|---:|---:|
+| 0.0003 | 0.974 | 28 | 6.797 | 17.929 |
+| 0.0004 | 0.948 | 27.969 | 5.925 | 16.479 |
+| 0.0005 | 0.571 | 16 | 1.849 | 10.375 |
+| 0.0006 | 0.468 | 5 | 0.935 | 5.425 |
+| 0.0008 | 0.545 | 0 | 0.000 | 1.591 |
+| 0.001 | 0.545 | 0 | 0.000 | 1.093 |
+| 0.003 | 0.519 | 0 | 0.000 | 0.089 |
+| 0.01 | 0.494 | 0 | 0.000 | 0.016 |
+
+The fine bracket establishes that the implementation can learn cardinality, but not that it can auto-size usefully. Moving from effectively dense (`27.969` gates, usage 0.948) to a true subset (`16` gates) loses 0.377 usage; retaining only 5 gates is at chance. Moreover, the 16-gate mask is constant across evaluated inputs, so this is static selection rather than content-dependent capacity. These are single-seed pilot results and should not be generalized before replication.
+
+### 9.4 Dense Occlusion factorial: a best dense configuration, not sparsity
+
+We completed the proposed `M∈{6,12,28} × τmax∈{64,256} × {deterministic, stochastic hard-concrete training}` factorial on Occlusion (3 paired model seeds, 36 runs, λ0=0). Every deterministic gate remains active, so this is a dense configuration/architecture-search ablation. Changing `M` also changes parameter count and the scaled readout initialization, so the factorial does not isolate a pure capacity effect. Cells report matched usage / validation MSE (population mean):
+
+| M | τmax=64, deterministic | τmax=64, stochastic | τmax=256, deterministic | τmax=256, stochastic |
+|---:|---:|---:|---:|---:|
+| 6 | .623 / 1.010 | .732 / .843 | .675 / .787 | .784 / .468 |
+| 12 | .835 / .431 | .823 / .457 | .762 / .358 | .848 / .446 |
+| 28 | .835 / .456 | .831 / .520 | .848 / .296 | **.900 / .296** |
+
+Usage standard deviations range from .006 to .097 across the 12 cells (`outputs/ocsmt_dense_ablation/dense_factorial_grouped.csv`). The original M=28, τmax=256, stochastic result replicates exactly at `.900±.058`. Three conclusions follow:
+
+1. **Larger `M` correlates with better usage, mostly from 6→12.** M=6 is consistently lower (.623–.784); M=12/28 reach .762–.900. The final M=28 step is beneficial only in some horizon/training-mode cells, and cannot be separated here from its parameter/readout changes.
+2. **Longer coverage and stochastic gate training interact.** τmax=256 improves M=6 by ≈.052 for both training modes and improves stochastic M=28 by .069, but it *hurts* deterministic M=12 by .074. Stochastic training helps M=6 by ≈.108 and helps the τmax=256 M=12/28 cells, but is neutral or slightly negative at τmax=64 for larger M. There is no single-factor explanation.
+3. **The 0.900 lead is a best dense-configuration result.** The best cell uses all 28 active banks, the longer horizon range, and stochastic hard-concrete training. It does not support sparse selection or input-conditioned cardinality. The K=6, τmax=64 stochastic OC-SMT cell (.732) is close to the fixed six-bank `multi` baseline (.710); the larger lead appears only in a different dense configuration.
+
+Validation MSE and usage are only weakly aligned, reinforcing that cue usage—not private latent MSE—is the meaningful synthetic-task outcome. Gate temporal/input variation remains ≈10⁻⁴–5×10⁻⁴ across this factorial.
+
+### 9.5 Remaining prioritized tests
+
+1. **Prefer static physical pruning as the next cardinality baseline.** Learn one global logit per bank, prune closed states, retrain the chosen subset, and measure actual latency/state. The current input-conditioned masks behave statically anyway.
+2. **Replicate sparse points only after a matched-quality candidate appears.** The one-seed `λ0∈{0.0004,0.0005,0.0006}` bracket shows a quality cliff and does not justify a full four-task sweep.
+3. **Treat the dense lead as architecture search.** A fair follow-up must separate shared vs per-bank readouts and match parameters/initial residual scale; it should not be labeled learned selectivity.
+
+## 10. ICLR submission audit and recommendation (2026-06-28)
+
+### Decision: do not submit the current manuscript to the ICLR main track as written
+
+There is a worthwhile controlled finding here, but the current `paper/main.pdf` overstates what the implementation and experiments establish. The positive core is:
+
+1. Fixed log-spaced EMA banks are a strong baseline on the controlled cue-retention tasks at the tested data and training budget; no data-efficiency curve was run.
+2. Counterfactual bank swaps and test-time ablations show that trained predictors can rely on the recurrent path.
+3. In a common fixed DINO target space, every recurrent design beats a learned memoryless predictor in all 25 paired cells after 100 epochs, and the relative effects persist under shifted masks (§7.2). The rerun also overturns the 30-epoch ranking—SSM is best on three environment means and `multi` on two—while still failing its convergence audit. This is evidence for recurrent memory generally, not a particular bank design.
+4. V3 supplies a genuine but narrow mechanism result: a true selective-update gate beats its static control by a mean 9.91% across paired cells, wins 23/25 pairs, and is causally necessary under mean replacement (§7.5). It is also a perfect classifier for the exact black sentinel, remains action-blind, loses to SSM on every environment mean, and beats hold on only three of five.
+5. The negative mechanisms are unusually clear: SMT-v2 gates are static, mass explains most of its router gain, L0 auto-sizing has no useful sparse point, the OC-SMT lead is dense, and V3 shows the narrow boundary where selection does emerge without meeting the broader performance bar.
+6. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, so future-frame BatchNorm mixing is not their material source; the same audit identifies a separate singleton-inference and representation-conditioning failure.
+
+That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language.
+
+### Blocking scientific issues
+
+1. **The reported “closed-loop control” is not closed loop.** `scripts/eval_planning.py` always gathers context by issuing the same rightward action, imagines a fixed all-right action sequence, trains a logistic classifier on the final imagined latent, and scores whether that classifier recovers the cue. It never executes the classifier's chosen arm action, observes a resulting transition, or measures environment reward/success. This is an offline imagined-latent cue-classification experiment. Table 9, Figure 8, and the abstract must be relabeled, or replaced with an agent that actually chooses and executes actions in the environment. The abstract also says “Across 5 seeds” for counterfactual-swap/control claims whose Tables 7 and 9 use three seeds.
+2. **The original robot/OGBench headline is invalid and partly stale.** The action-prototype bug is fixed (§7.1), but those checkpoints still use incomparable private encoder coordinates, target black-frame latents during the blackout, and measure influence only at the last frame. The paper's Cheetah row still reports the superseded `.240/.201` none/`multi` values and claims improvement; the corrected consistent-prototype held-out evaluation is `.122/.155`, so `multi` is worse. DeepMind Control Suite tasks are MuJoCo simulations—not “four real robots” or hardware ([Tassa et al., 2018](https://arxiv.org/abs/1801.00690)). The fixed-DINO replacement is valid in one common coordinate system, but it measures prototype-randomized next-feature prediction, not manipulation/control success.
+3. **The manuscript misstates its DINO representation.** DINOv2 ViT-S/14 was trained/distilled on LVD-142M, not “distilled on ImageNet” ([Oquab et al., 2023](https://arxiv.org/abs/2304.07193)). The experiment uses a global CLS feature, whereas DINO-WM operates on frozen spatial patch embeddings; calling the CLS setup “the DINO-WM recipe” is inaccurate ([Zhou et al., 2024](https://arxiv.org/abs/2411.04983)).
+4. **The original synthetic encoder is not deployable causally as implemented.** Its stateless BatchNorm pools over episode×time, including future frames; singleton online encoding fails. The no-retraining time-slice audit shows that this leakage does not explain the archived usage gaps, but it remains transductive over 256 episodes and reveals pre-BN variance `5.78e-12` with median effective rank 5.86/128. The paper needs retraining with causal/fixed normalization and a batch-size-one streaming evaluation, not only a sensitivity re-encoding.
+5. **The stronger common-target result is still bounded by simple controls and optimization sensitivity.** The 100-epoch grid improves every matched first-post cell over its 30-epoch counterpart, changes the winning architecture, and still improves in 117/125 cells over epochs 90→100. At 200 epochs under the first-post-weighted objective, SSM is the best learned environment mean on all five tasks; V3 and its hard visibility control each beat last-visible hold on only Ball, Cheetah, and Cube. Deep-blackout targets remain off-objective, every mask uses the same extreme black sentinel on reused validation trajectories, and no result is state decoding or return. The supported claim is boundary prediction after an explicit missingness token—not general hidden-state tracking.
+6. **The broad learned-selectivity thesis is still unsupported, despite a narrow V3 success.** SMT-v2 gate replacement and shuffling remain negligible (maximum absolute MSE change `1.09e-5` across the archived intervention grid), and useful sparse cardinality never emerges. V3's dynamic gate is different: it matters causally and improves a retrained static control. But its causal-prefix AUROC is exactly 1.0 because it separates visible features from one conspicuous black token; it is scalar, uses a global bank mixture, does not see actions, and does not beat SSM. This can support a black-sentinel selective-update diagnostic, not a general content-selective or automatically sized memory claim.
+7. **Baselines and task outcomes are below the main-track bar for the broad claim.** Current learned GRU/SSM/retrieval comparisons use one matched training budget rather than competitive per-baseline tuning. POPGym/Memory-Maze results emphasize next-latent MSE or influence under random policies rather than standard task returns. Raw MSE from separately trained encoders should not be compared as if it shared a scale. A convincing world-model/control paper needs standard POMDP returns or success, tuned recurrent/SSM/Transformer memory baselines, and parameter/compute-matched fixed-bank ablations.
+
+### Novelty and positioning risk
+
+The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, while V3's true-update gate mainly recovers the standard idea of freezing state under an explicit missingness signal. Perfect detection of one black token is useful diagnostic evidence but does not create a defensible architectural “missing quadrant.” The related-work comparison must also include at least:
+
+- [ELMUR: External Layer Memory with Update/Rewrite for Long-Horizon RL Problems](https://openreview.net/forum?id=bm3rbtEMFj), an ICLR 2026 poster that evaluates long-horizon POMDP control on T-Maze, POPGym, and visual robotic manipulation with task success/return.
+- [seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models](https://proceedings.neurips.cc/paper_files/paper/2025/hash/2f63d2963526bdd9ff1b8bcc2dc9905a-Abstract-Conference.html), a NeurIPS 2025 paper whose JEPA world model uses a Transformer to aggregate short action-conditioned observation sequences.
+- [Flow Equivariant World Modeling for Partially Observed Dynamic Environments](https://openreview.net/forum?id=W7WUJTGByR), concurrent partially observed visual world-model work reporting 2D/3D long-rollout comparisons against memory-augmented models.
+
+These papers do not make the fixed-EMA diagnostic unpublishable, but they remove the broad novelty claim that JEPA/world-model work lacks sequential memory. The differentiator must be the controlled **availability vs usage vs intervention** methodology and the negative evidence about when learnable gates fail—not the existence of memory itself.
+
+### Manuscript readiness
+
+The current PDF is 17 pages total and carries roughly 14 pages of main material before the references. The latest public [ICLR 2026 Author Guide](https://iclr.cc/Conferences/2026/AuthorGuide) allowed at most nine submission pages of main text; the ICLR 2027 guide is not yet public, so its exact rule must be rechecked rather than assumed. Independently of the final 2027 limit, this draft needs a major focus reduction. The title says **Two-Timescale Memory**, while the strongest reported design is the fixed six-bank model and the strongest OC-SMT cell uses 28 banks. The abstract also globalizes results drawn from different 2-, 3-, and 5-seed studies and includes the unsupported closed-loop and robotic-tracking claims.
+
+### A defensible submission path
+
+If targeting ICLR, reframe the work around a title such as **“When Does a JEPA World Model Use Memory? Fixed Exponential Banks and Causal Diagnostics.”** Then require all of the following before submission:
+
+1. Implement actual online T-Maze/POPGym/Memory-Maze control: choose actions from the model, execute them, and report return/success over at least five seeds with test-time memory ablations.
+2. Use shared, demonstrably state-sensitive targets or simulator state for visual tracking; add a pose/state linear probe for DINO features. Train on randomized mask locations and multiple pixel-level corruptions, then reserve unseen rollout seeds and unseen corruption families for confirmation.
+3. Tune GRU, modern SSM, Transformer/recurrent-state, and last-observation baselines separately; match parameters, training compute, and context. The completed equal-budget grid makes SSM—not the fixed bank or V3—the baseline to beat. Separate basis size, horizon range, readout parameterization, and stochastic training.
+4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, and the conditions where SSM/last-visible hold win. Remove “general input-conditioned selectivity” and “automatic sizing” as achieved contributions.
+5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
+6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
+7. If pursuing another architecture, stop extending the action-blind black-token V3 grid. Use an action-conditioned predict/correct belief update: propagate recurrent state with every action while observations are missing, then learn an observation-correction gate when evidence returns. Evaluate simulator-state prediction and executed return, not only CLS-feature MSE.
+
+**Recommendation.** The new 225-run V3 experiment does not change the submission decision; its own internally fixed analyzer returns `NO_GO`. The expected main-track outcome remains rejection on task validity, baseline strength, and novelty/positioning, with possible desk-rejection risk if the next guide retains a comparable page limit. Do **not** submit this version. Either (a) complete the action-conditioned control/benchmark program above and rebuild the paper around causal memory diagnostics, or (b) submit a much narrower workshop paper whose central result is the contrast between static SMT-v2, black-sentinel-selective V3, and the stronger SSM/hold controls.
 
 ## References
 
-Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 learned-decay does not self-tune; §5.11 fixed K-bank beats learned memories).
+Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 one global learned scalar decay does not self-tune in this setup; §5.11 fixed K-bank beats the tested learned memories under a matched budget).
 
-**§8 (variable-size design).** Guo et al. *Log-Linear Attention.* 2025 (arXiv:2506.04761). · Du et al. *MoM: Mixture-of-Memories.* 2025. · Zhang et al. *Routing Mamba: Scaling SSMs with MoE Projections.* NeurIPS 2025 (arXiv:2506.18145). · Guo et al. *DynMoE: Dynamic Mixture of Experts (auto-tuning).* ICLR 2025 (arXiv:2405.14297). · Wang et al. *ReMoE: Fully Differentiable MoE with ReLU Routing.* ICLR 2025 (arXiv:2412.14711). · Gwak et al. *Layer-Adaptive State Pruning (LAST).* NeurIPS 2024 (arXiv:2411.02824). · *SparseSSM.* 2025. · Louizos et al. *Learning Sparse NNs through L0 Regularization (hard-concrete).* ICLR 2018 (arXiv:1712.01312). · *Adaptive Memory Decay for Log-Linear Attention* (arXiv:2605.06946) — negative control (learns input-conditioned decays).
+**§8 (variable-size design).** Guo et al. *Log-Linear Attention.* 2025 (arXiv:2506.04761). · Du et al. *MoM: Mixture-of-Memories.* 2025. · Zhang et al. *Routing Mamba: Scaling SSMs with MoE Projections.* NeurIPS 2025 (arXiv:2506.18145). · Guo et al. *DynMoE: Dynamic Mixture of Experts (auto-tuning).* ICLR 2025 (arXiv:2405.14297). · Wang et al. *ReMoE: Fully Differentiable MoE with ReLU Routing.* ICLR 2025 (arXiv:2412.14711). · Gwak et al. *Layer-Adaptive State Pruning (LAST).* NeurIPS 2024 (arXiv:2411.02824). · *SparseSSM.* 2025. · Louizos et al. *Learning Sparse NNs through L0 Regularization (hard-concrete).* ICLR 2018 (arXiv:1712.01312). · Amin et al. *Adaptive Memory Decay for Log-Linear Attention.* 2026 (arXiv:2605.06946), a distinct input-conditioned-decay result not tested here.

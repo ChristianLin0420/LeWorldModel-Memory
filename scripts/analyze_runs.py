@@ -37,7 +37,10 @@ def build_model(a):
         tau_fast=a['tau_fast'], tau_slow=a['tau_slow'], learnable_alpha=not a.get('fixed_alpha', True),
         memory_impl=impl, multi_taus=tuple(a.get('multi_taus', (2, 4, 8, 16, 32, 64))),
         encoder_type=a.get('encoder', 'vit'), smt_router=a.get('smt_router', 'softmax'),
-        oc_num=a.get('oc_num', 28), l0_lambda=a.get('l0_lambda', 0.0))
+        oc_num=a.get('oc_num', 28), oc_tau_min=a.get('oc_tau_min', 1.5),
+        oc_tau_max=a.get('oc_tau_max', 256.0),
+        oc_stochastic_gates=a.get('oc_gate_mode', 'stochastic') == 'stochastic',
+        l0_lambda=a.get('l0_lambda', 0.0))
     return m
 
 
@@ -94,14 +97,21 @@ def main():
     runs = sorted([d for d in ROOT.glob('*') if (d / 'model.pt').exists()])
     print(f"analyzing {len(runs)} runs...")
     rows = []
+    failures = []
     for d in runs:
         try:
             rows.append(analyze(d)); print(f"  {d.name}: usage={rows[-1]['usage_matched']:.3f} "
                                             f"val_mse={rows[-1]['val_mse']:.3f}")
         except Exception as e:
-            print(f"  SKIP {d.name}: {e}")
+            failures.append((d.name, type(e).__name__, str(e)))
+            print(f"  FAIL {d.name}: {type(e).__name__}: {e}")
+    if failures:
+        details = '; '.join(f'{run} ({kind}: {message})' for run, kind, message in failures)
+        raise RuntimeError(
+            f'analysis failed for {len(failures)}/{len(runs)} checkpoints; '
+            f'refusing to write a partial master_metrics.csv: {details}')
     if not rows:
-        return
+        raise RuntimeError(f'no checkpoints found below {ROOT}')
     keys = list(rows[0].keys())
     out = ROOT / 'master_metrics.csv'
     with open(out, 'w', newline='') as f:
