@@ -65,6 +65,28 @@ _HACSSMV5_MODES = {
 _HACSSMV5_AUX_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
 
 
+# HACSSM-v6 deliberately returns to the strongest V4 inference architecture: two fixed scalar
+# timescales.  The variants below differ only in the training-only consistency objective unless
+# their names explicitly identify an inference mechanism control.
+_HACSSMV6_MODES = {
+    'hacssmv6': 'dynamic',
+    'hacssmv6_noaux': 'dynamic',
+    'hacssmv6_aux_noaction': 'dynamic',
+    'hacssmv6_uniform': 'dynamic',
+    'hacssmv6_sourcegrad': 'dynamic',
+    'hacssmv6_fastonly': 'dynamic',
+    'hacssmv6_mediumonly': 'dynamic',
+    'hacssmv6_noaction': 'noaction',
+    'hacssmv6_static': 'static',
+    'hacssmv6_single': 'single',
+}
+
+_HACSSMV6_HIERARCHICAL_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
+_HACSSMV6_UNIFORM_HORIZONS = tuple(
+    (level, horizon) for level in (0, 1) for horizon in (1, 2, 4, 8)
+)
+
+
 class MemoryLeWorldModel(LeWorldModel):
     """LeWorldModel + two-timescale EMA memory injected into the predictor input.
 
@@ -136,6 +158,12 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_hacssmv5 = HierarchicalActionConditionedSSMMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_HACSSMV5_MODES[memory_impl])
+        elif memory_impl in _HACSSMV6_MODES:                # fixed-rate self-supervised hierarchy
+            # A dedicated attribute/state-dict namespace keeps V6 checkpoints auditable even
+            # though its inference primitive intentionally matches the V4 two-level control.
+            self.mem_hacssmv6 = HierarchicalActionConditionedMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_HACSSMV6_MODES[memory_impl], taus=(2.0, 8.0))
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -157,8 +185,10 @@ class MemoryLeWorldModel(LeWorldModel):
                 action_override=None, return_memory_details: bool = False):
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
         if (return_memory_details and self.memory_impl not in _HACSMV4_MODES
-                and self.memory_impl not in _HACSSMV5_MODES):
-            raise ValueError('memory details are available only for HACSM-v4/HACSSM-v5')
+                and self.memory_impl not in _HACSSMV5_MODES
+                and self.memory_impl not in _HACSSMV6_MODES):
+            raise ValueError(
+                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -196,6 +226,17 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_hacssmv5.fuse(z, mixed), details
             return self.mem_hacssmv5.fuse(z, result)
+        if self.memory_impl in _HACSSMV6_MODES:
+            if actions is None:
+                raise ValueError('HACSSM-v6 requires actions with a_t mapping z_t to z_{t+1}')
+            result = self.mem_hacssmv6(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_hacssmv6.fuse(z, mixed), details
+            return self.mem_hacssmv6.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -218,6 +259,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_hacsmv4.horizons()
         if self.memory_impl in _HACSSMV5_MODES:
             return self.mem_hacssmv5.horizons()
+        if self.memory_impl in _HACSSMV6_MODES:
+            return self.mem_hacssmv6.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -373,6 +416,107 @@ class MemoryLeWorldModel(LeWorldModel):
             **horizon_losses,
         }
 
+    def _hierarchical_consistency_loss(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        target_valid_mask: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        """V6 dense, causal, same-level posterior consistency.
+
+        Every valid endpoint contributes a training pair.  A detached source posterior is
+        advanced using only the intervening actions and is matched to the detached posterior at
+        the same hierarchy level.  Layer normalization makes the target scale-free, while
+        Smooth-L1 limits the influence of outlying channels.  Hidden clean targets are never
+        exposed: endpoint eligibility comes exclusively from ``target_valid_mask``.
+
+        ``sourcegrad`` is the explicit ablation that allows gradients through source states;
+        ``aux_noaction`` zeros only the actions supplied to this objective.  The inference
+        recurrence is identical for those variants.
+        """
+        if self.memory_impl not in _HACSSMV6_MODES:
+            raise ValueError('hierarchical consistency loss requires HACSSM-v6')
+        if states.dim() != 4:
+            raise ValueError(f'expected states (B,T,K,D), got {tuple(states.shape)}')
+        B, T, K, D = states.shape
+        if tuple(actions.shape) != (B, T - 1, self.action_dim):
+            raise ValueError(
+                f'action shape {tuple(actions.shape)} != {(B, T - 1, self.action_dim)}')
+        if K != self.mem_hacssmv6.K:
+            raise ValueError(f'state level count {K} != {self.mem_hacssmv6.K}')
+        if target_valid_mask is None or tuple(target_valid_mask.shape) != (B, T):
+            shape = None if target_valid_mask is None else tuple(target_valid_mask.shape)
+            raise ValueError(
+                f'HACSSM-v6 consistency requires target mask {(B, T)}, got {shape}')
+
+        mask = target_valid_mask.to(device=states.device, dtype=torch.bool)
+        if self.memory_impl == 'hacssmv6_uniform':
+            configured_horizons = _HACSSMV6_UNIFORM_HORIZONS
+        elif self.memory_impl == 'hacssmv6_fastonly':
+            configured_horizons = tuple(
+                pair for pair in _HACSSMV6_HIERARCHICAL_HORIZONS if pair[0] == 0)
+        elif self.memory_impl == 'hacssmv6_mediumonly':
+            configured_horizons = tuple(
+                pair for pair in _HACSSMV6_HIERARCHICAL_HORIZONS if pair[0] == 1)
+        else:
+            configured_horizons = _HACSSMV6_HIERARCHICAL_HORIZONS
+
+        level_names = {0: 'fast', 1: 'medium'}
+        level_terms = {level: [] for level in range(K)}
+        horizon_terms = {horizon: [] for _, horizon in configured_horizons}
+        horizon_pairs = {horizon: [] for _, horizon in configured_horizons}
+        result = {}
+        for level, horizon in configured_horizons:
+            n_sources = T - horizon
+            if n_sources < 1:
+                raise ValueError(
+                    f'sequence length {T} is too short for HACSSM-v6 horizon {horizon}')
+            source = states[:, :n_sources]
+            if self.memory_impl != 'hacssmv6_sourcegrad':
+                source = source.detach()
+            source = source.reshape(B * n_sources, K, D)
+            action_windows = actions.unfold(1, horizon, 1)
+            action_windows = action_windows.permute(0, 1, 3, 2).reshape(
+                B * n_sources, horizon, self.action_dim)
+            if self.memory_impl == 'hacssmv6_aux_noaction':
+                action_windows = torch.zeros_like(action_windows)
+            prediction = self.mem_hacssmv6.action_rollout(
+                source, action_windows)[:, -1, level].reshape(B, n_sources, D)
+            endpoint = states[:, horizon:, level].detach()
+            prediction = F.layer_norm(prediction, (D,))
+            endpoint = F.layer_norm(endpoint, (D,))
+            per_pair = F.smooth_l1_loss(prediction, endpoint, reduction='none').mean(dim=-1)
+            valid = mask[:, horizon:]
+            if not bool(valid.any()):
+                raise ValueError(f'no visible HACSSM-v6 targets at horizon {horizon}')
+            loss_h = per_pair[valid].mean()
+            pair_count = valid.sum().to(dtype=states.dtype)
+            level_name = level_names[level]
+            result[f'hier_loss_{level_name}_h{horizon}'] = loss_h
+            result[f'hier_pairs_{level_name}_h{horizon}'] = pair_count
+            level_terms[level].append(loss_h)
+            horizon_terms[horizon].append(loss_h)
+            horizon_pairs[horizon].append(pair_count)
+
+        active_level_losses = []
+        zero = states.new_zeros(())
+        for level, terms in level_terms.items():
+            if terms:
+                level_loss = torch.stack(terms).mean()
+                result[f'hier_loss_{level_names[level]}'] = level_loss
+                active_level_losses.append(level_loss)
+            else:
+                # Fixed result schema for the level-only ablations.  This zero is descriptive
+                # and is intentionally excluded from the active-level hierarchy average.
+                result[f'hier_loss_{level_names[level]}'] = zero
+        for horizon, terms in horizon_terms.items():
+            result[f'hier_loss_h{horizon}'] = torch.stack(terms).mean()
+            result[f'hier_pairs_h{horizon}'] = torch.stack(horizon_pairs[horizon]).sum()
+        result['hier_pairs'] = torch.stack(
+            [pair_count for counts in horizon_pairs.values() for pair_count in counts]).sum()
+        result['hier_loss'] = torch.stack(active_level_losses).mean()
+        return result
+
     # ---- core training loss (sliding short-window over a long chunk) ---------------
     def compute_loss(
         self,
@@ -412,7 +556,8 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
-        if self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES:
+        if (self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES
+                or self.memory_impl in _HACSSMV6_MODES):
             z_tilde, memory_details = self._inject(
                 z, actions=actions, memory_update_mask=memory_update_mask,
                 gate_override=gate_override, return_memory_details=True)
@@ -477,7 +622,10 @@ class MemoryLeWorldModel(LeWorldModel):
             out['l0_loss'] = l0
             out['loss'] = total + self.l0_lambda * l0
         if memory_details is not None:
-            if self.memory_impl in _HACSSMV5_MODES:
+            if self.memory_impl in _HACSSMV6_MODES:
+                auxiliary = self._hierarchical_consistency_loss(
+                    memory_details['states'], actions, target_valid_mask)
+            elif self.memory_impl in _HACSSMV5_MODES:
                 auxiliary = self._hierarchical_boundary_loss(
                     memory_details['states'], actions, z_target, target_valid_mask)
             else:
@@ -487,7 +635,7 @@ class MemoryLeWorldModel(LeWorldModel):
             effective_weight = (0.0 if self.memory_impl in {
                                     'hacsmv4_noaux', 'hacsmv4_two_noaux',
                                     'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
-                                    'hacssmv5_ssmcontrol'}
+                                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'}
                                 else self.hier_loss_weight)
             out['hier_loss_weight'] = auxiliary['hier_loss'].new_tensor(effective_weight)
             out['loss'] = out['loss'] + effective_weight * auxiliary['hier_loss']

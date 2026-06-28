@@ -1,0 +1,4 @@
+stage,seeds,candidate,reference,n_pairs,candidate_mean_mse,reference_mean_mse,mean_paired_relative_reduction,paired_wins,paired_ties,environment_mean_wins
+pilot,"0,1,2",hacssmv5,ssm,15,1.0739638050397238,1.0276612242062886,-0.030703778377934393,4,0,1
+completion,"3,4",hacssmv5,ssm,10,1.0618418514728547,1.0152528524398803,-0.03572806606741283,4,0,2
+all,"0,1,2,3,4",hacssmv5,ssm,25,1.069115023612976,1.0226978754997254,-0.03271349345372577,8,0,1

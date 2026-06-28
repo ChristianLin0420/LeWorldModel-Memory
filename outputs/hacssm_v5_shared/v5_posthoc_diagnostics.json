@@ -1,0 +1,192 @@
+{
+  "best_development_grid_design": {
+    "design": "hacsmv4_two_noaux",
+    "environment_rank_wins": 3,
+    "mean_environment_rank": 2.2,
+    "qualification": "Best by environment-rank envelope on the locked development grid; not an untouched-test or paper-level claim.",
+    "vs_ssm": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.047835043119499744,
+      "n_pairs": 25,
+      "paired_wins": 19
+    }
+  },
+  "completed_runs": 300,
+  "convergence": {
+    "absolute_window_change_max": 0.036133522927634894,
+    "absolute_window_change_median": 0.004021083293940936,
+    "absolute_window_change_p95": 0.0169799068232579,
+    "passes_locked_bounds": true
+  },
+  "full_v5_learned_rate_ranges": {
+    "design": "hacssmv5",
+    "n_runs": 25,
+    "tau_fast_max_across_runs": 3.744523048400879,
+    "tau_fast_max_max_across_runs": 9.164531707763672,
+    "tau_fast_max_mean": 8.635199584960937,
+    "tau_fast_max_min_across_runs": 8.1202974319458,
+    "tau_fast_mean": 3.6003334426879885,
+    "tau_fast_min_across_runs": 3.4867098331451416,
+    "tau_fast_min_max_across_runs": 1.5404928922653198,
+    "tau_fast_min_mean": 1.4185567474365235,
+    "tau_fast_min_min_across_runs": 1.2492493391036987,
+    "tau_medium_max_max_across_runs": 74.47247314453125,
+    "tau_medium_max_mean": 68.82962646484376,
+    "tau_medium_max_min_across_runs": 64.85855102539062,
+    "tau_medium_min_max_across_runs": 6.872206687927246,
+    "tau_medium_min_mean": 6.641230316162109,
+    "tau_medium_min_min_across_runs": 6.334094524383545,
+    "tau_slow_max_across_runs": 23.631282806396484,
+    "tau_slow_mean": 22.76622299194336,
+    "tau_slow_min_across_runs": 21.837745666503906
+  },
+  "full_v5_vs_ssm_by_prediction_phase": {
+    "clean_mse_all": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.014298358054002647,
+      "paired_wins": 16
+    },
+    "clean_mse_blackout_transition": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.08542471657784982,
+      "paired_wins": 18
+    },
+    "clean_mse_deep_blackout": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.07105639017386159,
+      "paired_wins": 4
+    },
+    "clean_mse_first_post": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.03271349345372577,
+      "paired_wins": 8
+    },
+    "clean_mse_late_post": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.03162045876615787,
+      "paired_wins": 16
+    },
+    "clean_mse_pre": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.021565736474343046,
+      "paired_wins": 16
+    },
+    "clean_mse_recovery": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.005907803759536193,
+      "paired_wins": 17
+    }
+  },
+  "full_v5_vs_ssm_by_seed_stage": {
+    "all": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.03271349345372577,
+      "n_pairs": 25,
+      "paired_wins": 8
+    },
+    "completion": {
+      "environment_mean_wins": 2,
+      "mean_paired_relative_reduction": -0.03572806606741283,
+      "n_pairs": 10,
+      "paired_wins": 4
+    },
+    "pilot": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.030703778377934393,
+      "n_pairs": 15,
+      "paired_wins": 4
+    }
+  },
+  "interpretation": [
+    "Removing V4's tau=32 state is the strongest tested structural change: the two-level fixed-rate V4 bridge is the locked-grid rank winner.",
+    "The V5 boundary auxiliary is counterproductive because full V5 loses to its no-auxiliary counterpart overall and in every environment mean.",
+    "Learning V5 gains does not rescue the spectral design; the frozen per-channel spectrum already trails the fixed scalar-rate V4 bridge, so the result cannot be blamed only on gain optimization.",
+    "Action transport and the joint two-state read remain essential, while dynamic correction provides a smaller mixed improvement.",
+    "The completed seeds agree with the failed pilot direction; convergence passes, so the negative result is not explained by the predeclared final-window test."
+  ],
+  "key_primary_contrasts": {
+    "fixedbeta_v5_vs_v4_two_parameterization_effect": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.07299377128414272,
+      "n_pairs": 25,
+      "paired_wins": 4
+    },
+    "full_v5_vs_noaction": {
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.1109521683931153,
+      "n_pairs": 25,
+      "paired_wins": 25
+    },
+    "full_v5_vs_noaux_auxiliary_effect": {
+      "environment_mean_wins": 0,
+      "mean_paired_relative_reduction": -0.011173785164388775,
+      "n_pairs": 25,
+      "paired_wins": 6
+    },
+    "full_v5_vs_single": {
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.10988174341580408,
+      "n_pairs": 25,
+      "paired_wins": 25
+    },
+    "full_v5_vs_ssm": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.03271349345372577,
+      "n_pairs": 25,
+      "paired_wins": 8
+    },
+    "full_v5_vs_static": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.021265781193450604,
+      "n_pairs": 25,
+      "paired_wins": 17
+    },
+    "full_v5_vs_v4_two_noaux": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.08674177523037636,
+      "n_pairs": 25,
+      "paired_wins": 4
+    },
+    "v4_two_noaux_vs_ssm": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.047835043119499744,
+      "n_pairs": 25,
+      "paired_wins": 19
+    },
+    "v5_noaux_vs_fixedbeta_rate_learning_effect": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.0015811650272163742,
+      "n_pairs": 25,
+      "paired_wins": 13
+    }
+  },
+  "limitations": [
+    "All contrasts are descriptive and use the same adaptive-development trajectories and exact black-sentinel corruption.",
+    "No downstream control return, simulator-state prediction, or untouched corruption family is measured.",
+    "The fixed-beta versus V4-two contrast changes the complete rate parameterization, not one isolated scalar; interpret it as a bundled parameterization effect."
+  ],
+  "locked_decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "primary_input_sha256": {
+    "convergence.csv": "255f10e4b6d497a08453734b43539fccd0a7e73816846c24e01397be47c99c15",
+    "decision.json": "43ed108f28cf4bfe445e9c1be8b874047c0bd88d70601b13348d2d87d8d4c790",
+    "grouped.csv": "527ec40c65e2035cf3d5c119c329b32752da5787f6caa0417669ee9878f768a8",
+    "hacssm_v5_manifest.json": "99d25180d63d5b0ebaaf85d44ee1744b0d34df4ba4fb0c0567853e5f49ab7950",
+    "hacssm_v5_manifest.sha256": "38e838a5f05b15a7b8b69fc870d9aaefa10447b08cf5492a08d9d5b20f65bcb8",
+    "paired_contrasts.csv": "52494d6fde52f0e5e1526bd5dece8c6b8d1f371660c788e398894fec7dc63522",
+    "per_run.csv": "2e04cd9b17d370d5851dcd643a2ddfe9e2499d95ec637e4841f8bed61792afd9",
+    "pilot_decision.json": "f233f04948736e190772e15a170ccd3b490cc7135345f9220cc7539fb51caeab",
+    "protocol.json": "925d8161584de51079094d277e9ad890609a6e42e72f12b141483944abc7a4fb"
+  },
+  "schema_version": 1,
+  "scope": "descriptive post-hoc diagnostics; cannot change the prospective decision",
+  "wandb_cloud_verification": {
+    "entity": "crlc112358",
+    "project": "lewm-memory-popgym",
+    "study": "hacssm-v5",
+    "verified_at": "2026-06-28T17:41:18.839881+00:00",
+    "verified_finished_runs": 300,
+    "verified_rollout_artifacts": 300,
+    "verified_rollout_tables": 300,
+    "verified_rollout_videos": 300
+  }
+}

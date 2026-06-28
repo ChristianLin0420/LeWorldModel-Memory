@@ -4,6 +4,7 @@
 from pathlib import Path
 import json
 import numpy as np
+import os
 import sys
 import tempfile
 
@@ -180,6 +181,34 @@ def test_tracking_receipt_binds_rollout_and_local_transaction() -> None:
         runner.OUTPUT_ROOT = old_output
 
 
+def test_snapshot_records_symlinks_without_following_external_targets() -> None:
+    old_root = runner.OUTPUT_ROOT
+    old_lock = runner.LOCK_PATH
+    old_manifest = runner.MANIFEST_PATH
+    old_sidecar = runner.MANIFEST_SHA_PATH
+    try:
+        with tempfile.TemporaryDirectory(dir=runner.REPO_ROOT) as directory:
+            root = Path(directory)
+            outside = Path(tempfile.gettempdir()) / 'hacssm-v5-external-debug.log'
+            outside.write_text('external debug data')
+            (root / 'regular.bin').write_bytes(b'local')
+            os.symlink(outside, root / 'debug-core.log')
+            runner.OUTPUT_ROOT = root
+            runner.LOCK_PATH = root / '.lock'
+            runner.MANIFEST_PATH = root / 'manifest.json'
+            runner.MANIFEST_SHA_PATH = root / 'manifest.sha256'
+            snapshot = runner.output_file_snapshot()
+            prefix = root.relative_to(runner.REPO_ROOT).as_posix()
+            assert snapshot[f'{prefix}/regular.bin']['kind'] == 'file'
+            assert snapshot[f'{prefix}/debug-core.log'] == {
+                'kind': 'symlink', 'target': str(outside)}
+    finally:
+        runner.OUTPUT_ROOT = old_root
+        runner.LOCK_PATH = old_lock
+        runner.MANIFEST_PATH = old_manifest
+        runner.MANIFEST_SHA_PATH = old_sidecar
+
+
 def test_pilot_screen_passes_only_when_every_criterion_passes() -> None:
     rows = _rows(analysis.PILOT_SEEDS)
     decision = analysis.pilot_decision(
@@ -232,6 +261,7 @@ if __name__ == '__main__':
         test_stopped_stage_cannot_launch_or_create_a_log,
         test_online_wandb_and_rollout_contracts,
         test_tracking_receipt_binds_rollout_and_local_transaction,
+        test_snapshot_records_symlinks_without_following_external_targets,
         test_pilot_screen_passes_only_when_every_criterion_passes,
         test_final_label_is_locked_grid_not_publication_claim,
     )

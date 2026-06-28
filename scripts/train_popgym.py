@@ -20,23 +20,60 @@ from lewm.eval.memory_probe import plot_memory_kernels
 def scheduled_hier_loss_weight(base_weight, schedule, epoch):
     """Return the prospectively fixed auxiliary weight for a one-indexed epoch.
 
-    ``v5_frontload`` is intentionally absolute rather than relative to the run length:
-    weight is constant through epoch 20, follows a cosine to zero over epochs 21--120,
-    and is exactly zero thereafter.
+    Both prospective schedules are absolute rather than relative to the run length.  V5 is
+    constant through epoch 20 and decays to zero at epoch 120.  ``v6_bootstrap`` is constant
+    through epoch 40, follows a cosine over epochs 41--99, and is exactly zero from epoch 100.
     """
     base_weight = float(base_weight)
-    if schedule == 'fixed':
-        return base_weight
-    if schedule != 'v5_frontload':
-        raise ValueError(f'unknown hierarchical loss schedule {schedule!r}')
     if epoch < 1:
         raise ValueError(f'epoch must be one-indexed and positive, got {epoch}')
-    if epoch <= 20:
+    if schedule == 'fixed':
         return base_weight
-    if epoch <= 120:
-        progress = (epoch - 20) / 100.0
-        return base_weight * 0.5 * (1.0 + math.cos(math.pi * progress))
-    return 0.0
+    if schedule == 'v5_frontload':
+        if epoch <= 20:
+            return base_weight
+        if epoch < 120:
+            progress = (epoch - 20) / 100.0
+            return base_weight * 0.5 * (1.0 + math.cos(math.pi * progress))
+        return 0.0
+    if schedule == 'v6_bootstrap':
+        if epoch <= 40:
+            return base_weight
+        if epoch < 100:
+            progress = (epoch - 40) / 60.0
+            return base_weight * 0.5 * (1.0 + math.cos(math.pi * progress))
+        return 0.0
+    raise ValueError(f'unknown hierarchical loss schedule {schedule!r}')
+
+
+def hierarchical_objective_metadata(memory_mode):
+    """Machine-readable V6 self-supervision contract for checkpoints and W&B."""
+    if not memory_mode.startswith('hacssmv6'):
+        return {}
+    if memory_mode == 'hacssmv6_uniform':
+        horizons = {'fast': [1, 2, 4, 8], 'medium': [1, 2, 4, 8]}
+    elif memory_mode == 'hacssmv6_fastonly':
+        horizons = {'fast': [1, 2], 'medium': []}
+    elif memory_mode == 'hacssmv6_mediumonly':
+        horizons = {'fast': [], 'medium': [4, 8]}
+    else:
+        horizons = {'fast': [1, 2], 'medium': [4, 8]}
+    if memory_mode == 'hacssmv6_aux_noaction':
+        action_kind = 'zero_actions_in_auxiliary_only'
+    elif memory_mode == 'hacssmv6_noaction':
+        action_kind = 'no_action_in_inference_or_auxiliary'
+    else:
+        action_kind = 'observed_transition_actions'
+    return {
+        'hier_objective_schema_version': 1,
+        'hier_target_kind': 'same_level_posterior_stop_gradient',
+        'hier_endpoint_kind': 'target_valid_mask_visible_only',
+        'hier_distance': 'affine_free_layer_norm_smooth_l1',
+        'hier_source_gradient': memory_mode == 'hacssmv6_sourcegrad',
+        'hier_aux_action_kind': action_kind,
+        'hier_aux_horizons': horizons,
+        'hier_inference_taus': [2.0, 8.0],
+    }
 
 
 def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight=0.0):
@@ -48,6 +85,14 @@ def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight
         'pred_loss_first_post', 'hier_loss', 'hier_loss_fast',
         'hier_loss_medium', 'hier_loss_slow', 'hier_loss_h1', 'hier_loss_h2',
         'hier_loss_h4', 'hier_loss_h8', 'hier_loss_h16', 'hier_loss_weight',
+        'hier_pairs', 'hier_pairs_h1', 'hier_pairs_h2', 'hier_pairs_h4',
+        'hier_pairs_h8', 'hier_pairs_h16',
+        'hier_loss_fast_h1', 'hier_loss_fast_h2', 'hier_loss_fast_h4',
+        'hier_loss_fast_h8', 'hier_loss_medium_h1', 'hier_loss_medium_h2',
+        'hier_loss_medium_h4', 'hier_loss_medium_h8',
+        'hier_pairs_fast_h1', 'hier_pairs_fast_h2', 'hier_pairs_fast_h4',
+        'hier_pairs_fast_h8', 'hier_pairs_medium_h1', 'hier_pairs_medium_h2',
+        'hier_pairs_medium_h4', 'hier_pairs_medium_h8',
     )
     tot = {name: 0.0 for name in metric_names}; counts = {name: 0 for name in metric_names}
     n = 0
@@ -322,7 +367,11 @@ def main():
                             'hacssmv5', 'hacssmv5_static', 'hacssmv5_noaction',
                             'hacssmv5_fixedbeta', 'hacssmv5_fixedbeta_noaux',
                             'hacssmv5_noaux', 'hacssmv5_single',
-                            'hacssmv5_ssmcontrol'])
+                            'hacssmv5_ssmcontrol',
+                            'hacssmv6', 'hacssmv6_noaux', 'hacssmv6_aux_noaction',
+                            'hacssmv6_uniform', 'hacssmv6_sourcegrad',
+                            'hacssmv6_fastonly', 'hacssmv6_mediumonly',
+                            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -377,8 +426,9 @@ def main():
     p.add_argument('--hier-loss-weight', type=float, default=0.1,
                    help='hierarchical action-rollout auxiliary base weight; noaux forces zero')
     p.add_argument('--hier-loss-schedule', default='fixed',
-                   choices=['fixed', 'v5_frontload'],
-                   help='fixed, or V5: constant epochs 1-20, cosine to zero at 120, then zero')
+                   choices=['fixed', 'v5_frontload', 'v6_bootstrap'],
+                   help='fixed; V5 constant 1-20 then cosine to zero at 120; or V6 '
+                        'constant 1-40 then cosine to exact zero at 100')
     p.add_argument('--tau-fast', type=float, default=3.0)
     p.add_argument('--tau-slow', type=float, default=25.0)
     p.add_argument('--fixed-alpha', action='store_true')
@@ -402,6 +452,8 @@ def main():
         raise ValueError('--hier-loss-weight must be non-negative and finite')
     if args.hier_loss_schedule == 'v5_frontload' and args.epochs < 120:
         raise ValueError('--hier-loss-schedule v5_frontload requires at least 120 epochs')
+    if args.hier_loss_schedule == 'v6_bootstrap' and args.epochs < 100:
+        raise ValueError('--hier-loss-schedule v6_bootstrap requires at least 100 epochs')
 
     feature_mode = any((args.train_feature_cache, args.val_feature_cache, args.feature_manifest))
     if feature_mode and not all((args.train_feature_cache, args.val_feature_cache, args.feature_manifest)):
@@ -506,7 +558,8 @@ def main():
                    if args.wandb_study else args.env_id),
             job_type=args.memory_mode,
             tags=tags, dir=str(wandb_dir),
-            config=vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'},
+            config=(vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'}
+                    | hierarchical_objective_metadata(args.memory_mode)),
             settings=wandb.Settings(init_timeout=120),
         )
         if args.wandb_mode is not None:
@@ -544,7 +597,11 @@ def main():
             'hacssmv5', 'hacssmv5_static', 'hacssmv5_noaction',
             'hacssmv5_fixedbeta', 'hacssmv5_fixedbeta_noaux',
             'hacssmv5_noaux', 'hacssmv5_single',
-            'hacssmv5_ssmcontrol') else 'ema'
+            'hacssmv5_ssmcontrol',
+            'hacssmv6', 'hacssmv6_noaux', 'hacssmv6_aux_noaction',
+            'hacssmv6_uniform', 'hacssmv6_sourcegrad',
+            'hacssmv6_fastonly', 'hacssmv6_mediumonly',
+            'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
@@ -677,13 +734,20 @@ def main():
             'hier_loss_weight': float(args.hier_loss_weight),
             'hier_loss_schedule': args.hier_loss_schedule,
             'hier_loss_weight_final': float(model.hier_loss_weight),
+            'hier_loss_weight_base_effective': (
+                0.0 if args.memory_mode in {
+                    'hacsmv4_noaux', 'hacsmv4_two_noaux',
+                    'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
+                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'} else
+                float(args.hier_loss_weight) if args.memory_mode.startswith(
+                    ('hacsmv4', 'hacssmv5', 'hacssmv6')) else 0.0),
             'hier_loss_weight_effective': (
                 0.0 if args.memory_mode in {
                     'hacsmv4_noaux', 'hacsmv4_two_noaux',
                     'hacssmv5_noaux', 'hacssmv5_fixedbeta_noaux',
-                    'hacssmv5_ssmcontrol'} else
+                    'hacssmv5_ssmcontrol', 'hacssmv6_noaux'} else
                 float(model.hier_loss_weight) if args.memory_mode.startswith(
-                    ('hacsmv4', 'hacssmv5')) else 0.0),
+                    ('hacsmv4', 'hacssmv5', 'hacssmv6')) else 0.0),
             'val_pred_loss_target_kind': 'observed_pre_post_only' if args.mask_occluded_target_loss else 'all',
             'deep_blackout_target_kind': 'evaluation_only_hidden_clean',
             'primary_common_target_metric': 'clean_mse_first_post',
@@ -695,6 +759,7 @@ def main():
             'encoder_stats': args.encoder_stats,
             'encoder_stats_sha256': getattr(args, 'encoder_stats_sha256', None),
             'trainable_parameters': model.num_parameters(),
+            **hierarchical_objective_metadata(args.memory_mode),
             **tau_json}
     for key, value in va.items():
         if key.startswith('hier_'):
@@ -766,7 +831,7 @@ def main():
                     'episode': args.eval_rollout_episode,
                     'sha256': best['eval_rollout_sha256'],
                     'semantics': 'closed-loop-on-observations clean-next-latent evaluation trace',
-                },
+                } | hierarchical_objective_metadata(args.memory_mode),
             )
             rollout_artifact.add_file(str(rollout_path), name='eval_rollout.npz')
             wb.log_artifact(rollout_artifact)

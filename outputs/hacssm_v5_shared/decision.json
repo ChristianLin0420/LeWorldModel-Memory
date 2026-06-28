@@ -1,0 +1,181 @@
+{
+  "completed_runs": 300,
+  "criteria": {
+    "beats_hold_ge_4_of_5": false,
+    "convergence_absolute_max_lt_5pct": true,
+    "convergence_absolute_median_lt_1pct": true,
+    "convergence_absolute_p95_lt_3pct": true,
+    "locked_grid_envelope_wins_ge_4_of_5": false,
+    "vs_noaction_env_wins_ge_3_of_5": true,
+    "vs_noaction_reduction_ge_3pct": true,
+    "vs_noaction_wins_ge_17_of_25": true,
+    "vs_noaux_env_wins_ge_3_of_5": false,
+    "vs_noaux_reduction_ge_3pct": false,
+    "vs_noaux_wins_ge_17_of_25": false,
+    "vs_single_env_wins_ge_3_of_5": true,
+    "vs_single_reduction_ge_3pct": true,
+    "vs_single_wins_ge_17_of_25": true,
+    "vs_ssm_env_wins_ge_4_of_5": false,
+    "vs_ssm_reduction_ge_5pct": false,
+    "vs_ssm_wins_ge_18_of_25": false,
+    "vs_static_env_wins_ge_3_of_5": true,
+    "vs_static_reduction_ge_3pct": false,
+    "vs_static_wins_ge_17_of_25": true,
+    "vs_v4_noaux_env_wins_ge_4_of_5": false,
+    "vs_v4_noaux_reduction_ge_3pct": false,
+    "vs_v4_noaux_wins_ge_17_of_25": false
+  },
+  "decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "limitations": [
+    "Same fixed validation trajectories and black-token corruption as the V4 study.",
+    "Equal training budget; no per-baseline hyperparameter tuning or downstream return.",
+    "No post-training causal diagnostics are part of this analyzer version."
+  ],
+  "note": "The three-seed pilot screen is immutable. OVERALL_BEST_IN_LOCKED_GRID is a deterministic development-grid label, not an untouched-test or publication claim.",
+  "observed": {
+    "convergence_absolute_max": 0.036133522927634894,
+    "convergence_absolute_median": 0.004021083293940936,
+    "convergence_absolute_p95": 0.0169799068232579,
+    "full_environment_mean_wins": {
+      "hacsmv4": 3,
+      "hacsmv4_noaux": 2,
+      "hacsmv4_two_noaux": 1,
+      "hacssmv5_fixedbeta_noaux": 0,
+      "hacssmv5_noaction": 5,
+      "hacssmv5_noaux": 0,
+      "hacssmv5_single": 5,
+      "hacssmv5_ssmcontrol": 5,
+      "hacssmv5_static": 3,
+      "none": 5,
+      "ssm": 1
+    },
+    "full_hold_env_wins": 3,
+    "locked_grid_envelope_env_wins": 0,
+    "overall_contrasts": {
+      "hacsmv4": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0025292038754527115,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 11,
+        "reference": "hacsmv4",
+        "reference_mean_mse": ""
+      },
+      "hacsmv4_noaux": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.005560408717564537,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 12,
+        "reference": "hacsmv4_noaux",
+        "reference_mean_mse": ""
+      },
+      "hacsmv4_two_noaux": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.08674177523037636,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 4,
+        "reference": "hacsmv4_two_noaux",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_fixedbeta_noaux": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.012757698437682569,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 8,
+        "reference": "hacssmv5_fixedbeta_noaux",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_noaction": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.1109521683931153,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 25,
+        "reference": "hacssmv5_noaction",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_noaux": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.011173785164388775,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 6,
+        "reference": "hacssmv5_noaux",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_single": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.10988174341580408,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 25,
+        "reference": "hacssmv5_single",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_ssmcontrol": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.10705493536768275,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 25,
+        "reference": "hacssmv5_ssmcontrol",
+        "reference_mean_mse": ""
+      },
+      "hacssmv5_static": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.021265781193450604,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 17,
+        "reference": "hacssmv5_static",
+        "reference_mean_mse": ""
+      },
+      "none": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.20399250532752294,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 25,
+        "reference": "none",
+        "reference_mean_mse": ""
+      },
+      "ssm": {
+        "candidate": "hacssmv5",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.03271349345372577,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 8,
+        "reference": "ssm",
+        "reference_mean_mse": ""
+      }
+    }
+  },
+  "phase": "final",
+  "pilot_screen_passed": false,
+  "schema_version": 1
+}

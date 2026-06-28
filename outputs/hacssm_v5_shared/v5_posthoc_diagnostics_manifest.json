@@ -1,0 +1,78 @@
+{
+  "decision_unchanged": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "diagnostic_outputs": {
+    "v5_posthoc_contrasts.csv": {
+      "bytes": 16086,
+      "sha256": "671edc87e3660f6dcc93851e668de3a3f334fb6a13be6f3d2660ca0e5cc56bc1"
+    },
+    "v5_posthoc_convergence.csv": {
+      "bytes": 1123,
+      "sha256": "42924afb55d4de38e426538a347d7319b0b10f7b2729ca87262519f50c730e1b"
+    },
+    "v5_posthoc_diagnostics.json": {
+      "bytes": 7635,
+      "sha256": "37ff5a7ec5d9918b7c356e6ba5a45bbd98607b9212417884cd30335d320cf1e0"
+    },
+    "v5_posthoc_env_ranks.csv": {
+      "bytes": 4891,
+      "sha256": "25e62927a7b6f71dc4a5c9848d6c23e7b2b8affc870786f5a5b207a498611322"
+    },
+    "v5_posthoc_phase_contrasts.csv": {
+      "bytes": 862,
+      "sha256": "e0a761ccea08510e8b7dce54433d0b35ee8d6fad8b2ba417eefbf044dbf56692"
+    },
+    "v5_posthoc_rate_ranges.csv": {
+      "bytes": 2906,
+      "sha256": "4b2dc941ad5ba2e3da97314bcd6f9f30b7ee6d5d2bd6da584c5442f1c87657b3"
+    },
+    "v5_posthoc_seed_stage.csv": {
+      "bytes": 445,
+      "sha256": "2e4e350c92109259263838f40954e8fd33b11c180879fc82faeb3f24f3894968"
+    }
+  },
+  "generator": {
+    "path": "scripts/analyze_hacssm_v5_diagnostics.py",
+    "sha256": "fc0b5b620d5be081db1d76e015a5b92b8c30dd08301c9b4c2568643142a46322"
+  },
+  "immutability_check_passed": true,
+  "locked_primary_inputs": {
+    "convergence.csv": {
+      "bytes": 42749,
+      "sha256": "255f10e4b6d497a08453734b43539fccd0a7e73816846c24e01397be47c99c15"
+    },
+    "decision.json": {
+      "bytes": 5976,
+      "sha256": "43ed108f28cf4bfe445e9c1be8b874047c0bd88d70601b13348d2d87d8d4c790"
+    },
+    "grouped.csv": {
+      "bytes": 56149,
+      "sha256": "527ec40c65e2035cf3d5c119c329b32752da5787f6caa0417669ee9878f768a8"
+    },
+    "hacssm_v5_manifest.json": {
+      "bytes": 1544228,
+      "sha256": "99d25180d63d5b0ebaaf85d44ee1744b0d34df4ba4fb0c0567853e5f49ab7950"
+    },
+    "hacssm_v5_manifest.sha256": {
+      "bytes": 90,
+      "sha256": "38e838a5f05b15a7b8b69fc870d9aaefa10447b08cf5492a08d9d5b20f65bcb8"
+    },
+    "paired_contrasts.csv": {
+      "bytes": 6907,
+      "sha256": "52494d6fde52f0e5e1526bd5dece8c6b8d1f371660c788e398894fec7dc63522"
+    },
+    "per_run.csv": {
+      "bytes": 158349,
+      "sha256": "2e04cd9b17d370d5851dcd643a2ddfe9e2499d95ec637e4841f8bed61792afd9"
+    },
+    "pilot_decision.json": {
+      "bytes": 3258,
+      "sha256": "f233f04948736e190772e15a170ccd3b490cc7135345f9220cc7539fb51caeab"
+    },
+    "protocol.json": {
+      "bytes": 27289,
+      "sha256": "925d8161584de51079094d277e9ad890609a6e42e72f12b141483944abc7a4fb"
+    }
+  },
+  "schema_version": 1,
+  "study": "HACSSM-v5 read-only post-hoc diagnostics"
+}

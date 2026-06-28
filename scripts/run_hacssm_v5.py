@@ -51,6 +51,7 @@ WANDB_BASE_URL = "https://api.wandb.ai"
 EVAL_ROLLOUT_EPISODE = 0
 EVAL_ROLLOUT_NAME = "eval_rollout.npz"
 WANDB_RUN_NAME = "wandb_run.json"
+CLOUD_VERIFY_EPOCH_HISTORY = False
 
 ENVIRONMENTS = (
     ("dmc:reacher.hard.occ", "dmc:reacher.hard"),
@@ -924,6 +925,20 @@ def validate_tracking_artifacts(job: Job, metrics: dict[str, Any]) -> None:
             )
 
 
+def expected_wandb_artifact_metadata(job: Job, rollout_sha256: str) -> dict[str, Any]:
+    """Exact cloud artifact metadata contract; later studies may extend this hook."""
+    return {
+        "schema_version": 1,
+        "study": WANDB_STUDY,
+        "env": job.occ_env,
+        "design": job.design,
+        "seed": job.seed,
+        "episode": EVAL_ROLLOUT_EPISODE,
+        "sha256": rollout_sha256,
+        "semantics": "closed-loop-on-observations clean-next-latent evaluation trace",
+    }
+
+
 def verify_wandb_cloud(jobs: Sequence[Job]) -> dict[str, Any]:
     """Verify finished runs plus their rollout artifact, table, and video in W&B."""
     import wandb
@@ -943,10 +958,22 @@ def verify_wandb_cloud(jobs: Sequence[Job]) -> dict[str, Any]:
             "env": job.occ_env,
             "design": job.design,
             "seed": job.seed,
+            "artifact_metadata": expected_wandb_artifact_metadata(
+                job, str(receipt["eval_rollout_sha256"])),
         }
 
     def media_problem(run: Any) -> str | None:
         wanted = expected[run.id]
+        if CLOUD_VERIFY_EPOCH_HISTORY:
+            epochs = [
+                row.get("epoch") for row in run.scan_history(keys=["epoch"])
+                if row.get("epoch") is not None
+            ]
+            if epochs != list(range(1, COMMON["epochs"] + 1)):
+                return (
+                    f"cloud epoch history mismatch: count={len(epochs)} "
+                    f"head={epochs[:4]} tail={epochs[-4:]}"
+                )
         try:
             trace = dict(run.summary.get("eval/rollout_trace"))
             video = dict(run.summary.get("eval/paired_rollout"))
@@ -982,16 +1009,7 @@ def verify_wandb_cloud(jobs: Sequence[Job]) -> dict[str, Any]:
         if len(matches) != 1:
             return f"expected one evaluation-rollout artifact, found {len(matches)}"
         artifact = matches[0]
-        wanted_metadata = {
-            "schema_version": 1,
-            "study": WANDB_STUDY,
-            "env": wanted["env"],
-            "design": wanted["design"],
-            "seed": wanted["seed"],
-            "episode": EVAL_ROLLOUT_EPISODE,
-            "sha256": wanted["sha256"],
-            "semantics": "closed-loop-on-observations clean-next-latent evaluation trace",
-        }
+        wanted_metadata = wanted["artifact_metadata"]
         if not stable_equal(artifact.metadata, wanted_metadata):
             return f"evaluation-rollout metadata mismatch: {artifact.metadata}"
         entries = artifact.manifest.entries
@@ -1048,6 +1066,8 @@ def verify_wandb_cloud(jobs: Sequence[Job]) -> dict[str, Any]:
                     "verified_rollout_videos": len(expected),
                     "verified_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                 }
+                if CLOUD_VERIFY_EPOCH_HISTORY:
+                    record["verified_complete_epoch_histories"] = len(expected)
                 status(
                     f"W&B cloud verified {len(expected)}/{len(expected)} finished runs "
                     "with rollout artifact/table/video"
@@ -1595,20 +1615,29 @@ def reject_temporary_artifacts() -> None:
 
 
 def output_file_snapshot() -> dict[str, dict[str, Any]]:
-    excluded = {LOCK_PATH.resolve(), MANIFEST_PATH.resolve(), MANIFEST_SHA_PATH.resolve()}
-    return {
-        rel(path): file_record(path)
-        for path in sorted(OUTPUT_ROOT.rglob("*"))
-        if path.is_file() and path.resolve() not in excluded
+    excluded = {
+        path.absolute() for path in (LOCK_PATH, MANIFEST_PATH, MANIFEST_SHA_PATH)
     }
+    return {
+        path.absolute().relative_to(REPO_ROOT).as_posix(): snapshot_record(path)
+        for path in sorted(OUTPUT_ROOT.rglob("*"))
+        if (path.is_file() or path.is_symlink()) and path.absolute() not in excluded
+    }
+
+
+def snapshot_record(path: Path) -> dict[str, Any]:
+    """Describe an artifact without dereferencing W&B's external debug symlinks."""
+    if path.is_symlink():
+        return {"kind": "symlink", "target": os.readlink(path)}
+    return {"kind": "file", **file_record(path)}
 
 
 def log_file_snapshot() -> dict[str, dict[str, Any]]:
     if not LOG_ROOT.exists():
         return {}
     return {
-        rel(path): file_record(path)
-        for path in sorted(LOG_ROOT.rglob("*")) if path.is_file()
+        path.absolute().relative_to(REPO_ROOT).as_posix(): snapshot_record(path)
+        for path in sorted(LOG_ROOT.rglob("*")) if path.is_file() or path.is_symlink()
     }
 
 

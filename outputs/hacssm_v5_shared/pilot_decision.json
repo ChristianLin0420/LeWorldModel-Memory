@@ -1,0 +1,95 @@
+{
+  "criteria": {
+    "clean_input_worsening_vs_ssm_le_5pct": true,
+    "convergence_absolute_max_lt_5pct": true,
+    "convergence_absolute_median_lt_1pct": true,
+    "convergence_absolute_p95_lt_3pct": true,
+    "full_beats_hold_ge_3_of_5": true,
+    "full_vs_noaction_positive": true,
+    "full_vs_noaction_wins_ge_8_of_15": true,
+    "full_vs_noaux_positive": false,
+    "full_vs_noaux_wins_ge_8_of_15": false,
+    "full_vs_single_positive": true,
+    "full_vs_single_wins_ge_8_of_15": true,
+    "full_vs_ssm_env_wins_ge_3_of_5": false,
+    "full_vs_ssm_reduction_ge_1pct": false,
+    "full_vs_ssm_wins_ge_9_of_15": false,
+    "full_vs_static_positive": true,
+    "full_vs_static_wins_ge_8_of_15": true,
+    "full_vs_v4_noaux_env_wins_ge_3_of_5": false,
+    "full_vs_v4_noaux_reduction_ge_1pct": false,
+    "full_vs_v4_noaux_wins_ge_9_of_15": false,
+    "v5_noaux_vs_fixedbeta_noaux_positive": false,
+    "v5_noaux_vs_fixedbeta_noaux_wins_ge_8_of_15": false,
+    "v5_noaux_vs_ssm_positive": false,
+    "v5_noaux_vs_ssm_wins_ge_8_of_15": false
+  },
+  "decision": "NO_GO",
+  "note": "Prospective deterministic pilot screen; not a hypothesis test or paper claim. All five seeds run regardless, but a failed screen remains immutable.",
+  "observed": {
+    "clean_input_relative_worsening_vs_ssm": -0.058327045599440616,
+    "convergence_absolute_max": 0.024162655573658202,
+    "convergence_absolute_median": 0.004122108496926095,
+    "convergence_absolute_p95": 0.015121576343476183,
+    "full_hold_env_wins": 3,
+    "full_overall_contrasts": {
+      "hacsmv4_noaux": {
+        "mean_paired_relative_reduction": -0.0029366044631868355,
+        "n_pairs": 15,
+        "paired_wins": 8
+      },
+      "hacssmv5_noaction": {
+        "mean_paired_relative_reduction": 0.11195059952356556,
+        "n_pairs": 15,
+        "paired_wins": 15
+      },
+      "hacssmv5_noaux": {
+        "mean_paired_relative_reduction": -0.007331583309853373,
+        "n_pairs": 15,
+        "paired_wins": 5
+      },
+      "hacssmv5_single": {
+        "mean_paired_relative_reduction": 0.10717921025175149,
+        "n_pairs": 15,
+        "paired_wins": 15
+      },
+      "hacssmv5_static": {
+        "mean_paired_relative_reduction": 0.020410053060251086,
+        "n_pairs": 15,
+        "paired_wins": 11
+      },
+      "ssm": {
+        "mean_paired_relative_reduction": -0.030703778377934393,
+        "n_pairs": 15,
+        "paired_wins": 4
+      }
+    },
+    "full_vs_ssm_env_mean_wins": 1,
+    "full_vs_v4_noaux_env_mean_wins": 2,
+    "v5_noaux_vs_fixedbeta_noaux": {
+      "candidate": "hacssmv5_noaux",
+      "candidate_mean_mse": "",
+      "env": "__overall__",
+      "mean_paired_relative_reduction": -0.0031883564543819134,
+      "n_pairs": 15,
+      "paired_ties": 0,
+      "paired_wins": 7,
+      "reference": "hacssmv5_fixedbeta_noaux",
+      "reference_mean_mse": ""
+    },
+    "v5_noaux_vs_ssm": {
+      "candidate": "hacssmv5_noaux",
+      "candidate_mean_mse": "",
+      "env": "__overall__",
+      "mean_paired_relative_reduction": -0.023496677093504184,
+      "n_pairs": 15,
+      "paired_ties": 0,
+      "paired_wins": 4,
+      "reference": "ssm",
+      "reference_mean_mse": ""
+    }
+  },
+  "phase": "pilot",
+  "pilot_screen_passed": false,
+  "schema_version": 1
+}
