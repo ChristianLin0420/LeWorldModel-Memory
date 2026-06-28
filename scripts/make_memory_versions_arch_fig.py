@@ -179,7 +179,7 @@ def main() -> None:
 
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
-            'Prospective V7: 5 × 13 × 5 = 325 runs (§7.9).',
+            'V7 complete: 325 runs; locked PILOT_NO_GO_FINAL_DESCRIPTIVE (§7.9).',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '

@@ -1,0 +1,278 @@
+{
+  "anchor_reproducibility": {
+    "all_model_states_exact": true,
+    "all_optimization_histories_exact": true,
+    "all_predictive_metrics_exact": true,
+    "all_rollouts_exact": true,
+    "by_design": {
+      "hacsmv4_two_noaux": {
+        "cells": 25,
+        "exact_model_state_cells": 25,
+        "exact_optimization_history_cells": 25,
+        "exact_predictive_metric_cells": 25,
+        "exact_rollout_cells": 25,
+        "max_abs_model_state_difference": 0.0,
+        "max_abs_optimization_history_difference": 0.0,
+        "max_abs_predictive_metric_difference": 0.0,
+        "max_abs_rollout_difference": 0.0
+      },
+      "hacssmv6": {
+        "cells": 25,
+        "exact_model_state_cells": 25,
+        "exact_optimization_history_cells": 25,
+        "exact_predictive_metric_cells": 25,
+        "exact_rollout_cells": 25,
+        "max_abs_model_state_difference": 0.0,
+        "max_abs_optimization_history_difference": 0.0,
+        "max_abs_predictive_metric_difference": 0.0,
+        "max_abs_rollout_difference": 0.0
+      },
+      "hacssmv6_static": {
+        "cells": 25,
+        "exact_model_state_cells": 25,
+        "exact_optimization_history_cells": 25,
+        "exact_predictive_metric_cells": 25,
+        "exact_rollout_cells": 25,
+        "max_abs_model_state_difference": 0.0,
+        "max_abs_optimization_history_difference": 0.0,
+        "max_abs_predictive_metric_difference": 0.0,
+        "max_abs_rollout_difference": 0.0
+      },
+      "ssm": {
+        "cells": 25,
+        "exact_model_state_cells": 25,
+        "exact_optimization_history_cells": 25,
+        "exact_predictive_metric_cells": 25,
+        "exact_rollout_cells": 25,
+        "max_abs_model_state_difference": 0.0,
+        "max_abs_optimization_history_difference": 0.0,
+        "max_abs_predictive_metric_difference": 0.0,
+        "max_abs_rollout_difference": 0.0
+      }
+    },
+    "matched_cells": 100,
+    "schema_version": 1
+  },
+  "best_development_grid_design": {
+    "design": "hacssmv6_static",
+    "environment_rank_wins": 2,
+    "mean_environment_rank": 6.4,
+    "qualification": "Best by environment-rank wins on the adaptive locked grid, not an untouched-test claim.",
+    "vs_ssm": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.06066700308564576,
+      "median_paired_relative_reduction": 0.05158386765793026,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 19
+    }
+  },
+  "convergence": {
+    "absolute_window_change_max": 0.02754212360044176,
+    "absolute_window_change_median": 0.004285520678914935,
+    "absolute_window_change_p95": 0.016661005795759215
+  },
+  "failed_final_criteria": [
+    "locked_grid_envelope_wins_ge_3_of_5",
+    "vs_noaux_reduction_ge_1pct",
+    "vs_norecovery_env_wins_ge_3_of_5",
+    "vs_norecovery_positive",
+    "vs_norecovery_wins_ge_13_of_25",
+    "vs_sharedaction_env_wins_ge_3_of_5",
+    "vs_sharedaction_positive",
+    "vs_v4_two_reduction_ge_1_5pct",
+    "vs_v6_reduction_ge_1pct",
+    "vs_v6_static_positive"
+  ],
+  "frozen_record": {
+    "completed_runs": 325,
+    "primary_manifest_sha256": "98eda8abec229753381bed5f22c70317428242470cc6f40b6a3f9c16d0f55c11",
+    "producer_git_clean": true,
+    "producer_git_commit": "56a294a67b0d8bf8d04a75f31f275b6063c4c8f6",
+    "wandb_cloud_verification": {
+      "entity": "crlc112358",
+      "project": "lewm-memory-popgym",
+      "study": "hacssm-v7",
+      "verified_at": "2026-06-28T22:47:44.450811+00:00",
+      "verified_complete_epoch_histories": 325,
+      "verified_finished_runs": 325,
+      "verified_rollout_artifacts": 325,
+      "verified_rollout_tables": 325,
+      "verified_rollout_videos": 325
+    }
+  },
+  "full_v7_parameter_means": {
+    "action_head_cosine_mean": 0.7365355474840244,
+    "action_head_fast_l2_mean": 3.884163666749981,
+    "action_head_medium_l2_mean": 3.5999629704794955,
+    "predictor_delta_l2_vs_noaux_mean": 3.2868397751102045,
+    "rho_fast_learned_mean": 0.6144145029786742,
+    "rho_medium_learned_mean": 0.546014004785677,
+    "route_fast_functional_mean": 0.5509105602554625,
+    "route_medium_functional_mean": 0.4490894397445375,
+    "static_gate_fast_mean": 0.839985239448895,
+    "static_gate_medium_mean": 0.8799668473094425,
+    "student_memory_total_delta_l2_vs_noaux_mean": 0.9270351722076117,
+    "student_teacher_memory_total_l2_mean": 0.2775011576373357
+  },
+  "good_enough_for_overall_best_claim": false,
+  "interpretation": [
+    "V7 clears the locked SSM threshold, but its 0.30% gain over its no-auxiliary control is below the predeclared 1% requirement.",
+    "V7 is positive against full V6 but remains below V6-static overall, so it is not the overall best locked-grid design.",
+    "Deleting actions or using a single memory read causes large regressions; these support the action pathway and joint hierarchy, not the counterfactual objective itself.",
+    "Shared action heads and removal of recovery do not hurt on average, so level-specific actions and the recovery term are not supported by this grid."
+  ],
+  "key_contrasts": {
+    "full_v7_vs_noaux": {
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.0030270334186721136,
+      "median_paired_relative_reduction": 0.003526713285572526,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 16
+    },
+    "full_v7_vs_ssm": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.06074121425901647,
+      "median_paired_relative_reduction": 0.05137571027203985,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 22
+    },
+    "full_v7_vs_v4_two": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.012980666579861315,
+      "median_paired_relative_reduction": 0.010398047216472731,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 17
+    },
+    "full_v7_vs_v6": {
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.009136096306960323,
+      "median_paired_relative_reduction": 0.006322049049228044,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 15
+    },
+    "full_v7_vs_v6_static": {
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": -0.0025971913863545816,
+      "median_paired_relative_reduction": 0.022093056431478374,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 14
+    }
+  },
+  "limitations": [
+    "All results reuse adaptive-development trajectories and the black-sentinel corruption.",
+    "Completion seeds were run after a failed pilot and are descriptive, not untouched confirmation.",
+    "The study measures latent prediction and has no simulator-state or executed-return endpoint.",
+    "Raw PCA MSE is never pooled across environments in this package."
+  ],
+  "locked_final_decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "locked_pilot_decision": "NO_GO",
+  "mechanism_attribution": {
+    "V7 inference without auxiliary vs V4-two": {
+      "candidate": "hacssmv7_noaux",
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.009885749535481932,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 17,
+      "reference": "hacsmv4_two_noaux"
+    },
+    "V7 inference without auxiliary vs dynamic V6": {
+      "candidate": "hacssmv7_noaux",
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.005973202878314896,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 17,
+      "reference": "hacssmv6"
+    },
+    "V7 inference without auxiliary vs static V6": {
+      "candidate": "hacssmv7_noaux",
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": -0.0058573668181215255,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 14,
+      "reference": "hacssmv6_static"
+    },
+    "action pathway": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.1493064979378522,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 23,
+      "reference": "hacssmv7_noaction"
+    },
+    "counterfactual objective increment": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.0030270334186721136,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 16,
+      "reference": "hacssmv7_noaux"
+    },
+    "counterfactual recovery vs action rollout": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 3,
+      "mean_paired_relative_reduction": 0.0018996930577671667,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 18,
+      "reference": "hacssmv7_actiononly"
+    },
+    "hierarchical horizon assignment": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.003236619350647339,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 18,
+      "reference": "hacssmv7_uniform"
+    },
+    "joint hierarchical read": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 5,
+      "mean_paired_relative_reduction": 0.09387926766870357,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 25,
+      "reference": "hacssmv7_single"
+    },
+    "learned static/dynamic shrinkage": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.010999806784824553,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 17,
+      "reference": "hacssmv7_noshrink"
+    },
+    "level-specific action heads": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 2,
+      "mean_paired_relative_reduction": -0.003715721574652864,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 13,
+      "reference": "hacssmv7_sharedaction"
+    },
+    "restored-frame recovery term": {
+      "candidate": "hacssmv7",
+      "environment_mean_wins": 2,
+      "mean_paired_relative_reduction": -0.000601704692822016,
+      "n_pairs": 25,
+      "paired_ties": 0,
+      "paired_wins": 12,
+      "reference": "hacssmv7_norecovery"
+    }
+  },
+  "schema_version": 1,
+  "scope": "descriptive post-hoc diagnostics; cannot alter the prospective pilot or final decision"
+}

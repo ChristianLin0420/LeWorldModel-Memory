@@ -1,0 +1,54 @@
+{
+  "all_model_states_exact": true,
+  "all_optimization_histories_exact": true,
+  "all_predictive_metrics_exact": true,
+  "all_rollouts_exact": true,
+  "by_design": {
+    "hacsmv4_two_noaux": {
+      "cells": 25,
+      "exact_model_state_cells": 25,
+      "exact_optimization_history_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_cells": 25,
+      "max_abs_model_state_difference": 0.0,
+      "max_abs_optimization_history_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_difference": 0.0
+    },
+    "hacssmv6": {
+      "cells": 25,
+      "exact_model_state_cells": 25,
+      "exact_optimization_history_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_cells": 25,
+      "max_abs_model_state_difference": 0.0,
+      "max_abs_optimization_history_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_difference": 0.0
+    },
+    "hacssmv6_static": {
+      "cells": 25,
+      "exact_model_state_cells": 25,
+      "exact_optimization_history_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_cells": 25,
+      "max_abs_model_state_difference": 0.0,
+      "max_abs_optimization_history_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_difference": 0.0
+    },
+    "ssm": {
+      "cells": 25,
+      "exact_model_state_cells": 25,
+      "exact_optimization_history_cells": 25,
+      "exact_predictive_metric_cells": 25,
+      "exact_rollout_cells": 25,
+      "max_abs_model_state_difference": 0.0,
+      "max_abs_optimization_history_difference": 0.0,
+      "max_abs_predictive_metric_difference": 0.0,
+      "max_abs_rollout_difference": 0.0
+    }
+  },
+  "matched_cells": 100,
+  "schema_version": 1
+}

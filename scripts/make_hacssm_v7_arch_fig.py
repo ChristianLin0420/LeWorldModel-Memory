@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the prospective HACSSM-v7 architecture and complete variant map."""
+"""Generate the frozen HACSSM-v7 architecture and complete variant map."""
 
 from pathlib import Path
 
@@ -41,8 +41,8 @@ def main() -> None:
             'HACSSM-v7 / HCRD: Hierarchical Counterfactual Recovery Distillation',
             ha='center', fontsize=18.2, fontweight='bold', color='#17202a')
     ax.text(9, 12.78,
-            'Prospectively frozen response to V6: level-specific action heads, '
-            'static/dynamic shrinkage, and visible-only teacher/student recovery',
+            'Frozen before launch; completed 325-run study returned '
+            'PILOT_NO_GO_FINAL_DESCRIPTIVE (§7.9)',
             ha='center', fontsize=10.1, color='#546e7a')
 
     # Online student inference.
@@ -160,7 +160,8 @@ def main() -> None:
             'The EMA teacher is checkpointed but frozen and excluded from the trainable count.',
             ha='center', fontsize=8.8, color='#455a64')
     ax.text(9, 0.94,
-            'Prospective design: no V7 performance claim is made until the frozen grid completes.',
+            'Frozen architecture; official 325-run grid completed with the locked negative '
+            'result PILOT_NO_GO_FINAL_DESCRIPTIVE (§7.9).',
             ha='center', fontsize=9.1, fontweight='bold', color='#6a1b9a')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

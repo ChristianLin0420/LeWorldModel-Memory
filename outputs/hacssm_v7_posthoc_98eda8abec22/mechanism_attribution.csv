@@ -1,0 +1,12 @@
+mechanism,candidate,reference,n_pairs,candidate_mean_mse,reference_mean_mse,mean_paired_relative_reduction,median_paired_relative_reduction,paired_wins,paired_ties,environment_mean_wins
+counterfactual objective increment,hacssmv7,hacssmv7_noaux,25,,,0.0030270334186721136,0.003526713285572526,16,0,5
+level-specific action heads,hacssmv7,hacssmv7_sharedaction,25,,,-0.003715721574652864,0.0009823853921215229,13,0,2
+learned static/dynamic shrinkage,hacssmv7,hacssmv7_noshrink,25,,,0.010999806784824553,0.007664868817212108,17,0,4
+counterfactual recovery vs action rollout,hacssmv7,hacssmv7_actiononly,25,,,0.0018996930577671667,0.0021540031949047484,18,0,3
+hierarchical horizon assignment,hacssmv7,hacssmv7_uniform,25,,,0.003236619350647339,0.003310796024913251,18,0,4
+restored-frame recovery term,hacssmv7,hacssmv7_norecovery,25,,,-0.000601704692822016,-0.0006346273870927817,12,0,2
+action pathway,hacssmv7,hacssmv7_noaction,25,,,0.1493064979378522,0.16669564535939316,23,0,5
+joint hierarchical read,hacssmv7,hacssmv7_single,25,,,0.09387926766870357,0.07390493117724178,25,0,5
+V7 inference without auxiliary vs dynamic V6,hacssmv7_noaux,hacssmv6,25,,,0.005973202878314896,0.006012864555023049,17,0,4
+V7 inference without auxiliary vs static V6,hacssmv7_noaux,hacssmv6_static,25,,,-0.0058573668181215255,0.004293328477906428,14,0,3
+V7 inference without auxiliary vs V4-two,hacssmv7_noaux,hacsmv4_two_noaux,25,,,0.009885749535481932,0.008408198952277873,17,0,4
