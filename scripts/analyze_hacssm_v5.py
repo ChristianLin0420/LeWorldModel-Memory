@@ -60,6 +60,11 @@ NO_AUX_DESIGNS = frozenset(
 PRIMARY = "clean_mse_first_post"
 EPOCHS = 200
 WINDOW = 10
+WANDB_ENTITY = "crlc112358"
+WANDB_PROJECT = "lewm-memory-popgym"
+WANDB_MODE = "online"
+WANDB_STUDY = "hacssm-v5"
+EVAL_ROLLOUT_EPISODE = 0
 
 
 def reject_non_rfc_json(token: str) -> None:
@@ -149,6 +154,13 @@ def scheduled_weight(base: float, schedule: str, epoch: int) -> float:
     return 0.0
 
 
+def eval_rollout_cache(clean_env: str) -> str:
+    safe = clean_env.replace(":", "_")
+    return (
+        f"outputs/popgym_data/{safe}_v3_proto0_n150_L32_s64_seed7777.npz"
+    )
+
+
 def expected_args_subset(env: str, design: str, seed: int) -> dict[str, Any]:
     base, schedule, _active = design_aux_contract(design)
     return {
@@ -186,7 +198,13 @@ def expected_args_subset(env: str, design: str, seed: int) -> dict[str, Any]:
         "tau_fast": 3.0,
         "tau_slow": 25.0,
         "fixed_alpha": True,
-        "wandb": False,
+        "wandb": True,
+        "wandb_project": WANDB_PROJECT,
+        "wandb_entity": WANDB_ENTITY,
+        "wandb_mode": WANDB_MODE,
+        "wandb_study": WANDB_STUDY,
+        "eval_rollout_cache": eval_rollout_cache(OCC_TO_CLEAN[env]),
+        "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
         "device": "cuda",
         "first_post_loss_weight": 0.5,
     }
@@ -298,6 +316,13 @@ def load_cells(root: Path, seeds: Sequence[int]):
             "masked_clean_blackout_loss": True,
             "primary_common_target_metric": PRIMARY,
             "external_features_fixed": True,
+            "wandb_enabled": True,
+            "wandb_entity": WANDB_ENTITY,
+            "wandb_project": WANDB_PROJECT,
+            "wandb_mode": WANDB_MODE,
+            "wandb_study": WANDB_STUDY,
+            "eval_rollout_cache": eval_rollout_cache(OCC_TO_CLEAN[env]),
+            "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
         }
         for key, wanted in metadata.items():
             if metrics.get(key) != wanted:

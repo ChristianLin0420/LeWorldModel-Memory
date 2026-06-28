@@ -124,11 +124,13 @@ def main() -> None:
         card(ax, 0.20 + index * 2.40, 3.70, 2.18, 1.42, title, body, '#eceff1',
              title_size=9.2, body_size=7.0, edge='#607d8b', linewidth=1.2)
 
-    card(ax, 0.35, 2.08, 16.25, 0.92, 'Shared leakage-safe V5 comparison contract',
+    card(ax, 0.35, 2.00, 16.25, 1.08, 'Shared leakage-safe V5 comparison contract',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
-         'first-post-balanced objective • final epoch, no best-checkpoint selection',
-         '#e8eaf6', title_size=10.5, body_size=8.3, linewidth=1.4)
+         'first-post-balanced objective • final epoch, no best-checkpoint selection\n'
+         'online W&B for every cell: 200 epoch logs + fixed evaluation-rollout '
+         'trace / paired video / hashed artifact',
+         '#e8eaf6', title_size=10.5, body_size=7.6, linewidth=1.4)
 
     ax.text(8.5, 1.49,
             'Prospective V5 pilot: 5 environments × 12 designs × 3 seeds = 180 runs; '

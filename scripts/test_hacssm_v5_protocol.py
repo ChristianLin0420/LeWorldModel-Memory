@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import json
+import numpy as np
 import sys
 import tempfile
 
@@ -60,6 +61,17 @@ def test_memory_and_schedule_contracts() -> None:
     assert abs(runner.scheduled_weight(0.05, 'v5_frontload', 70) - 0.025) < 1e-12
     assert runner.scheduled_weight(0.05, 'v5_frontload', 120) == 0.0
     assert runner.scheduled_weight(0.05, 'v5_frontload', 200) == 0.0
+    preflight = {
+        'authenticated': True,
+        'base_url': runner.WANDB_BASE_URL,
+        'entity': runner.WANDB_ENTITY,
+        'mode': runner.WANDB_MODE,
+        'project': runner.WANDB_PROJECT,
+        'sdk_version': 'test',
+        'study': runner.WANDB_STUDY,
+    }
+    protocol = runner.build_protocol('0' * 40, True, preflight)
+    assert runner.stable_equal(protocol, json.loads(json.dumps(protocol)))
 
 
 def test_stopped_stage_cannot_launch_or_create_a_log() -> None:
@@ -75,6 +87,97 @@ def test_stopped_stage_cannot_launch_or_create_a_log() -> None:
         )
         assert result is None
         assert not log_path.exists()
+
+
+def test_online_wandb_and_rollout_contracts() -> None:
+    assert runner.COMMON['wandb'] is True
+    assert runner.COMMON['wandb_entity'] == 'crlc112358'
+    assert runner.COMMON['wandb_project'] == 'lewm-memory-popgym'
+    assert runner.COMMON['wandb_mode'] == 'online'
+    assert runner.COMMON['wandb_study'] == 'hacssm-v5'
+    snapshot = runner.eval_rollout_snapshot()
+    assert len(snapshot) == 5
+    assert all(record['bytes'] > 0 and len(record['sha256']) == 64
+               for record in snapshot.values())
+
+    job = runner.PILOT_JOBS[0]
+    expected = runner.expected_args(job)
+    assert expected['wandb'] is True
+    assert expected['eval_rollout_episode'] == 0
+    assert expected['eval_rollout_cache'] == runner.rel(
+        runner.eval_rollout_cache(job.clean_env))
+    command = runner.train_command(sys.executable, job)
+    for flag in ('--wandb', '--wandb-project', '--wandb-entity', '--wandb-mode',
+                 '--wandb-study', '--eval-rollout-cache', '--eval-rollout-episode'):
+        assert flag in command
+    assert '--no-wandb' not in command
+
+
+def test_tracking_receipt_binds_rollout_and_local_transaction() -> None:
+    old_output = runner.OUTPUT_ROOT
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            runner.OUTPUT_ROOT = Path(directory)
+            job = runner.Job(
+                'pilot', 0, 'dmc:reacher.hard.occ', 'dmc:reacher.hard', 'hacssmv5')
+            job.run_dir.mkdir(parents=True)
+            h, length, dim = 3, 32, 128
+            target_times = np.arange(h, length, dtype=np.int64)
+            target = np.zeros((length - h, dim), dtype=np.float32)
+            prediction = np.full_like(target, 0.1)
+            prediction_no_memory = np.full_like(target, 0.2)
+            prediction_last_visible = np.full_like(target, 0.3)
+            visible = np.ones(length, dtype=np.bool_)
+            visible[length // 3:length // 3 + max(4, length // 5)] = False
+            with np.load(runner.eval_rollout_cache(job.clean_env), allow_pickle=False) as cache:
+                actions = np.asarray(cache['actions'][0], dtype=np.int64)[h - 1:length - 1]
+            np.savez_compressed(
+                job.eval_rollout_path,
+                schema_version=np.asarray(1, dtype=np.int64),
+                episode_index=np.asarray(0, dtype=np.int64),
+                history_len=np.asarray(h, dtype=np.int64),
+                target_times=target_times,
+                target_visible=visible[h:],
+                actions_to_target=actions,
+                prediction=prediction,
+                prediction_no_memory=prediction_no_memory,
+                prediction_last_visible=prediction_last_visible,
+                target=target,
+                mse=np.square(prediction - target).mean(-1),
+                mse_no_memory=np.square(prediction_no_memory - target).mean(-1),
+                mse_last_visible=np.square(prediction_last_visible - target).mean(-1),
+            )
+            rollout_hash = runner.sha256_file(job.eval_rollout_path)
+            run_id = 'test1234'
+            artifact = 'hacssm-v5-eval-test1234'
+            receipt = {
+                'schema_version': 1,
+                'run_id': run_id,
+                'run_name': f'hacssm-v5-{job.run_name}',
+                'url': f'https://wandb.ai/crlc112358/lewm-memory-popgym/runs/{run_id}',
+                'entity': 'crlc112358',
+                'project': 'lewm-memory-popgym',
+                'mode': 'online',
+                'study': 'hacssm-v5',
+                'state': 'finished',
+                'eval_rollout_artifact_name': artifact,
+                'eval_rollout_sha256': rollout_hash,
+                'eval_rollout_episode': 0,
+            }
+            job.wandb_run_path.write_text(json.dumps(receipt))
+            transaction = job.run_dir / 'wandb' / 'run-test' / f'run-{run_id}.wandb'
+            transaction.parent.mkdir(parents=True)
+            transaction.write_bytes(b'nonempty transaction')
+            metrics = {
+                'wandb_run_id': run_id,
+                'wandb_run_url': receipt['url'],
+                'synced_online': True,
+                'eval_rollout_sha256': rollout_hash,
+                'eval_rollout_artifact_name': artifact,
+            }
+            runner.validate_tracking_artifacts(job, metrics)
+    finally:
+        runner.OUTPUT_ROOT = old_output
 
 
 def test_pilot_screen_passes_only_when_every_criterion_passes() -> None:
@@ -127,6 +230,8 @@ if __name__ == '__main__':
     tests = (
         test_memory_and_schedule_contracts,
         test_stopped_stage_cannot_launch_or_create_a_log,
+        test_online_wandb_and_rollout_contracts,
+        test_tracking_receipt_binds_rollout_and_local_transaction,
         test_pilot_screen_passes_only_when_every_criterion_passes,
         test_final_label_is_locked_grid_not_publication_claim,
     )

@@ -23,6 +23,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -42,6 +43,14 @@ FINAL_DECISION_PATH = OUTPUT_ROOT / "decision.json"
 MANIFEST_PATH = OUTPUT_ROOT / "hacssm_v5_manifest.json"
 MANIFEST_SHA_PATH = OUTPUT_ROOT / "hacssm_v5_manifest.sha256"
 LOCK_PATH = OUTPUT_ROOT / ".run_hacssm_v5.lock"
+WANDB_ENTITY = "crlc112358"
+WANDB_PROJECT = "lewm-memory-popgym"
+WANDB_MODE = "online"
+WANDB_STUDY = "hacssm-v5"
+WANDB_BASE_URL = "https://api.wandb.ai"
+EVAL_ROLLOUT_EPISODE = 0
+EVAL_ROLLOUT_NAME = "eval_rollout.npz"
+WANDB_RUN_NAME = "wandb_run.json"
 
 ENVIRONMENTS = (
     ("dmc:reacher.hard.occ", "dmc:reacher.hard"),
@@ -100,7 +109,12 @@ COMMON = {
     "val_rollout_seed": 7777,
     "smt_router": "sigmoid",
     "fixed_alpha": True,
-    "wandb": False,
+    "wandb": True,
+    "wandb_entity": WANDB_ENTITY,
+    "wandb_project": WANDB_PROJECT,
+    "wandb_mode": WANDB_MODE,
+    "wandb_study": WANDB_STUDY,
+    "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
 }
 
 SOURCE_FILES = (
@@ -166,6 +180,14 @@ class Job:
     @property
     def metrics_path(self) -> Path:
         return self.run_dir / "metrics.json"
+
+    @property
+    def eval_rollout_path(self) -> Path:
+        return self.run_dir / EVAL_ROLLOUT_NAME
+
+    @property
+    def wandb_run_path(self) -> Path:
+        return self.run_dir / WANDB_RUN_NAME
 
     @property
     def log_path(self) -> Path:
@@ -309,6 +331,14 @@ def feature_paths(clean_env: str) -> tuple[Path, Path, Path]:
     )
 
 
+def eval_rollout_cache(clean_env: str) -> Path:
+    safe = clean_env.replace(":", "_")
+    return DATA_ROOT / (
+        f"{safe}_v3_proto{COMMON['prototype_seed']}_n{COMMON['val_episodes']}"
+        f"_L{COMMON['length']}_s64_seed{COMMON['val_rollout_seed']}.npz"
+    )
+
+
 def feature_snapshot() -> dict[str, dict[str, Any]]:
     if not FEATURE_ROOT.is_dir():
         raise RunnerError(f"fixed feature root is missing: {FEATURE_ROOT}")
@@ -354,6 +384,77 @@ def feature_snapshot() -> dict[str, dict[str, Any]]:
         raise RunnerError(f"feature namespace is not exact; missing={missing}, extra={extra}")
     if len(records) != 15:
         raise RunnerError(f"feature snapshot has {len(records)} files, expected 15")
+    return dict(sorted(records.items()))
+
+
+def eval_rollout_snapshot() -> dict[str, dict[str, Any]]:
+    """Validate the five clean validation pixel caches used for W&B media."""
+    import numpy as np
+
+    records: dict[str, dict[str, Any]] = {}
+    for _occ_env, clean_env in ENVIRONMENTS:
+        cache_path = eval_rollout_cache(clean_env)
+        record = file_record(cache_path)
+        _train_features, val_features, manifest_path = feature_paths(clean_env)
+        manifest = read_json(manifest_path)
+        source_caches = manifest.get("source_pixel_caches")
+        source = source_caches.get("val_clean") if isinstance(source_caches, dict) else None
+        if not isinstance(source, dict):
+            raise RunnerError(f"{manifest_path}: missing source_pixel_caches.val_clean")
+        source_path = Path(str(source.get("path", "")))
+        if source_path.resolve() != cache_path.resolve():
+            raise RunnerError(
+                f"{manifest_path}: val_clean path {source_path} != {cache_path}"
+            )
+        if source.get("sha256") != record["sha256"] or source.get("size") != record["bytes"]:
+            raise RunnerError(f"{cache_path}: hash/size differs from feature manifest")
+
+        try:
+            with np.load(cache_path, allow_pickle=False) as cache:
+                required = {
+                    "obs", "actions", "n_actions", "action_prototypes",
+                    "prototype_seed", "schema_version", "cache_role",
+                }
+                missing = required - set(cache.files)
+                if missing:
+                    raise RunnerError(f"{cache_path}: missing fields {sorted(missing)}")
+                observations = cache["obs"]
+                actions = cache["actions"]
+                if observations.shape != (
+                    COMMON["val_episodes"], COMMON["length"], 64, 64, 3
+                ) or observations.dtype != np.uint8:
+                    raise RunnerError(
+                        f"{cache_path}: unexpected observation shape/dtype "
+                        f"{observations.shape}/{observations.dtype}"
+                    )
+                if actions.shape != (COMMON["val_episodes"], COMMON["length"] - 1):
+                    raise RunnerError(f"{cache_path}: unexpected action shape {actions.shape}")
+                if (
+                    int(cache["n_actions"]) != 6
+                    or int(cache["prototype_seed"]) != COMMON["prototype_seed"]
+                    or int(cache["schema_version"]) != 3
+                    or str(cache["cache_role"]) != "clean_or_full"
+                ):
+                    raise RunnerError(f"{cache_path}: invalid fixed rollout metadata")
+                pixel_actions = np.asarray(actions)
+        except RunnerError:
+            raise
+        except Exception as exc:
+            raise RunnerError(f"cannot validate rollout cache {cache_path}: {exc}") from exc
+
+        try:
+            with np.load(val_features, allow_pickle=False) as feature_cache:
+                feature_actions = np.asarray(feature_cache["actions"])
+        except Exception as exc:
+            raise RunnerError(f"cannot read feature actions from {val_features}: {exc}") from exc
+        if not np.array_equal(pixel_actions, feature_actions):
+            raise RunnerError(f"{cache_path}: actions differ from fixed validation features")
+        records[rel(cache_path)] = record
+
+    if len(records) != len(ENVIRONMENTS):
+        raise RunnerError(
+            f"rollout snapshot has {len(records)} files, expected {len(ENVIRONMENTS)}"
+        )
     return dict(sorted(records.items()))
 
 
@@ -441,7 +542,9 @@ def scheduled_weight(base: float, schedule: str, epoch: int) -> float:
     return 0.0
 
 
-def build_protocol(commit: str, clean: bool) -> dict[str, Any]:
+def build_protocol(
+    commit: str, clean: bool, wandb_preflight: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "study": "HACSSM-v5 fixed-DINO hierarchical memory study",
@@ -461,7 +564,9 @@ def build_protocol(commit: str, clean: bool) -> dict[str, Any]:
         "log_root": rel(LOG_ROOT),
         "feature_root": rel(FEATURE_ROOT),
         "feature_artifacts": feature_snapshot(),
+        "eval_rollout_artifacts": eval_rollout_snapshot(),
         "source_artifacts": source_snapshot(),
+        "wandb": wandb_preflight,
         "environments": [
             {"occluded": occ, "clean_target": clean_env}
             for occ, clean_env in ENVIRONMENTS
@@ -564,11 +669,17 @@ def expected_args(job: Job) -> dict[str, Any]:
         "tau_fast": 3.0,
         "tau_slow": 25.0,
         "fixed_alpha": True,
-        "wandb": False,
-        "wandb_project": "lewm-memory-popgym",
+        "wandb": True,
+        "wandb_project": WANDB_PROJECT,
+        "wandb_entity": WANDB_ENTITY,
+        "wandb_mode": WANDB_MODE,
+        "wandb_study": WANDB_STUDY,
+        "eval_rollout_cache": rel(eval_rollout_cache(job.clean_env)),
+        "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
         "extra_tag": "",
         "device": "cuda",
         "feature_manifest_sha256": sha256_file(manifest_path),
+        "eval_rollout_cache_sha256": sha256_file(eval_rollout_cache(job.clean_env)),
     }
 
 
@@ -602,6 +713,14 @@ def expected_metric_metadata(job: Job) -> dict[str, Any]:
         "encoder_checkpoint": None,
         "encoder_stats": None,
         "encoder_stats_sha256": None,
+        "wandb_enabled": True,
+        "wandb_entity": WANDB_ENTITY,
+        "wandb_project": WANDB_PROJECT,
+        "wandb_mode": WANDB_MODE,
+        "wandb_study": WANDB_STUDY,
+        "eval_rollout_cache": rel(eval_rollout_cache(job.clean_env)),
+        "eval_rollout_cache_sha256": sha256_file(eval_rollout_cache(job.clean_env)),
+        "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
     }
 
 
@@ -659,13 +778,301 @@ def validate_model_state(state: Any, job: Job) -> None:
             raise RunnerError(f"{job.run_name}: non-finite model tensor {name}")
 
 
+def validate_tracking_artifacts(job: Job, metrics: dict[str, Any]) -> None:
+    import numpy as np
+
+    rollout_hash = sha256_file(job.eval_rollout_path)
+    try:
+        with np.load(job.eval_rollout_path, allow_pickle=False) as rollout:
+            expected_fields = {
+                "schema_version", "episode_index", "history_len", "target_times",
+                "target_visible", "actions_to_target", "prediction",
+                "prediction_no_memory", "prediction_last_visible", "target", "mse",
+                "mse_no_memory", "mse_last_visible",
+            }
+            if set(rollout.files) != expected_fields:
+                raise RunnerError(
+                    f"{job.eval_rollout_path}: fields={sorted(rollout.files)}, "
+                    f"expected={sorted(expected_fields)}"
+                )
+            for name in rollout.files:
+                value = np.asarray(rollout[name])
+                if value.dtype.hasobject or value.size == 0:
+                    raise RunnerError(
+                        f"{job.eval_rollout_path}: invalid array {name} "
+                        f"dtype={value.dtype} size={value.size}"
+                    )
+                if np.issubdtype(value.dtype, np.number) and not np.isfinite(value).all():
+                    raise RunnerError(f"{job.eval_rollout_path}: non-finite array {name}")
+            if (
+                int(rollout["schema_version"]) != 1
+                or int(rollout["episode_index"]) != EVAL_ROLLOUT_EPISODE
+                or int(rollout["history_len"]) != COMMON["history_len"]
+            ):
+                raise RunnerError(f"{job.eval_rollout_path}: scalar protocol mismatch")
+            target_times = np.arange(
+                COMMON["history_len"], COMMON["length"], dtype=np.int64
+            )
+            count = len(target_times)
+            if not np.array_equal(rollout["target_times"], target_times):
+                raise RunnerError(f"{job.eval_rollout_path}: target times mismatch")
+            expected_visible = np.ones(COMMON["length"], dtype=np.bool_)
+            occ_start = COMMON["length"] // 3
+            occ_end = min(
+                COMMON["length"], occ_start + max(4, COMMON["length"] // 5)
+            )
+            expected_visible[occ_start:occ_end] = False
+            if not np.array_equal(
+                rollout["target_visible"],
+                expected_visible[COMMON["history_len"]:],
+            ):
+                raise RunnerError(f"{job.eval_rollout_path}: visibility trace mismatch")
+            with np.load(eval_rollout_cache(job.clean_env), allow_pickle=False) as source:
+                source_actions = np.asarray(
+                    source["actions"][EVAL_ROLLOUT_EPISODE], dtype=np.int64
+                )[COMMON["history_len"] - 1:COMMON["length"] - 1]
+            if not np.array_equal(rollout["actions_to_target"], source_actions):
+                raise RunnerError(f"{job.eval_rollout_path}: action trace mismatch")
+            for name in (
+                "prediction", "prediction_no_memory", "prediction_last_visible", "target"
+            ):
+                if rollout[name].shape != (count, COMMON["feature_dim"]):
+                    raise RunnerError(
+                        f"{job.eval_rollout_path}: {name} shape={rollout[name].shape}"
+                    )
+            target = np.asarray(rollout["target"], dtype=np.float32)
+            for metric, prediction in (
+                ("mse", "prediction"),
+                ("mse_no_memory", "prediction_no_memory"),
+                ("mse_last_visible", "prediction_last_visible"),
+            ):
+                values = np.asarray(rollout[metric])
+                if values.shape != (count,) or np.any(values < 0):
+                    raise RunnerError(
+                        f"{job.eval_rollout_path}: invalid {metric} shape/values"
+                    )
+                recomputed = np.square(
+                    np.asarray(rollout[prediction], dtype=np.float32) - target
+                ).mean(axis=-1)
+                if not np.allclose(values, recomputed, rtol=1e-5, atol=1e-7):
+                    raise RunnerError(f"{job.eval_rollout_path}: {metric} is inconsistent")
+    except RunnerError:
+        raise
+    except Exception as exc:
+        raise RunnerError(f"cannot validate {job.eval_rollout_path}: {exc}") from exc
+
+    receipt = read_json(job.wandb_run_path)
+    expected_fields = {
+        "schema_version", "run_id", "run_name", "url", "entity", "project",
+        "mode", "study", "state", "eval_rollout_artifact_name",
+        "eval_rollout_sha256", "eval_rollout_episode",
+    }
+    if not isinstance(receipt, dict) or set(receipt) != expected_fields:
+        fields = sorted(receipt) if isinstance(receipt, dict) else type(receipt).__name__
+        raise RunnerError(f"{job.wandb_run_path}: unexpected receipt fields {fields}")
+    run_id = receipt.get("run_id")
+    if not isinstance(run_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
+        raise RunnerError(f"{job.wandb_run_path}: invalid run_id={run_id!r}")
+    expected_url = f"https://wandb.ai/{WANDB_ENTITY}/{WANDB_PROJECT}/runs/{run_id}"
+    fixed_receipt = {
+        "schema_version": 1,
+        "run_name": f"{WANDB_STUDY}-{job.run_name}",
+        "url": expected_url,
+        "entity": WANDB_ENTITY,
+        "project": WANDB_PROJECT,
+        "mode": WANDB_MODE,
+        "study": WANDB_STUDY,
+        "state": "finished",
+        "eval_rollout_sha256": rollout_hash,
+        "eval_rollout_episode": EVAL_ROLLOUT_EPISODE,
+    }
+    for key, wanted in fixed_receipt.items():
+        if not stable_equal(receipt.get(key), wanted):
+            raise RunnerError(
+                f"{job.wandb_run_path}: {key}={receipt.get(key)!r}, expected {wanted!r}"
+            )
+    artifact_name = receipt.get("eval_rollout_artifact_name")
+    if not isinstance(artifact_name, str) or not artifact_name.strip():
+        raise RunnerError(f"{job.wandb_run_path}: empty eval_rollout_artifact_name")
+
+    transaction_files = [
+        path for path in job.run_dir.rglob("run-*.wandb")
+        if path.is_file() and path.stat().st_size > 0
+    ]
+    if len(transaction_files) != 1:
+        raise RunnerError(
+            f"{job.run_name}: expected one nonempty W&B transaction, "
+            f"found {transaction_files}"
+        )
+    if transaction_files[0].name != f"run-{run_id}.wandb":
+        raise RunnerError(
+            f"{job.run_name}: W&B transaction {transaction_files[0].name} "
+            f"does not match run_id {run_id}"
+        )
+
+    dynamic_metrics = {
+        "wandb_run_id": run_id,
+        "wandb_run_url": expected_url,
+        "synced_online": True,
+        "eval_rollout_sha256": rollout_hash,
+        "eval_rollout_artifact_name": artifact_name,
+    }
+    for key, wanted in dynamic_metrics.items():
+        if key not in metrics or not stable_equal(metrics[key], wanted):
+            raise RunnerError(
+                f"{job.run_name}: metric {key}={metrics.get(key)!r}, expected {wanted!r}"
+            )
+
+
+def verify_wandb_cloud(jobs: Sequence[Job]) -> dict[str, Any]:
+    """Verify finished runs plus their rollout artifact, table, and video in W&B."""
+    import wandb
+
+    expected: dict[str, dict[str, Any]] = {}
+    for job in jobs:
+        receipt = read_json(job.wandb_run_path)
+        run_id = receipt.get("run_id") if isinstance(receipt, dict) else None
+        if not isinstance(run_id, str) or not run_id:
+            raise RunnerError(f"{job.wandb_run_path}: missing run_id for cloud verification")
+        if run_id in expected:
+            raise RunnerError(f"duplicate W&B run id {run_id}")
+        expected[run_id] = {
+            "url": str(receipt["url"]),
+            "artifact_name": str(receipt["eval_rollout_artifact_name"]),
+            "sha256": str(receipt["eval_rollout_sha256"]),
+            "env": job.occ_env,
+            "design": job.design,
+            "seed": job.seed,
+        }
+
+    def media_problem(run: Any) -> str | None:
+        wanted = expected[run.id]
+        try:
+            trace = dict(run.summary.get("eval/rollout_trace"))
+            video = dict(run.summary.get("eval/paired_rollout"))
+        except (TypeError, ValueError):
+            return "missing rollout table/video summary"
+        if not (
+            isinstance(trace, dict)
+            and trace.get("_type") == "table-file"
+            and trace.get("nrows") == COMMON["length"] - COMMON["history_len"]
+            and trace.get("ncols") == 7
+            and isinstance(trace.get("size"), int)
+            and trace["size"] > 0
+            and isinstance(trace.get("sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", trace["sha256"])
+        ):
+            return "missing or malformed eval/rollout_trace summary"
+        if not (
+            isinstance(video, dict)
+            and video.get("_type") == "video-file"
+            and video.get("height") == 64
+            and video.get("width") == 132
+            and isinstance(video.get("size"), int)
+            and video["size"] > 0
+            and isinstance(video.get("sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", video["sha256"])
+        ):
+            return "missing or malformed eval/paired_rollout summary"
+        matches = [
+            artifact for artifact in run.logged_artifacts()
+            if artifact.type == "evaluation-rollout"
+            and artifact.name.split(":", 1)[0] == wanted["artifact_name"]
+        ]
+        if len(matches) != 1:
+            return f"expected one evaluation-rollout artifact, found {len(matches)}"
+        artifact = matches[0]
+        wanted_metadata = {
+            "schema_version": 1,
+            "study": WANDB_STUDY,
+            "env": wanted["env"],
+            "design": wanted["design"],
+            "seed": wanted["seed"],
+            "episode": EVAL_ROLLOUT_EPISODE,
+            "sha256": wanted["sha256"],
+            "semantics": "closed-loop-on-observations clean-next-latent evaluation trace",
+        }
+        if not stable_equal(artifact.metadata, wanted_metadata):
+            return f"evaluation-rollout metadata mismatch: {artifact.metadata}"
+        entries = artifact.manifest.entries
+        if set(entries) != {EVAL_ROLLOUT_NAME}:
+            return f"evaluation-rollout entries mismatch: {sorted(entries)}"
+        entry = entries[EVAL_ROLLOUT_NAME]
+        if not isinstance(entry.size, int) or entry.size <= 0:
+            return "evaluation-rollout artifact entry is empty"
+        return None
+
+    def fetch_media_problem(run_id: str) -> str | None:
+        # Public Run/Summary objects are lazily hydrated; each worker needs its own API client.
+        try:
+            api = wandb.Api(timeout=30)
+            run = api.run(f"{WANDB_ENTITY}/{WANDB_PROJECT}/{run_id}")
+            return media_problem(run)
+        except Exception as exc:
+            return f"{type(exc).__name__}: {exc}"
+
+    last_problem = "no query attempted"
+    for attempt in range(1, 7):
+        try:
+            api = wandb.Api(timeout=30)
+            cloud_runs = api.runs(
+                f"{WANDB_ENTITY}/{WANDB_PROJECT}",
+                filters={"config.wandb_study": WANDB_STUDY},
+            )
+            observed = {run.id: run for run in cloud_runs if run.id in expected}
+            missing = sorted(set(expected) - set(observed))
+            bad = sorted(
+                run_id for run_id, run in observed.items()
+                if run.state != "finished" or run.url != expected[run_id]["url"]
+            )
+            media_bad: dict[str, str] = {}
+            if not missing and not bad:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                    future_to_id = {
+                        executor.submit(fetch_media_problem, run_id): run_id
+                        for run_id in observed
+                    }
+                    for future in concurrent.futures.as_completed(future_to_id):
+                        run_id = future_to_id[future]
+                        problem = future.result()
+                        if problem is not None:
+                            media_bad[run_id] = problem
+            if not missing and not bad and not media_bad:
+                record = {
+                    "entity": WANDB_ENTITY,
+                    "project": WANDB_PROJECT,
+                    "study": WANDB_STUDY,
+                    "verified_finished_runs": len(expected),
+                    "verified_rollout_artifacts": len(expected),
+                    "verified_rollout_tables": len(expected),
+                    "verified_rollout_videos": len(expected),
+                    "verified_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                }
+                status(
+                    f"W&B cloud verified {len(expected)}/{len(expected)} finished runs "
+                    "with rollout artifact/table/video"
+                )
+                return record
+            last_problem = (
+                f"missing={missing[:8]}, nonfinished_or_mismatched={bad[:8]}, "
+                f"media={list(media_bad.items())[:4]}"
+            )
+        except Exception as exc:
+            last_problem = f"{type(exc).__name__}: {exc}"
+        if attempt < 6:
+            time.sleep(5)
+    raise RunnerError(f"W&B cloud verification failed after 6 attempts: {last_problem}")
+
+
 def validate_job(job: Job, *, allow_missing: bool) -> bool:
-    model_exists = job.model_path.is_file() and job.model_path.stat().st_size > 0
-    metrics_exists = job.metrics_path.is_file() and job.metrics_path.stat().st_size > 0
-    if model_exists != metrics_exists:
+    required_paths = (
+        job.model_path, job.metrics_path, job.eval_rollout_path, job.wandb_run_path,
+    )
+    complete = [path.is_file() and path.stat().st_size > 0 for path in required_paths]
+    if any(complete) and not all(complete):
         raise RunnerError(f"partial run artifacts: {job.run_dir}")
-    if not model_exists:
-        if job.model_path.exists() or job.metrics_path.exists() or job.run_dir.exists():
+    if not all(complete):
+        if any(path.exists() for path in required_paths) or job.run_dir.exists():
             raise RunnerError(f"empty or incomplete run directory: {job.run_dir}")
         if allow_missing:
             return False
@@ -675,6 +1082,7 @@ def validate_job(job: Job, *, allow_missing: bool) -> bool:
     if not isinstance(metrics, dict):
         raise RunnerError(f"{job.metrics_path}: expected a JSON object")
     assert_finite_tree(metrics, f"{job.run_name}.metrics")
+    validate_tracking_artifacts(job, metrics)
 
     import torch
 
@@ -779,6 +1187,8 @@ def validate_artifact_space(jobs: Sequence[Job]) -> set[str]:
 
     expected_models = {job.model_path.resolve() for job in ALL_JOBS}
     expected_metrics = {job.metrics_path.resolve() for job in ALL_JOBS}
+    expected_rollouts = {job.eval_rollout_path.resolve() for job in ALL_JOBS}
+    expected_wandb_runs = {job.wandb_run_path.resolve() for job in ALL_JOBS}
     actual_models = (
         {path.resolve() for path in OUTPUT_ROOT.rglob("model.pt")}
         if OUTPUT_ROOT.exists() else set()
@@ -787,11 +1197,26 @@ def validate_artifact_space(jobs: Sequence[Job]) -> set[str]:
         {path.resolve() for path in OUTPUT_ROOT.rglob("metrics.json")}
         if OUTPUT_ROOT.exists() else set()
     )
-    if actual_models - expected_models or actual_metrics - expected_metrics:
+    actual_rollouts = (
+        {path.resolve() for path in OUTPUT_ROOT.rglob(EVAL_ROLLOUT_NAME)}
+        if OUTPUT_ROOT.exists() else set()
+    )
+    actual_wandb_runs = (
+        {path.resolve() for path in OUTPUT_ROOT.rglob(WANDB_RUN_NAME)}
+        if OUTPUT_ROOT.exists() else set()
+    )
+    if (
+        actual_models - expected_models
+        or actual_metrics - expected_metrics
+        or actual_rollouts - expected_rollouts
+        or actual_wandb_runs - expected_wandb_runs
+    ):
         raise RunnerError(
             "unexpected checkpoint artifacts: "
             f"models={sorted(map(str, actual_models - expected_models))[:4]}, "
-            f"metrics={sorted(map(str, actual_metrics - expected_metrics))[:4]}"
+            f"metrics={sorted(map(str, actual_metrics - expected_metrics))[:4]}, "
+            f"rollouts={sorted(map(str, actual_rollouts - expected_rollouts))[:4]}, "
+            f"wandb_runs={sorted(map(str, actual_wandb_runs - expected_wandb_runs))[:4]}"
         )
 
     expected_logs = {job.log_path.resolve() for job in ALL_JOBS}
@@ -871,8 +1296,14 @@ def train_command(python: str, job: Job) -> list[str]:
         "--tau-fast", "3.0",
         "--tau-slow", "25.0",
         "--first-post-loss-weight", "0.5",
+        "--wandb",
+        "--wandb-project", WANDB_PROJECT,
+        "--wandb-entity", WANDB_ENTITY,
+        "--wandb-mode", WANDB_MODE,
+        "--wandb-study", WANDB_STUDY,
+        "--eval-rollout-cache", rel(eval_rollout_cache(job.clean_env)),
+        "--eval-rollout-episode", str(EVAL_ROLLOUT_EPISODE),
         "--device", "cuda",
-        "--no-wandb",
     ]
 
 
@@ -1021,6 +1452,8 @@ def check_command_interfaces(python: str) -> None:
             TRAIN_SCRIPT,
             (
                 "--predictor-norm", "--hier-loss-weight", "--hier-loss-schedule",
+                "--wandb-entity", "--wandb-mode", "--wandb-study",
+                "--eval-rollout-cache", "--eval-rollout-episode",
                 "v5_frontload", *DESIGNS,
             ),
         ),
@@ -1051,6 +1484,67 @@ def check_python(python: str) -> None:
         raise RunnerError(f"Python/torch preflight failed: {result.stderr.strip()}")
 
 
+def check_wandb_online(python: str) -> dict[str, Any]:
+    """Require authenticated access to the exact cloud project before any launch."""
+    probe = f"""
+import json
+import wandb
+api = wandb.Api(timeout=20)
+if not api.viewer:
+    raise RuntimeError('Weights & Biases authentication did not resolve a viewer')
+project = api.project({WANDB_PROJECT!r}, entity={WANDB_ENTITY!r})
+record = {{
+    'authenticated': True,
+    'base_url': api.settings.get('base_url'),
+    'entity': project.entity,
+    'mode': {WANDB_MODE!r},
+    'project': project.name,
+    'sdk_version': wandb.__version__,
+    'study': {WANDB_STUDY!r},
+}}
+print(json.dumps(record, sort_keys=True))
+"""
+    try:
+        result = subprocess.run(
+            [python, "-c", probe], cwd=REPO_ROOT, capture_output=True, text=True,
+            check=False, timeout=30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RunnerError("authenticated W&B preflight timed out after 30 seconds") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()[-1200:]
+        raise RunnerError(f"authenticated W&B preflight failed: {detail}")
+    lines = [line for line in result.stdout.splitlines() if line.strip().startswith("{")]
+    if not lines:
+        raise RunnerError("authenticated W&B preflight returned no JSON record")
+    try:
+        record = json.loads(lines[-1], parse_constant=reject_non_rfc_json)
+    except ValueError as exc:
+        raise RunnerError(f"invalid W&B preflight record: {exc}") from exc
+    wanted = {
+        "authenticated": True,
+        "base_url": WANDB_BASE_URL,
+        "entity": WANDB_ENTITY,
+        "mode": WANDB_MODE,
+        "project": WANDB_PROJECT,
+        "study": WANDB_STUDY,
+    }
+    if not isinstance(record, dict):
+        raise RunnerError("W&B preflight record is not an object")
+    for key, value in wanted.items():
+        if not stable_equal(record.get(key), value):
+            raise RunnerError(
+                f"W&B preflight {key}={record.get(key)!r}, expected {value!r}"
+            )
+    if not isinstance(record.get("sdk_version"), str) or not record["sdk_version"]:
+        raise RunnerError("W&B preflight did not report an SDK version")
+    status(
+        f"W&B online: entity={WANDB_ENTITY} project={WANDB_PROJECT} "
+        f"sdk={record['sdk_version']}"
+    )
+    return record
+
+
 def check_gpus(python: str, gpu_ids: Sequence[str]) -> None:
     for gpu in dict.fromkeys(gpu_ids):
         env = os.environ.copy()
@@ -1078,6 +1572,8 @@ def verify_provenance_unchanged(protocol: dict[str, Any]) -> None:
         raise RunnerError("producer/analyzer sources changed during the study")
     if not stable_equal(feature_snapshot(), protocol["feature_artifacts"]):
         raise RunnerError("fixed feature artifacts changed during the study")
+    if not stable_equal(eval_rollout_snapshot(), protocol["eval_rollout_artifacts"]):
+        raise RunnerError("fixed evaluation-rollout pixel caches changed during the study")
     commit, porcelain = git_provenance()
     if commit != protocol["producer_git_commit"] or porcelain:
         raise RunnerError("Git commit or clean-worktree state changed during the study")
@@ -1118,7 +1614,7 @@ def log_file_snapshot() -> dict[str, dict[str, Any]]:
 
 def write_final_manifest(
     protocol: dict[str, Any], decision: dict[str, Any], pilot_screen_passed: bool,
-    gpu_ids: Sequence[str], workers: int,
+    gpu_ids: Sequence[str], workers: int, wandb_cloud_verification: dict[str, Any],
 ) -> None:
     reject_temporary_artifacts()
     for job in ALL_JOBS:
@@ -1137,6 +1633,12 @@ def write_final_manifest(
         "execution": {"gpu_ids": list(gpu_ids), "workers": workers},
         "protocol": {rel(PROTOCOL_PATH): file_record(PROTOCOL_PATH)},
         "feature_artifacts": protocol["feature_artifacts"],
+        "eval_rollout_artifacts": protocol["eval_rollout_artifacts"],
+        "wandb": protocol["wandb"],
+        "wandb_cloud_verification": wandb_cloud_verification,
+        "wandb_runs": {
+            job.run_name: read_json(job.wandb_run_path) for job in ALL_JOBS
+        },
         "source_artifacts": protocol["source_artifacts"],
         "output_artifacts": output_file_snapshot(),
         "log_artifacts": log_file_snapshot(),
@@ -1212,7 +1714,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     check_python(args.python)
     check_command_interfaces(args.python)
-    protocol = build_protocol(commit, clean)
+    wandb_preflight = check_wandb_online(args.python)
+    protocol = build_protocol(commit, clean, wandb_preflight)
 
     lock_stream = None
     if not args.dry_run:
@@ -1258,6 +1761,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         for job in ALL_JOBS:
             validate_job(job, allow_missing=False)
         verify_provenance_unchanged(protocol)
+        wandb_cloud_verification = verify_wandb_cloud(ALL_JOBS)
         status("running final five-seed analyzer")
         run_analyzer(args.python, "final")
         final_decision = read_json(FINAL_DECISION_PATH)
@@ -1274,7 +1778,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         verify_provenance_unchanged(protocol)
         validate_artifact_space(ALL_JOBS)
         write_final_manifest(
-            protocol, decision, pilot_screen_passed, args.gpus, args.workers
+            protocol, decision, pilot_screen_passed, args.gpus, args.workers,
+            wandb_cloud_verification,
         )
         status("HACSSM-v5 study complete: 300/300 validated")
         return 0

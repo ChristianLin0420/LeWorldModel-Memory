@@ -191,6 +191,124 @@ def phase_mse(model, loader, device, use_amp, length, history_len, constant_late
     return out
 
 
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+@torch.no_grad()
+def evaluation_rollout_trace(model, dataset, episode_index, device, use_amp, history_len):
+    """Deterministic per-step trace for one fixed paired validation rollout.
+
+    This is the exact closed-loop-on-observations evaluator used by the primary metric:
+    memory consumes the occluded input trajectory, and the predictor estimates the clean
+    next latent at every target time.  It is not an open-loop control-return rollout.
+    """
+    if not 0 <= episode_index < len(dataset):
+        raise ValueError(f'evaluation rollout episode {episode_index} is out of range')
+    sample = dataset[episode_index]
+    if len(sample) != 4:
+        raise ValueError('evaluation rollout requires paired targets and a target-valid mask')
+    obs, actions, target_obs, target_mask = (
+        tensor.unsqueeze(0).to(device) for tensor in sample
+    )
+    model.eval()
+    amp_ctx = torch.autocast('cuda', dtype=torch.bfloat16) if use_amp else torch.no_grad()
+    with amp_ctx:
+        z = model.encode(obs)
+        z_target = model.encode(target_obs)
+        z_full = model._inject(z, actions=actions, memory_update_mask=target_mask)
+        B, length, dimension = z.shape
+        if B != 1 or length <= history_len:
+            raise ValueError('invalid evaluation rollout shape')
+        windows = length - history_len
+        full_win = z_full.unfold(1, history_len, 1)[:, :windows]
+        full_win = full_win.permute(0, 1, 3, 2).reshape(windows, history_len, dimension)
+        raw_win = z.unfold(1, history_len, 1)[:, :windows]
+        raw_win = raw_win.permute(0, 1, 3, 2).reshape(windows, history_len, dimension)
+        action_win = actions.unfold(1, history_len, 1)[:, :windows]
+        action_win = action_win.permute(0, 1, 3, 2).reshape(windows, history_len, -1)
+        target = z_target[:, history_len:length].squeeze(0)
+        prediction = model.predictor(full_win, action_win)[:, -1]
+        prediction_no_memory = model.predictor(raw_win, action_win)[:, -1]
+
+        visible = target_mask.squeeze(0).bool()
+        last_visible_indices = []
+        for target_time in range(history_len, length):
+            candidates = torch.nonzero(visible[:target_time], as_tuple=False).flatten()
+            if candidates.numel() == 0:
+                raise ValueError(f'no visible source before target time {target_time}')
+            last_visible_indices.append(int(candidates[-1]))
+        prediction_last_visible = z[:, last_visible_indices].squeeze(0)
+
+    target_times = np.arange(history_len, length, dtype=np.int64)
+    action_indices = actions.argmax(-1).squeeze(0)[history_len - 1:length - 1]
+    arrays = {
+        'schema_version': np.asarray(1, dtype=np.int64),
+        'episode_index': np.asarray(episode_index, dtype=np.int64),
+        'history_len': np.asarray(history_len, dtype=np.int64),
+        'target_times': target_times,
+        'target_visible': visible[history_len:length].cpu().numpy().astype(np.bool_),
+        'actions_to_target': action_indices.cpu().numpy().astype(np.int64),
+        'prediction': prediction.float().cpu().numpy(),
+        'prediction_no_memory': prediction_no_memory.float().cpu().numpy(),
+        'prediction_last_visible': prediction_last_visible.float().cpu().numpy(),
+        'target': target.float().cpu().numpy(),
+    }
+    for name, pred in (
+        ('mse', prediction),
+        ('mse_no_memory', prediction_no_memory),
+        ('mse_last_visible', prediction_last_visible),
+    ):
+        arrays[name] = (pred - target).float().square().mean(-1).cpu().numpy()
+    for name, value in arrays.items():
+        if isinstance(value, np.ndarray) and value.dtype.kind == 'f' and not np.isfinite(value).all():
+            raise ValueError(f'non-finite evaluation rollout array {name}')
+    return arrays
+
+
+def evaluation_rollout_video(cache_path, dataset, episode_index):
+    """Load the matching clean pixels and form observed|clean rollout video frames."""
+    with np.load(cache_path, allow_pickle=False) as data:
+        required = {'obs', 'actions', 'n_actions', 'prototype_seed', 'schema_version', 'cache_role'}
+        missing = required - set(data.files)
+        if missing:
+            raise ValueError(f'{cache_path}: missing rollout-cache fields {sorted(missing)}')
+        if int(data['schema_version']) != 3 or int(data['prototype_seed']) != 0:
+            raise ValueError(f'{cache_path}: incompatible rollout-cache protocol')
+        if str(data['cache_role']) != 'clean_or_full':
+            raise ValueError(f'{cache_path}: expected a clean rollout cache')
+        if int(data['n_actions']) != dataset.n_actions:
+            raise ValueError(f'{cache_path}: action-count mismatch')
+        obs = np.asarray(data['obs'][episode_index], dtype=np.uint8)
+        action_indices = np.asarray(data['actions'][episode_index], dtype=np.int64)
+    if obs.shape[0] != dataset.features_target.shape[1] or obs.ndim != 4 or obs.shape[-1] != 3:
+        raise ValueError(f'{cache_path}: invalid rollout observation shape {obs.shape}')
+    if not np.array_equal(action_indices, dataset.act[episode_index]):
+        raise ValueError(f'{cache_path}: rollout actions do not match fixed feature validation data')
+    target_mask = dataset.target_valid_mask
+    observed = obs.copy()
+    observed[~target_mask] = 0
+    separator = np.full((obs.shape[0], obs.shape[1], 4, 3), 255, dtype=np.uint8)
+    paired = np.concatenate((observed, separator, obs), axis=2)
+    return paired.transpose(0, 3, 1, 2)
+
+
+def rollout_phase(target_time, length):
+    occ_start = length // 3
+    occ_end = min(length, occ_start + max(4, length // 5))
+    if target_time < occ_start:
+        return 'pre'
+    if target_time < occ_end:
+        return 'blackout'
+    if target_time == occ_end:
+        return 'first_post'
+    return 'post'
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--env-id', required=True)
@@ -231,6 +349,10 @@ def main():
     p.add_argument('--train-feature-cache', default=None)
     p.add_argument('--val-feature-cache', default=None)
     p.add_argument('--feature-manifest', default=None)
+    p.add_argument('--eval-rollout-cache', default=None,
+                   help='clean fixed validation pixel cache used only for W&B rollout media')
+    p.add_argument('--eval-rollout-episode', type=int, default=0,
+                   help='deterministic validation episode used for the rollout artifact')
     p.add_argument('--length', type=int, default=32)
     p.add_argument('--img-size', type=int, default=64)
     p.add_argument('--epochs', type=int, default=30)
@@ -263,9 +385,16 @@ def main():
     p.add_argument('--wandb', dest='wandb', action='store_true', default=True)
     p.add_argument('--no-wandb', dest='wandb', action='store_false')
     p.add_argument('--wandb-project', default='lewm-memory-popgym')
+    p.add_argument('--wandb-entity', default=None)
+    p.add_argument('--wandb-mode', default=None, choices=['online', 'offline'],
+                   help='explicit W&B mode; unset preserves the SDK/WANDB_MODE environment')
+    p.add_argument('--wandb-study', default='')
     p.add_argument('--extra-tag', default='', help='comma-separated extra wandb tags')
     p.add_argument('--device', default='cuda')
     args = p.parse_args()
+    wandb_rollout_required = bool(
+        args.wandb and args.wandb_study.startswith('hacssm-v')
+    )
 
     if not 0.0 <= args.first_post_loss_weight <= 1.0:
         raise ValueError('--first-post-loss-weight must be in [0,1]')
@@ -292,6 +421,16 @@ def main():
         raise ValueError('feature caches require --encoder-type precomputed')
     if args.encoder_type == 'precomputed' and not feature_mode:
         raise ValueError('--encoder-type precomputed requires feature caches')
+    if args.eval_rollout_episode < 0:
+        raise ValueError('--eval-rollout-episode must be non-negative')
+    if wandb_rollout_required and not args.eval_rollout_cache:
+        raise ValueError(
+            'HACSSM W&B studies require --eval-rollout-cache for rollout logging'
+        )
+    if wandb_rollout_required and args.wandb_mode != 'online':
+        raise ValueError('HACSSM W&B studies require explicit --wandb-mode online')
+    if args.eval_rollout_cache and not feature_mode:
+        raise ValueError('--eval-rollout-cache currently requires fixed precomputed features')
 
     torch.manual_seed(args.seed); np.random.seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -327,6 +466,13 @@ def main():
             raise ValueError('feature-cache dimension does not match --embed-dim')
         if train_ds.n_actions != val_ds.n_actions:
             raise ValueError('feature-cache action-count mismatch')
+        if args.eval_rollout_episode >= len(val_ds):
+            raise ValueError('--eval-rollout-episode exceeds validation cache length')
+        if args.eval_rollout_cache:
+            rollout_cache = Path(args.eval_rollout_cache)
+            if not rollout_cache.is_file():
+                raise FileNotFoundError(f'evaluation rollout cache not found: {rollout_cache}')
+            args.eval_rollout_cache_sha256 = sha256_file(rollout_cache)
     else:
         train_ds = PopgymDataset(
             args.env_id, args.num_episodes, args.length, args.img_size, seed=0,
@@ -343,12 +489,39 @@ def main():
     wb = None
     if args.wandb:
         import wandb
-        tags = [f"env:{args.env_id}", f"design:{args.memory_mode}", "popgym-arcade", "lewm-memory"]
+        tags = [f"env:{args.env_id}", f"design:{args.memory_mode}",
+                "popgym-arcade", "lewm-memory"]
+        if args.wandb_study:
+            tags.append(f"study:{args.wandb_study}")
+        if args.eval_rollout_cache:
+            tags.append("evaluation-rollout")
         if args.extra_tag:
             tags += [t.strip() for t in args.extra_tag.split(',') if t.strip()]
-        wb = wandb.init(project=args.wandb_project, name=run_name, group=args.env_id,
-                        job_type=args.memory_mode, tags=tags,
-                        config=vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'})
+        wandb_dir = out_dir / 'wandb'
+        wandb_dir.mkdir(parents=True, exist_ok=True)
+        wandb_init = dict(
+            project=args.wandb_project, entity=args.wandb_entity,
+            name=f'{args.wandb_study}-{run_name}' if args.wandb_study else run_name,
+            group=(f'{args.wandb_study}:{args.env_id}'
+                   if args.wandb_study else args.env_id),
+            job_type=args.memory_mode,
+            tags=tags, dir=str(wandb_dir),
+            config=vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'},
+            settings=wandb.Settings(init_timeout=120),
+        )
+        if args.wandb_mode is not None:
+            wandb_init['mode'] = args.wandb_mode
+        wb = wandb.init(**wandb_init)
+        if args.wandb_mode == 'online' and bool(wb.offline):
+            raise RuntimeError('W&B online mode unexpectedly initialized offline')
+        if args.wandb_entity and wb.entity != args.wandb_entity:
+            raise RuntimeError(f'W&B entity mismatch: {wb.entity!r} != {args.wandb_entity!r}')
+        if wb.project != args.wandb_project:
+            raise RuntimeError(f'W&B project mismatch: {wb.project!r} != {args.wandb_project!r}')
+        wb.define_metric('epoch')
+        wb.define_metric('train/*', step_metric='epoch')
+        wb.define_metric('val/*', step_metric='epoch')
+        wb.define_metric('mem/*', step_metric='epoch')
 
     pin = device.type == 'cuda'
     train_generator = torch.Generator().manual_seed(10_000 + args.seed)
@@ -478,7 +651,8 @@ def main():
               f"| val pred {va['pred_loss']:.4f}{aux_text} | "
               f"tau_f={tau['tau_fast']:.1f} tau_s={tau['tau_slow']:.1f}", flush=True)
         if wb is not None:
-            wb.log({**{f'train/{key}': value for key, value in tr.items()},
+            wb.log({'epoch': epoch,
+                    **{f'train/{key}': value for key, value in tr.items()},
                     **{f'val/{key}': value for key, value in va.items()},
                     'mem/tau_fast': tau['tau_fast'], 'mem/tau_slow': tau['tau_slow']}, step=epoch)
         history.append({'epoch': epoch, 'train': tr, 'val': va})
@@ -529,6 +703,23 @@ def main():
         best.update(phase_mse(
             model, val_loader, device, use_amp, args.length, args.history_len,
             constant_latent))
+
+    rollout_path = None
+    rollout_arrays = None
+    if args.eval_rollout_cache:
+        rollout_arrays = evaluation_rollout_trace(
+            model, val_ds, args.eval_rollout_episode, device, use_amp, args.history_len)
+        rollout_path = out_dir / 'eval_rollout.npz'
+        np.savez_compressed(rollout_path, **rollout_arrays)
+        rollout_sha256 = sha256_file(rollout_path)
+        best.update({
+            'eval_rollout_cache': args.eval_rollout_cache,
+            'eval_rollout_cache_sha256': args.eval_rollout_cache_sha256,
+            'eval_rollout_episode': int(args.eval_rollout_episode),
+            'eval_rollout_sha256': rollout_sha256,
+        })
+
+    wandb_record = None
     if wb is not None:
         import wandb, matplotlib.pyplot as plt
         log = {f'eval/{k}': v for k, v in best.items() if isinstance(v, (int, float))}
@@ -536,14 +727,99 @@ def main():
             fig = plot_memory_kernels(model); fp = out_dir / 'memory_kernels.png'
             fig.savefig(fp, dpi=100, bbox_inches='tight')
             log['eval/memory_kernels'] = wandb.Image(str(fp)); plt.close(fig)
+        artifact_name = None
+        if rollout_path is not None and rollout_arrays is not None:
+            target_times = rollout_arrays['target_times'].tolist()
+            table = wandb.Table(
+                columns=[
+                    'target_time', 'phase', 'target_visible', 'action_to_target',
+                    'mse_full', 'mse_no_memory', 'mse_last_visible',
+                ],
+                data=[
+                    [
+                        int(target_time), rollout_phase(int(target_time), args.length),
+                        bool(rollout_arrays['target_visible'][index]),
+                        int(rollout_arrays['actions_to_target'][index]),
+                        float(rollout_arrays['mse'][index]),
+                        float(rollout_arrays['mse_no_memory'][index]),
+                        float(rollout_arrays['mse_last_visible'][index]),
+                    ]
+                    for index, target_time in enumerate(target_times)
+                ],
+            )
+            video_frames = evaluation_rollout_video(
+                args.eval_rollout_cache, val_ds, args.eval_rollout_episode)
+            log['eval/rollout_trace'] = table
+            log['eval/paired_rollout'] = wandb.Video(
+                video_frames, fps=4, format='mp4',
+                caption='left: occluded model input; right: synchronized clean evaluation target',
+            )
+            artifact_name = f'eval-rollout-{wb.id}'
+            rollout_artifact = wandb.Artifact(
+                artifact_name, type='evaluation-rollout',
+                metadata={
+                    'schema_version': 1,
+                    'study': args.wandb_study,
+                    'env': args.env_id,
+                    'design': args.memory_mode,
+                    'seed': args.seed,
+                    'episode': args.eval_rollout_episode,
+                    'sha256': best['eval_rollout_sha256'],
+                    'semantics': 'closed-loop-on-observations clean-next-latent evaluation trace',
+                },
+            )
+            rollout_artifact.add_file(str(rollout_path), name='eval_rollout.npz')
+            wb.log_artifact(rollout_artifact)
+        elif wandb_rollout_required:
+            raise RuntimeError('HACSSM W&B run has no evaluation rollout artifact')
+        run_url = str(wb.url)
+        effective_wandb_mode = 'offline' if bool(wb.offline) else 'online'
+        best.update({
+            'wandb_enabled': True,
+            'wandb_entity': str(wb.entity),
+            'wandb_project': str(wb.project),
+            'wandb_mode': effective_wandb_mode,
+            'wandb_study': args.wandb_study,
+            'wandb_run_id': str(wb.id),
+            'wandb_run_url': run_url,
+            'synced_online': effective_wandb_mode == 'online',
+            'eval_rollout_artifact_name': artifact_name,
+        })
         wb.log(log)
+        wb.summary.update(best)
+        wandb_record = {
+            'schema_version': 1,
+            'run_id': str(wb.id),
+            'run_name': str(wb.name),
+            'url': run_url,
+            'entity': str(wb.entity),
+            'project': str(wb.project),
+            'mode': effective_wandb_mode,
+            'study': args.wandb_study,
+            'state': 'finished',
+            'eval_rollout_artifact_name': artifact_name,
+            'eval_rollout_sha256': best.get('eval_rollout_sha256'),
+            'eval_rollout_episode': (
+                int(args.eval_rollout_episode) if rollout_path is not None else None
+            ),
+        }
+        wb.finish(exit_code=0)
+
+    if args.wandb and wandb_record is None:
+        raise RuntimeError('W&B run did not finish successfully')
+    if args.wandb and args.wandb_mode == 'online' and not best.get('synced_online'):
+        raise RuntimeError('required online W&B run did not finish successfully')
+    if wandb_record is not None:
+        with open(out_dir / 'wandb_run.json', 'w') as stream:
+            json.dump(wandb_record, stream, indent=2, sort_keys=True)
+            stream.write('\n')
     torch.save({'model_state_dict': model.state_dict(), 'args': vars(args),
                 'final_metrics': best, 'history': history}, out_dir / 'model.pt')
-    json.dump(best, open(out_dir / 'metrics.json', 'w'), indent=2)
+    with open(out_dir / 'metrics.json', 'w') as stream:
+        json.dump(best, stream, indent=2)
+        stream.write('\n')
     print(f"=== done {run_name}: val_pred={best['val_pred_loss']:.4f} infl_fast={best['infl_fast']:.3f} "
           f"infl_slow={best['infl_slow']:.3f} ===", flush=True)
-    if wb is not None:
-        wb.summary.update(best); wb.finish()
 
 
 if __name__ == '__main__':
