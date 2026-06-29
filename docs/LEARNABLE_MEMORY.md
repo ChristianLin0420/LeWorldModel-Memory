@@ -1,6 +1,6 @@
-# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM-v4–v9
+# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM/ORBIT-v4–v10
 
-*Design and experiment record. Branch: `learnable-memory`. Implementations through HACSSM-v9/LOIF live in `lewm/models/memory.py`. Status as of 2026-06-29: every reported V1–V9 experiment is complete. V9 ran all 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles; its immutable pilot is `NO_GO` and final label is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. Full LOIF improves 2.55% over its freshly trained SSM, ranks 7/13, loses 4.15% to retrained compact V8 and 4.99% to the V8 endpoint envelope, and wins 0/5 task envelopes. Learned poles lose .67% to fixed poles and the two-bank model loses 2.22% to its single-bank control. Compact V8 is the strongest freshly retrained V9-grid design at +6.38% versus SSM; the earlier sealed V8 cohort instead ranked V7 shared-action first and compact V8 second, so the cohorts are reported separately (§7.10–7.11).*
+*Design and experiment record. Branch: `learnable-memory`. Implementations through ORBIT-v10 live in `lewm/models/memory.py`. Status as of 2026-06-29: every reported V1–V9 experiment is complete. V9 ran all 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles; its immutable pilot is `NO_GO` and final label is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. Full LOIF improves 2.55% over its freshly trained SSM, ranks 7/13, loses 4.15% to retrained compact V8 and 4.99% to the V8 endpoint envelope, and wins 0/5 task envelopes. Learned poles lose .67% to fixed poles and the two-bank model loses 2.22% to its single-bank control. Compact V8 is the strongest freshly retrained V9-grid design at +6.38% versus SSM; the earlier sealed V8 cohort instead ranked V7 shared-action first and compact V8 second, so the cohorts are reported separately (§7.10–7.11). **V10 is implemented and prospectively frozen but has no official result: 0/225 cells were complete at this pre-launch record. Every V10 metric and decision remains `PENDING` (§2.9/§7.12).***
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -15,12 +15,12 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 
 **Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
 
-**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). V8 cleanly removes those special objectives and confirms the durable mechanisms—action transport +14.87%, joint two-state read +9.34%—but the compact/shared-action novelty does not clear its controls. Its learned global shrinkage is interior and beats each endpoint on average, yet loses .96% to selecting the better retrained endpoint per cell and is 1.21% worse than SSM in deep blackout (§7.10). V9 confirms that causal evidence conditioning and action transport are active—full LOIF beats global resistance by 30.56% and no-action by 8.29%—but rejects its intended hierarchy: fixed poles beat learned poles, one slow bank beats two banks, the sample-specific resistance interventions are sub-.5%, and full LOIF remains behind V7/V8 (§7.11). The defensible contribution is a controlled study of when recurrent/action/selective paths are used—not a generally superior hierarchy, calibrated uncertainty model, or automatic memory sizing.
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). V8 cleanly removes those special objectives and confirms the durable mechanisms—action transport +14.87%, joint two-state read +9.34%—but the compact/shared-action novelty does not clear its controls. Its learned global shrinkage is interior and beats each endpoint on average, yet loses .96% to selecting the better retrained endpoint per cell and is 1.21% worse than SSM in deep blackout (§7.10). V9 confirms that causal evidence conditioning and action transport are active—full LOIF beats global resistance by 30.56% and no-action by 8.29%—but rejects its intended hierarchy: fixed poles beat learned poles, one slow bank beats two banks, the sample-specific resistance interventions are sub-.5%, and full LOIF remains behind V7/V8 (§7.11). V10 therefore abandons learned poles and multiple banks: it freezes a single no-decay state with exact action-conditioned orthogonal transport, an ordinary innovation correction, and true end-to-end RGB LeWM training on five new tasks. This is a prospective hypothesis, not a result. The completed evidence still supports a controlled study of when recurrent/action/selective paths are used—not a generally superior hierarchy, calibrated uncertainty model, automatic memory sizing, or successful V10.
 
 ## 2. The architecture
 
 ![Architecture map of tested memory designs](figures/fig_memory_versions_arch.png)
-*Figure 1. Consolidated map of the V1→V9 evolution, architecture-changing controls, every completed V5–V9 mechanism variant, and external/historical families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. Every V9 control carries its final paired effect relative to full LOIF; §7.11 gives the exact protocol, denominators, and uncertainty.*
+*Figure 1. Consolidated map of the V1→V10 evolution, architecture-changing controls, every completed V5–V9 mechanism variant, the five frozen V10 modes, and external/historical families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. V9 cards carry completed effects; every V10 card says `PENDING` because no V10 cell had completed at protocol freeze.*
 
 ### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
 
@@ -86,6 +86,7 @@ The architectural distinction is easiest to see side by side:
 | **HACSSM-v7 / HCRD** | fixed `τ={2,8}`, level-specific action heads, learned static/dynamic gate shrinkage; EMA counterfactual recovery is training-only | one global simplex over fast/medium states + RMS-normalized read | 36,102 | complete: shrinkage, action, and joint read help, but the objective effect is .30%; shared action and no-recovery controls slightly outperform full V7 |
 | **HACSSM-v8 / SAS-PC** | fixed `τ={2,8}`, one physical shared action head, per-level learned gate shrinkage; no internal auxiliary or teacher | one global simplex over fast/medium states + RMS-normalized read | 34,566 | complete: second by paired average, strong action/joint-read effects, but locked `NO_GO`; compaction/tying/shrinkage-envelope claims fail |
 | **HACSSM-v9 / LOIF** | learned ordered stable poles + evidence-conditioned observation gains; no horizon auxiliary | inverse-scale fusion of two posterior states | 34,563 | complete: +2.55% vs SSM, rank 7/13, locked `NO_GO`; learned poles and two-bank hierarchy lose to fixed/single controls |
+| **ORBIT-v10** | one no-decay belief; two exact action-conditioned shuffled Givens layers; V8-style innovation shrinkage | RMS-normalized one-state residual read | 34,562 at `D=128,A=6` | **pre-launch, 0/225**: raw-pixel end-to-end LeWM and every performance claim remain `PENDING` |
 
 V3's simplification is deliberate: it removes content-dependent horizon routing so its experiment asks one clean question—**does input-conditioned update timing help beyond an equally parameterized static gate?** HACSM-v4 retains the global read but adds action prediction, a three-level hierarchy, and self-supervision. Sections 7.5–7.6 give the matched controls and results.
 
@@ -330,12 +331,77 @@ The nominated **effective trainable** objective is one unweighted causal next-la
 
 This is not literally “hyperparameter-free”: `D`, the two-bank ceiling, one-step prediction, optimizer, data, sequence/gap distribution, numerical `ε`, and the matched `τ`-mapped initialization remain design choices. The narrower and testable claim is that V9 has **no fixed retention after initialization and no memory-specific objective weight**. At `D=128,A=6`, with affine-free LN/RMSNorm, the memory has `2D²+2AD+2D+3=34,563` trainable parameters—three fewer than compact V8—and streaming state `2D+2=258` floats. It remains sequential linear-time in sequence length. Tracking `log P` and using `logaddexp`/softmax avoids explicit inverse-`P` operations; `q=(1-α)(1+α)` avoids cancellation near one.
 
+### 2.9 ORBIT-v10: orthogonal recurrent belief with innovation transport
+
+![ORBIT-v10 architecture and five-mode frozen map](figures/fig_hacssm_v10_arch.png)
+*Figure 5f. Frozen pre-launch ORBIT-v10 architecture and complete five-mode map. One persistent `D`-state is transported by two exact action-conditioned shuffled Givens layers, corrected by the current encoder innovation, normalized, and injected residually into the short-context LeWM predictor. The encoder and target coordinates are learned jointly from raw RGB with the ordinary LeWM prediction plus SIGReg objective. All five mode cards are architecture definitions, not results: every V10 performance field remains `PENDING` until the prospective 225-cell study completes.*
+
+V10 is constrained by the completed evidence rather than by another search on the same five tasks. V8 repeatedly finds that actions and recurrent-state access matter, but its decayed two-state model is 1.21% worse than SSM in deep blackout. V9 then finds that a single bank beats two banks by 2.22%, fixed poles beat learned poles, and its contracting prior is a plausible cause of the Ball-in-Cup failure. ORBIT therefore makes three deliberate changes together: **one state, no decay, and an exactly norm-preserving action transition**. It does not reuse the opened V8/V9 task grid for selection.
+
+Let `D` be positive and even. V10 maps the observed frame to `z_t=E_θ(o_t)` and `x_t=W_xz_t`. Its shared action tensor has shape `A→2D`; it is viewed as two layers of `D/2` complex/Givens pairs. For pair `j` in layer `ℓ`,
+
+```text
+action pair       (δu_t^{ℓ,j}, δv_t^{ℓ,j}) = reshape(W_a a_{t-1})
+identity offset   u_t^{ℓ,j} = 1 + δu_t^{ℓ,j},       v_t^{ℓ,j} = δv_t^{ℓ,j}
+unit components   (c_t^{ℓ,j},s_t^{ℓ,j}) = (u,v) / sqrt(u²+v²)
+Givens block      [r'; i'] = [ c  -s ; s  c ] [r; i]
+```
+
+An exactly zero pair is assigned `(c,s)=(1,0)` rather than a zero matrix. Layer 1 rotates adjacent coordinates. Layer 2 applies the fixed perfect shuffle `[0,D/2,1,D/2+1,…]`, rotates the resulting adjacent pairs, and applies the inverse shuffle. Each block is orthogonal; their product `T_ψ(a)` is therefore orthogonal and norm preserving. Because the two pairings overlap, products for different actions need not commute. `W_a=0` gives identity transport for every action at initialization, and a numerically zero action remains identity because the projection is bias-free:
+
+```text
+action prior      p_t = T_ψ(a_{t-1}) m_{t-1},       T_ψ(a)^T T_ψ(a) = I
+```
+
+The current observation corrects this prior using the single-state analogue of V8's learned static/dynamic shrinkage:
+
+```text
+static expert     s = sigmoid(b)
+dynamic expert    q_t = sigmoid(b + (w_z^T LN(z_t) + w_e^T LN(x_t-p_t))/sqrt(D))
+shrinkage         ρ = sigmoid(c)
+correction gate   g_t = (1-ρ)s + ρq_t
+posterior         m_t = p_t + g_t(x_t-p_t)
+read / residual   r_t = RMSNorm(m_t),       ztilde_t = z_t + W_o r_t
+```
+
+`W_x=I`, `W_a=W_o=w_z=w_e=0`, and `c=0` (`ρ=.5`). The gate bias initializes at `b=-2`, so `g=.119` before input conditioning. This is an initialization only: V10 has no V8 `β` multiplier, and `.119` is close to V8's medium-bank initial effective correction `β_{τ=8} sigmoid(2)≈.103`. Initializing at V8's raw `sigmoid(2)=.881` would overwrite most of a no-decay state every visible step and defeat the intended persistence test. The gate remains learned and unconstrained after initialization.
+
+The five modes instantiate exactly the same trainable tensors and buffers:
+
+| V10 design | exact intervention | falsified claim |
+|---|---|---|
+| `orbitv10` | normalized two-layer action rotations plus learned innovation shrinkage | nominated isometric observer |
+| `orbitv10_noaction` | force every action transform to identity; retain `W_a` physically | action transport is causally useful |
+| `orbitv10_additive` | replace rotations by `p=m+tanh(v+d⊙LN(m))` using the same `W_a` outputs | exact isometry helps beyond a V8-like identity-centered additive prior |
+| `orbitv10_scaled` | use raw complex blocks `(u,v)` without unit normalization; identity initialization is unchanged | norm preservation, rather than complex parameterization alone, matters |
+| `orbitv10_static` | replace `g_t` by `sigmoid(b)` while retaining normalized rotations | input-conditioned innovation evidence matters |
+
+The additive mode serializes identity-shaped rotation tensors only to preserve a common diagnostic schema. Its `orthogonality_applicable` mask is false, so those placeholders are forbidden from counting as an isometry receipt. The scaled mode's receipt is applicable and is expected to expose deviations; full ORBIT must satisfy the frozen numerical bound in §7.12.
+
+Every mode has
+
+```text
+2D² + 2AD + 2D + 2
+```
+
+trainable memory parameters: `34,562` at the reporting convention `D=128,A=6`, four fewer than compact V8. The actual count varies with a task's continuous action dimension, but all V10 modes and their within-task controls remain exactly matched. Streaming state is one `D`-vector (`128` floats at `D=128`), half V8's state and less than V9's `2D+2`. Work per step is `O(D²+AD)` because the dense input/output maps dominate the `O(D)` rotations.
+
+V10 is the first version in this sequence whose headline study trains the encoder, memory, and predictor jointly from raw RGB. `encoder_norm=none` removes the old batch-stat projector; the ViT's remaining normalization is per-token, so an encoded frame cannot depend on future frames or batch peers. The target is the same trainable encoder applied to the uncorrupted next RGB frame. Training uses exactly the ordinary LeWM two-term objective,
+
+```text
+L = MSE(zhat_{t+1}, E_θ(o^{clean}_{t+1})) + .1 SIGReg(E_θ(o^{clean}))
+```
+
+at every target. The clean target receives gradient, as in LeWM; there is no memory teacher, EMA target, stop-gradient memory state, simulator-state supervision, horizon loss, or memory-specific coefficient. Synthetic corruption simply creates the observed context view from an otherwise clean unlabeled trajectory. Unlike V8/V9, V10 intentionally uses the corresponding clean next-frame view during a synthetic gap; this is masked/self-supervised view prediction, not a hidden simulator label, and every baseline receives the identical observed/target views.
+
+The defensible novelty is narrow and conditional: an end-to-end JEPA observer combining exact action-indexed isometric belief transport, causal innovation correction, horizon-free persistence, and the original two-term LeWM loss. Orthogonal/unitary RNNs and learned group representations already establish norm-preserving recurrent maps; seq-JEPA already aggregates action-conditioned observations; FloWM already studies structured equivariance under partial observation. V10 must therefore beat its additive, scaled, static, no-action, V8, SSM, and GRU controls on untouched physics-state outcomes. Until it does, ORBIT is an implemented hypothesis—not evidence of architectural novelty, state tracking, control, or ICLR readiness.
+
 ## 3. Why it is scalable
 
-- **Linear time / memory.** Each bank/state is a diagonal recurrence: `O(L·K·D)` with `K` small (V5–V9 use `K=2`). V6 adds bounded action rollouts; V7 adds bounded counterfactual windows and a training-only EMA copy; V8 removes those paths. V9 adds only two scalar positive-scale recurrences. None introduces `O(L²)` attention.
-- **Parallelization is architecture-dependent.** A fixed or externally known affine recurrence can admit an associative scan. LOIF does **not** inherit that claim: its innovation-conditioned `R_t/K_t` depends on the current prior, so no associative scan has been established. The implemented code is sequential at `L=32`; there is no long-sequence benchmark.
-- **Explicit hierarchy with bounded state.** SMT-v1–v3 can be stacked by depth; V4 carries three fixed-rate belief levels, V5 carries two learned-rate levels with hard per-channel ordering, and V6–V8 use two fixed scalar-rate levels. V9 implements two learned ordered poles plus scalar error scales, with no fixed retention after initialization. None has a parallel implementation or long-sequence scaling benchmark.
-- **Constant recurrent state in streaming form.** The recurrence needs `K·D` state regardless of sequence length. The current training implementation materializes the full sequential scan and its activations; the claimed constant state is algorithmic/streaming, not a measured peak-memory result for this code path.
+- **Linear time / bounded streaming memory.** Each V1–V9 bank/state is a recurrence with cost linear in sequence length. V10 uses two `O(D)` shuffled Givens layers plus dense `W_x/W_o` maps, hence `O(L(D²+AD))` time and one `D`-vector of streaming state. None introduces `O(L²)` temporal attention.
+- **Parallelization is architecture-dependent.** A fixed or externally known affine recurrence can admit an associative scan. LOIF does **not** inherit that claim because its evidence depends on the current prior. ORBIT's observation correction likewise depends on the transported prior, so no parallel scan is claimed. The V10 study uses `L=48`; there is still no long-sequence scaling benchmark.
+- **Hierarchy is no longer assumed to be beneficial.** SMT-v1–v3 can be stacked by depth; V4 carries three belief levels; V5–V8 carry two; and V9 carries two learned poles. V9's one-bank control wins, so V10 deliberately carries one persistent state. It is not evidence for a self-supervised hierarchy.
+- **Constant recurrent state in streaming form.** V1–V9 need `K·D` state (plus V9's two scales); V10 needs exactly `D`. The current training implementations materialize full scans and their activations. These are algorithmic streaming counts, not measured peak training-memory or latency claims.
 
 ## 4. Relation to prior work and revised positioning
 
@@ -347,10 +413,14 @@ This is not literally “hyperparameter-free”: `D`, the two-bank ceiling, one-
 | **RetNet** (Sun et al. 2023) | fixed multi-scale decay per head | yes, through content-dependent Q/K/V (decay fixed) | V1–V8 expose action/gate/rate counterfactuals but use global routes; implemented V9 replaces the route with causal inverse-scale weights |
 | **[Recurrent Kalman Networks](https://arxiv.org/abs/1905.07357)** (Becker et al. 2019) | learned locally linear dynamics with factorized latent uncertainty | yes, through uncertainty update | closest filtering precedent for LOIF; scalar/factorized Kalman updates are established, while LOIF's MSE-trained scales are only operational, so V9's possible contribution is limited to the ordered two-state action-memory hypothesis and controls |
 | **[Adaptive Memory Decay](https://arxiv.org/abs/2605.06946)** (Amin et al. 2026 preprint) | per-token, per-level input-conditioned decay in a Fenwick hierarchy | yes | stronger adaptive-decay precedent; V9 instead proposes ordered global poles plus input-conditioned observation reliability and must not claim the first adaptive hierarchy |
+| **[Full-Capacity Unitary RNN](https://arxiv.org/abs/1611.00035)** (Wisdom et al. 2016) | unitary recurrent transition | recurrent input, not action-indexed observer correction | norm-preserving recurrence is established; V10's possible distinction is the action-indexed two-layer Givens observer inside end-to-end LeWM, not orthogonality itself |
+| **[Homomorphism Autoencoder](https://openreview.net/forum?id=Z1mlSfNrbnj)** (Keurti et al. 2022) | learned group representation acts linearly on latent state | transition-conditioned | close group-action precedent; V10 adds persistent partial-observation belief correction and the LeWM objective, but makes no first-group-representation claim |
+| **[seq-JEPA](https://openreview.net/forum?id=GKt3VRaCU1)** (Ghaemi et al. 2025) | Transformer aggregation of action-conditioned observation sequences | yes | already establishes sequential/action-conditioned JEPA memory; V10 tests a constant-state exact-isometry observer rather than claiming JEPA memory is absent |
+| **[FloWM](https://openreview.net/forum?id=W7WUJTGByR)** (Lillemark et al. 2025) | structured flow equivariance under partial observation | yes | closest partially observed structured-dynamics comparison; V10 still needs direct outcome evidence before its architectural structure is a contribution |
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly detects the explicit black token (§7.5). V4 establishes a genuine action-conditioned predict/correct path (§7.6). V5's learned spectrum, V6's dense consistency, and V7's counterfactual recovery fail their direct controls (§7.7–7.9). V8 removes those objective bundles and becomes a leading paired-average design, but its compaction equivalence, tying advantage, endpoint envelope, task envelopes, and locked pilot all fail (§7.10). V9's filtering algebra produces active evidence and action paths, yet its learned poles and two-bank hierarchy lose direct controls and full LOIF ranks seventh in its retrained grid (§7.11). The evidence supports causal filtering diagnostics—not architectural novelty, general hierarchy, calibrated uncertainty, or an ICLR performance claim.
+**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly detects the explicit black token (§7.5). V4 establishes a genuine action-conditioned predict/correct path (§7.6). V5's learned spectrum, V6's dense consistency, and V7's counterfactual recovery fail their direct controls (§7.7–7.9). V8 removes those objective bundles and becomes a leading paired-average design, but its compaction equivalence, tying advantage, endpoint envelope, task envelopes, and locked pilot all fail (§7.10). V9's filtering algebra produces active evidence and action paths, yet its learned poles and two-bank hierarchy lose direct controls and full LOIF ranks seventh in its retrained grid (§7.11). V10 is a prospectively frozen move to one-state action isometry and raw-pixel end-to-end training (§2.9/§7.12); it has no result and cannot revise the completed verdict. The evidence currently supports causal filtering diagnostics—not architectural novelty, general hierarchy, calibrated uncertainty, or an ICLR performance claim.
 
 ## 5. Interpretability — little observed switching in the synthetic tasks
 
@@ -394,6 +464,7 @@ Across every individual intervention and checkpoint, the largest absolute valida
 10. **Counterfactual-recovery V7 study — complete.** All 325 cells, 65,000 W&B epoch records, and 325 rollout artifact/table/video bundles passed cloud verification. The immutable 195-cell pilot is `NO_GO`; the mandatory completion leaves the locked final label `PILOT_NO_GO_FINAL_DESCRIPTIVE`. The visible-only teacher/student contract, four anchors, nine V7 designs, and every threshold were frozen before launch (§2.6/§7.9); excluded engineering smokes never enter a result or decision.
 11. **Compact shared-action V8 study — complete.** All 325 cells, 65,000 W&B epoch rows, 325 rollout artifact/table/video bundles, and exact anchor/identity receipts passed. The pilot is `NO_GO`; final is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. V8 ranks second (+6.20% versus SSM), but is neither focused-best nor compact-noninferior and wins no task envelope (§2.7/§7.10).
 12. **Learned ordered innovation V9 — complete, locked negative.** All 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles validate. Full LOIF is +2.55% versus SSM but rank 7/13; it loses to V7/V8, fixed poles, and one slow bank, and its immutable pilot/final labels are `NO_GO`/`PILOT_NO_GO_FINAL_DESCRIPTIVE`. Evidence conditioning and action are active, but the hierarchy and overall-best claims fail (§2.8/§7.11).
+13. **End-to-end orthogonal-belief V10 — frozen pre-launch, no result.** The model, five same-schema modes, causal encoder path, RGB corruption pipeline, physics-state probe, runner/analyzer contracts, and thresholds are specified in §2.9/§7.12. The required grid is 225 independently trained cells and 22,500 W&B epoch rows. At this record it is **0/225**, so its pilot/final labels and every performance contrast are `PENDING`; no value may be inferred from implementation tests or architecture figures.
 
 ## 7. Initial validation results
 
@@ -1394,7 +1465,129 @@ No design is universal. On the five-seed mean MSE inside each environment, V7 sh
 
 **Optimization and ordinary saturation do not excuse the result.** Across all 325 grid cells, absolute late-window change is `.319%` median, `1.025%` p95, and `1.271%` maximum. Across the 25 full-LOIF cells, there are zero pole-collapse, boundary, gain, extreme-log-scale, or nonfinite failures. Batch-size-one streaming equivalence nevertheless fails 3/25 full-LOIF cells at the frozen `10⁻⁵` tolerance: Ball seeds 2/3 have mixed-read errors `.005265/.002716`, and Cheetah seed 0 has `1.478×10⁻⁵`; recurrent-state errors remain at most `6.85×10⁻⁶` and `log P` is exact. This is consistent with numerical amplification at the RMS-normalized read, not recurrent-state divergence, and it remains a scientific stop under the frozen rule.
 
-The completed result supports a simpler engineering core—compact V8 within the freshly retrained V9 grid, or fixed/single-bank filtering within LOIF—not learned self-supervised hierarchical retention. Another V10 tuned on these five opened tasks would be additional architecture search, not confirmation. Any next claim should prospectively freeze a simpler one-state identity-centered versus contracting recurrence comparison, then move to unseen corruptions/gap distributions/rollout seeds plus state prediction and executed return.
+The completed result supports a simpler engineering core—compact V8 within the freshly retrained V9 grid, or fixed/single-bank filtering within LOIF—not learned self-supervised hierarchical retention. Another V10 tuned on these five opened tasks would be additional architecture search, not confirmation. Any next claim should prospectively freeze a simpler one-state identity-centered versus contracting recurrence comparison, then move to unseen corruptions/gap distributions/rollout seeds plus state prediction and executed return. Section 7.12 freezes the state-prediction half of that path on new tasks; it does **not** add executed return.
+
+### 7.12 ORBIT-v10: frozen untouched-task end-to-end protocol (`PENDING`)
+
+**Status boundary.** This section, the ORBIT implementation, its five same-schema modes, causal encoder option, raw-RGB data builder, trainer, analyzer, and focused tests define the pre-launch V10 study. At this record **0/225 official cells are complete**, no pilot decision exists, and every performance contrast below is `PENDING`. Unit tests establish algebra, gradients, exact mode interventions, and streaming agreement; they are not empirical task evidence. No engineering smoke, if later needed, may enter the decision grid. Official launch additionally requires a clean committed producer, a serialized protocol that round-trips exactly, empty official output/log namespaces, online W&B, and a hash-complete final manifest.
+
+Two **excluded one-epoch engineering smokes** were run only after the architecture, grid, metrics, and decision thresholds above had been written. The first used four/three Pendulum trajectories, `D=16`, seed 9991, and verified online W&B history plus rollout NPZ/table/video upload in the separate study `hacssm-v10-smoke` ([run `d7pdwd05`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/d7pdwd05)); its rollout SHA-256 is `785c522256f3a5457dfa8a1926beefe17b292e2710ab50438f4f39b629783495`. The second used the native V10 `D=128`, 1,200/240-trajectory Walker configuration at seed 9992 without W&B and verified that one full epoch trains in 8.8 seconds on the available GPU and that the complete probe/rollout path fits in memory. Their deliberately undertrained diagnostics are recorded only so no observed value is hidden:
+
+| excluded smoke | held-out state NMSE | clean state NMSE | probe ceiling NMSE | encoder variance / rank | orthogonality / streaming max |
+|---|---:|---:|---:|---:|---:|
+| tiny Pendulum, online W&B | 200,615.411 | 44,499.624 | 2.093 | `4.17e-7 / 4.00` | `0 / 1.79e-7` |
+| native Walker, full data/model | 337.721 | 344.895 | .933 | `1.47e-6 / 10.77` | `2.38e-7 / 4.77e-7` |
+
+Both fail ordinary one-epoch representation/readout diagnostics and have no baseline comparator; neither run name, seed, checkpoint, metric, or W&B study is accepted by the official runner or analyzer. No architecture, threshold, seed, corruption, or training budget was changed in response to these values.
+
+V10 was selected after opening V1–V9. Its architecture is therefore informed by adaptive development, but its confirmation data are prospectively separated: none of Ball-in-Cup, Cheetah, Finger, Reacher, or OGBench-Cube may be used to choose V10 parameters, corruptions, stopping, or labels. The five locked tasks are:
+
+```text
+dmc:walker.walk
+dmc:hopper.hop
+dmc:cartpole.swingup
+dmc:pendulum.swingup
+dmc:fish.swim
+```
+
+#### 7.12.1 Raw trajectories and corruption split
+
+Each task has one content-hashed clean training cache of 1,200 trajectories and one clean validation cache of 240 trajectories. Every trajectory has `L=48` RGB frames at `64×64`, the environment's native bounded continuous actions, and evaluation-only `physics.get_state()` vectors. Actions are generated by a bounded `tanh` AR(1) process with correlation `.85`; there are no discrete random-action prototypes. Cache identity, content identity, split, action bounds, task, and state schema must agree before any cell can start.
+
+The train view is generated deterministically per episode from the clean cache. Its gap length is sampled uniformly from `[6,12]`, its start uniformly from `[h+2,L-gap-2]` with predictor history `h=3`, and its corruption is chosen with equal probability between a spatial cutout covering 55% of the frame height and width and replacement by the dataset-global mean frame. The target view remains the synchronized clean RGB trajectory. This supplies self-supervised clean next-frame embeddings during corruptions; `physics.get_state()` is never read by training.
+
+Validation freezes four **unseen** observation conditions:
+
+| held-out condition | corruption | gap contract |
+|---|---|---|
+| `freeze` | repeat/freeze visual evidence rather than use the train corruption | uniform length `[6,12]` |
+| `gaussian_noise` | replace the gap by the sealed Gaussian sensor-noise transform | uniform length `[6,12]` |
+| `checkerboard` | replace the gap by the sealed checkerboard transform | uniform length `[6,12]` |
+| `long_freeze` | frame-freeze length extrapolation | uniform length `[16,24]` |
+
+The first three reuse the train gap-length distribution but not its corruption family; `long_freeze` changes both family usage and duration. None uses the exact zero-black sentinel from V3–V9. Validation trajectories, corruption RNG streams, and rollout seeds are common across designs and immutable. Ordinary clean validation is retained as a non-degradation guard.
+
+#### 7.12.2 End-to-end grid, optimization, and tracking
+
+Every cell trains a raw-pixel `D=128` LeWM from scratch: patch size 8; six-layer/four-head ViT encoder; four-layer/eight-head predictor; history 3; dropout `.1`; `encoder_norm=none`; and `predictor_norm=none`. Both normalizations are batch independent. The task's native continuous action dimension is used, so the absolute parameter count varies across tasks, while every within-task mode comparison is matched. The clean target encoder is the same jointly optimized encoder, not a frozen or EMA copy.
+
+The nine locked designs are:
+
+| family | design | role |
+|---|---|---|
+| baseline | `none` | short-context LeWM without a long-range recurrent channel |
+| baseline | `gru` | learned recurrent-state reference under the same RGB objective/budget |
+| baseline | `ssm` | learned diagonal-SSM reference; headline baseline |
+| prior leader | `hacssmv8` | compact V8 retrained end-to-end on this new cohort; headline reference |
+| V10 | `orbitv10` | nominated normalized two-layer action-isometry observer |
+| V10 | `orbitv10_noaction` | identity action transport |
+| V10 | `orbitv10_additive` | same-tensor V8-like additive transport |
+| V10 | `orbitv10_scaled` | unnormalized complex transport |
+| V10 | `orbitv10_static` | input-independent observation correction |
+
+This is `5 tasks × 9 designs × 5 optimizer seeds = 225` separately trained cells. Seeds `0–2` form an immutable 135-cell pilot. Seeds `3–4` are a mandatory 90-cell completion; they run even after pilot `NO_GO` and cannot reopen it. Each cell trains for exactly 100 epochs on the common data with AdamW (`lr=3×10⁻⁴`, weight decay `10⁻⁵`, batch 64). The only objective is active next-clean-latent MSE at every target plus `.1×SIGReg` with 512 projections. There is no first-post weight, masked-target exclusion, memory-specific objective, teacher, simulator-state loss, checkpoint selection, or result-dependent early stopping.
+
+Online tracking is locked to W&B entity `crlc112358`, project `lewm-memory-popgym`, study `hacssm-v10`. A completed study therefore requires 22,500 epoch rows and 225 final rollout artifact/table/video bundles, in addition to local checkpoints, histories, metrics, cache receipts, protocol decisions, and manifest hashes. These are required counts, not claims that they already exist.
+
+#### 7.12.3 Primary outcome and diagnostic boundary
+
+The primary outcome is physical-state prediction, not private latent scale. For each checkpoint, a fixed ridge probe (`λ_ridge=10⁻³`) is fit from **clean training encoder latents** to the task's standardized `physics.get_state()` vector. The trained probe is then applied to predictions under each validation condition. Simulator state is post-hoc evaluation data only; it cannot update the encoder, memory, predictor, optimizer, or model selection.
+
+For a held-out condition, state NMSE is computed over the union of deep-gap and first-post target times. `heldout_state_nmse` is the equal mean of the four condition NMSEs. Lower is better. The primary paired effect for reference `R` is
+
+```text
+Δ_R = (heldout_state_nmse_R - heldout_state_nmse_orbitv10)
+      / heldout_state_nmse_R
+```
+
+so positive values favor full ORBIT. Cell effects receive equal weight over task×seed; an environment win compares the within-task seed-mean effect. Clean state NMSE is the non-degradation metric. Per-condition/per-phase state NMSE and `R²`, probe-ceiling NMSE/`R²`, and final private-coordinate validation prediction loss are diagnostics. Raw latent MSE is never pooled or used to compare separately learned encoder coordinate systems.
+
+The required mechanism/validity receipts are maximum ORBIT orthogonality error, full-scan versus streaming maximum absolute error, encoder mean channel variance, covariance effective rank, singleton batch invariance, and prefix invariance. `orbitv10_additive` carries rotation-shaped placeholders solely for common serialization; its `orthogonality_applicable` mask is false and it cannot contribute an isometry receipt. This study measures no executed policy return or task success. Even a positive outcome would establish representation/state tracking on the frozen corruption cohort, not closed-loop control.
+
+#### 7.12.4 Immutable pilot and final gates
+
+Pilot uses seeds `0–2` and no bootstrap. It returns exactly `PILOT_CONFIRMATION_PASS` or `NO_GO`. Every clause must pass:
+
+| full ORBIT versus / receipt | pilot reduction | paired wins | task means |
+|---|---:|---:|---:|
+| SSM | ≥5% | ≥9/15 | ≥4/5 |
+| end-to-end compact V8 | ≥5% | ≥9/15 | ≥4/5 |
+| additive transport | ≥2% | ≥9/15 | ≥3/5 |
+| scaled transport | ≥2% | ≥9/15 | ≥3/5 |
+| no-action | ≥5% | ≥11/15 | ≥3/5 |
+| static correction | ≥1% | ≥9/15 | ≥3/5 |
+
+In addition, mean clean-state harm must be at most 2% relative to each of SSM and V8. Across all pilot grid cells, absolute relative change between epochs `81–90` and `91–100` must have median `<1%`, p95 `<3%`, and maximum `<5%`. Across full-ORBIT pilot cells, maximum orthogonality and streaming errors must each be `≤10⁻⁵`; minimum encoder mean-channel variance must be `≥10⁻⁵`; minimum covariance effective rank must be `≥16`; and maximum singleton/prefix discrepancies must each be `≤10⁻⁵`.
+
+Final analysis uses all five seeds, but `END_TO_END_CONFIRMATION_PASS` is available only after `PILOT_CONFIRMATION_PASS`. Its gates are:
+
+| full ORBIT versus / receipt | final reduction | paired wins | task means | uncertainty |
+|---|---:|---:|---:|---:|
+| SSM | ≥5% | ≥15/25 | ≥4/5 | crossed-bootstrap 90% lower bound `>0` |
+| end-to-end compact V8 | ≥5% | ≥15/25 | ≥4/5 | crossed-bootstrap 90% lower bound `>0` |
+| additive transport | ≥2% | ≥14/25 | ≥3/5 | no bootstrap required |
+| scaled transport | ≥2% | ≥14/25 | ≥3/5 | no bootstrap required |
+| no-action | ≥5% | ≥17/25 | ≥3/5 | no bootstrap required |
+| static correction | ≥1% | ≥14/25 | ≥3/5 | no bootstrap required |
+
+The same clean-harm, convergence, orthogonality, streaming, variance, effective-rank, singleton, and prefix clauses apply to the full grid. The headline uncertainty contract uses 100,000 crossed task×seed percentile-bootstrap draws, `numpy.random.Generator(PCG64)`, seed `10010`, independent task and seed resampling with Cartesian-product averaging, and linear 5th/95th percentiles. It applies only to SSM and V8 headline contrasts, not the direct mechanism controls.
+
+If the pilot fails, the final label is `PILOT_NO_GO_FINAL_DESCRIPTIVE` regardless of completion values. If the pilot passes but any final gate fails, the final label is `NO_GO`. Only a pilot pass plus every final clause yields `END_TO_END_CONFIRMATION_PASS`. The analyzer hard-codes `iclr_submission_ready=false` even for that label: the frozen study has no executed return, covers five DMC tasks and four synthetic observation shifts, and does not by itself establish universal architectural superiority.
+
+#### 7.12.5 Empty result ledger
+
+| V10 receipt | pilot | final |
+|---|---:|---:|
+| completed official cells | `0/135` | `0/225` |
+| full versus SSM | `PENDING` | `PENDING` |
+| full versus end-to-end compact V8 | `PENDING` | `PENDING` |
+| full versus additive / scaled | `PENDING` | `PENDING` |
+| full versus no-action / static | `PENDING` | `PENDING` |
+| clean-state guard | `PENDING` | `PENDING` |
+| validity/convergence receipts | `PENDING` | `PENDING` |
+| immutable label | `PENDING` | `PENDING` |
+
+These placeholders must be replaced only by analyzer outputs bound to the sealed protocol and final manifest. Architecture expectations, smoke losses, or partial W&B curves must never be inserted as results.
 
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
@@ -1536,22 +1729,23 @@ There is a worthwhile controlled finding here, but the current `paper/main.pdf` 
 8. A 36-checkpoint causal-in-time encoding audit preserves the synthetic memory advantages, while the V4–V8 common-target cohorts remove the predictor's separate cross-window BatchNorm coupling entirely. The original singleton-inference and representation-conditioning failure remains unresolved for the synthetic pixel encoder. V7 adds replicated positive evidence for action transport, a joint two-rate read, and shrinkage away from the fully dynamic correction endpoint; its immutable pilot and final labels are nevertheless negative, and shared action/no-recovery controls outperform the nominated model.
 9. V8 completes the simplification test: without a teacher or internal auxiliary it ranks second (+6.20% versus SSM) and gives the clearest action/joint-read effects (+14.87%/+9.34%). Its immutable pilot and final label are still negative; it loses to V7 shared-action, fails compact equivalence and noninferiority, loses to the retrained endpoint envelope, and wins 0/5 task envelopes (§7.10).
 10. V9 completes the adaptive-filter test: evidence conditioning and action are causally active, but full LOIF is only +2.55% versus SSM, rank 7/13, and loses to V7/V8, fixed poles, and one slow bank. Its 195-cell pilot and 325-cell final labels are negative, its sample-specific resistance interventions are sub-.5%, and three streaming receipts fail. The freshly retrained common-objective grid is led by compact V8 at +6.38%, not LOIF (§7.11).
+11. V10 is **not yet positive evidence**. ORBIT implements a substantially cleaner raw-pixel test—causal encoder normalization, one no-decay state, exact action isometry, physics-state outcomes, new tasks/corruptions, and direct geometry controls—but the frozen ledger is 0/225 and every result is `PENDING` (§2.9/§7.12).
 
-That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language. V8 is itself an adaptive response selected on the same development tasks, and V9 is selected after opening V8; neither can substitute for untouched confirmation (§7.10–7.11).
+That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language. V8 is itself an adaptive response selected on the same development tasks, V9 is selected after opening V8, and frozen-but-unrun V10 is a hypothesis rather than confirmation (§7.10–7.12).
 
 ### Blocking scientific issues
 
 1. **The reported “closed-loop control” is not closed loop.** `scripts/eval_planning.py` always gathers context by issuing the same rightward action, imagines a fixed all-right action sequence, trains a logistic classifier on the final imagined latent, and scores whether that classifier recovers the cue. It never executes the classifier's chosen arm action, observes a resulting transition, or measures environment reward/success. This is an offline imagined-latent cue-classification experiment. Table 9, Figure 8, and the abstract must be relabeled, or replaced with an agent that actually chooses and executes actions in the environment. The abstract also says “Across 5 seeds” for counterfactual-swap/control claims whose Tables 7 and 9 use three seeds.
 2. **The original robot/OGBench headline is invalid and partly stale.** The action-prototype bug is fixed (§7.1), but those checkpoints still use incomparable private encoder coordinates, target black-frame latents during the blackout, and measure influence only at the last frame. The paper's Cheetah row still reports the superseded `.240/.201` none/`multi` values and claims improvement; the corrected consistent-prototype held-out evaluation is `.122/.155`, so `multi` is worse. DeepMind Control Suite tasks are MuJoCo simulations—not “four real robots” or hardware ([Tassa et al., 2018](https://arxiv.org/abs/1801.00690)). The fixed-DINO replacement is valid in one common coordinate system, but it measures prototype-randomized next-feature prediction, not manipulation/control success.
 3. **The manuscript misstates its DINO representation.** DINOv2 ViT-S/14 was trained/distilled on LVD-142M, not “distilled on ImageNet” ([Oquab et al., 2023](https://arxiv.org/abs/2304.07193)). The experiment uses a global CLS feature, whereas DINO-WM operates on frozen spatial patch embeddings; calling the CLS setup “the DINO-WM recipe” is inaccurate ([Zhou et al., 2024](https://arxiv.org/abs/2411.04983)).
-4. **The original synthetic encoder is not deployable causally as implemented.** Its stateless BatchNorm pools over episode×time, including future frames; singleton online encoding fails. The no-retraining time-slice audit shows that this leakage does not explain the archived usage gaps, but it remains transductive over 256 episodes and reveals pre-BN variance `5.78e-12` with median effective rank 5.86/128. The paper needs retraining with causal/fixed normalization and a batch-size-one streaming evaluation, not only a sensitivity re-encoding.
-5. **The stronger common-target result is still bounded by simple controls and task heterogeneity.** The 100-epoch grid changes the winning architecture and is still improving late. Later V6–V9 studies converge, but no design wins every task. In the V8 ladder, static V6 wins two envelopes, dynamic V8, SSM, and V7-no-recovery win one each; compact V8 wins none and ranks 5th/3rd/3rd/7th/7th. The separately sealed V8 cohort ranks V7 shared-action first (+6.43% versus SSM); V9's freshly retrained common-objective grid instead ranks compact V8 first (+6.38%), V8-dynamic second, and V7 third. These adaptive cohorts should not be pooled. Every mask still uses the same extreme black sentinel on reused validation trajectories, and no result is state decoding or return.
+4. **The original synthetic encoder is not deployable causally as implemented.** Its stateless BatchNorm pools over episode×time, including future frames; singleton online encoding fails. The no-retraining time-slice audit shows that this leakage does not explain the archived usage gaps, but it remains transductive over 256 episodes and reveals pre-BN variance `5.78e-12` with median effective rank 5.86/128. V10 implements batch-independent raw-pixel retraining and singleton/prefix gates, but 0/225 cells means it has not yet repaired this blocker empirically.
+5. **The stronger common-target result is still bounded by simple controls and task heterogeneity.** The 100-epoch grid changes the winning architecture and is still improving late. Later V6–V9 studies converge, but no design wins every task. In the V8 ladder, static V6 wins two envelopes, dynamic V8, SSM, and V7-no-recovery win one each; compact V8 wins none and ranks 5th/3rd/3rd/7th/7th. The separately sealed V8 cohort ranks V7 shared-action first (+6.43% versus SSM); V9's freshly retrained common-objective grid instead ranks compact V8 first (+6.38%), V8-dynamic second, and V7 third. These adaptive cohorts should not be pooled. Completed masks still use the same extreme black sentinel on reused validation trajectories, and no completed result is state decoding or return. V10 freezes new non-black corruptions and state decoding, but supplies no result yet and no return at all.
 6. **The broad learned-selectivity/hierarchy thesis is still unsupported, despite real action mechanisms.** V3 and every V4 correction level separate one conspicuous black token. V4–V9 establish real action paths, but V4's slow state, V5's learned spectrum, V6/V7's self-supervised objectives, V7's level-specific action/recovery terms, and V8's compaction/shrinkage claims fail. V9 adds the cleanest direct contradiction: learned poles are robustly worse than fixed poles, two banks are worse than one slow bank, and donor resistance interventions are sub-.5%. This supports a black-sentinel predict/correct diagnostic—not a generally superior content-selective, uncertainty-calibrated, or automatically sized hierarchy.
 7. **Baselines and task outcomes are below the main-track bar for the broad claim.** Current learned GRU/SSM/retrieval comparisons use one matched training budget rather than competitive per-baseline tuning. POPGym/Memory-Maze results emphasize next-latent MSE or influence under random policies rather than standard task returns. Raw MSE from separately trained encoders should not be compared as if it shared a scale. A convincing world-model/control paper needs standard POMDP returns or success, tuned recurrent/SSM/Transformer memory baselines, and parameter/compute-matched fixed-bank ablations.
 
 ### Novelty and positioning risk
 
-The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4–V9 are compact predict/correct recurrent filters. V8's compact no-auxiliary filter is effective but does not win its direct controls; completed V9 overlaps established adaptive filtering/Kalman and selective-state-space ideas and then loses its learned-pole/two-bank controls. Perfect sentinel detection, a useful action path, and coarse evidence switching therefore remain diagnostic contributions; they do not create a defensible architectural “missing quadrant” without stronger tasks and outcomes. The related-work comparison must also include at least:
+The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4–V9 are compact predict/correct recurrent filters. V8's compact no-auxiliary filter is effective but does not win its direct controls; completed V9 overlaps established adaptive filtering/Kalman and selective-state-space ideas and then loses its learned-pole/two-bank controls. V10's exact action-conditioned rotations are more structurally distinctive, but unitary RNNs, Homomorphism Autoencoders, seq-JEPA, and FloWM already cover norm preservation, learned group actions, sequential JEPA aggregation, and structured partially observed dynamics. ORBIT becomes a contribution only if its frozen additive/scaled/no-action/static controls and external baselines pass; an unrun diagram is not novelty evidence. The related-work comparison must also include at least:
 
 - [ELMUR: External Layer Memory with Update/Rewrite for Long-Horizon RL Problems](https://openreview.net/forum?id=bm3rbtEMFj), an ICLR 2026 poster that evaluates long-horizon POMDP control on T-Maze, POPGym, and visual robotic manipulation with task success/return.
 - [seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models](https://proceedings.neurips.cc/paper_files/paper/2025/hash/2f63d2963526bdd9ff1b8bcc2dc9905a-Abstract-Conference.html), a NeurIPS 2025 paper whose JEPA world model uses a Transformer to aggregate short action-conditioned observation sequences.
@@ -1573,12 +1767,12 @@ If targeting ICLR, reframe the work around a title such as **“When Does a JEPA
 4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, V4–V9's causally necessary but heterogeneous action path, positive-but-heterogeneous shrinkage/evidence switching, failed slow state/rate spectrum/self-supervised objectives/action specialization/recovery/compaction-equivalence/learned poles/two-bank hierarchy, and the conditions where SSM/hold win. Remove “general input-conditioned selectivity,” “overall best,” calibrated uncertainty, and “automatic sizing” as achieved contributions.
 5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
 6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
-7. Treat completed V7–V9 strictly as adaptive-development evidence. V9 did not survive its frozen screen, so do not tune a V10 on the same five tasks. If a simpler fixed/single-bank filter is carried forward, freeze it prospectively and evaluate unseen rollout seeds, gap distributions, and corruption families plus simulator-state prediction and executed return.
+7. Treat completed V7–V9 strictly as adaptive-development evidence. Run V10 exactly as frozen on its five new tasks and publish a failed screen if that is the outcome; do not edit its architecture, corruption split, or thresholds after seeing partial curves. Even `END_TO_END_CONFIRMATION_PASS` would still require a separately frozen executed-return study and stronger tuned recurrent/SSM/Transformer baselines.
 
-**Recommendation.** The V3–V9 prospective studies all return negative pilot/final labels. Full V9 is only +2.55% versus SSM, ranks 7/13, loses to V7/V8/fixed-`α`/single-bank controls, and wins no task envelope; compact V8 leads its freshly retrained grid at +6.38%. This strengthens the negative mechanism study but does not repair task validity, baseline strength, novelty, or untouched-confirmation blockers. Do **not** submit the current version to the ICLR main track. Either (a) freeze a simpler fixed/single-bank design and run genuinely held-out corruptions/seeds, state and executed-return outcomes, uncertainty, and tuned baselines, or (b) submit a narrower workshop paper centered on static V2, black-sentinel selection, action-sensitive filtering, and the repeated failure of learned hierarchical mechanisms.
+**Recommendation.** The V3–V9 prospective studies all return negative pilot/final labels. Full V9 is only +2.55% versus SSM, ranks 7/13, loses to V7/V8/fixed-`α`/single-bank controls, and wins no task envelope; compact V8 leads its freshly retrained grid at +6.38%. V10 is a well-controlled prospective attempt to repair end-to-end training and structural novelty, but at 0/225 it changes none of those facts. Do **not** submit the current version to the ICLR main track. Finish the sealed V10 study, then—only if it passes—add independently frozen executed-return evaluation and tuned baselines. If it fails, retain the narrower workshop/diagnostic framing centered on static V2, black-sentinel selection, action-sensitive filtering, and repeated failures of learned hierarchical mechanisms.
 
 ## References
 
-Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Becker et al. *Recurrent Kalman Networks: Factorized Inference in High-Dimensional Deep Feature Spaces.* ICML 2019 (arXiv:1905.07357). · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 one global learned scalar decay does not self-tune in this setup; §5.11 fixed K-bank beats the tested learned memories under a matched budget).
+Gu & Dao. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces.* 2023 (arXiv:2312.00752). · Ma et al. *Mega: Moving Average Equipped Gated Attention.* 2022 (arXiv:2209.10655). · Qin et al. *HGRN2: Gated Linear RNNs with State Expansion.* 2024 (arXiv:2404.07904). · Sun et al. *Retentive Network (RetNet).* 2023 (arXiv:2307.08621). · Becker et al. *Recurrent Kalman Networks: Factorized Inference in High-Dimensional Deep Feature Spaces.* ICML 2019 (arXiv:1905.07357). · Wisdom et al. *Full-Capacity Unitary Recurrent Neural Networks.* NeurIPS 2016 (arXiv:1611.00035). · Keurti et al. *Homomorphism Autoencoder.* 2022. · Ghaemi et al. *seq-JEPA.* NeurIPS 2025. · Lillemark et al. *Flow Equivariant World Modeling for Partially Observed Dynamic Environments.* 2025. · Behrouz et al. *Titans: Learning to Memorize at Test Time.* 2025 (arXiv:2501.00663). · *Instance-Conditional Timescales of Decay for Non-Stationary Learning.* (arXiv:2212.05908). · Yang et al. *Gated Linear Attention.* 2023 (arXiv:2312.06635). · Companion paper: `docs/ICLR.md` (§5.4 one global learned scalar decay does not self-tune in this setup; §5.11 fixed K-bank beats the tested learned memories under a matched budget).
 
 **§8 (variable-size design).** Guo et al. *Log-Linear Attention.* 2025 (arXiv:2506.04761). · Du et al. *MoM: Mixture-of-Memories.* 2025. · Zhang et al. *Routing Mamba: Scaling SSMs with MoE Projections.* NeurIPS 2025 (arXiv:2506.18145). · Guo et al. *DynMoE: Dynamic Mixture of Experts (auto-tuning).* ICLR 2025 (arXiv:2405.14297). · Wang et al. *ReMoE: Fully Differentiable MoE with ReLU Routing.* ICLR 2025 (arXiv:2412.14711). · Gwak et al. *Layer-Adaptive State Pruning (LAST).* NeurIPS 2024 (arXiv:2411.02824). · *SparseSSM.* 2025. · Louizos et al. *Learning Sparse NNs through L0 Regularization (hard-concrete).* ICLR 2018 (arXiv:1712.01312). · Amin et al. *Adaptive Memory Decay for Log-Linear Attention.* 2026 (arXiv:2605.06946), a distinct input-conditioned-decay result not tested here.

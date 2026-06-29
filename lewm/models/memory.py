@@ -1076,6 +1076,422 @@ class SharedActionShrinkageMemory(HierarchicalActionConditionedMemory):
 SASPCv8Memory = SharedActionShrinkageMemory
 
 
+class OrthogonalRecurrentBeliefMemory(nn.Module):
+    """ORBIT-v10: one persistent belief with exact action-conditioned transport.
+
+    The recurrent state has no learned or fixed decay.  Instead, two action-conditioned
+    Givens layers transport it through products of orthogonal maps.  The first layer pairs
+    adjacent coordinates; the second applies a perfect shuffle, rotates cross-half pairs,
+    and unshuffles.  The overlapping pairings make the product more expressive than a
+    single block-diagonal torus while retaining an exact norm-preserving contract::
+
+        p_t = T(a_{t-1}) m_{t-1},       T(a)^T T(a) = I
+        m_t = p_t + g_t (W_x z_t - p_t)
+        z~_t = z_t + W_o RMSNorm(m_t)
+
+    Each Givens block receives ``(du,dv)`` from the shared action tensor and normalizes
+    ``(1+du,dv)`` into its cosine/sine pair.  Therefore every action map is identity at
+    initialization and zero action is always identity.  ``additive`` and ``scaled`` reuse
+    exactly the same tensors: they are falsification controls for isometry rather than wider
+    alternatives.  ``noaction`` fixes transport to identity, and ``static`` removes only the
+    input-conditioned part of the V8-style shrinkage gate.
+
+    No visibility mask, memory target, teacher, auxiliary loss, or task-specific horizon is
+    consumed.  The correction bias initializes to ``-2`` (gate ``.119``): because V10 has no
+    V8 beta multiplier, this matches the effective initial correction scale of V8's medium
+    bank without constraining the value after initialization.  ``memory_update_mask`` is
+    accepted only to validate shared data plumbing and is otherwise ignored.  :meth:`step`
+    exposes the exact batch-size-one streaming update.
+    """
+
+    MODES = {'orthogonal', 'noaction', 'additive', 'scaled', 'static'}
+    N_ROTATION_LAYERS = 2
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'orthogonal',
+                 rms_eps: float = 1e-6):
+        super().__init__()
+        if (not isinstance(embed_dim, int) or isinstance(embed_dim, bool)
+                or embed_dim < 2 or embed_dim % 2):
+            raise ValueError(
+                f'ORBIT-v10 embed_dim must be a positive even integer >=2, got {embed_dim!r}')
+        if not isinstance(action_dim, int) or isinstance(action_dim, bool) or action_dim < 1:
+            raise ValueError(f'action_dim must be a positive integer, got {action_dim!r}')
+        if mode not in self.MODES:
+            raise ValueError(f"unknown ORBIT-v10 mode '{mode}'")
+        if not math.isfinite(float(rms_eps)) or rms_eps <= 0:
+            raise ValueError(f'rms_eps must be positive and finite, got {rms_eps!r}')
+
+        self.embed_dim = embed_dim
+        self.action_dim = action_dim
+        self.mode = mode
+        self.rms_eps = float(rms_eps)
+        self.n_pairs = embed_dim // 2
+
+        self.W_x = nn.Linear(embed_dim, embed_dim, bias=False)
+        # Two layers x D outputs/layer; each D-vector is D/2 (du,dv) pairs.
+        self.W_a = nn.Linear(action_dim, self.N_ROTATION_LAYERS * embed_dim, bias=False)
+        self.w_z = nn.Parameter(torch.zeros(embed_dim))
+        self.w_e = nn.Parameter(torch.zeros(embed_dim))
+        # V8 initialized sigmoid(+2) but multiplied it by beta(tau=8)=.1175, for an effective
+        # correction near .103.  V10 has no decay/beta term, so sigmoid(-2)=.119 is the closest
+        # simple initialization.  This is initialization only, not a frozen update rate.
+        self.gate_bias = nn.Parameter(torch.tensor(-2.0))
+        self.shrink_logit = nn.Parameter(torch.zeros(()))
+        self.W_o = nn.Linear(embed_dim, embed_dim, bias=False)
+
+        nn.init.eye_(self.W_x.weight)
+        nn.init.zeros_(self.W_a.weight)
+        nn.init.zeros_(self.W_o.weight)
+
+        # [0,H,1,H+1,...] is a perfect shuffle.  Adjacent rotations in this coordinate
+        # system pair the two halves, overlapping the first layer's adjacent pairing.
+        shuffle = torch.arange(embed_dim, dtype=torch.long).view(2, self.n_pairs)
+        shuffle = shuffle.transpose(0, 1).reshape(-1)
+        self.register_buffer('perfect_shuffle', shuffle)
+        self.register_buffer('inverse_shuffle', torch.argsort(shuffle))
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return ``2D^2 + 2AD + 2D + 2`` for every V10 mode."""
+        return (2 * embed_dim * embed_dim
+                + cls.N_ROTATION_LAYERS * action_dim * embed_dim
+                + 2 * embed_dim + 2)
+
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters()
+                   if parameter.requires_grad)
+
+    def shrinkage(self) -> torch.Tensor:
+        return torch.sigmoid(self.shrink_logit)
+
+    def _rms_norm(self, value: torch.Tensor) -> torch.Tensor:
+        return value * torch.rsqrt(
+            value.square().mean(dim=-1, keepdim=True) + self.rms_eps)
+
+    def _validate_latents(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if not isinstance(z, torch.Tensor) or z.dim() != 3:
+            shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            raise ValueError(f'ORBIT-v10 expects z with shape (B,T,D), got {shape}')
+        B, T, D = z.shape
+        if B < 1 or T < 1 or D != self.embed_dim:
+            raise ValueError(
+                f'ORBIT-v10 expected non-empty (B,T,{self.embed_dim}), got {tuple(z.shape)}')
+        if not z.is_floating_point() or not torch.isfinite(z).all():
+            raise ValueError('z must contain finite floating-point values')
+        return B, T, D
+
+    def _validate_actions(self, actions: torch.Tensor, B: int, steps: int,
+                          *, name: str = 'actions') -> torch.Tensor:
+        expected = (B, steps, self.action_dim)
+        if not isinstance(actions, torch.Tensor) or tuple(actions.shape) != expected:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'{name} must have shape {expected}, got {shape}')
+        if not actions.is_floating_point() or not torch.isfinite(actions).all():
+            raise ValueError(f'{name} must contain finite floating-point values')
+        return actions
+
+    def _validate_state(self, state: torch.Tensor) -> int:
+        if (not isinstance(state, torch.Tensor) or state.dim() != 2
+                or state.shape[0] < 1 or state.shape[1] != self.embed_dim):
+            shape = tuple(state.shape) if isinstance(state, torch.Tensor) else type(state).__name__
+            raise ValueError(f'state must have shape (B,{self.embed_dim}), got {shape}')
+        if not state.is_floating_point() or not torch.isfinite(state).all():
+            raise ValueError('state must contain finite floating-point values')
+        return state.shape[0]
+
+    def _coerce_action_override(self, value, actions: torch.Tensor) -> torch.Tensor:
+        override = torch.as_tensor(value, device=actions.device, dtype=actions.dtype)
+        try:
+            override = torch.broadcast_to(override, actions.shape)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'action_override with shape {tuple(override.shape)} is not broadcastable to '
+                f'{tuple(actions.shape)}') from exc
+        if not torch.isfinite(override).all():
+            raise ValueError('action_override contains non-finite values')
+        return override
+
+    def _coerce_gates(self, value, B: int, T: int, *, device,
+                      dtype: torch.dtype, name: str) -> torch.Tensor:
+        gates = torch.as_tensor(value, device=device, dtype=dtype)
+        if gates.dim() == 1 and tuple(gates.shape) == (T,):
+            gates = gates.view(1, T, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (B,):
+            gates = gates.view(B, 1, 1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, T):
+            gates = gates.unsqueeze(-1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, 1):
+            gates = gates.unsqueeze(1)
+        target = (B, T, 1)
+        try:
+            gates = torch.broadcast_to(gates, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(gates.shape)} is not broadcastable to {target}') from exc
+        if (not torch.isfinite(gates).all() or bool((gates < 0).any())
+                or bool((gates > 1).any())):
+            raise ValueError(f'{name} must contain finite values in [0,1]')
+        return gates
+
+    def _validate_update_mask(self, mask: torch.Tensor, B: int, T: int,
+                              *, device, dtype: torch.dtype) -> None:
+        # Reuse the gate validator, but intentionally discard the result: V10 never receives
+        # privileged visibility.  This catches malformed shared-batch plumbing.
+        self._coerce_gates(
+            mask, B, T, device=device, dtype=dtype, name='memory_update_mask')
+
+    def _action_features(self, action: torch.Tensor) -> torch.Tensor:
+        """Return the common action tensor as ``(B,2,D)`` in every mode."""
+        return self.W_a(action).view(
+            action.shape[0], self.N_ROTATION_LAYERS, self.embed_dim)
+
+    def _rotation_components(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        pairs = features.view(
+            features.shape[0], self.N_ROTATION_LAYERS, self.n_pairs, 2)
+        u = 1.0 + pairs[..., 0]
+        v = pairs[..., 1]
+        if self.mode == 'noaction':
+            return torch.ones_like(u), torch.zeros_like(v)
+        if self.mode == 'scaled':
+            # Same complex blocks without unit normalization: a direct falsification control
+            # for exact isometry.  It remains identity at the shared zero initialization.
+            return u, v
+        radius = torch.sqrt(u.square() + v.square())
+        valid = radius > self.rms_eps
+        safe_radius = radius.clamp_min(self.rms_eps)
+        # The exact zero pair is assigned identity rather than the zero matrix, so even an
+        # adversarially learned ``(du,dv)=(-1,0)`` cannot violate the isometry contract.
+        cosine = torch.where(valid, u / safe_radius, torch.ones_like(u))
+        sine = torch.where(valid, v / safe_radius, torch.zeros_like(v))
+        return cosine, sine
+
+    def _rotate_layer(self, state: torch.Tensor, cosine: torch.Tensor,
+                      sine: torch.Tensor, layer: int) -> torch.Tensor:
+        if layer == 1:
+            state = state.index_select(-1, self.perfect_shuffle)
+        pairs = state.reshape(state.shape[0], self.n_pairs, 2)
+        real, imag = pairs[..., 0], pairs[..., 1]
+        rotated = torch.stack((
+            cosine * real - sine * imag,
+            sine * real + cosine * imag,
+        ), dim=-1).reshape(state.shape[0], self.embed_dim)
+        if layer == 1:
+            rotated = rotated.index_select(-1, self.inverse_shuffle)
+        return rotated
+
+    def _transition_unchecked(self, state: torch.Tensor, action: torch.Tensor):
+        features = self._action_features(action)
+        if self.mode == 'additive':
+            d, v = features[:, 0], features[:, 1]
+            prior = state + torch.tanh(
+                v + d * F.layer_norm(state, (self.embed_dim,)))
+            cosine = state.new_ones(
+                state.shape[0], self.N_ROTATION_LAYERS, self.n_pairs)
+            sine = torch.zeros_like(cosine)
+        else:
+            cosine, sine = self._rotation_components(features)
+            prior = state
+            for layer in range(self.N_ROTATION_LAYERS):
+                prior = self._rotate_layer(
+                    prior, cosine[:, layer], sine[:, layer], layer)
+
+        block_norm_sq = cosine.square() + sine.square()
+        orthogonality_error = (block_norm_sq - 1.0).abs().amax(dim=(1, 2))
+        # Additive transport has no rotation blocks.  Identity cosine/sine placeholders keep
+        # the five modes serialization-compatible, but are explicitly marked non-applicable
+        # so they cannot become a false orthogonality receipt for the additive Jacobian.
+        orthogonality_applicable = torch.full(
+            (state.shape[0],), self.mode != 'additive', device=state.device,
+            dtype=torch.bool)
+        source_norm = state.norm(dim=-1)
+        prior_norm = prior.norm(dim=-1)
+        transport_norm_ratio = torch.where(
+            source_norm > self.rms_eps,
+            prior_norm / source_norm.clamp_min(self.rms_eps),
+            torch.ones_like(source_norm),
+        )
+        return prior, {
+            'rotation_cos': cosine,
+            'rotation_sin': sine,
+            'block_norm_sq': block_norm_sq,
+            'orthogonality_error': orthogonality_error,
+            'orthogonality_applicable': orthogonality_applicable,
+            'transport_norm_ratio': transport_norm_ratio,
+        }
+
+    def transition(self, state: torch.Tensor, action: torch.Tensor,
+                   action_override=None, return_details: bool = False):
+        """Apply one action-only transport without consuming an observation."""
+        B = self._validate_state(state)
+        if (not isinstance(action, torch.Tensor)
+                or tuple(action.shape) != (B, self.action_dim)
+                or not action.is_floating_point() or not torch.isfinite(action).all()):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(
+                f'action must be finite floating point with shape {(B, self.action_dim)}, got {shape}')
+        action = action.to(device=state.device, dtype=state.dtype)
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action)
+        prior, details = self._transition_unchecked(state, action)
+        return (prior, details) if return_details else prior
+
+    def _dynamic_gate(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                      prior: torch.Tensor) -> torch.Tensor:
+        normalized_z = F.layer_norm(z_t, (self.embed_dim,))
+        normalized_error = F.layer_norm(x_t - prior, (self.embed_dim,))
+        score = (torch.einsum('bd,d->b', normalized_z, self.w_z)
+                 + torch.einsum('bd,d->b', normalized_error, self.w_e))
+        dynamic = torch.sigmoid(self.gate_bias + score / math.sqrt(self.embed_dim))
+        static = torch.sigmoid(self.gate_bias).expand_as(dynamic)
+        rho = self.shrinkage().to(device=z_t.device, dtype=z_t.dtype)
+        return ((1.0 - rho) * static + rho * dynamic).unsqueeze(-1)
+
+    def step(self, state: torch.Tensor, z_t: torch.Tensor, action: torch.Tensor,
+             gate_override=None, action_override=None, return_details: bool = False):
+        """Advance one explicit ``D``-float streaming state.
+
+        ``action`` maps the previous state/observation to ``z_t``.  Returns
+        ``(mixed, new_state)`` or ``(mixed, new_state, details)``.
+        """
+        B = self._validate_state(state)
+        if (not isinstance(z_t, torch.Tensor) or tuple(z_t.shape) != (B, self.embed_dim)
+                or not z_t.is_floating_point() or not torch.isfinite(z_t).all()):
+            shape = tuple(z_t.shape) if isinstance(z_t, torch.Tensor) else type(z_t).__name__
+            raise ValueError(f'z_t must be finite with shape {(B, self.embed_dim)}, got {shape}')
+        z_t = z_t.to(device=state.device, dtype=state.dtype)
+        prior, transition_details = self.transition(
+            state, action, action_override=action_override, return_details=True)
+        x_t = self.W_x(z_t)
+        gate = (torch.sigmoid(self.gate_bias).view(1, 1).expand(B, 1)
+                if self.mode == 'static' else self._dynamic_gate(z_t, x_t, prior))
+        if gate_override is not None:
+            gate = self._coerce_gates(
+                gate_override, B, 1, device=state.device, dtype=state.dtype,
+                name='gate_override')[:, 0]
+        new_state = prior + gate * (x_t - prior)
+        mixed = self._rms_norm(new_state)
+        details = {
+            'x': x_t,
+            'prior': prior,
+            'state': new_state,
+            'gate': gate,
+            **transition_details,
+        }
+        if return_details:
+            return mixed, new_state, details
+        return mixed, new_state
+
+    def forward(self, z: torch.Tensor, actions: torch.Tensor,
+                memory_update_mask: torch.Tensor = None, gate_override=None,
+                action_override=None, return_details: bool = False):
+        """Run the causal ORBIT filter over ``(B,T,D)`` latent observations."""
+        B, T, _ = self._validate_latents(z)
+        actions = self._validate_actions(actions, B, T - 1)
+        actions = actions.to(device=z.device, dtype=z.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions)
+        if memory_update_mask is not None:
+            self._validate_update_mask(
+                memory_update_mask, B, T, device=z.device, dtype=z.dtype)
+        override_gates = None
+        if gate_override is not None:
+            override_gates = self._coerce_gates(
+                gate_override, B, T, device=z.device, dtype=z.dtype,
+                name='gate_override')
+
+        x = self.W_x(z)
+        state = x[:, 0]
+        initial_gate = (torch.sigmoid(self.gate_bias).view(1, 1).expand(B, 1)
+                        if self.mode == 'static'
+                        else self._dynamic_gate(z[:, 0], x[:, 0], state))
+        if override_gates is not None:
+            initial_gate = override_gates[:, 0]
+        identity_cos = z.new_ones(B, self.N_ROTATION_LAYERS, self.n_pairs)
+        identity_sin = torch.zeros_like(identity_cos)
+
+        states = [state]
+        priors = [state]
+        gates = [initial_gate]
+        cosines = [identity_cos]
+        sines = [identity_sin]
+        block_norms = [torch.ones_like(identity_cos)]
+        orthogonality_errors = [z.new_zeros(B)]
+        orthogonality_applicable = [torch.zeros(B, device=z.device, dtype=torch.bool)]
+        norm_ratios = [z.new_ones(B)]
+
+        for t in range(1, T):
+            prior, transition_details = self._transition_unchecked(
+                state, actions[:, t - 1])
+            gate = (torch.sigmoid(self.gate_bias).view(1, 1).expand(B, 1)
+                    if self.mode == 'static'
+                    else self._dynamic_gate(z[:, t], x[:, t], prior))
+            if override_gates is not None:
+                gate = override_gates[:, t]
+            state = prior + gate * (x[:, t] - prior)
+            priors.append(prior)
+            states.append(state)
+            gates.append(gate)
+            cosines.append(transition_details['rotation_cos'])
+            sines.append(transition_details['rotation_sin'])
+            block_norms.append(transition_details['block_norm_sq'])
+            orthogonality_errors.append(transition_details['orthogonality_error'])
+            orthogonality_applicable.append(
+                transition_details['orthogonality_applicable'])
+            norm_ratios.append(transition_details['transport_norm_ratio'])
+
+        state_sequence = torch.stack(states, dim=1)
+        mixed = self._rms_norm(state_sequence)
+        if not return_details:
+            return mixed
+        details = {
+            'x': x,
+            'priors': torch.stack(priors, dim=1),
+            'states': state_sequence,
+            'gates': torch.stack(gates, dim=1),
+            'rotation_cos': torch.stack(cosines, dim=1),
+            'rotation_sin': torch.stack(sines, dim=1),
+            'block_norm_sq': torch.stack(block_norms, dim=1),
+            'orthogonality_error': torch.stack(orthogonality_errors, dim=1),
+            'orthogonality_applicable': torch.stack(
+                orthogonality_applicable, dim=1),
+            'transport_norm_ratio': torch.stack(norm_ratios, dim=1),
+        }
+        return mixed, details
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        if (not isinstance(z, torch.Tensor) or not isinstance(mixed, torch.Tensor)
+                or z.dim() != 3 or mixed.dim() != 3 or z.shape != mixed.shape
+                or z.shape[-1] != self.embed_dim):
+            z_shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            mixed_shape = tuple(mixed.shape) if isinstance(mixed, torch.Tensor) else type(mixed).__name__
+            raise ValueError(
+                f'z and mixed must share shape (B,T,{self.embed_dim}), got '
+                f'{z_shape} and {mixed_shape}')
+        if (not z.is_floating_point() or not mixed.is_floating_point()
+                or not torch.isfinite(z).all() or not torch.isfinite(mixed).all()):
+            raise ValueError('z and mixed must contain finite floating-point values')
+        return z + self.W_o(mixed)
+
+    def horizons(self) -> Dict[str, float]:
+        """Expose the absence of decay together with auditable learned mechanisms."""
+        with torch.no_grad():
+            return {
+                'tau_fast': float('inf'),
+                'tau_slow': float('inf'),
+                'n_banks': 1,
+                'rho_state': float(self.shrinkage()),
+                'gate_static': float(torch.sigmoid(self.gate_bias)),
+                'action_head_shared_norm': float(self.W_a.weight.norm()),
+                'orthogonal_transport': self.mode in {'orthogonal', 'static', 'noaction'},
+                'orthogonality_diagnostic_applicable': self.mode != 'additive',
+                'transport_layers': self.N_ROTATION_LAYERS,
+                'recurrent_floats': self.embed_dim,
+            }
+
+
+ORBITv10Memory = OrthogonalRecurrentBeliefMemory
+
+
 class LearnedOrderedInnovationFilterMemory(nn.Module):
     """HACSSM-v9 learned ordered innovation filter (LOIF).
 

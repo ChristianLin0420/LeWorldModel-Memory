@@ -45,6 +45,7 @@ class LeWorldModel(nn.Module):
         history_len: int = 3,
         dropout: float = 0.1,
         predictor_norm: str = 'batch',
+        encoder_norm: str = 'batch',
         sigreg_lambda: float = 0.1,
         sigreg_projections: int = 1024,
     ):
@@ -53,6 +54,7 @@ class LeWorldModel(nn.Module):
         self.action_dim = action_dim
         self.history_len = history_len
         self.predictor_norm = predictor_norm
+        self.encoder_norm = encoder_norm
         self.sigreg_lambda = sigreg_lambda
 
         # Encoder: ViT-Tiny
@@ -64,6 +66,7 @@ class LeWorldModel(nn.Module):
             num_layers=encoder_layers,
             num_heads=encoder_heads,
             dropout=dropout,
+            encoder_norm=encoder_norm,
         )
 
         # Predictor: Transformer with AdaLN

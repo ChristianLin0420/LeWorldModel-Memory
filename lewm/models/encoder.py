@@ -28,11 +28,13 @@ class ViTTinyEncoder(nn.Module):
         num_heads: int = 3,
         mlp_ratio: float = 4.0,
         dropout: float = 0.0,
+        encoder_norm: str = 'batch',
     ):
         super().__init__()
         self.img_size = img_size
         self.patch_size = patch_size
         self.embed_dim = embed_dim
+        self.encoder_norm = encoder_norm
         self.num_patches = (img_size // patch_size) ** 2
 
         # Patch embedding
@@ -60,12 +62,24 @@ class ViTTinyEncoder(nn.Module):
 
         self.norm = nn.LayerNorm(embed_dim)
 
-        # Projection head: 1-layer MLP + BatchNorm (needed because LayerNorm prevents SIGReg optimization).
-        # track_running_stats=False -> BN uses batch statistics in BOTH train and eval, so the latent
-        # distribution the predictor/probes see at eval time matches training (no running-stat drift).
+        if encoder_norm == 'batch':
+            # Historical LeWM checkpoints use batch statistics in both train and eval.
+            projector_norm = nn.BatchNorm1d(embed_dim, track_running_stats=False)
+        elif encoder_norm == 'layer':
+            projector_norm = nn.LayerNorm(embed_dim)
+        elif encoder_norm == 'none':
+            # Batch-independent path for causal batch-size-one streaming.  The ViT itself
+            # already uses only per-token LayerNorm; this leaves no cross-example operation.
+            projector_norm = nn.Identity()
+        else:
+            raise ValueError(
+                f"unknown encoder_norm {encoder_norm!r}; expected batch, layer, or none")
+
+        # Keep the historical one-layer projection and its parameter names.  Only the optional
+        # normalization module changes, so ``encoder_norm='batch'`` remains checkpoint-compatible.
         self.projector = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
-            nn.BatchNorm1d(embed_dim, track_running_stats=False),
+            projector_norm,
         )
 
         # Initialize weights
@@ -112,7 +126,7 @@ class ViTTinyEncoder(nn.Module):
         # Extract [CLS] token embedding
         cls_emb = x[:, 0]
 
-        # Project through MLP + BatchNorm
+        # Project through the configured head.  ``none`` and ``layer`` are per-frame causal.
         z = self.projector(cls_emb)
 
         return z

@@ -31,7 +31,8 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 HierarchicalActionConditionedSSMMemory,
                                 HierarchicalCounterfactualRecoveryMemory,
                                 SharedActionShrinkageMemory,
-                                LearnedOrderedInnovationFilterMemory, OCSMTMemory)
+                                LearnedOrderedInnovationFilterMemory,
+                                OrthogonalRecurrentBeliefMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -127,6 +128,14 @@ _LOIFV9_MODES = {
     'loifv9_singlebank': 'singlebank',
 }
 
+_ORBITV10_MODES = {
+    'orbitv10': 'orthogonal',
+    'orbitv10_noaction': 'noaction',
+    'orbitv10_additive': 'additive',
+    'orbitv10_scaled': 'scaled',
+    'orbitv10_static': 'static',
+}
+
 
 class MemoryLeWorldModel(LeWorldModel):
     """LeWorldModel + two-timescale EMA memory injected into the predictor input.
@@ -220,6 +229,10 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_loifv9 = LearnedOrderedInnovationFilterMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_LOIFV9_MODES[memory_impl])
+        elif memory_impl in _ORBITV10_MODES:                # horizon-free orthogonal belief
+            self.mem_orbitv10 = OrthogonalRecurrentBeliefMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_ORBITV10_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -246,9 +259,11 @@ class MemoryLeWorldModel(LeWorldModel):
                 and self.memory_impl not in _HACSSMV6_MODES
                 and self.memory_impl not in _HACSSMV7_MODES
                 and self.memory_impl not in _HACSSMV8_MODES
-                and self.memory_impl not in _LOIFV9_MODES):
+                and self.memory_impl not in _LOIFV9_MODES
+                and self.memory_impl not in _ORBITV10_MODES):
             raise ValueError(
-                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7/v8/LOIF-v9')
+                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/'
+                'v7/v8/LOIF-v9/ORBIT-v10')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -333,6 +348,19 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_loifv9.fuse(z, mixed), details
             return self.mem_loifv9.fuse(z, result)
+        if self.memory_impl in _ORBITV10_MODES:
+            if actions is None:
+                raise ValueError('ORBIT-v10 requires actions with a_t mapping z_t to z_{t+1}')
+            if resistance_override is not None:
+                raise ValueError('ORBIT-v10 has no resistance override; use gate_override')
+            result = self.mem_orbitv10(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_orbitv10.fuse(z, mixed), details
+            return self.mem_orbitv10.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -363,6 +391,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_hacssmv8.horizons()
         if self.memory_impl in _LOIFV9_MODES:
             return self.mem_loifv9.horizons()
+        if self.memory_impl in _ORBITV10_MODES:
+            return self.mem_orbitv10.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -833,8 +863,9 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
-        if self.memory_impl in _HACSSMV8_MODES or self.memory_impl in _LOIFV9_MODES:
-            # V8/V9 are action-conditioned inference memories with no teacher or internal-state
+        if (self.memory_impl in _HACSSMV8_MODES or self.memory_impl in _LOIFV9_MODES
+                or self.memory_impl in _ORBITV10_MODES):
+            # V8/V9/V10 are action-conditioned inference memories with no teacher or internal-state
             # auxiliary.  Do not request details here: the generic hierarchy tail below
             # interprets non-None details as a request to add an auxiliary.
             z_tilde = self._inject(
