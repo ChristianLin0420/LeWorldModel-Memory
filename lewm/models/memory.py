@@ -1076,6 +1076,443 @@ class SharedActionShrinkageMemory(HierarchicalActionConditionedMemory):
 SASPCv8Memory = SharedActionShrinkageMemory
 
 
+class LearnedOrderedInnovationFilterMemory(nn.Module):
+    """HACSSM-v9 learned ordered innovation filter (LOIF).
+
+    LOIF keeps two full-width recurrent states but removes fixed memory horizons, free route
+    logits, and memory-specific auxiliary targets.  Two learned scalar retention poles are
+    ordered by construction.  Their complementary process scales, one causal observation
+    resistance, and scalar filtering updates determine both correction gains and state fusion::
+
+        alpha_f = (1-eps) sigmoid(u_fast)
+        alpha_s = alpha_f + (1-eps-alpha_f) sigmoid(u_delta)
+        q_k     = (1-alpha_k) (1+alpha_k)
+        p_t^k   = alpha_k m_{t-1}^k + sqrt(q_k) h_t^k
+        K_t^k   = P_t^{k,-} / (P_t^{k,-} + R_t)
+        m_t^k   = p_t^k + K_t^k (x_t - p_t^k)
+
+    ``P`` and ``R`` are operational positive scales under the ordinary prediction MSE, not
+    calibrated posterior variances.  Scale recurrences are performed in log space.  Every
+    control owns the exact same trainable tensors; a control disconnects only the path named by
+    its intervention.  In particular, ``singlebank`` still needs both pole logits because the
+    ordered parameterization of ``alpha_s`` depends on both.
+
+    The streaming state is exactly two D-vectors plus two scalar log scales.  ``forward`` exposes
+    the full causal trajectory for diagnostics, while :meth:`filter_step` is the matching
+    batch-size-one/general-batch streaming primitive.
+    """
+
+    MODES = {
+        'learned', 'fixedalpha', 'globalR', 'innovationonly', 'latentonly',
+        'uniformfusion', 'noaction', 'singlebank',
+    }
+    K = 2
+    FIXED_ALPHAS = (math.exp(-1.0 / 2.0), math.exp(-1.0 / 8.0))
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'learned',
+                 eps: float = 1e-6):
+        super().__init__()
+        if not isinstance(embed_dim, int) or isinstance(embed_dim, bool) or embed_dim < 1:
+            raise ValueError(f'embed_dim must be a positive integer, got {embed_dim!r}')
+        if not isinstance(action_dim, int) or isinstance(action_dim, bool) or action_dim < 1:
+            raise ValueError(f'action_dim must be a positive integer, got {action_dim!r}')
+        if mode not in self.MODES:
+            raise ValueError(f"unknown LOIF-v9 mode '{mode}'")
+        if not math.isfinite(float(eps)) or not 0.0 < float(eps) < 0.5:
+            raise ValueError(f'eps must be finite and lie in (0,.5), got {eps!r}')
+
+        self.embed_dim = embed_dim
+        self.action_dim = action_dim
+        self.mode = mode
+        self.eps = float(eps)
+
+        # Exact architecture contract: 2D^2 + 2AD + 2D + 3 parameters.  The affine-free
+        # normalizations below deliberately introduce no hidden scale or offset tensors.
+        self.W_x = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.W_a = nn.Linear(action_dim, 2 * embed_dim, bias=False)
+        self.W_o = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.w_z = nn.Parameter(torch.zeros(embed_dim))
+        self.w_e = nn.Parameter(torch.zeros(embed_dim))
+        self.u_fast = nn.Parameter(torch.zeros(()))
+        self.u_delta = nn.Parameter(torch.zeros(()))
+        self.b_R = nn.Parameter(torch.zeros(()))
+
+        nn.init.eye_(self.W_x.weight)
+        nn.init.zeros_(self.W_a.weight)
+        nn.init.zeros_(self.W_o.weight)
+        # The learned and fixed-alpha branches must begin at the same point so their contrast
+        # isolates whether the retentions learn.  This is the frozen tau-mapped initialization,
+        # not a post-initialization constraint on the nominated model.
+        upper = 1.0 - self.eps
+        fixed_fast, fixed_slow = self.FIXED_ALPHAS
+        fast_fraction = fixed_fast / upper
+        delta_fraction = (fixed_slow - fixed_fast) / (upper - fixed_fast)
+        with torch.no_grad():
+            self.u_fast.fill_(math.log(fast_fraction / (1.0 - fast_fraction)))
+            self.u_delta.fill_(math.log(delta_fraction / (1.0 - delta_fraction)))
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return the exact ``2D^2 + 2AD + 2D + 3`` trainable-parameter contract."""
+        return (2 * embed_dim * embed_dim + 2 * action_dim * embed_dim
+                + 2 * embed_dim + 3)
+
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters()
+                   if parameter.requires_grad)
+
+    def ordered_alphas(self) -> torch.Tensor:
+        """Return ``(alpha_fast, alpha_slow)`` as direct old-state retentions."""
+        if self.mode == 'fixedalpha':
+            # Keep u_fast/u_delta physically present but exactly disconnected in this control.
+            return self.b_R.new_tensor(self.FIXED_ALPHAS)
+        upper = 1.0 - self.eps
+        alpha_fast = upper * torch.sigmoid(self.u_fast)
+        alpha_slow = alpha_fast + (upper - alpha_fast) * torch.sigmoid(self.u_delta)
+        return torch.stack((alpha_fast, alpha_slow))
+
+    def process_scales(self, alphas: torch.Tensor = None) -> torch.Tensor:
+        """Return coupled process scales ``q=(1-alpha)(1+alpha)`` without cancellation."""
+        if alphas is None:
+            alphas = self.ordered_alphas()
+        if not isinstance(alphas, torch.Tensor) or tuple(alphas.shape) != (self.K,):
+            shape = tuple(alphas.shape) if isinstance(alphas, torch.Tensor) else type(alphas).__name__
+            raise ValueError(f'alphas must have shape ({self.K},), got {shape}')
+        return (1.0 - alphas) * (1.0 + alphas)
+
+    def _rms_norm(self, value: torch.Tensor) -> torch.Tensor:
+        return value * torch.rsqrt(
+            value.square().mean(dim=-1, keepdim=True) + self.eps)
+
+    def _validate_latents(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if not isinstance(z, torch.Tensor) or z.dim() != 3:
+            shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            raise ValueError(f'LOIF-v9 expects z with shape (B,T,D), got {shape}')
+        B, T, D = z.shape
+        if B < 1 or T < 1 or D != self.embed_dim:
+            raise ValueError(
+                f'LOIF-v9 expected non-empty (B,T,{self.embed_dim}), got {tuple(z.shape)}')
+        if not z.is_floating_point() or not torch.isfinite(z).all():
+            raise ValueError('z must contain finite floating-point values')
+        return B, T, D
+
+    def _validate_actions(self, actions: torch.Tensor, B: int, steps: int,
+                          *, name: str = 'actions') -> torch.Tensor:
+        expected = (B, steps, self.action_dim)
+        if not isinstance(actions, torch.Tensor) or tuple(actions.shape) != expected:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'{name} must have shape {expected}, got {shape}')
+        if not actions.is_floating_point() or not torch.isfinite(actions).all():
+            raise ValueError(f'{name} must contain finite floating-point values')
+        return actions
+
+    def _validate_update_mask(self, mask: torch.Tensor, B: int, T: int) -> None:
+        if not isinstance(mask, torch.Tensor) or tuple(mask.shape) != (B, T):
+            shape = tuple(mask.shape) if isinstance(mask, torch.Tensor) else type(mask).__name__
+            raise ValueError(f'memory_update_mask must have shape {(B, T)}, got {shape}')
+        if mask.dtype != torch.bool:
+            if not mask.is_floating_point() or not torch.isfinite(mask).all():
+                raise ValueError('memory_update_mask must be boolean or finite in [0,1]')
+            if bool((mask < 0).any()) or bool((mask > 1).any()):
+                raise ValueError('memory_update_mask must lie in [0,1]')
+
+    def _coerce_action_override(self, value, actions: torch.Tensor) -> torch.Tensor:
+        override = torch.as_tensor(value, device=actions.device, dtype=actions.dtype)
+        try:
+            override = torch.broadcast_to(override, actions.shape)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'action_override with shape {tuple(override.shape)} is not broadcastable to '
+                f'{tuple(actions.shape)}') from exc
+        if not torch.isfinite(override).all():
+            raise ValueError('action_override contains non-finite values')
+        return override
+
+    def _coerce_resistance_override(self, value, B: int, T: int, *, device,
+                                    dtype: torch.dtype) -> torch.Tensor:
+        """Fail closed unless supplied R values are finite, positive, and time aligned."""
+        resistance = torch.as_tensor(value, device=device, dtype=dtype)
+        if resistance.dim() == 0:
+            resistance = resistance.expand(B, T)
+        elif resistance.dim() == 3 and tuple(resistance.shape) == (B, T, 1):
+            resistance = resistance.squeeze(-1)
+        elif tuple(resistance.shape) != (B, T):
+            raise ValueError(
+                f'resistance_override with shape {tuple(resistance.shape)} is not '
+                f'a scalar, {(B, T)}, or {(B, T, 1)}')
+        if not torch.isfinite(resistance).all() or bool((resistance <= 0).any()):
+            raise ValueError('resistance_override must contain finite values strictly above zero')
+        return resistance
+
+    def _fusion_weights(self, log_scales: torch.Tensor) -> torch.Tensor:
+        if self.mode == 'singlebank':
+            weights = torch.zeros_like(log_scales)
+            weights[..., 1] = 1.0
+            return weights
+        if self.mode == 'uniformfusion':
+            return torch.full_like(log_scales, 0.5)
+        return torch.softmax(-log_scales, dim=-1)
+
+    def _resistance(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                    prior_mixture: torch.Tensor) -> torch.Tensor:
+        """Infer the one shared causal positive observation-resistance scale."""
+        score = z_t.new_zeros(z_t.shape[0])
+        if self.mode not in {'globalR', 'innovationonly'}:
+            normalized_z = F.layer_norm(
+                z_t, (self.embed_dim,), eps=self.eps)
+            score = score + torch.einsum('bd,d->b', normalized_z, self.w_z)
+        if self.mode not in {'globalR', 'latentonly'}:
+            innovation = x_t - prior_mixture
+            score = score + torch.einsum('bd,d->b', innovation, self.w_e)
+        score = score / math.sqrt(self.embed_dim)
+        return F.softplus(self.b_R + score) + self.eps
+
+    def _action_prior(self, states: torch.Tensor, action: torch.Tensor,
+                      alphas: torch.Tensor, qs: torch.Tensor) -> torch.Tensor:
+        B = states.shape[0]
+        if self.mode == 'noaction':
+            action_features = states.new_zeros(B, 2 * self.embed_dim)
+        else:
+            action_features = self.W_a(action)
+        d, v = action_features.chunk(2, dim=-1)
+        normalized = F.layer_norm(
+            states, (self.embed_dim,), eps=self.eps)
+        innovation = torch.tanh(v.unsqueeze(1) + d.unsqueeze(1) * normalized)
+        alpha_state = alphas.to(device=states.device, dtype=states.dtype).view(1, self.K, 1)
+        q_state = qs.to(device=states.device, dtype=states.dtype).view(1, self.K, 1)
+        return alpha_state * states + torch.sqrt(q_state) * innovation
+
+    def _filter_step_unchecked(self, states: torch.Tensor, log_scales: torch.Tensor,
+                               z_t: torch.Tensor, action: torch.Tensor,
+                               alphas: torch.Tensor, qs: torch.Tensor,
+                               resistance_override: torch.Tensor = None,
+                               x_t: torch.Tensor = None):
+        """One already-validated causal transition/correction step."""
+        prior = self._action_prior(states, action, alphas, qs)
+
+        scale_dtype = log_scales.dtype
+        alpha_scale = alphas.to(device=log_scales.device, dtype=scale_dtype)
+        q_scale = qs.to(device=log_scales.device, dtype=scale_dtype)
+        log_prior_scales = torch.logaddexp(
+            log_scales + 2.0 * torch.log(alpha_scale).view(1, self.K),
+            torch.log(q_scale).view(1, self.K),
+        )
+        prior_weights = self._fusion_weights(log_prior_scales)
+        prior_mixture = (
+            prior * prior_weights.to(dtype=prior.dtype).unsqueeze(-1)
+        ).sum(dim=1)
+        if x_t is None:
+            x_t = self._rms_norm(self.W_x(z_t))
+        resistance = (self._resistance(z_t, x_t, prior_mixture)
+                      if resistance_override is None else resistance_override)
+        resistance = resistance.to(device=log_scales.device, dtype=scale_dtype)
+        log_R = torch.log(resistance)
+        gains = torch.sigmoid(log_prior_scales - log_R.unsqueeze(-1))
+        posterior = prior + gains.to(dtype=prior.dtype).unsqueeze(-1) * (
+            x_t.unsqueeze(1) - prior)
+        log_post_scales = (
+            log_prior_scales + log_R.unsqueeze(-1)
+            - torch.logaddexp(log_prior_scales, log_R.unsqueeze(-1))
+        )
+        read_weights = self._fusion_weights(log_post_scales)
+        mixed = self._rms_norm((
+            posterior * read_weights.to(dtype=posterior.dtype).unsqueeze(-1)
+        ).sum(dim=1))
+        nominal = alpha_scale.view(1, self.K) * (1.0 - gains)
+        details = {
+            'x': x_t,
+            'priors': prior,
+            'states': posterior,
+            'log_prior_scales': log_prior_scales,
+            'log_P': log_post_scales,
+            'log_scales': log_post_scales,
+            'resistance': resistance,
+            'log_R': log_R,
+            'log_resistance': log_R,
+            'gains': gains,
+            'prior_weights': prior_weights,
+            'read_weights': read_weights,
+            'nominal_direct_coefficients': nominal,
+        }
+        return mixed, posterior, log_post_scales, details
+
+    def filter_step(self, states: torch.Tensor, log_scales: torch.Tensor,
+                    z_t: torch.Tensor, action: torch.Tensor,
+                    resistance_override=None):
+        """Advance the explicit ``(2D+2)`` streaming state by one observed step.
+
+        ``action`` maps the previous observation/state to ``z_t``.  Returns
+        ``(mixed, states, log_scales, details)``.
+        """
+        if (not isinstance(states, torch.Tensor) or states.dim() != 3
+                or tuple(states.shape[1:]) != (self.K, self.embed_dim)):
+            shape = tuple(states.shape) if isinstance(states, torch.Tensor) else type(states).__name__
+            raise ValueError(
+                f'states must have shape (B,{self.K},{self.embed_dim}), got {shape}')
+        B = states.shape[0]
+        if (not states.is_floating_point() or not torch.isfinite(states).all()
+                or not isinstance(log_scales, torch.Tensor)
+                or tuple(log_scales.shape) != (B, self.K)
+                or not log_scales.is_floating_point() or not torch.isfinite(log_scales).all()):
+            raise ValueError('states/log_scales must be finite floating-point streaming state')
+        if (not isinstance(z_t, torch.Tensor)
+                or tuple(z_t.shape) != (B, self.embed_dim)
+                or not z_t.is_floating_point() or not torch.isfinite(z_t).all()):
+            shape = tuple(z_t.shape) if isinstance(z_t, torch.Tensor) else type(z_t).__name__
+            raise ValueError(f'z_t must be finite with shape {(B, self.embed_dim)}, got {shape}')
+        if (not isinstance(action, torch.Tensor)
+                or tuple(action.shape) != (B, self.action_dim)
+                or not action.is_floating_point() or not torch.isfinite(action).all()):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(f'action must be finite with shape {(B, self.action_dim)}, got {shape}')
+        action = action.to(device=states.device, dtype=states.dtype)
+        z_t = z_t.to(device=states.device, dtype=states.dtype)
+        override = None
+        if resistance_override is not None:
+            override = self._coerce_resistance_override(
+                resistance_override, B, 1, device=log_scales.device,
+                dtype=log_scales.dtype)[:, 0]
+        alphas = self.ordered_alphas()
+        qs = self.process_scales(alphas)
+        return self._filter_step_unchecked(
+            states, log_scales, z_t, action, alphas, qs, override)
+
+    def forward(self, z: torch.Tensor, actions: torch.Tensor,
+                memory_update_mask: torch.Tensor = None, action_override=None,
+                resistance_override=None, return_details: bool = False):
+        """Run the causal filter and optionally return every V9 diagnostic trajectory.
+
+        ``resistance_override`` accepts a finite positive scalar, ``(B,T)``, or ``(B,T,1)``
+        tensor.  It is an analysis-only intervention; unlike a visibility mask it directly
+        replaces the operational ``R_t`` values and fails closed on malformed input.
+        """
+        B, T, _ = self._validate_latents(z)
+        actions = self._validate_actions(actions, B, T - 1)
+        actions = actions.to(device=z.device, dtype=z.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions)
+        if memory_update_mask is not None:
+            # V9 never consumes visibility metadata; validate shared plumbing, then ignore it.
+            self._validate_update_mask(memory_update_mask, B, T)
+
+        scale_dtype = (torch.float32 if z.dtype in {torch.float16, torch.bfloat16}
+                       else z.dtype)
+        override = None
+        if resistance_override is not None:
+            override = self._coerce_resistance_override(
+                resistance_override, B, T, device=z.device, dtype=scale_dtype)
+
+        alphas = self.ordered_alphas()
+        qs = self.process_scales(alphas)
+        x = self._rms_norm(self.W_x(z))
+        state = x[:, 0].unsqueeze(1).expand(-1, self.K, -1)
+        log_scale = torch.zeros(B, self.K, device=z.device, dtype=scale_dtype)
+        initial_weights = self._fusion_weights(log_scale)
+        initial_mixed = self._rms_norm((
+            state * initial_weights.to(dtype=state.dtype).unsqueeze(-1)
+        ).sum(dim=1))
+        prior_mixture_0 = (
+            state * initial_weights.to(dtype=state.dtype).unsqueeze(-1)
+        ).sum(dim=1)
+        resistance_0 = (self._resistance(z[:, 0], x[:, 0], prior_mixture_0)
+                        if override is None else override[:, 0])
+        resistance_0 = resistance_0.to(dtype=scale_dtype)
+        log_R_0 = torch.log(resistance_0)
+        gains_0 = torch.zeros_like(log_scale)
+        nominal_0 = alphas.to(device=z.device, dtype=scale_dtype).view(1, self.K).expand(B, -1)
+
+        mixed_sequence = [initial_mixed]
+        states = [state]
+        priors = [state]
+        log_prior_scales = [log_scale]
+        log_scales = [log_scale]
+        resistances = [resistance_0]
+        log_resistances = [log_R_0]
+        gains = [gains_0]
+        prior_weights = [initial_weights]
+        read_weights = [initial_weights]
+        nominal_coefficients = [nominal_0]
+
+        for t in range(1, T):
+            mixed, state, log_scale, step_details = self._filter_step_unchecked(
+                state, log_scale, z[:, t], actions[:, t - 1], alphas, qs,
+                None if override is None else override[:, t], x[:, t])
+            mixed_sequence.append(mixed)
+            states.append(state)
+            priors.append(step_details['priors'])
+            log_prior_scales.append(step_details['log_prior_scales'])
+            log_scales.append(log_scale)
+            resistances.append(step_details['resistance'])
+            log_resistances.append(step_details['log_R'])
+            gains.append(step_details['gains'])
+            prior_weights.append(step_details['prior_weights'])
+            read_weights.append(step_details['read_weights'])
+            nominal_coefficients.append(step_details['nominal_direct_coefficients'])
+
+        mixed = torch.stack(mixed_sequence, dim=1)
+        if not return_details:
+            return mixed
+        log_P = torch.stack(log_scales, dim=1)
+        log_R = torch.stack(log_resistances, dim=1)
+        details = {
+            'x': x,
+            'priors': torch.stack(priors, dim=1),
+            'states': torch.stack(states, dim=1),
+            'log_prior_scales': torch.stack(log_prior_scales, dim=1),
+            'scales': torch.exp(log_P),
+            'log_P': log_P,
+            'log_scales': log_P,
+            'resistance': torch.stack(resistances, dim=1),
+            'log_R': log_R,
+            'log_resistance': log_R,
+            'gains': torch.stack(gains, dim=1),
+            'prior_weights': torch.stack(prior_weights, dim=1),
+            'read_weights': torch.stack(read_weights, dim=1),
+            'nominal_direct_coefficients': torch.stack(nominal_coefficients, dim=1),
+            'alphas': alphas,
+            'q': qs,
+            'qs': qs,
+        }
+        return mixed, details
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        if (not isinstance(z, torch.Tensor) or not isinstance(mixed, torch.Tensor)
+                or z.dim() != 3 or mixed.dim() != 3 or z.shape != mixed.shape
+                or z.shape[-1] != self.embed_dim):
+            z_shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            mixed_shape = tuple(mixed.shape) if isinstance(mixed, torch.Tensor) else type(mixed).__name__
+            raise ValueError(
+                f'z and mixed must share shape (B,T,{self.embed_dim}), got '
+                f'{z_shape} and {mixed_shape}')
+        if (not z.is_floating_point() or not mixed.is_floating_point()
+                or not torch.isfinite(z).all() or not torch.isfinite(mixed).all()):
+            raise ValueError('z and mixed must contain finite floating-point values')
+        return z + self.W_o(mixed)
+
+    def horizons(self) -> Dict[str, float]:
+        """Expose learned pole/process-scale metadata without inventing fixed horizons."""
+        with torch.no_grad():
+            alphas = self.ordered_alphas()
+            qs = self.process_scales(alphas)
+            taus = -1.0 / torch.log(alphas.clamp(min=torch.finfo(alphas.dtype).tiny,
+                                                 max=1.0 - self.eps))
+            return {
+                'tau_fast': float(taus[0]),
+                'tau_slow': float(taus[1]),
+                'alpha_fast': float(alphas[0]),
+                'alpha_slow': float(alphas[1]),
+                'q_fast': float(qs[0]),
+                'q_slow': float(qs[1]),
+                'pole_separation': float(alphas[1] - alphas[0]),
+                'evidence_offset': float(self.b_R),
+                'action_head_shared_norm': float(self.W_a.weight.norm()),
+                'n_banks': self.K,
+            }
+
+
+LOIFv9Memory = LearnedOrderedInnovationFilterMemory
+
+
 class HierarchicalActionConditionedSSMMemory(nn.Module):
     """HACSSM-v5: a hard-monotone, action-conditioned two-level SSM memory.
 

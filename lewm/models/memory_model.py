@@ -30,7 +30,8 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 HierarchicalActionConditionedMemory,
                                 HierarchicalActionConditionedSSMMemory,
                                 HierarchicalCounterfactualRecoveryMemory,
-                                SharedActionShrinkageMemory, OCSMTMemory)
+                                SharedActionShrinkageMemory,
+                                LearnedOrderedInnovationFilterMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -113,6 +114,17 @@ _HACSSMV8_MODES = {
     'hacssmv8_redundant': 'redundant',
     'hacssmv8_noaction': 'noaction',
     'hacssmv8_single': 'single',
+}
+
+_LOIFV9_MODES = {
+    'loifv9': 'learned',
+    'loifv9_fixedalpha': 'fixedalpha',
+    'loifv9_globalR': 'globalR',
+    'loifv9_innovationonly': 'innovationonly',
+    'loifv9_latentonly': 'latentonly',
+    'loifv9_uniformfusion': 'uniformfusion',
+    'loifv9_noaction': 'noaction',
+    'loifv9_singlebank': 'singlebank',
 }
 
 
@@ -204,6 +216,10 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_hacssmv8 = SharedActionShrinkageMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_HACSSMV8_MODES[memory_impl])
+        elif memory_impl in _LOIFV9_MODES:                  # learned ordered innovation filter
+            self.mem_loifv9 = LearnedOrderedInnovationFilterMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_LOIFV9_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -222,15 +238,17 @@ class MemoryLeWorldModel(LeWorldModel):
 
     def _inject(self, z: torch.Tensor, actions: torch.Tensor = None,
                 memory_update_mask: torch.Tensor = None, gate_override=None,
-                action_override=None, return_memory_details: bool = False):
+                action_override=None, resistance_override=None,
+                return_memory_details: bool = False):
         """Return the memory-augmented latents z~ the predictor consumes (branches by impl)."""
         if (return_memory_details and self.memory_impl not in _HACSMV4_MODES
                 and self.memory_impl not in _HACSSMV5_MODES
                 and self.memory_impl not in _HACSSMV6_MODES
                 and self.memory_impl not in _HACSSMV7_MODES
-                and self.memory_impl not in _HACSSMV8_MODES):
+                and self.memory_impl not in _HACSSMV8_MODES
+                and self.memory_impl not in _LOIFV9_MODES):
             raise ValueError(
-                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7/v8')
+                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7/v8/LOIF-v9')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -301,6 +319,20 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_hacssmv8.fuse(z, mixed), details
             return self.mem_hacssmv8.fuse(z, result)
+        if self.memory_impl in _LOIFV9_MODES:
+            if actions is None:
+                raise ValueError('LOIF-v9 requires actions with a_t mapping z_t to z_{t+1}')
+            if gate_override is not None:
+                raise ValueError(
+                    'LOIF-v9 has no gate override; use resistance_override for diagnostics')
+            result = self.mem_loifv9(
+                z, actions, memory_update_mask=memory_update_mask,
+                action_override=action_override, resistance_override=resistance_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_loifv9.fuse(z, mixed), details
+            return self.mem_loifv9.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -329,6 +361,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_hacssmv7.horizons()
         if self.memory_impl in _HACSSMV8_MODES:
             return self.mem_hacssmv8.horizons()
+        if self.memory_impl in _LOIFV9_MODES:
+            return self.mem_loifv9.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -799,10 +833,10 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
-        if self.memory_impl in _HACSSMV8_MODES:
-            # V8 is an action-conditioned two-level inference memory, but intentionally has no
-            # teacher or internal-state auxiliary.  Do not request details here: the generic
-            # hierarchy tail below interprets non-None details as a request to add an auxiliary.
+        if self.memory_impl in _HACSSMV8_MODES or self.memory_impl in _LOIFV9_MODES:
+            # V8/V9 are action-conditioned inference memories with no teacher or internal-state
+            # auxiliary.  Do not request details here: the generic hierarchy tail below
+            # interprets non-None details as a request to add an auxiliary.
             z_tilde = self._inject(
                 z, actions=actions, memory_update_mask=memory_update_mask,
                 gate_override=gate_override)
@@ -903,7 +937,7 @@ class MemoryLeWorldModel(LeWorldModel):
     @torch.no_grad()
     def encode_with_memory(self, observations: torch.Tensor, actions: torch.Tensor = None,
                            memory_update_mask: torch.Tensor = None, gate_override=None,
-                           action_override=None):
+                           action_override=None, resistance_override=None):
         """Return (z, m_fast, m_slow, z_tilde). m_fast/m_slow are None for non-EMA impls."""
         z = self.encode(observations)
         if self.memory_impl == 'ema':
@@ -911,7 +945,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return z, m_fast, m_slow, self.fusion(z, m_fast, m_slow)
         return z, None, None, self._inject(
             z, actions=actions, memory_update_mask=memory_update_mask,
-            gate_override=gate_override, action_override=action_override)
+            gate_override=gate_override, action_override=action_override,
+            resistance_override=resistance_override)
 
     @torch.no_grad()
     def memory_influence(
@@ -921,6 +956,7 @@ class MemoryLeWorldModel(LeWorldModel):
         memory_update_mask: torch.Tensor = None,
         gate_override=None,
         action_override=None,
+        resistance_override=None,
     ) -> Dict[str, torch.Tensor]:
         """Causal influence of each memory bank on the predicted next latent.
 
@@ -967,11 +1003,13 @@ class MemoryLeWorldModel(LeWorldModel):
             or self.memory_impl in _HACSSMV6_MODES
             or self.memory_impl in _HACSSMV7_MODES
             or self.memory_impl in _HACSSMV8_MODES
+            or self.memory_impl in _LOIFV9_MODES
         )
         if hierarchical:
             z_full, details = self._inject(
                 z, actions=actions, memory_update_mask=memory_update_mask,
                 gate_override=gate_override, action_override=action_override,
+                resistance_override=resistance_override,
                 return_memory_details=True)
             if self.memory_impl in _HACSMV4_MODES:
                 memory = self.mem_hacsmv4
@@ -981,18 +1019,30 @@ class MemoryLeWorldModel(LeWorldModel):
                 memory = self.mem_hacssmv6
             elif self.memory_impl in _HACSSMV7_MODES:
                 memory = self.mem_hacssmv7
-            else:
+            elif self.memory_impl in _HACSSMV8_MODES:
                 memory = self.mem_hacssmv8
+            else:
+                memory = self.mem_loifv9
             states = details['states']
-            route = details['route'].to(device=states.device, dtype=states.dtype)
+            if self.memory_impl in _LOIFV9_MODES:
+                dynamic_weights = details['read_weights'].to(
+                    device=states.device, dtype=states.dtype)
 
-            def ablated(level: int) -> torch.Tensor:
-                weights = route.clone()
-                weights[level] = 0.0
-                mixed = (states * weights.view(1, 1, memory.K, 1)).sum(dim=2)
-                mixed = mixed * torch.rsqrt(
-                    mixed.square().mean(dim=-1, keepdim=True) + memory.rms_eps)
-                return memory.fuse(z, mixed)
+                def ablated(level: int) -> torch.Tensor:
+                    weights = dynamic_weights.clone()
+                    weights[:, :, level] = 0.0
+                    mixed = (states * weights.unsqueeze(-1)).sum(dim=2)
+                    return memory.fuse(z, memory._rms_norm(mixed))
+            else:
+                route = details['route'].to(device=states.device, dtype=states.dtype)
+
+                def ablated(level: int) -> torch.Tensor:
+                    weights = route.clone()
+                    weights[level] = 0.0
+                    mixed = (states * weights.view(1, 1, memory.K, 1)).sum(dim=2)
+                    mixed = mixed * torch.rsqrt(
+                        mixed.square().mean(dim=-1, keepdim=True) + memory.rms_eps)
+                    return memory.fuse(z, mixed)
 
             full = self.predictor(z_full[:, wsl], act)[:, -1, :]
             fast = self.predictor(ablated(0)[:, wsl], act)[:, -1, :]
@@ -1008,7 +1058,8 @@ class MemoryLeWorldModel(LeWorldModel):
         # Other non-EMA memories have one undifferentiated or non-hierarchical memory path.
         full = self.predictor(self._inject(
             z, actions=actions, memory_update_mask=memory_update_mask,
-            gate_override=gate_override, action_override=action_override)[:, wsl], act)[:, -1, :]
+            gate_override=gate_override, action_override=action_override,
+            resistance_override=resistance_override)[:, wsl], act)[:, -1, :]
         nomem = self.predictor(z[:, wsl], act)[:, -1, :]
         infl_all = (full - nomem).norm(dim=-1)
         return {'pred_full': full, 'infl_all': infl_all}

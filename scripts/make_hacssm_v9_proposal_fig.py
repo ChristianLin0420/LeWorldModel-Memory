@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the design-only HACSSM-v9 / LOIF architecture proposal."""
+"""Generate the implemented prelaunch HACSSM-v9 / LOIF architecture contract."""
 
 from pathlib import Path
 
@@ -38,10 +38,10 @@ def main() -> None:
     ax.axis("off")
 
     ax.text(9, 11.02,
-            "HACSSM-v9 proposal / LOIF: Learned Ordered Innovation Filter",
+            "HACSSM-v9 / LOIF: Learned Ordered Innovation Filter",
             ha="center", fontsize=18.0, fontweight="bold", color="#17202a")
     ax.text(9, 10.65,
-            "Design only after V8 NO_GO • not implemented, launched, or performance-validated",
+            "Implemented after V8 NO_GO • official grid not launched; no performance result",
             ha="center", fontsize=10.0, color="#7b1fa2")
 
     ax.text(0.32, 10.12, "CAUSAL FILTER", fontsize=11.2,
@@ -60,7 +60,7 @@ def main() -> None:
         "learned ordered poles\n"
         + r"$0<\alpha_f<\alpha_s<1$" + "\n"
         + r"$q_k=1-\alpha_k^2$" + "\n"
-        + "zero-logit start; no tau grid",
+        + "matched tau-init; poles then learned",
         "#dcedc8", size=8.2, edge="#558b2f", linewidth=1.7)
 
     levels = (
@@ -150,7 +150,7 @@ def main() -> None:
         "operational scales—not calibrated variances",
         "#e8eaf6", size=8.1, edge="#3949ab", linewidth=1.7)
 
-    ax.text(0.35, 3.84, "PROPOSED FALSIFICATION MAP", fontsize=11.2,
+    ax.text(0.35, 3.84, "FROZEN FALSIFICATION MAP", fontsize=11.2,
             fontweight="bold", color="#37474f")
     variants = (
         ("loifv9", "learned poles + full evidence\ninverse-scale fusion", "#9575cd"),
@@ -168,7 +168,7 @@ def main() -> None:
             size=5.65, linewidth=1.3)
 
     ax.text(9, 1.94,
-            "Proposed memory cost at D=128,A=6: 34,563 parameters; streaming state: "
+            "Implemented memory cost at D=128,A=6: 34,563 parameters; streaming state: "
             "2D+2=258 floats; linear time in sequence length.",
             ha="center", fontsize=8.7, color="#455a64")
     ax.text(9, 1.53,
@@ -176,11 +176,11 @@ def main() -> None:
             "loses 0.96% to the endpoint envelope and is 1.21% worse than SSM deep in blackout.",
             ha="center", fontsize=8.45, color="#455a64")
     ax.text(9, 1.11,
-            "Not literally hyperparameter-free: D, two-bank capacity, optimizer, data, and numeric "
-            "constants remain; LOIF removes hand-set memory timescales/objective weights.",
+            "Not literally hyperparameter-free: D, two-bank capacity, optimizer, data, numeric "
+            "constants, and matched tau-init remain; retention is learned after initialization.",
             ha="center", fontsize=8.45, color="#455a64")
     ax.text(9, 0.58,
-            "V9 is a post-V8 adaptive proposal. Publication evidence requires a separately frozen "
+            "V9 is a post-V8 adaptive prelaunch study. Publication evidence requires a separate "
             "cohort with unseen seeds, gaps/corruptions, state outcomes, and executed return.",
             ha="center", fontsize=8.9, fontweight="bold", color="#6a1b9a")
 

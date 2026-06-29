@@ -139,6 +139,38 @@ def shared_action_shrinkage_metadata(memory_mode):
     }
 
 
+def learned_ordered_innovation_metadata(memory_mode):
+    """Machine-readable LOIF-v9 inference-only architecture/control contract."""
+    if not memory_mode.startswith('loifv9'):
+        return {}
+    mode = memory_mode.removeprefix('loifv9_') if memory_mode != 'loifv9' else 'learned'
+    evidence_kind = {
+        'globalR': 'learned_global_resistance',
+        'innovationonly': 'innovation_only_dynamic_resistance',
+        'latentonly': 'latent_only_dynamic_resistance',
+    }.get(mode, 'latent_and_innovation_dynamic_resistance')
+    fusion_kind = {
+        'uniformfusion': 'uniform_prior_and_read',
+        'singlebank': 'slow_bank_only',
+    }.get(mode, 'inverse_scale_prior_and_read')
+    return {
+        'memory_arch_schema_version': 9,
+        'memory_architecture': 'learned_ordered_innovation_filter',
+        'memory_v9_mode': mode,
+        'memory_retention_kind': (
+            'fixed_tau_mapped' if mode == 'fixedalpha' else 'learned_ordered_stable_poles'),
+        'memory_process_scale_kind': 'q_equals_one_minus_alpha_squared',
+        'memory_evidence_kind': evidence_kind,
+        'memory_fusion_kind': fusion_kind,
+        'memory_action_kind': 'none' if mode == 'noaction' else 'physically_shared',
+        'memory_joint_read': mode != 'singlebank',
+        'memory_internal_auxiliary': 'none',
+        'memory_teacher_present': False,
+        'memory_objective': 'unweighted_visible_next_latent_mse',
+        'memory_hidden_clean_targets_used': False,
+    }
+
+
 def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight=0.0):
     model.train(train)
     if not any(p.requires_grad for p in model.encoder.parameters()):
@@ -452,7 +484,11 @@ def main():
                             'hacssmv7_noaction', 'hacssmv7_single',
                             'hacssmv8', 'hacssmv8_dynamic', 'hacssmv8_static',
                             'hacssmv8_levelaction', 'hacssmv8_redundant',
-                            'hacssmv8_noaction', 'hacssmv8_single'])
+                            'hacssmv8_noaction', 'hacssmv8_single',
+                            'loifv9', 'loifv9_fixedalpha', 'loifv9_globalR',
+                            'loifv9_innovationonly', 'loifv9_latentonly',
+                            'loifv9_uniformfusion', 'loifv9_noaction',
+                            'loifv9_singlebank'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -540,6 +576,13 @@ def main():
         raise ValueError(
             'HACSSM-v8 has no internal auxiliary; require --hier-loss-weight 0 '
             'and --hier-loss-schedule fixed')
+    if args.memory_mode.startswith('loifv9') and (
+            args.hier_loss_weight != 0.0 or args.hier_loss_schedule != 'fixed'
+            or args.first_post_loss_weight != 0.0):
+        raise ValueError(
+            'LOIF-v9 uses only ordinary visible next-latent prediction; require '
+            '--hier-loss-weight 0, --hier-loss-schedule fixed, and '
+            '--first-post-loss-weight 0')
 
     feature_mode = any((args.train_feature_cache, args.val_feature_cache, args.feature_manifest))
     if feature_mode and not all((args.train_feature_cache, args.val_feature_cache, args.feature_manifest)):
@@ -647,7 +690,8 @@ def main():
             config=(vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'}
                     | hierarchical_objective_metadata(args.memory_mode)
                     | counterfactual_recovery_metadata(args.memory_mode)
-                    | shared_action_shrinkage_metadata(args.memory_mode)),
+                    | shared_action_shrinkage_metadata(args.memory_mode)
+                    | learned_ordered_innovation_metadata(args.memory_mode)),
             settings=wandb.Settings(init_timeout=120),
         )
         if args.wandb_mode is not None:
@@ -695,7 +739,11 @@ def main():
             'hacssmv7_norecovery', 'hacssmv7_noaction', 'hacssmv7_single',
             'hacssmv8', 'hacssmv8_dynamic', 'hacssmv8_static',
             'hacssmv8_levelaction', 'hacssmv8_redundant',
-            'hacssmv8_noaction', 'hacssmv8_single') else 'ema'
+            'hacssmv8_noaction', 'hacssmv8_single',
+            'loifv9', 'loifv9_fixedalpha', 'loifv9_globalR',
+            'loifv9_innovationonly', 'loifv9_latentonly',
+            'loifv9_uniformfusion', 'loifv9_noaction',
+            'loifv9_singlebank') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
@@ -804,7 +852,8 @@ def main():
         if wb is not None:
             memory_log = {
                 f'mem/{key}': value for key, value in tau.items()
-                if key.startswith(('rho_', 'action_head_'))
+                if key.startswith((
+                    'rho_', 'action_head_', 'alpha_', 'q_', 'pole_', 'evidence_'))
             }
             wb.log({'epoch': epoch,
                     **{f'train/{key}': value for key, value in tr.items()},
@@ -870,6 +919,7 @@ def main():
             **hierarchical_objective_metadata(args.memory_mode),
             **counterfactual_recovery_metadata(args.memory_mode),
             **shared_action_shrinkage_metadata(args.memory_mode),
+            **learned_ordered_innovation_metadata(args.memory_mode),
             **tau_json}
     for key, value in va.items():
         if key.startswith('hier_'):
@@ -878,6 +928,14 @@ def main():
         best.update(phase_mse(
             model, val_loader, device, use_amp, args.length, args.history_len,
             constant_latent))
+    if args.memory_mode == 'loifv9':
+        # Only the nominated candidate runs the frozen training-donor resistance diagnostics;
+        # the seven direct controls need no post-hoc donor intervention.  The flat numeric fields
+        # flow into best.json and the final online W&B evaluation summary below.
+        from scripts.hacssm_v9_diagnostics import evaluate_loif_v9_diagnostics
+        best.update(evaluate_loif_v9_diagnostics(
+            model, train_ds, val_ds, device=device, use_amp=use_amp,
+            history_len=args.history_len, batch_size=args.batch_size))
 
     rollout_path = None
     rollout_arrays = None
@@ -943,7 +1001,8 @@ def main():
                     'semantics': 'closed-loop-on-observations clean-next-latent evaluation trace',
                 } | hierarchical_objective_metadata(args.memory_mode)
                   | counterfactual_recovery_metadata(args.memory_mode)
-                  | shared_action_shrinkage_metadata(args.memory_mode),
+                  | shared_action_shrinkage_metadata(args.memory_mode)
+                  | learned_ordered_innovation_metadata(args.memory_mode),
             )
             rollout_artifact.add_file(str(rollout_path), name='eval_rollout.npz')
             wb.log_artifact(rollout_artifact)

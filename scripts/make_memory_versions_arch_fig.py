@@ -39,7 +39,7 @@ def main() -> None:
     ax.set_ylim(0, 27.4)
     ax.axis('off')
 
-    ax.text(9, 27.03, 'Learnable-memory architecture map: V1–V9 and tested/proposed controls',
+    ax.text(9, 27.03, 'Learnable-memory architecture map: V1–V9 and tested/prelaunch controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
     ax.text(9, 26.65,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
@@ -74,7 +74,7 @@ def main() -> None:
          'joint read; no internal auxiliary', '#9575cd', body_size=5.05)
     card(ax, xs[8], top_y, width, top_h, 'LOIF-v9',
          'learned ordered poles\nevidence scale + gain\n'
-         'inverse-scale fusion; design only', '#7e57c2', body_size=4.85)
+         'inverse-scale fusion; prelaunch', '#7e57c2', body_size=4.85)
     for index in range(8):
         arrow(ax, (xs[index] + width, 25.00), (xs[index + 1], 25.00))
 
@@ -95,7 +95,7 @@ def main() -> None:
              title_size=8.5, body_size=6.2)
 
     ax.text(0.35, 21.50,
-            'V9 LOIF design-only controls (34,563 proposed memory parameters; no V9 run)',
+            'V9 LOIF implemented prelaunch controls (34,563 memory parameters; no official run)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v9_controls = (
         ('loifv9', 'learned poles + full evidence\ninverse-scale fusion', '#7e57c2'),
@@ -219,15 +219,15 @@ def main() -> None:
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
-            'V9: design-only proposal (§2.8/§7.11).',
+            'V9: implemented prelaunch; no official result (§2.8/§7.11).',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
-            'V9 proposes learned ordered poles + evidence-conditioned gains under one unweighted '
-            'visible-target MSE; every reference must be retrained. No implementation or result.',
+            'V9 implements learned ordered poles + evidence-conditioned gains under one unweighted '
+            'visible-target MSE; every reference is retrained. Official grid not launched.',
             ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
