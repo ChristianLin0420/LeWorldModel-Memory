@@ -123,7 +123,6 @@ SOURCE_FILES = (
     Path("scripts/analyze_hacssm_v5.py"),
     Path("scripts/train_hacssm_v10.py"),
     Path("scripts/hacssm_v10_data.py"),
-    Path("lewm/__init__.py"),
     Path("lewm/data.py"),
     Path("lewm/envs/dmc_collect.py"),
     Path("lewm/models/__init__.py"),

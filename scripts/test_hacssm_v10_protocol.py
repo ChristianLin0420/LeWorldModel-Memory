@@ -58,6 +58,12 @@ class V10ProtocolTests(unittest.TestCase):
         )
         self.assertEqual(manifest.name, "manifest.json")
 
+    def test_source_manifest_contains_only_nonempty_files(self):
+        for relative in runner.SOURCE_FILES:
+            path = runner.ROOT / relative
+            self.assertTrue(path.is_file(), path)
+            self.assertGreater(path.stat().st_size, 0, path)
+
     def test_expected_args_have_no_checkpoint_or_feature_escape_hatch(self):
         job = runner.PILOT_JOBS[0]
         args = runner.expected_args(job)
