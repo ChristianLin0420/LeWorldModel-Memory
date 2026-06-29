@@ -91,7 +91,8 @@ def main() -> None:
          'live suffix + detached rank\nNO_GO; official 0/400',
          '#512da8', body_size=2.85)
     card(ax, xs[11], top_y, width, top_h, 'SIRO-v12',
-         'anchor + residual + action\nstable FWL fit; paired OAS K\ncontinuous spectrum audit\nPROSPECTIVE 0/28',
+         'anchor + residual + action\nstable FWL fit; paired OAS K\n'
+         '28/28 artifacts; rank 21/28\nNO_GO; no 100e',
          '#3949ab', body_size=2.65)
     for index in range(11):
         arrow(ax, (xs[index] + width, 38.27), (xs[index + 1], 38.27))
@@ -176,26 +177,27 @@ def main() -> None:
             ha='center', fontsize=8.25, fontweight='bold', color='#b71c1c')
 
     ax.text(0.35, 23.15,
-            'V12 SIRO prospective screen: stable fitted action/residual observer + seven complete design interventions (0/28)',
+            'V12 SIRO completed adaptive screen: seven designs × four tasks = 28/28 artifact-valid cells; 21 rank-valid / 7 rank-fail',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v12_controls = (
-        ('full centered', '$c=z_0$; $h=c+r+u$\nstable FWL + paired OAS $K$', '#a5d6a7'),
-        ('spectral shrink', '$h=c+r+Ru$\ncross-fit conservative action', '#e1bee7'),
-        ('identity $A$', '$A=I$ in $r,u$\nintegrator control', '#ffe0b2'),
-        ('identity $K$', '$K=I$\nraw innovation correction', '#fff3e0'),
-        ('no action', '$u\\equiv0$\nexecuted-action necessity', '#ffccbc'),
-        ('absolute no-anchor', '$c=0,r_0=z_0$\nfit absolute $z$', '#b3e5fc'),
-        ('retrained V11', 'best KDIO predecessor\nsame host/data budget', '#d1c4e9'),
+        ('full centered', '$c=z_0$; $h=c+r+u$\nNMSE .935218 • rank 3/4', '#a5d6a7'),
+        ('spectral shrink', '$h=c+r+Ru$; shared-$A$ parity $R$\nNMSE .958373 • rank 3/4', '#e1bee7'),
+        ('identity $A$', '$A=I$ in $r,u$\nNMSE 1.486104 • rank 3/4', '#ffe0b2'),
+        ('identity $K$', '$K=I$\nNMSE 1.351535 • rank 3/4', '#fff3e0'),
+        ('no action', '$u\\equiv0$\nNMSE 1.003325 • rank 3/4', '#ffccbc'),
+        ('absolute no-anchor', '$c=0,r_0=z_0$; fit absolute $z$\nNMSE 1.495009 • rank 2/4', '#b3e5fc'),
+        ('retrained V11', 'rawdiff KDIO predecessor\nNMSE .564069 • artifacts 4/4', '#d1c4e9'),
     )
     for index, (title, body, color) in enumerate(v12_controls):
         card(ax, 0.15 + index * 2.55, 21.43, 2.30, 1.34, title, body, color,
              title_size=7.8, body_size=5.65)
-    card(ax, 0.35, 19.75, 17.30, 1.12,
-         'SIRO-v12 status: PROSPECTIVE / NOT YET RUN — seven designs × four tasks = 28 planned development cells',
-         'Common $3D$ streaming schema stores fixed anchor $c$, residual $r$, and action-explainable response $u$.\n'
-         'Stable FWL action dynamics and paired OAS–LMMSE correction are fitted from reward-free action-observed trajectories; '
-         'the continuous reachability/age spectrum is diagnostic only. No performance result is implied.',
-         '#e8eaf6', title_size=9.4, body_size=5.8, linewidth=1.45)
+    card(ax, 0.35, 19.75, 17.30, 1.45,
+         'SIRO-v12 closeout: SCREEN_NO_GO / NO 100-EPOCH LAUNCH',
+         'Full .935218 vs retrained V11 .564069 vs legal integrator .469803. Shared $A$ + full $R=I$ gives exact '
+         '$v=r+u$: $v^-=Av+Ba+b$, so the full split is bookkeeping—not a functionally distinct hierarchy.\n'
+         'V12b zero-step replay tested old-history $K$ .723578, identity $K$ .727920, deployed-history LMMSE '
+         '$2.008\\times10^{12}$, current-$A$ Riccati .724090, and normal-$A$ Riccati .376639; action partial-$R^2$ positive 0/4 → STOP.',
+         '#ffebee', title_size=9.4, body_size=5.25, edge='#b71c1c', linewidth=1.6)
 
     ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
             fontsize=11.5, fontweight='bold', color='#37474f')
@@ -309,7 +311,7 @@ def main() -> None:
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
             'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
-            'V11 development: 64 cells, NO_GO; official 0/400.  V12 prospective screen: 0/28.',
+            'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.',
             ha='center', fontsize=7.9, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
@@ -317,8 +319,8 @@ def main() -> None:
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
             'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
-            'V12 is a prospective anchor-centered decomposition with stable fitted FWL action memory, paired OAS–LMMSE correction, '
-            'and a continuous reachability/age audit—not a reported result.',
+            'V12 loses to retrained V11 and the legal integrator; its shared-A full read collapses exactly to one $r+u$ state, '
+            'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).',
             ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

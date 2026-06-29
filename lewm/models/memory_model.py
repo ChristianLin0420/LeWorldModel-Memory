@@ -34,6 +34,7 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 LearnedOrderedInnovationFilterMemory,
                                 OrthogonalRecurrentBeliefMemory,
                                 KickDriftInnovationObserverMemory, OCSMTMemory)
+from lewm.models.siro import StableIdentifiedResidualObserverMemory
 
 
 _SMTV3_MODES = {
@@ -153,6 +154,15 @@ _KDIOV11_MODES = {
     'kdiov11_static': 'static',
 }
 
+_SIROV12_MODES = {
+    'sirov12': 'full',
+    'sirov12_spectralshrink': 'spectralshrink',
+    'sirov12_identityA': 'identityA',
+    'sirov12_identityK': 'identityK',
+    'sirov12_noaction': 'noaction',
+    'sirov12_noanchor': 'noanchor',
+}
+
 
 class MemoryLeWorldModel(LeWorldModel):
     """LeWorldModel + two-timescale EMA memory injected into the predictor input.
@@ -254,6 +264,10 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_kdiov11 = KickDriftInnovationObserverMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_KDIOV11_MODES[memory_impl])
+        elif memory_impl in _SIROV12_MODES:                 # fitted residual/action observer
+            self.mem_sirov12 = StableIdentifiedResidualObserverMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_SIROV12_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -282,10 +296,11 @@ class MemoryLeWorldModel(LeWorldModel):
                 and self.memory_impl not in _HACSSMV8_MODES
                 and self.memory_impl not in _LOIFV9_MODES
                 and self.memory_impl not in _ORBITV10_MODES
-                and self.memory_impl not in _KDIOV11_MODES):
+                and self.memory_impl not in _KDIOV11_MODES
+                and self.memory_impl not in _SIROV12_MODES):
             raise ValueError(
                 'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/'
-                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11')
+                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11/SIRO-v12')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -396,6 +411,20 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_kdiov11.fuse(z, mixed), details
             return self.mem_kdiov11.fuse(z, result)
+        if self.memory_impl in _SIROV12_MODES:
+            if actions is None:
+                raise ValueError('SIRO-v12 requires actions with a_t mapping z_t to z_{t+1}')
+            if memory_update_mask is not None or gate_override is not None:
+                raise ValueError('SIRO-v12 has no visibility mask or learned gate override')
+            if resistance_override is not None:
+                raise ValueError('SIRO-v12 has no resistance override')
+            result = self.mem_sirov12(
+                z, actions, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_sirov12.fuse(z, mixed), details
+            return self.mem_sirov12.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -430,6 +459,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_orbitv10.horizons()
         if self.memory_impl in _KDIOV11_MODES:
             return self.mem_kdiov11.horizons()
+        if self.memory_impl in _SIROV12_MODES:
+            return self.mem_sirov12.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -924,8 +955,9 @@ class MemoryLeWorldModel(LeWorldModel):
         memory_details = None
         if (self.memory_impl in _HACSSMV8_MODES or self.memory_impl in _LOIFV9_MODES
                 or self.memory_impl in _ORBITV10_MODES
-                or self.memory_impl in _KDIOV11_MODES):
-            # V8--V11 are action-conditioned inference memories with no teacher or internal-state
+                or self.memory_impl in _KDIOV11_MODES
+                or self.memory_impl in _SIROV12_MODES):
+            # V8--V12 are action-conditioned inference memories with no teacher or internal-state
             # auxiliary in the shared LeWM loss.  Do not request details here: the generic tail
             # interprets non-None details as a request to add an auxiliary.
             z_tilde = self._inject(
