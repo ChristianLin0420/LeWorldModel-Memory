@@ -3,7 +3,11 @@
 
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgb
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 
@@ -17,10 +21,14 @@ def card(ax, x, y, w, h, title, body, color, *, title_size=12, body_size=8.5,
         (x, y), w, h, boxstyle='round,pad=0.03,rounding_size=0.04',
         facecolor=color, edgecolor=edge, linewidth=linewidth)
     ax.add_patch(patch)
+    red, green, blue = to_rgb(color)
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    title_color = '#f7f9fb' if luminance < 0.43 else '#17202a'
+    body_color = '#f0f3f5' if luminance < 0.43 else '#263238'
     ax.text(x + w / 2, y + h - 0.28, title, ha='center', va='center',
-            fontsize=title_size, fontweight='bold', color='#17202a')
+            fontsize=title_size, fontweight='bold', color=title_color)
     ax.text(x + w / 2, y + h / 2 - 0.12, body, ha='center', va='center',
-            fontsize=body_size, color='#263238', linespacing=1.35)
+            fontsize=body_size, color=body_color, linespacing=1.35)
 
 
 def arrow(ax, start, end, label=''):
@@ -33,21 +41,21 @@ def arrow(ax, start, end, label=''):
 
 
 def main() -> None:
-    fig, ax = plt.subplots(figsize=(18, 29.7), dpi=180)
+    fig, ax = plt.subplots(figsize=(18, 40.8), dpi=180)
     fig.patch.set_facecolor('#fbfcfd')
     ax.set_xlim(0, 18)
-    ax.set_ylim(0, 29.7)
+    ax.set_ylim(0, 40.8)
     ax.axis('off')
 
-    ax.text(9, 29.35, 'Learnable-memory architecture map: V1–V10 and tested/adaptive controls',
+    ax.text(9, 40.45, 'Learnable-memory architecture map: V1–V12 and tested/adaptive controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
-    ax.text(9, 28.95,
+    ax.text(9, 40.05,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
             'mask shifts, and K/M/τ sweeps are experimental settings.',
             ha='center', fontsize=10.5, color='#607d8b')
 
-    xs = tuple(0.06 + index * 1.79 for index in range(10))
-    width, top_y, top_h = 1.58, 26.20, 2.05
+    xs = tuple(0.05 + index * 1.49 for index in range(12))
+    width, top_y, top_h = 1.26, 37.25, 2.05
     card(ax, xs[0], top_y, width, top_h, 'SMT-v1',
          r'value-gated EMA write' + '\n' + r'$i_t\odot z_t$; old state still decays' + '\n'
          + 'softmax horizon read', '#e3f2fd', body_size=4.75)
@@ -78,10 +86,17 @@ def main() -> None:
     card(ax, xs[9], top_y, width, top_h, 'ORBIT-v10-J',
          'one persistent $D$-state\n2 action Givens layers\nno decay / no horizon\n'
          'joint VICReg host\nNO LAUNCH', '#673ab7', body_size=4.05)
-    for index in range(9):
-        arrow(ax, (xs[index] + width, 27.22), (xs[index + 1], 27.22))
+    card(ax, xs[10], top_y, width, top_h, 'KDIO-v11',
+         'configuration + velocity\n$\\gamma\\,\\mathrm{qf}(M)$ action lift\nkick-drift integration\n'
+         'live suffix + detached rank\nNO_GO; official 0/400',
+         '#512da8', body_size=2.85)
+    card(ax, xs[11], top_y, width, top_h, 'SIRO-v12',
+         'anchor + residual + action\nstable FWL fit; paired OAS K\ncontinuous spectrum audit\nPROSPECTIVE 0/28',
+         '#3949ab', body_size=2.65)
+    for index in range(11):
+        arrow(ax, (xs[index] + width, 38.27), (xs[index + 1], 38.27))
 
-    ax.text(0.35, 25.78,
+    ax.text(0.35, 36.83,
             'V8 shared-action shrinkage controls (34,566 compact / 36,102 expanded parameters)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v8_controls = (
@@ -94,10 +109,10 @@ def main() -> None:
         ('single', 'medium-only read\nboth states retained', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v8_controls):
-        card(ax, 0.15 + index * 2.55, 24.10, 2.30, 1.34, title, body, color,
+        card(ax, 0.15 + index * 2.55, 35.15, 2.30, 1.34, title, body, color,
              title_size=8.5, body_size=6.2)
 
-    ax.text(0.35, 23.70,
+    ax.text(0.35, 34.75,
             'V9 LOIF completed controls (34,563 memory parameters; 325 cells; paired full-vs-control delta)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v9_controls = (
@@ -111,10 +126,10 @@ def main() -> None:
         ('single-bank', 'fast state disconnected\nfull delta = -2.220%', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v9_controls):
-        card(ax, 0.12 + index * 2.22, 22.02, 2.05, 1.34, title, body, color,
+        card(ax, 0.12 + index * 2.22, 33.07, 2.05, 1.34, title, body, color,
              title_size=7.25, body_size=5.15)
 
-    ax.text(0.35, 21.62,
+    ax.text(0.35, 32.67,
             'V10-J ORBIT modes (34,562 parameters at D=128/A=6; full host audit only, official 0/225)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v10_controls = (
@@ -125,8 +140,62 @@ def main() -> None:
         ('static', '$g_t=\\sigma(b)$\ntests innovation evidence\nPENDING', '#fff3e0'),
     )
     for index, (title, body, color) in enumerate(v10_controls):
-        card(ax, 0.20 + index * 3.55, 19.92, 3.22, 1.34, title, body, color,
+        card(ax, 0.20 + index * 3.55, 30.97, 3.22, 1.34, title, body, color,
              title_size=8.5, body_size=5.8)
+
+    ax.text(0.35, 30.53,
+            'V11 registered grid: 16 × 5 × 5 = 400 cells / 40,000 epoch rows — UNLAUNCHED 0/400 after development NO_GO; '
+            '17,796 nominal optimizer + 8,255 closed-form OAS = 26,051 total scalars',
+            fontsize=10.4, fontweight='bold', color='#37474f')
+    v11_controls = (
+        ('SSM', 'baseline\none $D$-state', '#e3f2fd'),
+        ('compact V8', 'baseline\nadditive two-state', '#e3f2fd'),
+        ('ORBIT V10', 'baseline\northogonal prior', '#e3f2fd'),
+        ('full KDIO', '$\\gamma=e^{\\log\\gamma}>0$\n$U=\\mathrm{qf}(M), U^\\top U=I_A$\nlive suffix + detached rank', '#512da8'),
+        ('fixedscale', '$\\gamma=1$ exactly\n$\\log\\gamma$ tensor retained\n17,795 active scalars', '#fff3e0'),
+        ('free geometry', '$\\gamma\\sqrt{A}M/\\|M\\|_F$\nQR bypassed; scale identifiable', '#fff3e0'),
+        ('nocalibration', '$\\mu=0,C=I$\nfit disabled', '#fff3e0'),
+        ('diagonal OAS', 'epoch OAS fit\ndiagonal only', '#fff3e0'),
+        ('h1', 'live suffix + rank\n$k=1$ only', '#e8f5e9'),
+        ('firstorder', 'architecture control\nno velocity carry', '#fff3e0'),
+        ('nodrift', 'architecture control\n$q^-=q$', '#fff3e0'),
+        ('noautonomy', 'architecture control\n$w_q=b_f=0$', '#fff3e0'),
+        ('noaction', 'architecture control\nzero action input', '#fff3e0'),
+        ('noactionswap', 'rank diagnosed; optimized term 0\nlive suffix retained', '#e8f5e9'),
+        ('nosuffix', 'live suffix + rank off\nfull inference retained', '#e8f5e9'),
+        ('noreliability', 'OAS stats retained\n$r=1$', '#fff3e0'),
+    )
+    for index, (title, body, color) in enumerate(v11_controls):
+        row, col = divmod(index, 4)
+        card(ax, 0.20 + col * 4.43, 28.85 - row * 1.615, 4.02, 1.34,
+             title, body, color, title_size=8.2, body_size=5.55)
+
+    ax.text(9, 23.62,
+            'V11 closeout: rawdiff .577987 (best), default .581525, legal integrator .476157; '
+            'all V11b late changes negative → NO_GO / NO_LAUNCH; official matrix stays 0/400.',
+            ha='center', fontsize=8.25, fontweight='bold', color='#b71c1c')
+
+    ax.text(0.35, 23.15,
+            'V12 SIRO prospective screen: stable fitted action/residual observer + seven complete design interventions (0/28)',
+            fontsize=11.5, fontweight='bold', color='#37474f')
+    v12_controls = (
+        ('full centered', '$c=z_0$; $h=c+r+u$\nstable FWL + paired OAS $K$', '#a5d6a7'),
+        ('spectral shrink', '$h=c+r+Ru$\ncross-fit conservative action', '#e1bee7'),
+        ('identity $A$', '$A=I$ in $r,u$\nintegrator control', '#ffe0b2'),
+        ('identity $K$', '$K=I$\nraw innovation correction', '#fff3e0'),
+        ('no action', '$u\\equiv0$\nexecuted-action necessity', '#ffccbc'),
+        ('absolute no-anchor', '$c=0,r_0=z_0$\nfit absolute $z$', '#b3e5fc'),
+        ('retrained V11', 'best KDIO predecessor\nsame host/data budget', '#d1c4e9'),
+    )
+    for index, (title, body, color) in enumerate(v12_controls):
+        card(ax, 0.15 + index * 2.55, 21.43, 2.30, 1.34, title, body, color,
+             title_size=7.8, body_size=5.65)
+    card(ax, 0.35, 19.75, 17.30, 1.12,
+         'SIRO-v12 status: PROSPECTIVE / NOT YET RUN — seven designs × four tasks = 28 planned development cells',
+         'Common $3D$ streaming schema stores fixed anchor $c$, residual $r$, and action-explainable response $u$.\n'
+         'Stable FWL action dynamics and paired OAS–LMMSE correction are fitted from reward-free action-observed trajectories; '
+         'the continuous reachability/age spectrum is diagnostic only. No performance result is implied.',
+         '#e8eaf6', title_size=9.4, body_size=5.8, linewidth=1.45)
 
     ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
             fontsize=11.5, fontweight='bold', color='#37474f')
@@ -225,7 +294,8 @@ def main() -> None:
         card(ax, 0.15 + index * 2.55, 3.22, 2.30, 1.42, title, body, '#eceff1',
              title_size=9.0, body_size=6.8, edge='#607d8b', linewidth=1.2)
 
-    card(ax, 0.35, 1.53, 17.30, 1.12, 'Shared leakage-safe V5–V9 data / normalization / tracking contract',
+    card(ax, 0.35, 1.53, 17.30, 1.12,
+         'Historical V5–V9 leakage-safe contract; V10–V12 use separate causal-host protocols',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
          'cohort-frozen objective: V5–V8 first-post weight .5; V9 weight 0 • '
@@ -238,16 +308,18 @@ def main() -> None:
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
-            'V9 complete: 325 runs, locked negative label.  V10-J adaptive audit: 5×100 epochs; official 0/225.',
-            ha='center', fontsize=8.8, color='#607d8b')
+            'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
+            'V11 development: 64 cells, NO_GO; official 0/400.  V12 prospective screen: 0/28.',
+            ha='center', fontsize=7.9, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
-            'V10-J fixes causal representation collapse, but Fish ceiling = 1.0233 and '
-            'Walker/Hopper late change = -7.53%/-5.46%; no matched baseline/control or ORBIT claim.',
-            ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
+            'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
+            'V12 is a prospective anchor-centered decomposition with stable fitted FWL action memory, paired OAS–LMMSE correction, '
+            'and a continuous reachability/age audit—not a reported result.',
+            ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUTPUT, bbox_inches='tight', facecolor=fig.get_facecolor())

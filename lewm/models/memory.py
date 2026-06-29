@@ -1492,6 +1492,963 @@ class OrthogonalRecurrentBeliefMemory(nn.Module):
 ORBITv10Memory = OrthogonalRecurrentBeliefMemory
 
 
+class KickDriftInnovationObserverMemory(nn.Module):
+    """KDIO-v11: a reversible second-order predictive-state observer.
+
+    A learned action kick updates velocity before velocity drifts position.  The action
+    tensor ``M`` is interpreted through a scaled thin-Stiefel frame
+    ``gamma U``, ``U=qf(M)``, ``U^T U=I_A``, and
+    ``gamma=exp(log_gamma)>0`` (except in the explicit free-geometry control)::
+
+        f_t   = tanh(w_q * RMSNorm(q_{t-1}) + b_f + gamma U a_{t-1})
+        v_t^- = v_{t-1} + f_t
+        q_t^- = q_{t-1} + v_t^-
+
+    The kick--drift shear is exactly reversible for a known action, permits autonomous motion
+    through ``w_q,b_f``, and retains momentum without a hand-selected decay.  The diagonal
+    state dependence keeps every suffix step linear in ``D`` while remaining exactly invertible:
+    recover ``q`` first, recompute its kick, and then recover ``v``.  The current encoder
+    coordinate corrects position and velocity through a self-calibrated clean-innovation
+    likelihood and ordered gains.  Let ``C`` be a fitted lower-triangular whitening factor
+    (so precision is ``C^T C``) and ``mu`` a fitted mean.  After each training epoch, both are
+    estimated in closed form by OAS from a clean observer pass with reliability forced open.
+    A fixed orthonormal
+    Helmert contrast ``B`` removes the affine-free encoder's structurally null all-ones axis::
+
+        h = RMSNorm(q^-)
+        u = sqrt(D) (z-q^-) / (||z|| + ||q^-|| + eps)
+        y = B u,       B 1 = 0,       B B^T = I
+        E = ||C (y-mu)||^2 / (D-1)
+        tau = softplus(b_tau + <h,u_tau>/sqrt(D))
+        r = tau / (tau + E)
+        alpha = sigmoid(b_q + <h,u_q>/sqrt(D))
+        beta = alpha sigmoid(b_v + <h,u_v>/sqrt(D))
+        g_q = r alpha,          g_v = r beta
+
+    OAS is a data-derived Gaussian covariance estimator; its shrinkage is estimated rather than
+    tuned, and Gaussian NLL is retained only as a calibration diagnostic. ``tau`` is a learned,
+    prior-conditioned process tolerance.  Their continuous precision ratio has no corruption
+    labels, visibility mask, calibration learning rate/loss weight, tuned ridge, fixed rejection
+    threshold, or selected corruption family. Reliability is monotone in whitened innovation
+    energy for a fixed prior.  Base
+    gains depend only on the predicted prior, never the current observation; velocity can only
+    absorb an innovation already trusted for configuration: ``0 <= g_v <= g_q < 1``.  The
+    ``noreliability`` control sets ``r=1`` while retaining every tensor.  The predictor reads
+    ``RMSNorm(q_t + v_t)`` through one zero-initialized residual projection.
+
+    QR and the positive scale are computed in FP32 without clipping. Every mode keeps the
+    same tensors. ``fixedscale`` sets the effective scale to exactly one while retaining
+    ``log_gamma``. ``unconstrained`` replaces ``U`` with the Frobenius-normalized free
+    geometry ``sqrt(A) M / ||M||_F`` so ``gamma`` has the same RMS-singular meaning;
+    ``firstorder``
+    overwrites rather than carries velocity;
+    ``nodrift`` retains kicked velocity but removes its position drift; ``noaction`` removes only
+    the sample action; ``noautonomy`` removes both state-dependent and constant autonomous kicks;
+    and ``static``/``noreliability`` remove the innovation-dependent reliability. Only
+    ``firstorder`` is non-invertible because it deliberately discards the incoming velocity.
+    """
+
+    MODES = {
+        'full', 'firstorder', 'nodrift', 'noaction', 'noautonomy', 'static',
+        'noreliability', 'unconstrained', 'fixedscale',
+    }
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'full',
+                 rms_eps: float = 1e-6):
+        super().__init__()
+        if (not isinstance(embed_dim, int) or isinstance(embed_dim, bool)
+                or embed_dim < 2):
+            raise ValueError(
+                f'KDIO-v11 embed_dim must be an integer >=2, got {embed_dim!r}')
+        if not isinstance(action_dim, int) or isinstance(action_dim, bool) or action_dim < 1:
+            raise ValueError(f'action_dim must be a positive integer, got {action_dim!r}')
+        if action_dim > embed_dim:
+            raise ValueError(
+                f'KDIO-v11 requires action_dim <= embed_dim, got {action_dim}>{embed_dim}')
+        if mode not in self.MODES:
+            raise ValueError(f"unknown KDIO-v11 mode '{mode}'")
+        if not math.isfinite(float(rms_eps)) or rms_eps <= 0:
+            raise ValueError(f'rms_eps must be positive and finite, got {rms_eps!r}')
+
+        self.embed_dim = embed_dim
+        self.innovation_dim = embed_dim - 1
+        self.action_dim = action_dim
+        self.mode = mode
+        self.rms_eps = float(rms_eps)
+
+        self.W_a = nn.Linear(action_dim, embed_dim, bias=False)
+        self.log_action_scale = nn.Parameter(torch.zeros(()))
+        self.w_q = nn.Parameter(torch.zeros(embed_dim))
+        self.b_f = nn.Parameter(torch.zeros(embed_dim))
+        self.position_gain_vector = nn.Parameter(torch.zeros(embed_dim))
+        self.velocity_ratio_vector = nn.Parameter(torch.zeros(embed_dim))
+        self.process_tolerance_vector = nn.Parameter(torch.zeros(embed_dim))
+        self.clean_innovation_mean = nn.Parameter(
+            torch.zeros(self.innovation_dim), requires_grad=False)
+        self.position_gain_bias = nn.Parameter(torch.tensor(-2.0))
+        # The velocity correction is a learned fraction of trusted position correction. Using
+        # the same neutral negative-logit initialization gives the nested .119^2=.014 gain.
+        self.velocity_ratio_bias = nn.Parameter(torch.tensor(-2.0))
+        self.process_tolerance_bias = nn.Parameter(torch.zeros(()))
+        # Packed lower whitening/precision-square-root factor. A softplus diagonal makes it
+        # nonsingular without clipping; softplus^{-1}(1) initializes C=I exactly.
+        precision_size = self.innovation_dim * (self.innovation_dim + 1) // 2
+        precision = torch.zeros(precision_size)
+        diagonal_positions = torch.cumsum(
+            torch.arange(1, self.innovation_dim + 1, dtype=torch.long), dim=0) - 1
+        precision[diagonal_positions] = math.log(math.expm1(1.0))
+        self.innovation_precision_packed = nn.Parameter(precision, requires_grad=False)
+        contrast = torch.zeros(self.innovation_dim, embed_dim)
+        for row in range(self.innovation_dim):
+            width = row + 1
+            scale = math.sqrt(width * (width + 1))
+            contrast[row, :width] = 1.0 / scale
+            contrast[row, width] = -width / scale
+        self.register_buffer('_innovation_contrast', contrast, persistent=False)
+        self.register_buffer(
+            '_calibration_count', torch.zeros((), dtype=torch.float64), persistent=False)
+        self.register_buffer(
+            '_calibration_sum', torch.zeros(self.innovation_dim, dtype=torch.float64),
+            persistent=False)
+        self.register_buffer(
+            '_calibration_cross',
+            torch.zeros(self.innovation_dim, self.innovation_dim, dtype=torch.float64),
+            persistent=False)
+        self.register_buffer('calibration_updates', torch.zeros((), dtype=torch.long))
+        self.register_buffer('calibration_samples', torch.zeros((), dtype=torch.long))
+        self.register_buffer('calibration_oas_shrinkage', torch.zeros(()))
+        self.register_buffer('calibration_covariance_condition', torch.ones(()))
+        self.register_buffer('calibration_diagonal_only', torch.zeros((), dtype=torch.bool))
+        self.W_o = nn.Linear(embed_dim, embed_dim, bias=False)
+
+        # A private CPU generator makes the full-rank starting frame deterministic and
+        # bit-identical across every structural mode without perturbing model-wide RNG state.
+        # Thin QR supplies unit columns directly: there is deliberately no sqrt(D/A) scale.
+        generator = torch.Generator(device='cpu').manual_seed(11_011)
+        initial_action = torch.randn(
+            embed_dim, action_dim, generator=generator, dtype=torch.float32)
+        initial_frame, initial_triangular = torch.linalg.qr(
+            initial_action, mode='reduced')
+        initial_sign = torch.where(
+            torch.diagonal(initial_triangular) < 0.0, -1.0, 1.0)
+        initial_frame = initial_frame * initial_sign.unsqueeze(0)
+        with torch.no_grad():
+            self.W_a.weight.copy_(initial_frame)
+        nn.init.zeros_(self.W_o.weight)
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return ``D^2 + AD + 5D + 4`` nominal optimizer scalars per mode.
+
+        Control modes retain every tensor; an exact intervention can make a retained scalar
+        functionally inactive even though it remains in the common optimizer schema.
+        """
+        return embed_dim * embed_dim + action_dim * embed_dim + 5 * embed_dim + 4
+
+    @classmethod
+    def expected_fitted_scalar_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return ``(D-1)D/2 + D-1`` closed-form calibration statistics only."""
+        del action_dim
+        return embed_dim * (embed_dim - 1) // 2 + embed_dim - 1
+
+    @classmethod
+    def expected_total_scalar_count(cls, embed_dim: int, action_dim: int) -> int:
+        """Return gradient-trained parameters plus fitted calibration statistics."""
+        return (cls.expected_parameter_count(embed_dim, action_dim)
+                + cls.expected_fitted_scalar_count(embed_dim, action_dim))
+
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters()
+                   if parameter.requires_grad)
+
+    def _rms_norm(self, value: torch.Tensor) -> torch.Tensor:
+        return value * torch.rsqrt(
+            value.square().mean(dim=-1, keepdim=True) + self.rms_eps)
+
+    def _validate_latents(self, z: torch.Tensor) -> Tuple[int, int, int]:
+        if not isinstance(z, torch.Tensor) or z.dim() != 3:
+            shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            raise ValueError(f'KDIO-v11 expects z with shape (B,T,D), got {shape}')
+        B, T, D = z.shape
+        if B < 1 or T < 1 or D != self.embed_dim:
+            raise ValueError(
+                f'KDIO-v11 expected non-empty (B,T,{self.embed_dim}), got {tuple(z.shape)}')
+        if not z.is_floating_point() or not torch.isfinite(z).all():
+            raise ValueError('z must contain finite floating-point values')
+        return B, T, D
+
+    def _validate_actions(self, actions: torch.Tensor, B: int, steps: int,
+                          *, name: str = 'actions') -> torch.Tensor:
+        expected = (B, steps, self.action_dim)
+        if not isinstance(actions, torch.Tensor) or tuple(actions.shape) != expected:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'{name} must have shape {expected}, got {shape}')
+        if not actions.is_floating_point() or not torch.isfinite(actions).all():
+            raise ValueError(f'{name} must contain finite floating-point values')
+        return actions
+
+    def _validate_state(self, state: torch.Tensor) -> int:
+        expected_tail = (2, self.embed_dim)
+        if (not isinstance(state, torch.Tensor) or state.dim() != 3
+                or state.shape[0] < 1 or tuple(state.shape[1:]) != expected_tail):
+            shape = tuple(state.shape) if isinstance(state, torch.Tensor) else type(state).__name__
+            raise ValueError(
+                f'state must have shape (B,2,{self.embed_dim}), got {shape}')
+        if not state.is_floating_point() or not torch.isfinite(state).all():
+            raise ValueError('state must contain finite floating-point values')
+        return state.shape[0]
+
+    def _coerce_action_override(self, value, actions: torch.Tensor) -> torch.Tensor:
+        override = torch.as_tensor(value, device=actions.device, dtype=actions.dtype)
+        try:
+            override = torch.broadcast_to(override, actions.shape)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'action_override with shape {tuple(override.shape)} is not broadcastable to '
+                f'{tuple(actions.shape)}') from exc
+        if not torch.isfinite(override).all():
+            raise ValueError('action_override contains non-finite values')
+        return override
+
+    def _coerce_gates(self, value, B: int, T: int, *, device,
+                      dtype: torch.dtype, name: str) -> torch.Tensor:
+        gates = torch.as_tensor(value, device=device, dtype=dtype)
+        if gates.dim() == 0:
+            gates = gates.view(1, 1, 1, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (2,):
+            gates = gates.view(1, 1, 2, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (T,):
+            gates = gates.view(1, T, 1, 1)
+        elif gates.dim() == 1 and tuple(gates.shape) == (B,):
+            gates = gates.view(B, 1, 1, 1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, T):
+            gates = gates.view(B, T, 1, 1)
+        elif gates.dim() == 2 and tuple(gates.shape) == (B, 2):
+            gates = gates.view(B, 1, 2, 1)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, 2):
+            gates = gates.unsqueeze(-1)
+        elif gates.dim() == 3 and tuple(gates.shape) == (B, T, 1):
+            gates = gates.unsqueeze(-1)
+        target = (B, T, 2, 1)
+        try:
+            gates = torch.broadcast_to(gates, target)
+        except RuntimeError as exc:
+            raise ValueError(
+                f'{name} with shape {tuple(gates.shape)} is not broadcastable to {target}') from exc
+        if (not torch.isfinite(gates).all() or bool((gates < 0).any())
+                or bool((gates > 1).any())):
+            raise ValueError(f'{name} must contain finite values in [0,1]')
+        return gates
+
+    def _validate_update_mask(self, mask: torch.Tensor, B: int, T: int,
+                              *, device, dtype: torch.dtype) -> None:
+        update = torch.as_tensor(mask, device=device, dtype=dtype)
+        try:
+            update = torch.broadcast_to(update, (B, T))
+        except RuntimeError as exc:
+            raise ValueError(
+                f'memory_update_mask with shape {tuple(update.shape)} is not broadcastable to '
+                f'{(B, T)}') from exc
+        if (not torch.isfinite(update).all() or bool((update < 0).any())
+                or bool((update > 1).any())):
+            raise ValueError('memory_update_mask must contain finite values in [0,1]')
+
+    def observation_gain_biases(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return bias-only position gain, velocity ratio, and process tolerance."""
+        return (torch.sigmoid(self.position_gain_bias),
+                torch.sigmoid(self.velocity_ratio_bias),
+                F.softplus(self.process_tolerance_bias))
+
+    def _normalized_innovation(self, z_t: torch.Tensor,
+                               q_prior: torch.Tensor) -> torch.Tensor:
+        z_float, prior_float = z_t.float(), q_prior.float()
+        denominator = (torch.linalg.vector_norm(z_float, dim=-1, keepdim=True)
+                       + torch.linalg.vector_norm(prior_float, dim=-1, keepdim=True))
+        denominator = denominator.clamp_min(torch.finfo(torch.float32).eps)
+        return math.sqrt(self.embed_dim) * (z_float - prior_float) / denominator
+
+    def innovation_precision_factor(self) -> torch.Tensor:
+        """Materialize lower whitening factor ``C`` with precision ``C^T C``."""
+        rows, cols = torch.tril_indices(
+            self.innovation_dim, self.innovation_dim,
+            device=self.innovation_precision_packed.device)
+        raw = self.innovation_precision_packed.new_zeros(
+            self.innovation_dim, self.innovation_dim)
+        raw = raw.index_put((rows, cols), self.innovation_precision_packed)
+        diagonal = F.softplus(torch.diagonal(raw))
+        return torch.tril(raw, diagonal=-1) + torch.diag_embed(diagonal)
+
+    def clean_innovation_nll(self, z_t: torch.Tensor,
+                             q_prior: torch.Tensor) -> torch.Tensor:
+        """Detached Gaussian NLL diagnostic for the closed-form clean calibration."""
+        if (not isinstance(z_t, torch.Tensor) or not isinstance(q_prior, torch.Tensor)
+                or z_t.shape != q_prior.shape or z_t.shape[-1] != self.embed_dim
+                or not z_t.is_floating_point() or not q_prior.is_floating_point()
+                or not torch.isfinite(z_t).all() or not torch.isfinite(q_prior).all()):
+            raise ValueError(
+                f'clean innovation inputs must share finite (...,{self.embed_dim}) shape')
+        with torch.autocast(device_type=z_t.device.type, enabled=False):
+            delta = self._normalized_innovation(z_t, q_prior)
+            delta = F.linear(delta, self._innovation_contrast.float())
+            factor = self.innovation_precision_factor().float()
+            centered = delta - self.clean_innovation_mean.float()
+            whitened = F.linear(centered, factor)
+            logdet_per_dim = torch.log(torch.diagonal(factor)).mean()
+            return 0.5 * (whitened.square().mean() - 2.0 * logdet_per_dim)
+
+    @torch.no_grad()
+    def reset_clean_calibration(self) -> None:
+        """Reset one epoch of clean-innovation sufficient statistics."""
+        self._calibration_count.zero_()
+        self._calibration_sum.zero_()
+        self._calibration_cross.zero_()
+
+    @torch.no_grad()
+    def accumulate_clean_calibration(self, z_t: torch.Tensor,
+                                     q_prior: torch.Tensor) -> None:
+        """Accumulate detached contrast innovations for an exact epoch-end OAS fit."""
+        if (z_t.shape != q_prior.shape or z_t.shape[-1] != self.embed_dim
+                or not torch.isfinite(z_t).all() or not torch.isfinite(q_prior).all()):
+            raise ValueError("invalid clean calibration inputs")
+        with torch.autocast(device_type=z_t.device.type, enabled=False):
+            values = self._normalized_innovation(z_t, q_prior)
+            values = F.linear(values, self._innovation_contrast.float())
+            values = values.reshape(-1, self.innovation_dim).double()
+            self._calibration_count.add_(values.shape[0])
+            self._calibration_sum.add_(values.sum(dim=0))
+            self._calibration_cross.add_(values.T @ values)
+
+    @torch.no_grad()
+    def finalize_clean_calibration(self, *, diagonal_only: bool = False) -> Dict[str, float]:
+        """Fit ``mu,C`` by data-derived OAS covariance shrinkage, with no tuned ridge.
+
+        OAS chooses its own shrinkage coefficient from the epoch's sufficient statistics.
+        A machine-precision diagonal floor is used only to make the Cholesky operation
+        numerically total; it is not an observation-rejection or covariance hyperparameter.
+        """
+        count = int(self._calibration_count.item())
+        if count <= self.innovation_dim:
+            raise RuntimeError(
+                f'clean calibration needs >{self.innovation_dim} samples, got {count}')
+        dimension = self.innovation_dim
+        mean = self._calibration_sum / count
+        covariance = self._calibration_cross / count - torch.outer(mean, mean)
+        covariance = 0.5 * (covariance + covariance.T)
+        if diagonal_only:
+            covariance = torch.diag_embed(torch.diagonal(covariance))
+        alpha = covariance.square().mean()
+        target_variance = torch.trace(covariance) / dimension
+        target_squared = target_variance.square()
+        numerator = alpha + target_squared
+        denominator = (count + 1) * (alpha - target_squared / dimension)
+        shrinkage = (torch.ones_like(numerator) if denominator <= 0 else
+                     torch.clamp(numerator / denominator, max=1.0))
+        shrunk = (1.0 - shrinkage) * covariance
+        shrunk.diagonal().add_(shrinkage * target_variance)
+        numerical_floor = (torch.finfo(torch.float64).eps * dimension
+                           * target_variance.abs().clamp_min(torch.finfo(torch.float64).tiny))
+        shrunk.diagonal().add_(numerical_floor)
+        cholesky = torch.linalg.cholesky(shrunk)
+        identity = torch.eye(dimension, device=shrunk.device, dtype=shrunk.dtype)
+        factor = torch.linalg.solve_triangular(cholesky, identity, upper=False)
+
+        rows, cols = torch.tril_indices(dimension, dimension, device=factor.device)
+        packed = factor[rows, cols]
+        diagonal_mask = rows == cols
+        diagonal = packed[diagonal_mask]
+        packed[diagonal_mask] = diagonal + torch.log(-torch.expm1(-diagonal))
+        self.clean_innovation_mean.copy_(mean.to(self.clean_innovation_mean.dtype))
+        self.innovation_precision_packed.copy_(
+            packed.to(self.innovation_precision_packed.dtype))
+        self.calibration_updates.add_(1)
+        self.calibration_samples.fill_(count)
+        self.calibration_oas_shrinkage.copy_(
+            shrinkage.to(self.calibration_oas_shrinkage.dtype))
+        condition = torch.linalg.cond(shrunk)
+        self.calibration_covariance_condition.copy_(
+            condition.to(self.calibration_covariance_condition.dtype))
+        self.calibration_diagonal_only.fill_(diagonal_only)
+        return {
+            'samples': float(count),
+            'oas_shrinkage': float(shrinkage),
+            'covariance_condition': float(condition),
+            'target_variance': float(target_variance),
+            'diagonal_only': float(diagonal_only),
+        }
+
+    def _effective_action(self, action: torch.Tensor) -> torch.Tensor:
+        return torch.zeros_like(action) if self.mode == 'noaction' else action
+
+    def action_scale(self) -> torch.Tensor:
+        """Return the positive FP32 action scale, or exact one in ``fixedscale``."""
+        if self.mode == 'fixedscale':
+            return torch.ones((), device=self.log_action_scale.device, dtype=torch.float32)
+        with torch.autocast(device_type=self.log_action_scale.device.type, enabled=False):
+            return torch.exp(self.log_action_scale.float())
+
+    def action_direction(self) -> torch.Tensor:
+        """Return the FP32 unit-scale action geometry before multiplying by ``gamma``.
+
+        Structural modes use canonical thin QR.  ``unconstrained`` permits arbitrary column
+        geometry but fixes its Frobenius norm to ``sqrt(A)``; consequently the separately
+        learned scale is identifiable as the RMS singular value in both parameterizations.
+        """
+        raw = self.W_a.weight
+        with torch.autocast(device_type=raw.device.type, enabled=False):
+            raw_float = raw.float()
+            if self.mode == 'unconstrained':
+                norm = torch.linalg.vector_norm(raw_float).clamp_min(
+                    torch.finfo(torch.float32).tiny)
+                return math.sqrt(self.action_dim) * raw_float / norm
+            frame, triangular = torch.linalg.qr(raw.float(), mode='reduced')
+            diagonal = torch.diagonal(triangular)
+            sign = torch.where(
+                diagonal < 0.0, -torch.ones_like(diagonal),
+                torch.ones_like(diagonal)).detach()
+            return frame * sign.unsqueeze(0)
+
+    def action_frame(self) -> torch.Tensor:
+        """Return the cached effective ``D x A`` map ``gamma * direction(M)``."""
+        return self.action_scale() * self.action_direction()
+
+    def _validate_cached_action_frame(self, frame: torch.Tensor) -> torch.Tensor:
+        expected = (self.embed_dim, self.action_dim)
+        if (not isinstance(frame, torch.Tensor) or tuple(frame.shape) != expected
+                or not frame.is_floating_point() or not torch.isfinite(frame).all()):
+            shape = tuple(frame.shape) if isinstance(frame, torch.Tensor) else type(frame).__name__
+            raise ValueError(
+                f'cached_action_frame must be finite floating point with shape {expected}, '
+                f'got {shape}')
+        if frame.device != self.W_a.weight.device:
+            raise ValueError('cached_action_frame must be on the memory parameter device')
+        return frame
+
+    def _kick(self, q: torch.Tensor,
+              action: torch.Tensor, action_frame: torch.Tensor
+              ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, torch.Tensor]]:
+        effective_action = self._effective_action(action)
+        action_features = F.linear(effective_action, action_frame)
+        autonomous_features = torch.zeros_like(action_features)
+        if self.mode != 'noautonomy':
+            autonomous_features = (
+                self.b_f.view(1, self.embed_dim)
+                + self.w_q.view(1, self.embed_dim) * self._rms_norm(q))
+        preactivation = action_features + autonomous_features
+        kick = torch.tanh(preactivation)
+        action_effect = kick - torch.tanh(autonomous_features)
+        # Form the paired continuous saturation receipts from one FP32 reduction so their
+        # means are exactly complementary even when the recurrent path is under BF16 AMP.
+        saturation_proxy = kick.float().square().mean(dim=-1)
+        derivative_mean = 1.0 - saturation_proxy
+        return kick, effective_action, {
+            'action_effect_norm': action_effect.norm(dim=-1),
+            'action_tanh_derivative_mean': derivative_mean,
+            # tanh(x)^2 = 1 - tanh'(x), a continuous saturation proxy in [0,1].
+            'action_tanh_saturation_proxy': saturation_proxy,
+        }
+
+    def _transition_unchecked(self, state: torch.Tensor, action: torch.Tensor,
+                              action_frame: torch.Tensor):
+        q, v = state[:, 0], state[:, 1]
+        kick, effective_action, action_details = self._kick(
+            q, action, action_frame)
+        if self.mode == 'firstorder':
+            v_prior = kick
+        else:
+            v_prior = v + kick
+        q_prior = q if self.mode == 'nodrift' else q + v_prior
+        prior = torch.stack((q_prior, v_prior), dim=1)
+
+        inverse_applicable = torch.full(
+            (state.shape[0],), self.mode != 'firstorder', device=state.device,
+            dtype=torch.bool)
+        if self.mode == 'firstorder':
+            inverse_error = state.new_zeros(state.shape[0])
+        else:
+            recovered_q = q_prior if self.mode == 'nodrift' else q_prior - v_prior
+            recovered_v = v_prior - kick
+            recovered = torch.stack((recovered_q, recovered_v), dim=1)
+            inverse_error = (recovered - state).abs().amax(dim=(1, 2))
+        return prior, {
+            'kick': kick,
+            'effective_action': effective_action,
+            'inverse_error': inverse_error,
+            'inverse_applicable': inverse_applicable,
+            # The full kick--drift and nodrift controls are additive shears/translations with
+            # exact unit determinant. Firstorder intentionally overwrites velocity.
+            'volume_preserving_applicable': inverse_applicable,
+            'volume_error': state.new_zeros(state.shape[0]),
+            **action_details,
+        }
+
+    def _transition_prevalidated(self, state: torch.Tensor, action: torch.Tensor,
+                                 action_frame: torch.Tensor) -> torch.Tensor:
+        """Fast internal transition after a caller validates one shared suffix graph.
+
+        This deliberately avoids Python finite checks inside triangular training scans, which
+        would otherwise synchronize the accelerator once per horizon. Public entry points keep
+        their complete validation contract.
+        """
+        action = action.to(device=state.device, dtype=state.dtype)
+        return self._transition_unchecked(state, action, action_frame)[0]
+
+    def transition(self, state: torch.Tensor, action: torch.Tensor,
+                   action_override=None, return_details: bool = False,
+                   cached_action_frame: torch.Tensor = None):
+        """Apply one observation-free kick--drift transition."""
+        B = self._validate_state(state)
+        if (not isinstance(action, torch.Tensor)
+                or tuple(action.shape) != (B, self.action_dim)
+                or not action.is_floating_point() or not torch.isfinite(action).all()):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(
+                f'action must be finite floating point with shape {(B, self.action_dim)}, got {shape}')
+        action = action.to(device=state.device, dtype=state.dtype)
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action)
+        frame = (self.action_frame() if cached_action_frame is None else
+                 self._validate_cached_action_frame(cached_action_frame))
+        prior, details = self._transition_unchecked(state, action, frame)
+        return (prior, details) if return_details else prior
+
+    def inverse_transition(self, state: torch.Tensor, action: torch.Tensor,
+                           action_override=None, return_details: bool = False,
+                           cached_action_frame: torch.Tensor = None):
+        """Invert a known-action transition; ``firstorder`` is deliberately non-invertible."""
+        B = self._validate_state(state)
+        if self.mode == 'firstorder':
+            raise ValueError('KDIO-v11 firstorder overwrites velocity and is not invertible')
+        if (not isinstance(action, torch.Tensor)
+                or tuple(action.shape) != (B, self.action_dim)
+                or not action.is_floating_point() or not torch.isfinite(action).all()):
+            shape = tuple(action.shape) if isinstance(action, torch.Tensor) else type(action).__name__
+            raise ValueError(
+                f'action must be finite floating point with shape {(B, self.action_dim)}, got {shape}')
+        action = action.to(device=state.device, dtype=state.dtype)
+        if action_override is not None:
+            action = self._coerce_action_override(action_override, action)
+        frame = (self.action_frame() if cached_action_frame is None else
+                 self._validate_cached_action_frame(cached_action_frame))
+        q_prior, v_prior = state[:, 0], state[:, 1]
+        q = q_prior if self.mode == 'nodrift' else q_prior - v_prior
+        kick, effective_action, action_details = self._kick(q, action, frame)
+        v = v_prior - kick
+        recovered = torch.stack((q, v), dim=1)
+        if not return_details:
+            return recovered
+        reconstructed = self._transition_unchecked(recovered, action, frame)[0]
+        return recovered, {
+            'kick': kick,
+            'effective_action': effective_action,
+            'inverse_roundtrip_error': (
+                reconstructed - state).abs().amax(dim=(1, 2)),
+            **action_details,
+        }
+
+    def rollout_transition(self, initial_state: torch.Tensor, actions: torch.Tensor,
+                           action_override=None, return_details: bool = False,
+                           cached_action_frame: torch.Tensor = None):
+        """Roll only priors through ``(B,H,A)`` actions, returning ``(B,H,2,D)``."""
+        B = self._validate_state(initial_state)
+        if not isinstance(actions, torch.Tensor) or actions.dim() != 3:
+            shape = tuple(actions.shape) if isinstance(actions, torch.Tensor) else type(actions).__name__
+            raise ValueError(f'rollout actions must have shape (B,H,A), got {shape}')
+        actions = self._validate_actions(actions, B, actions.shape[1])
+        actions = actions.to(device=initial_state.device, dtype=initial_state.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions)
+        frame = (self.action_frame() if cached_action_frame is None else
+                 self._validate_cached_action_frame(cached_action_frame))
+
+        state = initial_state
+        states = []
+        detail_lists = {}
+        for t in range(actions.shape[1]):
+            state, step_details = self._transition_unchecked(
+                state, actions[:, t], frame)
+            states.append(state)
+            if return_details:
+                for key, value in step_details.items():
+                    detail_lists.setdefault(key, []).append(value)
+        sequence = (torch.stack(states, dim=1) if states else
+                    initial_state.new_empty(B, 0, 2, self.embed_dim))
+        if not return_details:
+            return sequence
+        details = {
+            key: torch.stack(values, dim=1)
+            for key, values in detail_lists.items()
+        }
+        return sequence, details
+
+    def _innovation_gates(self, z_t: torch.Tensor,
+                          q_prior: torch.Tensor,
+                          *, return_details: bool = False,
+                          reliability_override: float = None):
+        # FP32 makes likelihood energy and dot products stable under BF16 autocast.  The base
+        # gain may depend on the causal prior, but never on z_t; reliability is the only
+        # current-observation-dependent factor.
+        with torch.autocast(device_type=z_t.device.type, enabled=False):
+            z_float, prior_float = z_t.float(), q_prior.float()
+            error_float = z_float - prior_float
+            denominator = (torch.linalg.vector_norm(z_float, dim=-1)
+                           + torch.linalg.vector_norm(prior_float, dim=-1))
+            denominator = denominator.clamp_min(torch.finfo(torch.float32).eps)
+            innovation_ratio = (
+                torch.linalg.vector_norm(error_float, dim=-1) / denominator
+            ).clamp(0.0, 1.0)
+            normalized_error = self._normalized_innovation(z_float, prior_float)
+            normalized_error = F.linear(
+                normalized_error, self._innovation_contrast.float())
+            # C and mu are maximum-likelihood clean statistics.  Detaching them here keeps
+            # observed corruption signatures from changing the metric; predictive gradients
+            # instead learn the process tolerance and ordered base gains.
+            precision_factor = self.innovation_precision_factor().float().detach()
+            centered_error = (
+                normalized_error - self.clean_innovation_mean.float().detach())
+            whitened_error = F.linear(centered_error, precision_factor)
+            innovation_energy = whitened_error.square().mean(dim=-1)
+
+            bias_alpha, bias_ratio, bias_tolerance = self.observation_gain_biases()
+            if self.mode == 'static':
+                alpha = bias_alpha.float().expand_as(innovation_ratio)
+                ratio = bias_ratio.float().expand_as(innovation_ratio)
+                tolerance = bias_tolerance.float().expand_as(innovation_ratio)
+            else:
+                prior_features = self._rms_norm(prior_float)
+                inverse_sqrt_dim = self.embed_dim ** -0.5
+                alpha = torch.sigmoid(
+                    self.position_gain_bias.float()
+                    + (prior_features * self.position_gain_vector.float()).sum(dim=-1)
+                    * inverse_sqrt_dim)
+                ratio = torch.sigmoid(
+                    self.velocity_ratio_bias.float()
+                    + (prior_features * self.velocity_ratio_vector.float()).sum(dim=-1)
+                    * inverse_sqrt_dim)
+                tolerance = F.softplus(
+                    self.process_tolerance_bias.float()
+                    + (prior_features * self.process_tolerance_vector.float()).sum(dim=-1)
+                    * inverse_sqrt_dim)
+            beta = alpha * ratio
+            if self.mode in {'static', 'noreliability'}:
+                reliability = torch.ones_like(innovation_ratio)
+            else:
+                denominator = (tolerance + innovation_energy).clamp_min(
+                    torch.finfo(torch.float32).tiny)
+                reliability = tolerance / denominator
+            if reliability_override is not None:
+                override = float(reliability_override)
+                if not math.isfinite(override) or not 0.0 <= override <= 1.0:
+                    raise ValueError('reliability_override must be finite and in [0,1]')
+                reliability = torch.full_like(reliability, override)
+            q_gate = reliability * alpha
+            v_gate = reliability * beta
+        gates = torch.stack((q_gate, v_gate), dim=1).unsqueeze(-1).to(dtype=z_t.dtype)
+        if not return_details:
+            return gates
+        return gates, {
+            'innovation_ratio': innovation_ratio.to(dtype=z_t.dtype),
+            'innovation_energy': innovation_energy.to(dtype=z_t.dtype),
+            'process_tolerance': tolerance.to(dtype=z_t.dtype),
+            'reliability': reliability.to(dtype=z_t.dtype),
+            'position_base_gain': alpha.to(dtype=z_t.dtype),
+            'velocity_base_gain': beta.to(dtype=z_t.dtype),
+            'velocity_base_ratio': ratio.to(dtype=z_t.dtype),
+        }
+
+    def read_state(self, state: torch.Tensor) -> torch.Tensor:
+        """Return ``RMSNorm(q+v)`` for ``(...,2,D)`` posterior or prior states."""
+        if (not isinstance(state, torch.Tensor) or state.dim() < 3
+                or tuple(state.shape[-2:]) != (2, self.embed_dim)):
+            shape = tuple(state.shape) if isinstance(state, torch.Tensor) else type(state).__name__
+            raise ValueError(
+                f'state read requires (...,2,{self.embed_dim}), got {shape}')
+        if not state.is_floating_point() or not torch.isfinite(state).all():
+            raise ValueError('state read requires finite floating-point values')
+        return self._rms_norm(state[..., 0, :] + state[..., 1, :])
+
+    def step(self, state: torch.Tensor, z_t: torch.Tensor, action: torch.Tensor,
+             gate_override=None, action_override=None, return_details: bool = False):
+        """Advance one explicit ``2D``-float streaming posterior state."""
+        B = self._validate_state(state)
+        if (not isinstance(z_t, torch.Tensor) or tuple(z_t.shape) != (B, self.embed_dim)
+                or not z_t.is_floating_point() or not torch.isfinite(z_t).all()):
+            shape = tuple(z_t.shape) if isinstance(z_t, torch.Tensor) else type(z_t).__name__
+            raise ValueError(f'z_t must be finite with shape {(B, self.embed_dim)}, got {shape}')
+        z_t = z_t.to(device=state.device, dtype=state.dtype)
+        prior, transition_details = self.transition(
+            state, action, action_override=action_override, return_details=True)
+        gates, gate_details = self._innovation_gates(
+            z_t, prior[:, 0], return_details=True)
+        if gate_override is not None:
+            gates = self._coerce_gates(
+                gate_override, B, 1, device=state.device, dtype=state.dtype,
+                name='gate_override')[:, 0]
+        error = z_t - prior[:, 0]
+        new_state = prior + gates * error.unsqueeze(1)
+        mixed = self.read_state(new_state)
+        details = {
+            'x': z_t,
+            'prior': prior,
+            'state': new_state,
+            'q_prior': prior[:, 0],
+            'v_prior': prior[:, 1],
+            'q_state': new_state[:, 0],
+            'v_state': new_state[:, 1],
+            'gates': gates,
+            'q_gate': gates[:, 0],
+            'v_gate': gates[:, 1],
+            **gate_details,
+            **transition_details,
+        }
+        if return_details:
+            return mixed, new_state, details
+        return mixed, new_state
+
+    def forward(self, z: torch.Tensor, actions: torch.Tensor,
+                memory_update_mask: torch.Tensor = None, gate_override=None,
+                action_override=None, return_details: bool = False,
+                reliability_override: float = None):
+        """Run the causal KDIO observer over ``(B,T,D)`` encoder coordinates."""
+        B, T, _ = self._validate_latents(z)
+        actions = self._validate_actions(actions, B, T - 1)
+        actions = actions.to(device=z.device, dtype=z.dtype)
+        if action_override is not None:
+            actions = self._coerce_action_override(action_override, actions)
+        if memory_update_mask is not None:
+            self._validate_update_mask(
+                memory_update_mask, B, T, device=z.device, dtype=z.dtype)
+        override_gates = None
+        if gate_override is not None:
+            override_gates = self._coerce_gates(
+                gate_override, B, T, device=z.device, dtype=z.dtype,
+                name='gate_override')
+        # QR is shared by every recurrent step in this sequence.  Besides avoiding redundant
+        # factorizations, this guarantees that transition and inverse see one autograd node.
+        action_frame = self.action_frame()
+
+        state = torch.stack((z[:, 0], torch.zeros_like(z[:, 0])), dim=1)
+        initial_gates, initial_gate_details = self._innovation_gates(
+            z[:, 0], state[:, 0], return_details=True,
+            reliability_override=reliability_override)
+        if override_gates is not None:
+            initial_gates = override_gates[:, 0]
+
+        states = [state]
+        priors = [state]
+        gates = [initial_gates]
+        innovation_ratios = [initial_gate_details['innovation_ratio']]
+        innovation_energies = [initial_gate_details['innovation_energy']]
+        process_tolerances = [initial_gate_details['process_tolerance']]
+        reliabilities = [initial_gate_details['reliability']]
+        position_base_gains = [initial_gate_details['position_base_gain']]
+        velocity_base_gains = [initial_gate_details['velocity_base_gain']]
+        velocity_base_ratios = [initial_gate_details['velocity_base_ratio']]
+        kicks = [torch.zeros_like(z[:, 0])]
+        effective_actions = [z.new_zeros(B, self.action_dim)]
+        inverse_errors = [z.new_zeros(B)]
+        inverse_applicable = [torch.zeros(B, device=z.device, dtype=torch.bool)]
+        volume_errors = [z.new_zeros(B)]
+        volume_applicable = [torch.zeros(B, device=z.device, dtype=torch.bool)]
+        action_effect_norms = [z.new_zeros(B)]
+        action_tanh_derivatives = [z.new_ones(B)]
+        action_tanh_saturation = [z.new_zeros(B)]
+
+        for t in range(1, T):
+            prior, transition_details = self._transition_unchecked(
+                state, actions[:, t - 1], action_frame)
+            step_gates, step_gate_details = self._innovation_gates(
+                z[:, t], prior[:, 0], return_details=True,
+                reliability_override=reliability_override)
+            if override_gates is not None:
+                step_gates = override_gates[:, t]
+            error = z[:, t] - prior[:, 0]
+            state = prior + step_gates * error.unsqueeze(1)
+            priors.append(prior)
+            states.append(state)
+            gates.append(step_gates)
+            innovation_ratios.append(step_gate_details['innovation_ratio'])
+            innovation_energies.append(step_gate_details['innovation_energy'])
+            process_tolerances.append(step_gate_details['process_tolerance'])
+            reliabilities.append(step_gate_details['reliability'])
+            position_base_gains.append(step_gate_details['position_base_gain'])
+            velocity_base_gains.append(step_gate_details['velocity_base_gain'])
+            velocity_base_ratios.append(step_gate_details['velocity_base_ratio'])
+            kicks.append(transition_details['kick'])
+            effective_actions.append(transition_details['effective_action'])
+            inverse_errors.append(transition_details['inverse_error'])
+            inverse_applicable.append(transition_details['inverse_applicable'])
+            volume_errors.append(transition_details['volume_error'])
+            volume_applicable.append(
+                transition_details['volume_preserving_applicable'])
+            action_effect_norms.append(
+                transition_details['action_effect_norm'])
+            action_tanh_derivatives.append(
+                transition_details['action_tanh_derivative_mean'])
+            action_tanh_saturation.append(
+                transition_details['action_tanh_saturation_proxy'])
+
+        state_sequence = torch.stack(states, dim=1)
+        prior_sequence = torch.stack(priors, dim=1)
+        mixed = self._rms_norm(
+            state_sequence[:, :, 0] + state_sequence[:, :, 1])
+        if not return_details:
+            return mixed
+        gate_sequence = torch.stack(gates, dim=1)
+        details = {
+            'x': z,
+            'priors': prior_sequence,
+            'states': state_sequence,
+            'q_priors': prior_sequence[:, :, 0],
+            'v_priors': prior_sequence[:, :, 1],
+            'q_states': state_sequence[:, :, 0],
+            'v_states': state_sequence[:, :, 1],
+            'gates': gate_sequence,
+            'q_gates': gate_sequence[:, :, 0],
+            'v_gates': gate_sequence[:, :, 1],
+            'innovation_ratio': torch.stack(innovation_ratios, dim=1),
+            'innovation_energy': torch.stack(innovation_energies, dim=1),
+            'process_tolerance': torch.stack(process_tolerances, dim=1),
+            'reliability': torch.stack(reliabilities, dim=1),
+            'position_base_gain': torch.stack(position_base_gains, dim=1),
+            'velocity_base_gain': torch.stack(velocity_base_gains, dim=1),
+            'velocity_base_ratio': torch.stack(velocity_base_ratios, dim=1),
+            'kick': torch.stack(kicks, dim=1),
+            'effective_action': torch.stack(effective_actions, dim=1),
+            'inverse_error': torch.stack(inverse_errors, dim=1),
+            'inverse_applicable': torch.stack(inverse_applicable, dim=1),
+            'volume_error': torch.stack(volume_errors, dim=1),
+            'volume_preserving_applicable': torch.stack(
+                volume_applicable, dim=1),
+            'action_effect_norm': torch.stack(action_effect_norms, dim=1),
+            'action_tanh_derivative_mean': torch.stack(
+                action_tanh_derivatives, dim=1),
+            'action_tanh_saturation_proxy': torch.stack(
+                action_tanh_saturation, dim=1),
+        }
+        return mixed, details
+
+    def fuse(self, z: torch.Tensor, mixed: torch.Tensor) -> torch.Tensor:
+        if (not isinstance(z, torch.Tensor) or not isinstance(mixed, torch.Tensor)
+                or z.dim() != 3 or mixed.dim() != 3 or z.shape != mixed.shape
+                or z.shape[-1] != self.embed_dim):
+            z_shape = tuple(z.shape) if isinstance(z, torch.Tensor) else type(z).__name__
+            mixed_shape = tuple(mixed.shape) if isinstance(mixed, torch.Tensor) else type(mixed).__name__
+            raise ValueError(
+                f'z and mixed must share shape (B,T,{self.embed_dim}), got '
+                f'{z_shape} and {mixed_shape}')
+        if (not z.is_floating_point() or not mixed.is_floating_point()
+                or not torch.isfinite(z).all() or not torch.isfinite(mixed).all()):
+            raise ValueError('z and mixed must contain finite floating-point values')
+        return z + self.W_o(mixed)
+
+    def horizons(self) -> Dict[str, float]:
+        """Expose the horizon-free second-order state and active interventions."""
+        with torch.no_grad():
+            alpha, ratio, tolerance = self.observation_gain_biases()
+            beta = alpha * ratio
+            precision = self.innovation_precision_factor()
+            singular_values = torch.linalg.svdvals(precision.float())
+            action_scale = self.action_scale().float()
+            action_direction = self.action_direction().float()
+            action_frame = self.action_frame().float()
+            direction_gram = action_direction.T @ action_direction
+            action_gram = action_frame.T @ action_frame
+            action_identity = torch.eye(
+                self.action_dim, device=action_frame.device,
+                dtype=action_frame.dtype)
+            direction_singular = torch.linalg.svdvals(action_direction)
+            action_singular = torch.linalg.svdvals(action_frame)
+            action_singular_min = action_singular.min()
+            action_parameter_singular = torch.linalg.svdvals(
+                self.W_a.weight.float())
+            action_parameter_singular_min = action_parameter_singular.min()
+            return {
+                'tau_fast': float('inf'),
+                'tau_slow': float('inf'),
+                'n_banks': 2,
+                'position_base_gain': float(alpha),
+                'velocity_base_gain': float(beta),
+                'velocity_gain_ratio': float(ratio),
+                'process_tolerance': float(tolerance),
+                'innovation_precision_diagonal_mean': float(
+                    torch.diagonal(precision).mean()),
+                'innovation_precision_logdet_per_dim': float(
+                    torch.log(torch.diagonal(precision)).mean()),
+                'innovation_precision_offdiagonal_norm': float(
+                    torch.tril(precision, diagonal=-1).norm()),
+                'innovation_precision_singular_min': float(singular_values.min()),
+                'innovation_precision_singular_max': float(singular_values.max()),
+                'innovation_precision_condition': float(
+                    singular_values.max() / singular_values.min()),
+                'calibration_updates': float(self.calibration_updates),
+                'calibration_samples': float(self.calibration_samples),
+                'calibration_oas_shrinkage': float(self.calibration_oas_shrinkage),
+                'calibration_covariance_condition': float(
+                    self.calibration_covariance_condition),
+                'calibration_diagonal_only': float(self.calibration_diagonal_only),
+                'gradient_trained_parameters': float(self.parameter_count()),
+                'nominal_optimizer_scalars': float(self.parameter_count()),
+                'fitted_memory_scalars': float(self.expected_fitted_scalar_count(
+                    self.embed_dim, self.action_dim)),
+                'total_memory_scalars': float(self.expected_total_scalar_count(
+                    self.embed_dim, self.action_dim)),
+                'position_gain_vector_norm': float(self.position_gain_vector.norm()),
+                'velocity_ratio_vector_norm': float(self.velocity_ratio_vector.norm()),
+                'process_tolerance_vector_norm': float(
+                    self.process_tolerance_vector.norm()),
+                'clean_innovation_mean_norm': float(self.clean_innovation_mean.norm()),
+                'action_scale': float(action_scale),
+                'action_log_scale': float(self.log_action_scale),
+                'action_scale_parameter_retained': True,
+                'action_scale_gradient_active': self.mode not in {'fixedscale', 'noaction'},
+                'action_kick_norm': float(action_frame.norm()),
+                'action_raw_norm': float(self.W_a.weight.norm()),
+                'action_direction_norm': float(action_direction.norm()),
+                'action_effective_norm': float(action_frame.norm()),
+                'action_parameter_norm': float(self.W_a.weight.norm()),
+                'action_parameter_singular_min': float(
+                    action_parameter_singular_min),
+                'action_parameter_singular_max': float(
+                    action_parameter_singular.max()),
+                'action_parameter_condition': float(
+                    action_parameter_singular.max()
+                    / action_parameter_singular_min.clamp_min(
+                        torch.finfo(torch.float32).tiny)),
+                'action_frame_gram_error': float(
+                    (action_gram - action_scale.square() * action_identity).abs().max()),
+                'action_frame_singular_min': float(action_singular_min),
+                'action_frame_singular_max': float(action_singular.max()),
+                'action_frame_condition': float(
+                    action_singular.max()
+                    / action_singular_min.clamp_min(torch.finfo(torch.float32).tiny)),
+                'action_direction_gram_error': float(
+                    (direction_gram - action_identity).abs().max()),
+                'action_direction_singular_min': float(direction_singular.min()),
+                'action_direction_singular_max': float(direction_singular.max()),
+                'action_direction_condition': float(
+                    direction_singular.max()
+                    / direction_singular.min().clamp_min(
+                        torch.finfo(torch.float32).tiny)),
+                'action_frame_constrained': self.mode != 'unconstrained',
+                'state_kick_norm': float(self.w_q.norm()),
+                'autonomous_kick_norm': float(torch.tanh(self.b_f).norm()),
+                'kick_drift': self.mode not in {'firstorder', 'nodrift'},
+                'velocity_carry': self.mode != 'firstorder',
+                'position_drift': self.mode != 'nodrift',
+                'action_transport': self.mode != 'noaction',
+                'autonomous_transport': self.mode != 'noautonomy',
+                'static_correction': self.mode == 'static',
+                'prior_conditioned_correction': self.mode != 'static',
+                'innovation_reliability': self.mode not in {'static', 'noreliability'},
+                'ordered_correction': True,
+                'invertible_transition': self.mode != 'firstorder',
+                'recurrent_floats': 2 * self.embed_dim,
+            }
+
+
+KDIOv11Memory = KickDriftInnovationObserverMemory
+
+
 class LearnedOrderedInnovationFilterMemory(nn.Module):
     """HACSSM-v9 learned ordered innovation filter (LOIF).
 

@@ -1,6 +1,6 @@
-# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM/ORBIT-v4–v10
+# Learnable memory for LeWorldModel: SMT-v1–v3 and HACSM/HACSSM/ORBIT/KDIO-v4–v11
 
-*Design and experiment record. Branch: `learnable-memory`. Implementations through ORBIT-v10 live in `lewm/models/memory.py`. Status as of 2026-06-29: every reported V1–V9 experiment is complete. V9 ran all 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles; its immutable pilot is `NO_GO` and final label is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. Full LOIF improves 2.55% over its freshly trained SSM, ranks 7/13, loses 4.15% to retrained compact V8 and 4.99% to the V8 endpoint envelope, and wins 0/5 task envelopes. Learned poles lose .67% to fixed poles and the two-bank model loses 2.22% to its single-bank control. Compact V8 is the strongest freshly retrained V9-grid design at +6.38% versus SSM; the earlier sealed V8 cohort instead ranked V7 shared-action first and compact V8 second, so the cohorts are reported separately (§7.10–7.11). **V10's ORBIT recurrence and five controls are implemented, but its end-to-end host was revised adaptively after four anti-collapse failures. The final V10-J host has no EMA teacher: an affine-free per-frame LayerNorm encoder jointly receives next-clean prediction and VICReg variance/covariance gradients. Five excluded 100-epoch ORBIT audits are complete and noncollapsed, but Fish's probe ceiling is worse than the constant predictor (`NMSE=1.0233`), only Cartpole has clearly sub-one held-out state NMSE, and Walker/Hopper worsen by 7.53%/5.46% across the frozen late windows. The official grid was therefore not launched and remains 0/225 (§2.9/§7.12).***
+*Design and experiment record. Branch: `learnable-memory`. Implementations through KDIO-v11 live in `lewm/models/memory.py`. Status as of 2026-06-30: every reported V1–V9 experiment is complete. V9 ran all 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles; its immutable pilot is `NO_GO` and final label is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. Full LOIF improves 2.55% over its freshly trained SSM, ranks 7/13, loses 4.15% to retrained compact V8 and 4.99% to the V8 endpoint envelope, and wins 0/5 task envelopes. Learned poles lose .67% to fixed poles and the two-bank model loses 2.22% to its single-bank control. Compact V8 is the strongest freshly retrained V9-grid design at +6.38% versus SSM; the earlier sealed V8 cohort instead ranked V7 shared-action first and compact V8 second, so the cohorts are reported separately (§7.10–7.11). **V10-J fixes causal representation collapse but fails its five-task state-quality/convergence screen, so its official grid remains unlaunched at 0/225 (§2.9/§7.12). V11 is the adaptive kick–drift/OAS response. Its mandatory 32-cell V11b development screen is now complete: the nominated detached relative-displacement objective has equal-task held-out NMSE `.581525` versus `.476157` for its legal initial-frame integrator, the raw-difference variant is screen-best at `.577987` but still trails its own `.480215` integrator, every cell worsens in the final training window, and the amplitude, geometry, ranking-win-count, causal-win-count, integrator, and convergence launch gates do not jointly pass. The outcome is `SCREEN_NO_GO / OFFICIAL_NO_LAUNCH`. This is an excluded adaptive screen—not a pilot result—so the official V11 ledger remains exactly 0/240 pilot and 0/400 final (§2.10/§7.13).***
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -15,12 +15,12 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 
 **Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
 
-**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). V8 cleanly removes those special objectives and confirms the durable mechanisms—action transport +14.87%, joint two-state read +9.34%—but the compact/shared-action novelty does not clear its controls. Its learned global shrinkage is interior and beats each endpoint on average, yet loses .96% to selecting the better retrained endpoint per cell and is 1.21% worse than SSM in deep blackout (§7.10). V9 confirms that causal evidence conditioning and action transport are active—full LOIF beats global resistance by 30.56% and no-action by 8.29%—but rejects its intended hierarchy: fixed poles beat learned poles, one slow bank beats two banks, the sample-specific resistance interventions are sub-.5%, and full LOIF remains behind V7/V8 (§7.11). V10 therefore abandons learned poles and multiple banks: ORBIT keeps one no-decay state, exact action-conditioned orthogonal transport, and ordinary innovation correction. Its host audit is now also informative: removing normalization collapses, per-frame LN alone becomes a fixed vector, causal channel normalization becomes rank one, group whitening fails at evaluation, and an EMA+VICReg repair is nonconvergent and weak. V10-J finally preserves rank and causal batch-one operation with joint prediction/variance/covariance gradients, but all five 100-epoch audits still fail the state-quality/convergence screen: Fish is not state-decodable, only Cartpole has clearly sub-one held-out NMSE, and both Walker and Hopper violate the late-change ceiling. The 225-cell mechanism comparison was therefore not launched. The completed evidence supports a controlled study of when recurrent/action/selective paths are used—not a generally superior hierarchy, calibrated uncertainty model, automatic memory sizing, or successful V10.
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). V8 cleanly removes those special objectives and confirms the durable mechanisms—action transport +14.87%, joint two-state read +9.34%—but the compact/shared-action novelty does not clear its controls. Its learned global shrinkage is interior and beats each endpoint on average, yet loses .96% to selecting the better retrained endpoint per cell and is 1.21% worse than SSM in deep blackout (§7.10). V9 confirms that causal evidence conditioning and action transport are active—full LOIF beats global resistance by 30.56% and no-action by 8.29%—but rejects its intended hierarchy: fixed poles beat learned poles, one slow bank beats two banks, the sample-specific resistance interventions are sub-.5%, and full LOIF remains behind V7/V8 (§7.11). V10's causal host repair preserves rank, but its rotation-only prior loses to a simple action integrator on all five tasks and its original cross-coordinate probe is partly mis-specified (§7.12.6). V11 tests a mechanics-shaped configuration/velocity hierarchy, learned-scale Stiefel action transport, drift, clean OAS reliability, live observed-anchor suffix prediction, and a separate detached executed-versus-deranged rank path. V11b confirms that the action intervention is implemented—`noaction` has exact zero effects and chance ranking—but not that the nominated composition is competitive: only Cartpole has both positive rank advantage and above-chance pair accuracy, the default is 18.44% worse than its legal integrator by mean taskwise paired relative change, and all 32 curves worsen late. The mandatory screen is therefore `SCREEN_NO_GO`, and the official study is `OFFICIAL_NO_LAUNCH`, not a pending or positive V11 result. The evidence supports a controlled diagnostic study of when recurrent/action/selective paths are used—not a generally superior hierarchy, calibrated uncertainty model, automatic memory sizing, or successful V11.
 
 ## 2. The architecture
 
 ![Architecture map of tested memory designs](figures/fig_memory_versions_arch.png)
-*Figure 1. Consolidated map of the V1→V10 evolution, architecture-changing controls, every completed V5–V9 mechanism variant, the five defined V10 modes, and external/historical families. Seeds, optimizer settings, mask placements, and ordinary hyperparameter sweeps are intentionally omitted. The V10-J card reports only the excluded five-task host audit; the five-mode official comparison remains 0/225 and every control contrast is `PENDING`.*
+*Figure 1. Consolidated map of the V1→V11 evolution, architecture-changing controls, every completed V5–V9 mechanism variant, all five V10 modes, and the registered 16-design V11 grid. V11 has three external references, full scaled-ASR KDIO, and twelve explicit KDIO controls. The figure is an architecture/protocol map: V10 remains 0/225 official cells; V11b's mandatory development screen returned `SCREEN_NO_GO`, so V11 remains 0/240 pilot and 0/400 final under `OFFICIAL_NO_LAUNCH`.*
 
 ### 2.1 SMT-v1/v2: gated-value write + input-conditioned read
 
@@ -87,6 +87,7 @@ The architectural distinction is easiest to see side by side:
 | **HACSSM-v8 / SAS-PC** | fixed `τ={2,8}`, one physical shared action head, per-level learned gate shrinkage; no internal auxiliary or teacher | one global simplex over fast/medium states + RMS-normalized read | 34,566 | complete: second by paired average, strong action/joint-read effects, but locked `NO_GO`; compaction/tying/shrinkage-envelope claims fail |
 | **HACSSM-v9 / LOIF** | learned ordered stable poles + evidence-conditioned observation gains; no horizon auxiliary | inverse-scale fusion of two posterior states | 34,563 | complete: +2.55% vs SSM, rank 7/13, locked `NO_GO`; learned poles and two-bank hierarchy lose to fixed/single controls |
 | **ORBIT-v10-J** | one no-decay belief; two exact action-conditioned shuffled Givens layers; V8-style innovation shrinkage; affine-free per-frame LN host with joint prediction/VICReg gradients | RMS-normalized one-state residual read | 34,562 at `D=128,A=6` | **adaptive audit only**: five 100-epoch full-ORBIT cells are noncollapsed but fail state-quality/convergence screening; official controls remain 0/225 and `PENDING` |
+| **KDIO-v11** | learned positive action scale × canonical thin-Stiefel direction; reversible kick–drift; reliability-open clean OAS; ordered corrections; live suffix prediction + detached displacement ranking | `RMSNorm(q+v)` through a zero-initialized residual projection | 17,796 nominal optimizer scalars + 8,255 fitted OAS scalars = 26,051 at `D=128,A=6`; `2D` stream state | **`SCREEN_NO_GO / OFFICIAL_NO_LAUNCH`**: V11b completed 32/32 excluded cells, but the nominated `.581525` trails its `.476157` legal integrator and every curve worsens late; official ledger 0/240 pilot, 0/400 final |
 
 V3's simplification is deliberate: it removes content-dependent horizon routing so its experiment asks one clean question—**does input-conditioned update timing help beyond an equally parameterized static gate?** HACSM-v4 retains the global read but adds action prediction, a three-level hierarchy, and self-supervision. Sections 7.5–7.6 give the matched controls and results.
 
@@ -399,12 +400,150 @@ All optimized terms have exactly unit weight. SIGReg is still evaluated on detac
 
 This host is an **adaptive validity repair**, not an additional ORBIT novelty claim. `encoder_norm=none`, per-frame LN alone, causal channel normalization, group whitening, and an EMA-target VICReg host were all inspected before V10-J was selected (§7.12). The five completed V10-J audits show that the repair prevents variance/rank collapse and preserves singleton/prefix and ORBIT numerical receipts, but they do not show that ORBIT beats any baseline. The defensible architectural hypothesis remains narrow: exact action-indexed isometric belief transport plus causal innovation correction and horizon-free persistence inside an end-to-end JEPA observer. Orthogonal/unitary RNNs and learned group representations already establish norm-preserving recurrent maps; seq-JEPA already aggregates action-conditioned observations; FloWM already studies structured equivariance under partial observation. The additive, scaled, static, no-action, V8, SSM, and GRU comparisons are still unrun; ORBIT therefore remains unsupported as an ICLR contribution.
 
+### 2.10 KDIO-v11: a self-supervised kick–drift predictive-state observer
+
+![KDIO-v11 architecture, self-supervised paths, and complete registered grid](figures/fig_hacssm_v11_arch.png)
+*Figure 5g. Final KDIO-v11 separates its learned-scale thin-Stiefel kick–drift observer and closed-form clean calibration (top), positive/deranged all-suffix ASR self-supervision (middle), evaluation-only probes (red), and all 16 registered designs (bottom). Optimized targets are synchronized clean encoder coordinates; executed actions define the positive suffix and cyclic batch-deranged actions define the negative. Gaussian NLL and three-frame inverse-action ridge are evaluation diagnostics, not optimized losses.*
+
+V10's post-hoc audit isolates a structural failure that its host repair cannot solve. An orthogonal map can rotate a nonzero belief but cannot move the zero state or accumulate action-conditioned displacement. On the five opened tasks, a linear causal feature made from the last three actions, cumulative action, and time beats the final V10-J result in every environment; adding only the initial encoded frame makes the gap larger (§7.12.6). KDIO therefore replaces V10's one-state rotation with a configuration/velocity state. It is a **mechanics-shaped predictive state**, not another bank of fixed fast/slow decays.
+
+Let `q_t,v_t∈R^D` be the posterior configuration and velocity coordinates. The learned `D×A` tensor `M` is mapped to a canonical thin-Stiefel direction `U=qf(M)` by an FP32 reduced QR decomposition with column signs chosen so the corresponding diagonal of `R` is nonnegative. A separate learned positive scale is `gamma=exp(log_gamma)`, computed without clipping in FP32. One diagonal state force and the effective map `G=gamma U` produce a kick, after which velocity drifts configuration:
+
+```text
+direction          U = canonical_thin_QR_FP32(M),   U^T U = I_A
+scale / map        gamma = exp(log_gamma) > 0,      G = gamma U
+force / kick       f_t = tanh(w_q ⊙ RMSNorm(q_{t-1}) + G a_{t-1} + b_f)
+velocity prior     v_t^- = v_{t-1} + f_t
+position prior     q_t^- = q_{t-1} + v_t^-
+```
+
+At fixed `gamma`, `||Ga||_2=gamma||a||_2`; direction and amplitude therefore cannot compensate through the Stiefel columns. There is deliberately no `sqrt(D/A)` multiplier. The `fixedscale` control sets `gamma=1` exactly while retaining `log_gamma`. The free-geometry `unconstrained` control uses
+
+```text
+G_free = gamma sqrt(A) M / ||M||_F
+```
+
+so its direction has Frobenius norm `sqrt(A)` and `gamma` has the same RMS-singular-value meaning as in the Stiefel model. This normalization removes the radial scale gauge without imposing orthogonal columns. Candidate, fixed-scale, and free-geometry modes retain the same `D×A` tensor, scalar scale tensor, deterministic full-rank initialization, and optimizer schema; the controls isolate learned amplitude and Stiefel geometry rather than stored capacity.
+
+The diagonal `w_q` permits state-dependent autonomous acceleration without a dense `D×D` multiplication at every suffix step. There is no fixed decay, selected timescale, rollout-horizon set, or learned pole. For a known action, the full transition has an exact constructive inverse using the **same effective map `G`** as the forward transition:
+
+```text
+q_{t-1} = q_t^- - v_t^-
+f_t     = tanh(w_q ⊙ RMSNorm(q_{t-1}) + G a_{t-1} + b_f)
+v_{t-1} = v_t^- - f_t
+```
+
+Thus the prior is an additive kick–drift shear with unit determinant. Unlike V10's rotation it can move zero, retain momentum, and accumulate non-periodic change. Exact reversibility is a numerical/structural receipt, not a claim that the learned image dynamics are Hamiltonian or that real DMC dynamics conserve volume.
+
+The observation correction is a continuous clean-innovation likelihood ratio, not a learned classifier for a selected corruption. Define a scale-normalized innovation and remove the structurally null all-ones direction of the affine-free encoder with a fixed orthonormal Helmert contrast:
+
+```text
+u_t                = sqrt(D) (z_t-q_t^-) / (||z_t||_2+||q_t^-||_2+eps)
+y_t                = B u_t,   B ∈ R^((D-1)×D),   B 1 = 0,   B B^T = I
+E_t                = ||C(y_t-mu)||_2^2 / (D-1),  precision Lambda = C^T C
+h_t                = RMSNorm(q_t^-)
+tau_t              = softplus(b_tau + <h_t,u_tau>/sqrt(D))
+reliability        r_t = tau_t / (tau_t+E_t)
+position base      alpha_t = sigmoid(b_q + <h_t,u_q>/sqrt(D))
+velocity base      beta_t  = alpha_t sigmoid(b_v + <h_t,u_v>/sqrt(D))
+ordered gates      g_t^q = r_t alpha_t,   g_t^v = r_t beta_t
+posterior          q_t = q_t^- + g_t^q (z_t-q_t^-)
+                   v_t = v_t^- + g_t^v (z_t-q_t^-)
+belief read        m_t = RMSNorm(q_t+v_t),   ztilde_t = z_t + W_o m_t
+```
+
+All likelihood and dot-product arithmetic is FP32 even under BF16 training. `tau_t` is a learned prior-conditioned process tolerance and `alpha_t,beta_t` depend only on the strict prior, never on the current observation. Consequently current evidence affects only `E_t`, reliability is monotone decreasing in that energy for a fixed prior, and the construction enforces `0≤g_t^v≤g_t^q<1`: velocity cannot absorb an innovation that configuration rejects.
+
+The clean innovation mean `mu` and lower whitening factor `C` are **fitted, non-gradient state**. After every training epoch, a detached clean-data pass reruns the deployed streaming recurrence while forcing only reliability `r=1`; learned kick/drift dynamics and ordered base gains remain active. This makes its clean priors independent of the old `C,mu` without replacing the actual observer trajectory with a separate teacher. Exact sufficient statistics over the epoch fit the `(D-1)`-dimensional mean and Oracle Approximating Shrinkage (OAS) covariance in closed form. If `Sigma_OAS=LL^T`, the stored factor is `C=L^-1`, hence `Lambda=C^T C`. OAS derives its shrinkage from the samples; the only diagonal floor is machine precision needed to make Cholesky total. There is no learned calibration branch, calibration optimizer or loss weight, tuned ridge, fixed accept/reject threshold, corruption label, visibility mask, or selected corruption family. `C` and `mu` are detached in deployed gates. The clean Gaussian NLL is logged solely as a calibration diagnostic and is **not** part of the optimized loss.
+
+Initialization is `q_0=z_0`, `v_0=0`, `log_gamma=0` (`gamma=1`), `w_q=b_f=W_o=u_q=u_v=u_tau=0`, `b_q=b_v=-2`, `b_tau=0`, `mu=0`, and `C=I`. A private CPU generator with seed `11011` draws a full-rank Gaussian `D×A` matrix, canonicalizes its reduced QR factor, and copies that frame into `M` for a deterministic, bit-identical start across every KDIO mode. The direction is therefore full-rank from the first step, while zero `W_o` still makes the initial memory residual exactly zero. Every mode retains the same serialized tensors. The module contains
+
+```text
+nominal optimizer:    D² + AD + 5D + 4
+closed-form fitted:   (D-1)D/2 + (D-1)
+```
+
+At `D=128,A=6`, this is `17,796` nominal optimizer scalars plus `8,255` fitted OAS scalars, or `26,051` total fitted memory scalars. `fixedscale` retains the common scalar tensor but disconnects it, so it has `17,795` gradient-active stored scalars. These are tensor-budget counts, not identifiable functional dimensions: canonical QR has an `A(A+1)/2`-dimensional fiber (`21` at `A=6`), free-geometry normalization removes one radial degree, and exact controls retain inactive tensors. Those gauges are reported rather than hidden; every within-KDIO comparison remains optimizer-schema matched. Deployment retains exactly `2D` streaming floats. One reduced FP32 QR costs `O(DA²)` per parameter version/sequence, and `G` is reused by forward, inverse, and suffix transitions. The online recurrence remains `O(D²+AD)` per step; all-suffix training retains its `O(L²D)` activation graph.
+
+The causal LeWM host predicts one token at a time from each fused belief/action pair:
+
+```text
+context prediction       zhat_{t+1} = P(ztilde_t, a_t)
+L_context                = mean_t ||zhat_{t+1}-z^clean_{t+1}||²
+```
+
+The synchronized clean view uses the same affine-free per-frame-LN encoder with dropout disabled. There is no teacher, EMA target, future/peer normalization, or simulator label. V11b separates two paths that must not be conflated. The **live suffix path** starts from every deployed observed posterior—including anchors that have consumed a training corruption—and keeps gradients through its observed source, synchronized clean target, learned action scale, transition, and encoder. It supplies the actual long-horizon prediction loss:
+
+```text
+s^live_{b,t,0} = s^obs_{b,t}
+s^live_{b,t,k} = T_{gamma U a_{b,t+k-1}}(s^live_{b,t,k-1})
+e^live_{b,t,k} = mean_d (read(s^live_{b,t,k})-z^clean_{b,t+k})²
+L_suffix(k) = mean_{b,t} e^live_{b,t,k}
+L_suffix    = mean_{k=1}^{L-1} L_suffix(k)
+L_predictive = (L_context+L_suffix)/2
+```
+
+The separate **rank path** begins from `sg(s^obs_{b,t})`; both clean source and target are detached, and the default also uses `sg(gamma)`. Positive and negative branches therefore share an identical detached source and target while gradients still reach the action direction and shared transition/read mechanisms. The negative suffix is a deterministic one-row cyclic batch roll, `pi(b)=(b-1) mod B` (`torch.roll(..., shifts=1, dims=0)`). The default V11b geometry compares predicted and clean **displacements**, not absolute endpoints, and ranks their log energies:
+
+```text
+bar_s_{b,t}       = sg(s^obs_{b,t}),              bar_gamma = sg(gamma)
+s^+_{b,t,k}       = T_{bar_gamma U a_{b,t:t+k-1}}(bar_s_{b,t})
+s^-_{b,t,k}       = T_{bar_gamma U a_{pi(b),t:t+k-1}}(bar_s_{b,t})
+Delta h^+/-       = read(s^+/-_{b,t,k}) - read(bar_s_{b,t})
+Delta z           = sg(z^clean_{b,t+k}-z^clean_{b,t})
+epsilon^+/-       = mean_d (Delta h^+/- - Delta z)^2
+L_ASR(k)          = mean_{b,t} softplus(log epsilon^+ - log epsilon^-)
+L_ASR       = mean_{k=1}^{L-1} L_ASR(k)
+```
+
+The implementation clamps each energy only at the floating-point tiny value before the logarithm. ASR has no margin, temperature, tuned negative sampler, or tunable coefficient; it enters at unit weight, and the outer mean weights horizons equally. The three development endpoints change one item each: `rawdiff_displacement_detached` keeps detached displacement geometry but uses `softplus(epsilon^+-epsilon^-)`; `relative_endpoint_detached` keeps detached log-energy ranking but scores absolute endpoints; and `relative_displacement_livegamma` lets the rank branch update `gamma`. `noactionswap` computes the same energies and diagnostics but sets its optimized ASR contribution to exact zero. Under `noaction`, positive and deranged graphs share the same energy node, making ASR `log(2)`, relative advantage zero, every inspected horizon advantage zero, action-effect RMS zero, and pair accuracy `.5` up to the reported aggregation roundoff.
+
+There is **no trainable inverse head** and no inverse loss. After training only, a `lambda=10^-3` ridge is fit from clean-train `[z_{t-1},z_t,z_{t+1}]` to executed `a_t` and evaluated without refitting on clean validation. This diagnostic asks whether the learned encoder retains locally decodable action information; it has zero training parameters and sends no gradient to the encoder. FP32 VICReg variance/covariance retain anti-collapse pressure. The optimized full objective is exactly
+
+```text
+L = L_predictive + L_ASR + L_variance + L_covariance
+```
+
+with unit coefficients and final-epoch evaluation only. Gaussian calibration NLL and inverse-ridge error are excluded. For SSM, compact V8, ORBIT, and `nosuffix`, suffix prediction reduces exactly to context prediction and ASR is zero. Thus candidate-versus-reference remains a system contrast; the within-KDIO controls separate learned scale, action geometry, ASR, suffix horizon, calibration, dynamics, and reliability.
+
+| registered V11 design | exact intervention | question |
+|---|---|---|
+| `ssm` | learned diagonal one-state SSM under the common causal host | does V11 beat the main external recurrence? |
+| `hacssmv8` | compact V8 retrained end-to-end under the common host | does V11 beat the strongest fresh V9-grid design? |
+| `orbitv10` | full ORBIT retrained on the corrected IID-action cohort | does kick–drift resolve the V10 prior failure? |
+| `kdiov11` | learned `gamma`, Stiefel direction, kick/drift, full clean OAS, ordered reliability, all suffixes, and ASR | nominated system |
+| `kdiov11_unconstrained` | replace `U` by `sqrt(A)M/||M||F`, retaining learned `gamma` and all tensors | do orthogonal action directions help beyond normalized free geometry? |
+| `kdiov11_fixedscale` | set `gamma=1` while retaining `log_gamma` and Stiefel `U` | is learned action amplitude necessary? |
+| `kdiov11_nocalibration` | keep `mu=0,C=I`; skip every epoch-end fit | does data-derived innovation geometry help? |
+| `kdiov11_diagonal` | fit only diagonal clean covariance before OAS shrinkage | does cross-coordinate precision help? |
+| `kdiov11_h1` | full online architecture; suffix objective only at `k=1` | is long-horizon suffix training useful? |
+| `kdiov11_firstorder` | overwrite `v_t^-=f_t` rather than carry velocity | is the second-order state useful? |
+| `kdiov11_nodrift` | retain kicked velocity but set `q_t^-=q_{t-1}` | must velocity displace configuration? |
+| `kdiov11_noautonomy` | set both `w_q` and `b_f` contributions to zero | is state-dependent autonomous force useful? |
+| `kdiov11_noaction` | use zero action while retaining `M,log_gamma` and their map | is executed action causally used? |
+| `kdiov11_noactionswap` | retain positive suffix prediction and ASR diagnostics, but optimize ASR with exact zero weight | does executed-versus-deranged ranking help? |
+| `kdiov11_nosuffix` | full deployed observer; replace suffix loss by the identical context loss | does suffix supervision help at all? |
+| `kdiov11_noreliability` | set `r=1` while retaining `tau,C,mu` and every tensor | does calibrated innovation reliability help? |
+
+The final action design is a response to two observed failures, not an aesthetic mechanics prior. In the excluded free-action 100-epoch screen (§7.13.3), the learned action-map norm fell to `.009–.128` and inverse-action `R²` was nonpositive on three tasks. Canonical unit Stiefel then prevents rank/norm collapse, but its excluded 30-epoch full model has equal-task held-out NMSE `.577906`, worse than normalized free geometry (`.556067`) and the initial-frame integrator (`.473281`); it loses to free geometry on three of four tasks, loses to `noaction` on two, has mean inverse `R²=-.00068`, and worsens late on three. Its fixed unit scale is therefore rejected, while its inconsistent true-versus-deranged suffix advantages motivate ASR.
+
+Yet action information is present in the trajectories. A read-only audit forms `[s_{t-1},s_t,s_{t+1}]→a_t` for `t=1,…,46`, standardizes every feature and action coordinate with the 1,200-episode train-cache mean/standard deviation, fits `λ=10^-3` ridge in standardized space with an unpenalized intercept, maps predictions back to native action coordinates, and computes aggregate residual/total-variance `R²` on the disjoint 240-episode validation cache. It obtains Cartpole `.99999993`, Fish `.99686444`, Pendulum `.99999995`, Hopper `.41010974`, and Walker `.32808296`. Task-observation arrays remain evaluation-only: this audit diagnoses available transition signal and motivates preventing a degenerate action path; it supplies no training target or simulator supervision.
+
+The unlaunched official contract would have recorded `gamma/log_gamma`; raw, normalized-direction, and effective-map norms/Gram/singular diagnostics; phase-resolved action-effect and `tanh` saturation; exact inverse error using the same `G`; ASR positive/negative energies, advantage, pair accuracy, and per-horizon receipts; and true/deranged rollout divergence. The completed development screen records the corresponding diagnostics for its 32 cells. Full versus `fixedscale`, `unconstrained`, `noactionswap`, and `noaction` separates amplitude, geometry, ranking, and causal action use within that excluded screen. Neither full-rank `U` nor positive `gamma` proves semantic use.
+
+V11 uses fresh `L=48`, RGB64 DMC trajectories: 1,200 train and 240 validation episodes per task, train/validation simulator seeds `37100/103710`, deterministic corruption seed `11012`, and independent bounded tanh-Gaussian native actions (`rho=0`) rather than V10's AR(1) controls. Each episode's training view independently chooses either a 55%-height/width cutout filled by the global channel mean or a full mean frame over a deterministic 6–12-step interval. Held-out views are freeze, Gaussian noise, 8-pixel checkerboard replacement, and a 16–24-step long freeze. The cache schema stores ordered, non-object metadata for flattened native `timestep.observation` vectors. Those task observations are the registered post-training probe target because they retain task-visible periodic coordinates and Fish's randomized visual target. Raw `physics.get_state()`, rewards, masks, and visibility are never optimization inputs; raw state and rewards are archived only for audit.
+
+The primary representation is the strict pre-observation prior at target time `t`. A ridge probe is fit only on clean-train priors and then applied without refitting to corrupt held-out priors. The headline is the equal mean over freeze, Gaussian noise, checkerboard, and long-freeze NMSE on deep-gap plus first-restored-frame times. Clean prior, clean posterior, encoder, and direct-predictor probes are diagnostics. Two model-independent legal controls are fit/scored on identical clean-train targets and held-out masks: action history + cumulative action + normalized time, and the stronger version that also includes the checkpoint's causal initial-frame encoder coordinate. No evaluation target, reward, corruption mask, or visibility flag enters training.
+
+The registered comparison would have been `16 designs × 5 tasks × 5 optimizer seeds = 400` independently trained cells. Seeds `0–2` defined a 240-cell pilot and seeds `3–4` a mandatory 160-cell completion; four persistent workers were specified for GPU IDs `0,1,2,3`. Each cell would have required 100 online W&B epoch rows plus a held-out rollout table, paired observed/clean video, hashed NPZ artifact, model checkpoint, metrics, and run receipt. It was **not launched** because the mandatory V11b development screen failed. Section 7.13 therefore keeps the official ledger at 0/240 and 0/400 and reports only excluded development evidence.
+
 ## 3. Why it is scalable
 
-- **Linear time / bounded streaming memory.** Each V1–V9 bank/state is a recurrence with cost linear in sequence length. V10 uses two `O(D)` shuffled Givens layers plus dense `W_x/W_o` maps, hence `O(L(D²+AD))` time and one `D`-vector of streaming state. None introduces `O(L²)` temporal attention.
-- **Parallelization is architecture-dependent.** A fixed or externally known affine recurrence can admit an associative scan. LOIF does **not** inherit that claim because its evidence depends on the current prior. ORBIT's observation correction likewise depends on the transported prior, so no parallel scan is claimed. The V10 study uses `L=48`; there is still no long-sequence scaling benchmark.
-- **Hierarchy is no longer assumed to be beneficial.** SMT-v1–v3 can be stacked by depth; V4 carries three belief levels; V5–V8 carry two; and V9 carries two learned poles. V9's one-bank control wins, so V10 deliberately carries one persistent state. It is not evidence for a self-supervised hierarchy.
-- **Constant recurrent state in streaming form.** V1–V9 need `K·D` state (plus V9's two scales); V10 needs exactly `D`. The current training implementations materialize full scans and their activations. These are algorithmic streaming counts, not measured peak training-memory or latency claims.
+- **Linear-time online recurrence / bounded streaming memory.** Each V1–V9 bank/state is a recurrence with cost linear in sequence length. V10 uses `O(D)` shuffled Givens layers plus dense `W_x/W_o` maps and one `D` state. V11 uses elementwise kick–drift dynamics plus a dense `W_o` read and two `D` states, hence `O(L(D²+AD))` online work and `2D` streaming floats. None uses temporal self-attention at deployment.
+- **V11's training objective is deliberately quadratic in the short sequence length.** Its all-anchor positive and batch-deranged suffix scans retain an `O(L²D)` activation graph; ASR adds a second rollout branch but not a new asymptotic order. `L=48` is measured, not extrapolated. `h1`, `nosuffix`, and `noactionswap` separate horizon, positive-suffix, and ranking effects. No long-sequence training-scaling claim is made.
+- **Parallelization is architecture-dependent.** A fixed or externally known affine recurrence can admit an associative scan. LOIF, ORBIT, and KDIO do **not** inherit that claim because their current-observation correction depends on the transported prior; KDIO's state-dependent force also makes its transition nonlinear. The implementation uses an ordinary streaming scan online and vectorizes only independent suffix anchors during training.
+- **A hierarchy is now a falsified-or-supported mechanism, not an assumption.** SMT-v1–v3 can be stacked by depth; V4 carries three belief levels; V5–V8 carry two; and V9 carries two learned poles, but V9's one-bank control wins. V10 therefore uses one state. V11 reintroduces exactly two coupled roles—configuration and velocity—and tests velocity carry and drift directly against `firstorder` and `nodrift`; only those measured contrasts can support the hierarchy.
+- **Streaming counts are not measured training peaks.** V1–V9 need `K·D` state (plus V9's two scales), V10 needs `D`, and V11 needs `2D`. Training implementations retain scans, encoder activations, and for full V11 the suffix triangle. The experiment records peak VRAM/epoch time before making an efficiency claim.
 
 ## 4. Relation to prior work and revised positioning
 
@@ -423,7 +562,7 @@ This host is an **adaptive validity repair**, not an additional ORBIT novelty cl
 | **Titans** (arXiv:2501.00663) | deep memory meta-learned at test time | yes (test-time) | orthogonal axis; SMT is a cheap, interpretable train-time module (composable with it) |
 | **Instance-conditional timescales of decay** (arXiv:2212.05908) | mixture over fixed decay rates via a learned scorer | yes | closest idea, but for *non-stationary supervised instance weighting* — we bring it to *sequence/world-model memory* with per-step routing, a learned write gate, and the short/long interpretability protocol |
 
-**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly detects the explicit black token (§7.5). V4 establishes a genuine action-conditioned predict/correct path (§7.6). V5's learned spectrum, V6's dense consistency, and V7's counterfactual recovery fail their direct controls (§7.7–7.9). V8 removes those objective bundles and becomes a leading paired-average design, but its compaction equivalence, tying advantage, endpoint envelope, task envelopes, and locked pilot all fail (§7.10). V9's filtering algebra produces active evidence and action paths, yet its learned poles and two-bank hierarchy lose direct controls and full LOIF ranks seventh in its retrained grid (§7.11). V10-J is an adaptive move to one-state action isometry and raw-pixel end-to-end training (§2.9/§7.12). Its host audit fixes collapse but fails the prerequisite state-quality/convergence screen, and its five-mode grid is unrun. The evidence currently supports causal filtering and representation-validity diagnostics—not architectural novelty, general hierarchy, calibrated uncertainty, or an ICLR performance claim.
+**Net positioning, revised after the experiments.** SMT occupies the fixed-decay-basis + learned-gating quadrant. SMT-v2 is functionally static; V3 mainly detects the explicit black token (§7.5). V4 establishes a genuine action-conditioned predict/correct path (§7.6). V5's learned spectrum, V6's dense consistency, and V7's counterfactual recovery fail their direct controls (§7.7–7.9). V8 removes those objective bundles and becomes a leading paired-average design, but its compaction equivalence, tying advantage, endpoint envelope, task envelopes, and locked pilot all fail (§7.10). V9's filtering algebra produces active evidence and action paths, yet its learned poles and two-bank hierarchy lose direct controls and full LOIF ranks seventh in its retrained grid (§7.11). V10-J fixes host collapse but fails its prerequisite audit (§2.9/§7.12). V11's kick–drift/OAS composition then fails its completed 32-cell launch screen: raw-difference ranking is marginally best, the nominated objective trails a legal integrator, action-ranking semantics are task-specific, and convergence is uniformly poor (§2.10/§7.13). The evidence supports causal filtering and representation-validity diagnostics—not architectural novelty, general hierarchy, calibrated uncertainty, or an ICLR performance claim.
 
 ## 5. Interpretability — little observed switching in the synthetic tasks
 
@@ -468,6 +607,7 @@ Across every individual intervention and checkpoint, the largest absolute valida
 11. **Compact shared-action V8 study — complete.** All 325 cells, 65,000 W&B epoch rows, 325 rollout artifact/table/video bundles, and exact anchor/identity receipts passed. The pilot is `NO_GO`; final is `PILOT_NO_GO_FINAL_DESCRIPTIVE`. V8 ranks second (+6.20% versus SSM), but is neither focused-best nor compact-noninferior and wins no task envelope (§2.7/§7.10).
 12. **Learned ordered innovation V9 — complete, locked negative.** All 325 cells, 65,000 W&B epochs, and 325 rollout artifact/table/video bundles validate. Full LOIF is +2.55% versus SSM but rank 7/13; it loses to V7/V8, fixed poles, and one slow bank, and its immutable pilot/final labels are `NO_GO`/`PILOT_NO_GO_FINAL_DESCRIPTIVE`. Evidence conditioning and action are active, but the hierarchy and overall-best claims fail (§2.8/§7.11).
 13. **End-to-end orthogonal-belief V10-J — host audit complete, official grid not launched.** Five excluded 100-epoch ORBIT cells establish noncollapsed, singleton-causal representations under the final joint prediction/variance/covariance objective. They also expose the stop conditions: Fish's probe ceiling is `1.0233`, Walker/Hopper late-window changes are `-7.53%/-5.46%`, and only Cartpole has clearly sub-one held-out state NMSE. The five mode controls, baselines, pilot/final labels, 22,500 W&B rows, and all paired performance claims remain **0/225 and `PENDING`**.
+14. **Learned-scale Stiefel + ASR KDIO-v11 — development complete, `SCREEN_NO_GO / OFFICIAL_NO_LAUNCH`.** V11a's 20 cells and V11b's 32 cells are complete excluded adaptive screens with online W&B and rollout receipts. V11b correctly separates a live suffix loss from detached relative-displacement ranking, but the nominated model scores `.581525` held-out versus `.476157` for its legal integrator; raw-difference ranking is screen-best at `.577987` yet also trails its own integrator. The amplitude and geometry reductions are below 2%; ranking and causal reductions have only 2/4 wins; only Cartpole clears both rank-semantic signs; and all 32 predictive curves worsen late. The official four-GPU study was therefore never launched: **0/240 pilot and 0/400 final** (§2.10/§7.13.3–7.13.4).
 
 ## 7. Initial validation results
 
@@ -1626,6 +1766,288 @@ All five V10-J cells clear the implemented variance/rank, orthogonality, streami
 
 The five audits cannot populate any paired contrast because they have no matched baseline or mechanism control. Hopper reinforces rather than reverses the no-launch decision by adding a second late-change violation.
 
+#### 7.12.6 Post-hoc V10 failure localization: action integration and probe coordinates
+
+After locking the V10-J no-launch decision, we ran a read-only linear audit over its five saved checkpoints. This does not create an ORBIT comparison or revise the 0/225 ledger. It asks whether the poor reported state score is attributable to the learned transition, the evaluation coordinate, or an easier causal explanation already present in the trajectories.
+
+The primary V10 score fit one ridge map from clean encoder coordinates and applied it to separately learned predictor/prior coordinates. Direct coordinate-specific probes improve several tasks substantially; for example, Cartpole's clean predictor NMSE changes from `.30574` through the encoder-fitted map to `.063` through a predictor-fitted map, and Pendulum changes from `1.105` to `.721`. This is an evaluation-coordinate bug in the original diagnostic, not evidence that its predictions are good. V11 therefore fits a separate train-split probe for every reported coordinate and makes the strict pre-observation prior the primary representation.
+
+More importantly, a causal linear action integrator beats V10-J in every environment. The action-only feature contains the previous three actions, cumulative action from reset, and normalized time. The stronger legal feature adds the initial encoded frame, which is observed before every gap. Values below are the equal four-corruption held-out primary NMSE (lower is better):
+
+| V10-J checkpoint | original reported score | direct ORBIT-prior probe | action-only integrator | initial frame + action integrator |
+|---|---:|---:|---:|---:|
+| Walker | 1.039 | .923 | .713 | .675 |
+| Hopper | 1.097 | .905 | .730 | .648 |
+| Cartpole | .771 | .198 | .069 | .068 |
+| Pendulum | 1.310 | .987 | 1.202 | .167 |
+| Fish | 1.218 | 1.164 | .492 | .513 |
+| equal task mean | 1.087 | .835 | .641 | .415 |
+
+The action-only mean is 41.0% below the original V10 score and the initial-frame integrator is 61.8% below it. Pendulum localizes the distinction: actions alone do not identify the randomized initial phase, while the initial frame plus integrated controls does. V10's norm-preserving `T(a)m` prior cannot express this simple affine accumulation because it maps zero to zero and preserves the old-state norm. That is the direct architectural reason for V11's configuration/velocity kick–drift state. Both simple integrators are now emitted on V11's IID-action data and the stronger initial-frame version is a hard success gate; beating only the weaker action-only control is insufficient.
+
+The audit also finds that raw `physics.get_state()` is not a uniformly valid visual target. It can include globally translated coordinates omitted by the camera, represent periodic variables as raw angles/quaternions, and—for Fish—omit the randomized target that is visibly present. V11's primary target is therefore the flattened native DMC task observation, whose schema is cached and hashed; raw physics state is retained only as a secondary evaluation artifact. None of these arrays enters optimization. These repairs make the V11 score better defined, but the five tasks are already opened and remain adaptive development rather than untouched confirmation.
+
+### 7.13 KDIO-v11: registered four-GPU adaptive study
+
+#### 7.13.0 Status boundary and immutable data
+
+V11 is an adaptive response to the V10-J diagnostics in §7.12.6 and to the excluded screens in §7.13.3. It is not an untouched confirmation cohort and cannot retroactively validate V10. Those development runs are quarantined by seed, output root, and W&B study and cannot become official cells. Before the first official cell, the producer commit, architecture, 16-design grid, objective, metrics, thresholds, cache contents, W&B contract, and mandatory completion stage are frozen together. The official runner refuses a dirty tree, hashes every consumed source/cache, pins exactly four persistent workers to four distinct GPUs, and requires completion even if the pilot returns `NO_GO`.
+
+The fresh schema-v2 cache is complete. Its manifest SHA-256 is `ceeb279471e72a4108a7eef60add340b27a2ec25d10d57f6e7e577a78700c19c`; all ten train/validation cache hashes and content hashes are recorded by `outputs/hacssm_v11_data/manifest.json` and will be copied into the immutable run protocol. Empirical lag-one action correlations are between `-.0053` and `+.0106`, consistent with the registered IID generator rather than V10's `.85` AR(1) process.
+
+| task | action dim | native task-observation schema (flattened dim) | archived raw-state dim |
+|---|---:|---|---:|
+| Walker Walk | 6 | `orientations,height,velocity` (24) | 18 |
+| Hopper Hop | 4 | `position,velocity,touch` (15) | 14 |
+| Cartpole Swingup | 1 | `position,velocity` (5) | 4 |
+| Pendulum Swingup | 1 | `orientation,velocity` (3) | 2 |
+| Fish Swim | 5 | `joint_angles,upright,target,velocity` (24) | 27 |
+
+Each task has 1,200 train and 240 validation episodes of 48 RGB64 frames, generated with simulator seeds `37100/103710`. Every native bounded action is an independent tanh-Gaussian draw (`smooth_rho=0`); the deterministic corruption seed is `11012`. The training view chooses cutout or mean-frame corruption per episode over a 6–12-step interval. The held-out views are freeze, Gaussian noise, checkerboard, and 16–24-step long freeze. The Fish schema explicitly places its randomized target in task-observation columns `8:11`; this is the visual variable missing from raw `physics.get_state()`. Cache tests reject object arrays, non-finite values, out-of-bound actions, noncontiguous observation schemas, nonzero smoothing, hash mismatches, or train/validation schema drift. Task observation, physics state, reward, and corruption masks are evaluation/audit fields and never optimization targets.
+
+#### 7.13.1 Frozen training, evaluation, and artifact contract
+
+Every cell trains from scratch for exactly 100 epochs with AdamW (`lr=3×10^-4`, weight decay `10^-5`, batch 64), the `D=128` six-layer/four-head affine-free causal ViT, a four-layer/eight-head one-token predictor, and BF16 autocast. There is no best-checkpoint selection, scheduler, early stopping, task-specific coefficient, or post-pilot redesign. Full KDIO's triangular objective uses every `k=1,…,47` from each deployed observed/corrupted posterior, with equal horizon weighting for both positive suffix MSE and ASR; `h1` uses only `k=1`; `nosuffix` reduces predictive loss exactly to context and has no ASR. `noactionswap` preserves positive suffix prediction and all ASR diagnostics while its optimized ASR term is exact zero. No design has a trainable inverse head. A clean-train three-frame ridge is fit and serialized only after training for clean-validation action-decoding evaluation.
+
+The nominated action map is `G=gamma qf(M)`, with canonical-sign FP32 thin QR, `gamma=exp(log_gamma)>0` in unclipped FP32, and one deterministic seed-11011 full-rank initialization shared by all KDIO modes. The same effective `G` is reused in the forward kick, exact inverse, streaming scan, and complete suffix triangle. `fixedscale` sets `gamma=1`; `unconstrained` uses `gamma sqrt(A)M/||M||F`. All retain `M,log_gamma` and the identical optimizer schema. Nominal counts are 17,796 optimizer scalars, 8,255 full-OAS fitted scalars, and 26,051 total at `D=128,A=6`; fixed-scale has 17,795 gradient-active stored scalars. QR fibers, free-geometry radial normalization, and exact interventions are reported as functional gauges rather than misrepresented as active degrees of freedom.
+
+For every calibrated KDIO design, each completed training epoch is followed by a detached clean pass through the same streaming recurrence with reliability forced to one. Exact sufficient statistics then update `mu,C` by closed-form OAS; `diagonal` removes cross-coordinate covariance before the same fit and `nocalibration` leaves `mu=0,C=I`. The fitted factor convention is `Lambda=C^T C`. Neither `C` nor `mu` receives gradients, and the logged Gaussian calibration NLL is diagnostic-only. The optimized objective is exactly predictive + ASR + variance + covariance, all with unit coefficients.
+
+The primary target is standardized native task observation. Four coordinate-specific ridge probes (`λ=10^-3`) are fit on clean training data for strict prior, posterior, encoder, and direct predictor coordinates. The registered headline is `heldout_prior_state_nmse`: the equal condition mean across freeze, Gaussian noise, checkerboard, and long freeze, using the union of deep-gap and first-restored-frame targets. Lower is better. All comparisons are paired by task and optimizer seed.
+
+Two non-neural controls are fit on the identical clean-train targets and scored on identical held-out masks: (1) action history + cumulative action + time, and (2) the stronger legal control that adds the checkpoint's causal initial-frame encoder coordinate. A V11 success must beat the second control; beating only action-only integration does not resolve V10.
+
+The W&B namespace is entity `crlc112358`, project `lewm-memory-popgym`, study `hacssm-v11`. A valid final grid contains 40,000 online epoch rows and 400 independently hashed rollout NPZ artifacts, tables, and paired observed/clean videos. Local receipts additionally contain the model, complete history, four state probes, evaluation-only inverse ridge, OAS/action/ASR diagnostics, metrics, W&B run identity, mean epoch time, and peak allocated GPU memory. Cloud state, epoch coverage, artifact metadata/hash, table, and video are re-read through the W&B API before the final manifest can be written.
+
+#### 7.13.2 Frozen pilot and final gates
+
+Pilot analysis uses seeds `0–2` (`16×5×3=240` cells) without bootstrap. Completion seeds `3–4` add 160 cells regardless of the pilot outcome, producing all `400`. Positive relative reduction means lower full-KDIO NMSE. Full KDIO must satisfy every row:
+
+| full KDIO versus reference | required mean reduction | pilot paired wins | final paired wins | task-mean wins | final uncertainty |
+|---|---:|---:|---:|---:|---|
+| diagonal SSM | ≥5% | ≥9/15 | ≥15/25 | ≥4/5 | crossed-bootstrap 90% lower bound `>0` |
+| compact V8 | ≥5% | ≥9/15 | ≥15/25 | ≥4/5 | crossed-bootstrap 90% lower bound `>0` |
+| ORBIT V10 | ≥5% | ≥9/15 | ≥15/25 | ≥4/5 | crossed-bootstrap 90% lower bound `>0` |
+| action-only causal integrator | ≥5% | ≥9/15 | ≥15/25 | ≥3/5 | descriptive; no bootstrap gate |
+| initial-frame + action integrator | ≥5% | ≥9/15 | ≥15/25 | ≥3/5 | descriptive; no bootstrap gate |
+
+The within-KDIO mechanism gates are:
+
+| full KDIO versus control | required mean reduction | pilot / final paired wins | task-mean wins | interpretation if passed |
+|---|---:|---:|---:|---|
+| `unconstrained` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | Stiefel direction helps beyond normalized free geometry |
+| `fixedscale` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | learned positive action amplitude helps |
+| `noactionswap` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | executed-versus-deranged suffix ranking helps |
+| `nocalibration` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | data-derived clean innovation geometry helps |
+| `diagonal` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | cross-coordinate precision helps |
+| `h1` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | all-suffix supervision helps |
+| `firstorder` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | velocity carry helps |
+| `nodrift` | ≥5% | ≥9/15 / ≥14/25 | ≥3/5 | velocity-to-configuration drift helps |
+| `noautonomy` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | state-dependent autonomous force helps |
+| `noaction` | ≥5% | ≥9/15 / ≥14/25 | ≥3/5 | the action force helps |
+| `nosuffix` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | any suffix supervision helps |
+| `noreliability` | ≥2% | ≥9/15 / ≥14/25 | ≥3/5 | calibrated reliability helps |
+
+Mean clean-prior harm must be at most 2% relative to each of SSM, compact V8, and ORBIT. Across all compared cells, absolute relative change between validation predictive-loss means from epochs `81–90` and `91–100` must have median `<1%`, p95 `<3%`, and maximum `<5%`. Full KDIO additionally requires maximum transition-inverse and streaming error `≤1e-5`, analytic volume error `≤1e-7`, minimum encoder mean-channel variance `≥1e-5`, minimum covariance effective rank `≥16`, singleton/prefix discrepancies `≤1e-5`, every clean-prior probe ceiling `<1`, and positive evaluation-only inverse-ridge `R²`. `gamma` must be finite/positive; full ASR pair accuracy and true-action advantages at horizons `1,4,8,16,47` must exceed chance/zero; `noaction` must give exact `.5`/zero. Scale, raw/direction/effective-map Gram/singular receipts and phase-resolved action saturation are mandatory. Full-versus-`noaction` is the causal performance gate; `fixedscale`, `unconstrained`, and `noactionswap` attribute amplitude, geometry, and ranking.
+
+Final headline uncertainty uses 100,000 crossed task×seed percentile-bootstrap draws with `numpy.random.Generator(PCG64(11011))`, independently resampled task and seed indices, Cartesian-product averaging, and linear 5th/95th percentiles. A failed pilot fixes the final label to `PILOT_NO_GO_FINAL_DESCRIPTIVE` even if later aggregate estimates improve. Only a pilot pass plus every final gate can produce `END_TO_END_CONFIRMATION_PASS`; the analyzer always leaves `iclr_submission_ready=false` because this adaptive study has no executed-return evaluation or untouched external cohort.
+
+#### 7.13.3 Excluded action/calibration-screen ledger
+
+Every result in this subsection is adaptive development evidence. The screens use one nonofficial seed and at most four of five tasks (Hopper is absent except from the read-only cache audit), a superseded architecture, shortened training, or post-hoc checkpoint edits; all use distinct output roots/studies and no registered comparator grid. They cannot enter pilot/final estimates.
+
+**Free-action 100-epoch collapse screen.** Four seed-11104 jobs in `hacssm_v11_screen_prior100` trained the superseded raw, zero-initialized action map for the full 100 epochs. This is the direct failure localization that motivates thin-Stiefel `U`, not evidence for the final architecture:
+
+| task | held-out / clean prior NMSE | inverse-action `R²` | final action-map norm | late predictive change | W&B run |
+|---|---:|---:|---:|---:|---|
+| Cartpole | `.229977 / .142153` | `.005394` | `.127779` | `-10.427%` | [`0vvyef0e`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/0vvyef0e) |
+| Fish | `1.031915 / 1.033280` | `-.070228` | `.015661` | `-7.852%` | [`0nh4vl7i`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/0nh4vl7i) |
+| Pendulum | `.699513 / .083819` | `-.007402` | `.019339` | `-2.905%` | [`soebqt1e`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/soebqt1e) |
+| Walker | `.952691 / .871429` | `-.442649` | `.047269` | `-8.288%` | [`lax0nooa`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/lax0nooa) |
+
+“Late predictive change” is the relative change from validation predictive-loss epochs `81–90` to `91–100`; negative means the later window is worse. All four cells regress, three learned maps have Frobenius norm below `.05`, and inverse-action decoding is nonpositive on three tasks. This cannot be dismissed as absent transition signal: the disjoint-cache standardized task-observation triplet ridge described in §2.10 gives action `R²=.99999993/.99686444/.99999995/.41010974/.32808296` on Cartpole/Fish/Pendulum/Hopper/Walker. Those task observations are evaluation-only and never repair the encoder during training. Thin QR addresses the map's rank/norm collapse while `unconstrained`, `noaction`, inverse `R²`, saturation, and true-versus-shuffled rollouts test whether semantic action use actually follows.
+
+**Post-hoc OAS refit of old learned-precision checkpoints.** Each seed-11105 30-epoch checkpoint from `hacssm_v11_screen_precision30` was frozen, and OAS was fit after training to all 56,400 clean training innovations. This diagnosed whether a clean Gaussian metric could separate corruptions, but it did not train the final epoch-calibrated observer.
+
+| task | held-out prior NMSE, old → post-hoc OAS | clean prior NMSE, old → post-hoc OAS | OAS clean energy | OAS Gaussian deep energy |
+|---|---:|---:|---:|---:|
+| Cartpole | `.537210 → .202167` | `.071672 → .177702` | `.9313` | `10.9660` |
+| Pendulum | `.369847 → .350073` | `.169305 → .340763` | `1.8002` | `17.4229` |
+| Fish | `.995796 → 1.018294` | `.991668 → 1.015966` | `2.0569` | `7.7538` |
+| Walker | `.830471 → .855679` | `.817677 → .854436` | `1.2749` | `.7154` |
+| equal task mean | `.683331 → .606553` (`-11.24%`) | `.512581 → .597217` (`+16.51%` harm) | — | — |
+
+The metric separates Gaussian corruption on Cartpole, Pendulum, and Fish but not Walker, and the post-hoc gate trades clean quality for held-out quality. It motivated clean likelihood calibration; it is not a final-model score.
+
+**Circular online OAS failure.** Four seed-11106 jobs in `hacssm_v11_screen_oas30` recomputed OAS from clean priors that themselves depended on the previous `C,mu`. Calibration NLL oscillated because the fitted distribution moved with its own gate. The screen was intentionally terminated at epoch 12/30; its W&B jobs are crashed/excluded and there are no final metrics. This failure directly motivated the final reliability-open (`r=1`) calibration recurrence.
+
+**Finite-difference teacher/OAS screen.** Four 30-epoch seed-11107 jobs in `hacssm_v11_screen_teacher_oas30` used a superseded finite-difference calibration teacher and calibration-NLL gradients:
+
+| task | held-out prior NMSE | clean prior NMSE | clean deployed `E / r` | W&B run |
+|---|---:|---:|---:|---|
+| Cartpole | `.193751` | `.198772` | `798.581 / .04423` | [`skapohqx`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/skapohqx) |
+| Pendulum | `.295611` | `.289975` | `132.865 / .06359` | [`p2lc68kp`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/p2lc68kp) |
+| Fish | `.994194` | `.992749` | `459.454 / .07890` | [`4c8xf5vv`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/4c8xf5vv) |
+| Walker | `.832198` | `.831594` | `29.755 / .07653` | [`u8iz2g7f`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/u8iz2g7f) |
+
+The apparently low Cartpole/Pendulum NMSE is not a calibrated-observer success: even clean innovations have enormous energy and mean reliability only `.044–.079`, so the observer mostly ignores observations. Gaussian-deep energy/reliability is `853.65/.00483`, `220.66/.00650`, `1008.17/.00218`, and `32.27/.05180` in table order. The final design removes both the finite-difference teacher and every calibration-NLL gradient.
+
+**Reliability-open clean OAS screen.** Four 30-epoch seed-11109 jobs in `hacssm_v11_screen_open_oas30` implement the final non-gradient calibration principle: clean deployed recurrence, `r=1` only during the fit pass, epoch-end full OAS, and diagnostic-only NLL.
+
+| task | held-out prior NMSE | clean prior NMSE | Gaussian prior NMSE | initial-frame integrator NMSE | clean `E / r` | Gaussian-deep `E / r` | W&B run |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Cartpole | `.351010` | `.049741` | `.580139` | `.301484` | `1.011/.719` | `14.272/.148` | [`pfacztws`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/pfacztws) |
+| Pendulum | `.365463` | `.159366` | `.392613` | `.456928` | `2.832/.600` | `28.761/.0649` | [`b6ht66b5`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/b6ht66b5) |
+| Fish | `.993448` | `.887117` | `1.169184` | `.423047` | `2.942/.565` | `132.311/.0144` | [`29u73n2z`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/29u73n2z) |
+| Walker | `.833513` | `.828368` | `.849311` | `.734911` | `1.276/.580` | `.652/.653` | [`iu0idbiv`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/iu0idbiv) |
+
+This screen fixes the circularity and avoids the reject-everything solution. It also shows the remaining risk honestly: Walker's Gaussian innovations are not separated, Fish/Walker state NMSE remains poor, and full KDIO loses the initial-frame integrator on Cartpole, Fish, and Walker at 30 epochs. The fitted covariance condition numbers are `99,866`, `52,562`, `8,726`, and `109,947` (Cartpole, Pendulum, Fish, Walker), while the stored whitening-factor conditions are `316`, `229`, `93`, and `332`. These are diagnostics from a one-seed shortened screen, not an official performance claim.
+
+**Reliability-open 100-epoch free-action screen.** The four seed-11110 jobs in `hacssm_v11_screen_open_oas100` extend the reliability-open OAS design to the official epoch budget but still precede the thin-Stiefel revision:
+
+| task | held-out / clean prior NMSE | freeze / Gaussian / checkerboard / long-freeze NMSE | initial-frame integrator | inverse `R²` | `||W_a||_F` | late predictive change | W&B run |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| Cartpole | `.484796 / .060177` | `.152262 / 1.025460 / .414764 / .346697` | `.309717` | `.110801` | `.128351` | `-11.691%` | [`0o6nl4nb`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/0o6nl4nb) |
+| Fish | `.958995 / .850069` | `.862277 / 1.146525 / .961104 / .866073` | `.425397` | `-.010813` | `.009158` | `+2.916%` | [`uzzkptf8`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/uzzkptf8) |
+| Pendulum | `.378833 / .152149` | `.282515 / .476441 / .265440 / .490937` | `.454847` | `-.008911` | `.022208` | `-1.803%` | [`ror0f0ys`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ror0f0ys) |
+| Walker | `.948911 / .809284` | `.897669 / 1.092879 / .847545 / .957552` | `.744017` | `-.475816` | `.048799` | `-7.131%` | [`e938snur`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/e938snur) |
+
+The equal-task held-out mean is `.692884`, versus `.483495` for the legal initial-frame integrator: free-action KDIO is **43.31% worse**. It is also 8.97% worse than the `.635859` equal-task mean of the 30-epoch reliability-open screen. Three action maps again finish below `.05`, inverse `R²` is nonpositive on Fish/Pendulum/Walker, and three predictive curves worsen in the final ten-epoch window. More epochs therefore do not repair action collapse or produce an overall competitive observer. These four cells are completed W&B-recorded evidence for the redesign, but remain excluded adaptive runs and say nothing yet about whether thin-Stiefel `U` succeeds.
+
+**Unit-Stiefel 30-epoch factorial.** Seed 11111 in `outputs/hacssm_v11_screen_stiefel30` compares unit canonical Stiefel, the then-current raw unconstrained map, and `noaction` on four tasks. All 12 W&B runs are finished under study `hacssm-v11-screen-stiefel30`. This screen still uses the superseded trainable inverse MLP and has no learned `gamma` or optimized ASR.
+
+| task | design | held-out / clean prior NMSE | freeze / Gaussian / checker / long-freeze | initial integrator | inverse `R²` | late predictive change | W&B |
+|---|---|---:|---:|---:|---:|---:|---|
+| Cartpole | unit Stiefel | `.287115 / .175809` | `.192144 / .508715 / .205410 / .242192` | `.310236` | `.006577` | `-32.652%` | [`evvfprvo`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/evvfprvo) |
+| Cartpole | raw unconstrained | `.233330 / .131518` | `.149673 / .372604 / .185565 / .225477` | `.311043` | `.005232` | `-19.992%` | [`m22fozq1`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/m22fozq1) |
+| Cartpole | no action | `.883921 / .234148` | `.448296 / 1.608847 / .748245 / .730296` | `.306255` | `.003826` | `-48.632%` | [`18c1lqi0`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/18c1lqi0) |
+| Fish | unit Stiefel | `.878493 / .871562` | `.871116 / .886955 / .874504 / .881397` | `.420419` | `-.000962` | `+.187%` | [`dklq1bc6`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/dklq1bc6) |
+| Fish | raw unconstrained | `.874173 / .865562` | `.864910 / .887647 / .869495 / .874642` | `.429211` | `-.000846` | `-1.436%` | [`pkiuljr6`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/pkiuljr6) |
+| Fish | no action | `1.021982 / 1.015398` | `1.017701 / 1.027132 / 1.016959 / 1.026138` | `.422672` | `-.001275` | `-36.008%` | [`pdwg0899`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/pdwg0899) |
+| Pendulum | unit Stiefel | `.300563 / .249409` | `.273703 / .313935 / .277136 / .337478` | `.444118` | `-.002935` | `-5.148%` | [`7c5jwije`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/7c5jwije) |
+| Pendulum | raw unconstrained | `.268052 / .188977` | `.238473 / .249487 / .228625 / .355622` | `.445381` | `-.002999` | `-8.806%` | [`mv1mier1`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/mv1mier1) |
+| Pendulum | no action | `.275375 / .144364` | `.218162 / .274760 / .236024 / .372554` | `.444979` | `-.002629` | `-16.488%` | [`ke8ou84b`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ke8ou84b) |
+| Walker | unit Stiefel | `.845452 / .842747` | `.844628 / .847351 / .843432 / .846396` | `.718351` | `-.005385` | `-15.325%` | [`g78xrzsl`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/g78xrzsl) |
+| Walker | raw unconstrained | `.848712 / .846186` | `.847721 / .854776 / .847453 / .844898` | `.722351` | `-.005815` | `-30.179%` | [`706cluv4`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/706cluv4) |
+| Walker | no action | `.832179 / .819918` | `.823372 / .844937 / .826926 / .833480` | `.733287` | `-.008847` | `-31.123%` | [`2g46sm1n`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/2g46sm1n) |
+
+Equal-task means expose the cross-task result directly:
+
+| design | held-out / clean | freeze / Gaussian / checker / long-freeze | initial integrator | inverse `R²` | late predictive change |
+|---|---:|---:|---:|---:|---:|
+| unit Stiefel | `.577906 / .534882` | `.545398 / .639239 / .550120 / .576866` | `.473281` | `-.000676` | `-13.234%` |
+| raw unconstrained | `.556067 / .508061` | `.525194 / .591129 / .532784 / .575159` | `.476996` | `-.001107` | `-15.103%` |
+| no action | `.753364 / .553457` | `.626883 / .938919 / .707038 / .740617` | `.476798` | `-.002231` | `-33.063%` |
+
+The action-path diagnostics show that unit QR fixes rank but not scale or semantics. `scale*` below is the effective RMS singular value: exactly one for unit Stiefel, `||G||F/sqrt(A)` for the legacy raw control, and one-but-unused for `noaction`.
+
+| task | design | scale* | clean action-effect norm | mean `tanh'` | true one-step advantage | true suffix advantage | h47 divergence |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Cartpole | unit / raw / noaction | `1 / .630610 / 1` | `.557197 / .352109 / 0` | `.992564 / .996138 / .999955` | `.024792 / .019549 / 0` | `.054046 / .052249 / 0` | `.028862 / .030808 / 0` |
+| Fish | unit / raw / noaction | `1 / .413406 / 1` | `1.339594 / .563337 / 0` | `.974698 / .990226 / .999982` | `.044248 / .024237 / 0` | `.136720 / .080745 / 0` | `.016367 / .014258 / 0` |
+| Pendulum | unit / raw / noaction | `1 / .487752 / 1` | `.555783 / .272088 / 0` | `.990255 / .994620 / .999904` | `.011035 / .003274 / 0` | `.009029 / .005045 / 0` | `.006304 / .005919 / 0` |
+| Walker | unit / raw / noaction | `1 / .423049 / 1` | `1.464351 / .629384 / 0` | `.970688 / .987242 / .999858` | `.022181 / .009967 / 0` | `-.080266 / -.035362 / 0` | `.022590 / .015288 / 0` |
+
+The full unit frames are numerically valid: maximum Gram error is `4.77e-7`, singular extrema stay within `2.4e-7` of one, clean action effects are nonzero, and one-step true-action advantage is positive on all four tasks. The failure is therefore not a broken QR implementation. Unit Stiefel is 3.93% worse than raw unconstrained by the ratio of equal-task held-out means and loses that comparison on Cartpole, Fish, and Pendulum. It lowers the equal-task mean relative to `noaction`, but wins only Cartpole and Fish; Pendulum and Walker are worse. It is 22.11% worse than its own legal initial-frame integrator. Full inverse `R²` is nonpositive on three tasks, Walker's true suffix advantage is negative, and three of four full cells worsen late. Within this adaptive screen, that rejects **fixed unit action scale as the final V11 candidate** and shows that structural rank alone does not create semantic action use. The smaller legacy raw-map scales often perform better, motivating a separately learned `gamma`; the inconsistent executed/deranged ordering motivates ASR.
+
+This factorial is excluded because it is one nonofficial seed, omits Hopper, stops at 30 epochs, uses already-opened adaptive tasks, includes only three of the final 16 designs, uses a superseded unnormalized raw control and fixed-unit Stiefel map, optimizes the now-removed inverse MLP, and has no ASR. It motivates the final design but cannot estimate its performance.
+
+**Learned-scale endpoint-ASR screen (V11a).** Seed 11112 in `outputs/hacssm_v11_screen_scaled_asr30` is a completed 20-cell (`4 tasks × 5 designs`) excluded factorial under W&B study `hacssm-v11-screen-scaled-asr30`. This first learned-`gamma` implementation used raw endpoint-energy differences for executed-versus-deranged suffix ranking; it predates V11b's detached relative displacement. Every cell has 30 W&B epochs and a finished rollout artifact. Entries are held-out / clean strict-prior NMSE followed by the W&B run:
+
+| task | full learned-scale Stiefel | fixed scale | normalized free geometry | no optimized ASR | no action | legal initial-frame integrator (full checkpoint) |
+|---|---:|---:|---:|---:|---:|---:|
+| Cartpole | `.210807 / .092605` ([`ubzrwpw6`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ubzrwpw6)) | `.186035 / .085372` ([`k1n2r1jl`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/k1n2r1jl)) | `.163375 / .091113` ([`qwdvw87q`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/qwdvw87q)) | `.248404 / .194612` ([`cuw7v55y`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/cuw7v55y)) | `.752493 / .190587` ([`xtnku3zs`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/xtnku3zs)) | `.317059` |
+| Fish | `.892427 / .885167` ([`y9kn2e52`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/y9kn2e52)) | `.892793 / .885099` ([`axxf2k37`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/axxf2k37)) | `.894354 / .886885` ([`elapcey4`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/elapcey4)) | `.892726 / .884931` ([`dwxjpf99`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/dwxjpf99)) | `1.023872 / 1.014362` ([`zbpz69h0`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/zbpz69h0)) | `.435941` |
+| Pendulum | `.382008 / .302872` ([`xdysq8lk`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/xdysq8lk)) | `.405110 / .317774` ([`i6zwx4s5`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/i6zwx4s5)) | `.383446 / .302850` ([`3u1le5b1`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/3u1le5b1)) | `.393819 / .325325` ([`mqi8lhmn`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/mqi8lhmn)) | `.298203 / .186671` ([`z8du6889`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/z8du6889)) | `.452526` |
+| Walker | `.839319 / .836895` ([`lcyuhu48`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/lcyuhu48)) | `.857378 / .855991` ([`qaatm5m0`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/qaatm5m0)) | `.839864 / .838184` ([`8fbzzsha`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/8fbzzsha)) | `.845688 / .845036` ([`il5vtclo`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/il5vtclo)) | `.846422 / .833775` ([`4k9gww5g`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/4k9gww5g)) | `.734625` |
+| equal-task mean | `.581140 / .529385` | `.585329 / .536059` | `.570260 / .529758` | `.595159 / .562476` | `.730247 / .556349` | `.485038` |
+
+The equal-task paired reduction of full versus `fixedscale` is `-1.37%` (the amplitude claim fails), versus normalized free geometry `-7.09%` (the Stiefel-geometry claim fails), versus no-ASR `+4.73%` with `4/4` task wins, and versus `noaction` `+14.39%` with `3/4` wins. Full is nevertheless `17.47%` worse than its legal integrator and wins only Cartpole/Pendulum. Learned `gamma` ends at `.957/.913/.934/.905` (mean `.927`): mild contraction, not collapse, but it does not solve semantic action identification. Full's final clean-validation ASR accuracy is `.830/.462/.399/.394` on Cartpole/Fish/Pendulum/Walker; the latter three do not order executed actions reliably. Every one of the 20 predictive curves worsens in the final window (median absolute late change `18.52%`, p95 `33.02%`, maximum `33.63%`). This is an unambiguous `NO_GO` for V11a, not a reason to spend 400 official cells.
+
+**Conserved-initial-anchor ceiling audit.** The deterministic read-only audit in `outputs/hacssm_v11_anchor_ceiling_scaled_asr30` refits the train-split probe to `[dynamic strict prior, RMSNorm(z_0)]`; it neither changes a checkpoint nor enters optimization. A cyclically shuffled anchor is the negative control:
+
+| task | dynamic prior | dynamic + factual `z0` | dynamic + shuffled `z0` | legal integrator |
+|---|---:|---:|---:|---:|
+| Cartpole | `.210807` | `.211177` | `.213624` | `.317059` |
+| Fish | `.892427` | `.912068` | `.928086` | `.435941` |
+| Pendulum | `.382008` | `.177596` | `.404663` | `.452526` |
+| Walker | `.839319` | `.799521` | `.875499` | `.734625` |
+| equal-task mean | `.581140` | `.525091` | `.605468` | `.485038` |
+
+The first frame carries real missing information on Pendulum and some on Walker, but hard concatenation hurts Fish and still trails the legal integrator by `8.26%` in the aggregate ratio. The ceiling therefore motivates conserving an initial condition in a successor; it does not rescue V11 or justify a post-hoc probe as the headline.
+
+**V11b relative-displacement factorial — complete `SCREEN_NO_GO`.** All 32/32 excluded cells (`4 tasks × 8 objective/structure variants`, seed 11112, 30 epochs) finished under `outputs/hacssm_v11_screen_relative30` / W&B study `hacssm-v11-screen-relative30`; each has an online finished W&B receipt and hashed rollout bundle. This is the mandatory adaptive launch screen, not an official pilot. Columns below are held-out and clean strict-prior NMSE, the checkpoint-specific legal initial-frame integrator, final `gamma`, rank pair accuracy, relative rank advantage, signed late predictive change, and W&B run:
+
+| variant | task | held-out | clean | integrator | `gamma` | rank acc. | rank adv. | late change | W&B |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| raw-diff displacement | Cart | `.201332` | `.123717` | `.305447` | `.931` | `.620` | `+.145` | `-20.050%` | [`ja3zy6n4`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ja3zy6n4) |
+| raw-diff displacement | Fish | `.892141` | `.884168` | `.429384` | `.910` | `.483` | `-.016` | `-8.089%` | [`i6iu04vf`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/i6iu04vf) |
+| raw-diff displacement | Pendulum | `.375121` | `.315699` | `.453058` | `.932` | `.498` | `+.005` | `-18.099%` | [`icldsxug`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/icldsxug) |
+| raw-diff displacement | Walker | `.843354` | `.841721` | `.732970` | `.906` | `.492` | `-.002` | `-16.722%` | [`kp8y57r1`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/kp8y57r1) |
+| **default relative displacement** | Cart | `.163090` | `.094069` | `.299831` | `.910` | `.643` | `+.190` | `-15.512%` | [`itv8e2gv`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/itv8e2gv) |
+| **default relative displacement** | Fish | `.892456` | `.884766` | `.427751` | `.913` | `.479` | `-.017` | `-8.634%` | [`mmn12e8a`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/mmn12e8a) |
+| **default relative displacement** | Pendulum | `.426974` | `.363422` | `.453384` | `.927` | `.499` | `+.005` | `-10.213%` | [`prx3svr8`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/prx3svr8) |
+| **default relative displacement** | Walker | `.843579` | `.842025` | `.723663` | `.907` | `.496` | `-.002` | `-22.591%` | [`ap01vlih`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ap01vlih) |
+| relative displacement, live `gamma` | Cart | `.171487` | `.087706` | `.305845` | `.924` | `.640` | `+.178` | `-15.283%` | [`u50gn1ku`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/u50gn1ku) |
+| relative displacement, live `gamma` | Fish | `.891971` | `.884235` | `.431287` | `.895` | `.481` | `-.017` | `-7.942%` | [`fm7ickhu`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/fm7ickhu) |
+| relative displacement, live `gamma` | Pendulum | `.433397` | `.367993` | `.451586` | `.923` | `.498` | `+.005` | `-10.899%` | [`4ga51rn3`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/4ga51rn3) |
+| relative displacement, live `gamma` | Walker | `.834695` | `.833121` | `.742889` | `.901` | `.497` | `-.002` | `-21.009%` | [`ghsdias7`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ghsdias7) |
+| relative endpoint | Cart | `.230209` | `.183752` | `.303136` | `.937` | `.733` | `+.214` | `-17.187%` | [`4f4mgh7k`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/4f4mgh7k) |
+| relative endpoint | Fish | `.893216` | `.885763` | `.428597` | `.914` | `.496` | `-.001` | `-11.805%` | [`1dgp9ec8`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/1dgp9ec8) |
+| relative endpoint | Pendulum | `.364791` | `.308877` | `.440014` | `.936` | `.510` | `+.005` | `-16.260%` | [`o7o60vcm`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/o7o60vcm) |
+| relative endpoint | Walker | `.843002` | `.840219` | `.751670` | `.910` | `.515` | `+.006` | `-26.957%` | [`3yrqrq8o`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/3yrqrq8o) |
+| fixed scale | Cart | `.171229` | `.097225` | `.303638` | `1` | `.639` | `+.176` | `-9.094%` | [`xjv2wes2`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/xjv2wes2) |
+| fixed scale | Fish | `.891462` | `.883578` | `.426068` | `1` | `.479` | `-.019` | `-6.821%` | [`lr47jdiy`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/lr47jdiy) |
+| fixed scale | Pendulum | `.424406` | `.365636` | `.448820` | `1` | `.498` | `+.005` | `-10.298%` | [`i6g7zye5`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/i6g7zye5) |
+| fixed scale | Walker | `.844660` | `.843421` | `.740162` | `1` | `.496` | `-.001` | `-23.786%` | [`pv8gowqh`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/pv8gowqh) |
+| no action | Cart | `.734850` | `.207733` | `.304476` | `1` | `.500` | `0` | `-45.436%` | [`rnyf72rz`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/rnyf72rz) |
+| no action | Fish | `1.024703` | `1.017009` | `.420609` | `1` | `.500` | `0` | `-33.753%` | [`wi3i10vy`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/wi3i10vy) |
+| no action | Pendulum | `.275295` | `.177230` | `.444474` | `1` | `.500` | `0` | `-13.184%` | [`wi7creht`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/wi7creht) |
+| no action | Walker | `.837643` | `.825289` | `.723576` | `1` | `.500` | `0` | `-22.266%` | [`jago8l01`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/jago8l01) |
+| no optimized ASR | Cart | `.232626` | `.168339` | `.307959` | `.945` | `.622` | `+.110` | `-20.639%` | [`zbaprs8d`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/zbaprs8d) |
+| no optimized ASR | Fish | `.891652` | `.884147` | `.432736` | `.910` | `.482` | `-.015` | `-7.134%` | [`a6xswvax`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/a6xswvax) |
+| no optimized ASR | Pendulum | `.404560` | `.327282` | `.447835` | `.933` | `.498` | `+.004` | `-16.929%` | [`ecx1jo7h`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ecx1jo7h) |
+| no optimized ASR | Walker | `.851342` | `.851041` | `.741248` | `.906` | `.497` | `-.001` | `-20.379%` | [`g5tiw8rx`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/g5tiw8rx) |
+| normalized free geometry | Cart | `.168795` | `.091787` | `.304122` | `.910` | `.644` | `+.181` | `-12.125%` | [`lg7ld1dd`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/lg7ld1dd) |
+| normalized free geometry | Fish | `.892280` | `.884406` | `.426844` | `.913` | `.479` | `-.019` | `-8.803%` | [`ad314smz`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ad314smz) |
+| normalized free geometry | Pendulum | `.429613` | `.366871` | `.451361` | `.927` | `.499` | `+.005` | `-10.161%` | [`d9cxwp0l`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/d9cxwp0l) |
+| normalized free geometry | Walker | `.846930` | `.846085` | `.746107` | `.907` | `.500` | `+.000` | `-29.110%` | [`ljkhsr7k`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ljkhsr7k) |
+
+Equal-task means summarize both performance and mechanism receipts:
+
+| variant | held-out | clean | integrator | `gamma` | rank acc. | rank adv. | live suffix MSE | late change |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **raw-diff displacement (screen best)** | **`.577987`** | `.541326` | `.480215` | `.920` | `.523` | `+.033` | `.074497` | `-15.740%` |
+| **default relative displacement** | `.581525` | `.546070` | `.476157` | `.914` | `.529` | `+.044` | `.077722` | `-14.237%` |
+| relative displacement, live `gamma` | `.582887` | `.543264` | `.482902` | `.911` | `.529` | `+.041` | `.077628` | `-13.783%` |
+| relative endpoint | `.582805` | `.554653` | `.480854` | `.924` | `.563` | `+.056` | `.077013` | `-18.052%` |
+| fixed scale | `.582939` | `.547465` | `.479672` | `1` | `.528` | `+.040` | `.079718` | `-12.500%` |
+| no action | `.718123` | `.556815` | `.473284` | `1` | `.500` | `0` | `.057388` | `-28.660%` |
+| no optimized ASR | `.595045` | `.557702` | `.482444` | `.923` | `.525` | `+.025` | `.076057` | `-16.270%` |
+| normalized free geometry | `.584405` | `.547287` | `.482109` | `.914` | `.530` | `+.042` | `.078880` | `-15.050%` |
+
+The launch-gate accounting uses the mean of taskwise paired relative reductions (not the ratio of the displayed raw means). Every required comparison fails at least one component:
+
+| default versus reference | mean paired reduction | wins | required development evidence | outcome |
+|---|---:|---:|---|---|
+| raw-diff displacement | `+1.277%` | `1/4` | objective-selection diagnostic | raw-diff has the lower raw mean; default not selected |
+| relative displacement, live `gamma` | `+1.315%` | `2/4` | objective diagnostic | no consistent advantage |
+| relative endpoint | `+3.032%` | `2/4` | objective diagnostic | no consistent advantage |
+| fixed scale | `+1.041%` | `2/4` | `≥2%` amplitude effect | **fail reduction and wins** |
+| normalized free geometry | `+1.093%` | `3/4` | `≥2%` geometry effect | **fail reduction** |
+| no optimized ASR | `+6.293%` | `2/4` | `≥2%` and `≥3/4` wins | **fail wins** |
+| no action | `+8.727%` | `2/4` | `≥5%` and `≥3/4` wins | **fail wins** |
+| action-only integrator | `-2.269%` | `3/4` | `≥5%` and `≥3/4` wins | **fail reduction** |
+| legal initial-frame integrator | `-18.445%` | `2/4` | positive reduction and `≥3/4` wins | **fail both** |
+
+The raw-difference endpoint is the lowest V11b screen row at `.577987`, but is still 17.89% worse than its own integrator by mean taskwise paired reduction and wins only Cartpole/Pendulum. For the nominated default, rank advantage / pair accuracy is `+.190/.643`, `-.017/.479`, `+.005/.499`, and `-.002/.496` on Cartpole/Fish/Pendulum/Walker. Only Cartpole clears both signs and all five inspected horizon-advantage requirements; the screen therefore does not establish robust semantic action ordering. The `noaction` intervention is exact within the registered `1e-7` tolerance: action-effect RMS, relative advantage, every inspected horizon advantage, and every divergence are zero; its rank loss is `0.693147≈log(2)` (maximum error `1.38e-8`), and pair accuracy is `.5` (aggregate error `1.27e-9`, maximum horizon error `2.98e-8`).
+
+The remaining nominated-model receipts also preclude launch. Streaming and analytic-volume errors are zero, encoder variance is at least `.074975`, singleton/prefix discrepancies are at most `9.54e-7/1.43e-6`, and all clean-prior probe ceilings are below one. But maximum inverse error is `1.526e-5` rather than `≤1e-5`, minimum encoder covariance effective rank is `13.154` rather than `≥16`, and inverse-action `R²` is positive only on Cartpole (`.043264/-.008761/-.008079/-.005368` across Cartpole/Fish/Pendulum/Walker). Finally, **all 32/32** validation predictive curves worsen in the final window; absolute late change has median `15.886%`, p95 `31.200%`, and maximum `45.436%`, versus the registered `<1%/<3%/<5%` ceilings. Headline SSM/V8/ORBIT gates were never estimated because the official grid was not started. These failures fix the development label to `SCREEN_NO_GO`.
+
+#### 7.13.4 Official result ledger
+
+Official status is **`OFFICIAL_NO_LAUNCH`**: `0/240` pilot and `0/400` final. No official V11 W&B epoch row, rollout bundle, paired contrast, pilot decision, final decision, uncertainty interval, or timing statistic exists. The completed 32-cell V11b screen is excluded adaptive development evidence and is explicitly **not a pilot result**. Because that mandatory prerequisite returned `SCREEN_NO_GO`, the 400-cell runner was not launched; there is no partial official grid to interpret.
+
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
 **Question:** can the hand-set K=6 read set be replaced by a learned active subset of an over-complete fixed-decay basis? OC-SMT tests this by fixing a ceiling `M` and learning penalized read gates. This makes the **effective read-gate cardinality** learnable; it does not yet make the physical state or dense computation variable-sized. Fixed decays are a deliberate experimental control motivated by our failed global scalar-`α` run—not a claim that every adaptive-decay parameterization fails.
@@ -1750,7 +2172,7 @@ Validation MSE and usage are only weakly aligned, reinforcing that cue usage—n
 2. **Replicate sparse points only after a matched-quality candidate appears.** The one-seed `λ0∈{0.0004,0.0005,0.0006}` bracket shows a quality cliff and does not justify a full four-task sweep.
 3. **Treat the dense lead as architecture search.** A fair follow-up must separate shared vs per-bank readouts and match parameters/initial residual scale; it should not be labeled learned selectivity.
 
-## 10. ICLR submission audit and recommendation (2026-06-29)
+## 10. ICLR submission audit and recommendation (2026-06-30)
 
 ### Decision: do not submit the current manuscript to the ICLR main track as written
 
@@ -1767,8 +2189,9 @@ There is a worthwhile controlled finding here, but the current `paper/main.pdf` 
 9. V8 completes the simplification test: without a teacher or internal auxiliary it ranks second (+6.20% versus SSM) and gives the clearest action/joint-read effects (+14.87%/+9.34%). Its immutable pilot and final label are still negative; it loses to V7 shared-action, fails compact equivalence and noninferiority, loses to the retrained endpoint envelope, and wins 0/5 task envelopes (§7.10).
 10. V9 completes the adaptive-filter test: evidence conditioning and action are causally active, but full LOIF is only +2.55% versus SSM, rank 7/13, and loses to V7/V8, fixed poles, and one slow bank. Its 195-cell pilot and 325-cell final labels are negative, its sample-specific resistance interventions are sub-.5%, and three streaming receipts fail. The freshly retrained common-objective grid is led by compact V8 at +6.38%, not LOIF (§7.11).
 11. V10-J is **positive host-validity evidence but not positive memory evidence**. Five excluded 100-epoch cells show noncollapsed affine-free causal encoding and numerical ORBIT/streaming validity. They also force `NO LAUNCH`: Fish's clean probe ceiling is worse than a constant predictor, Walker and Hopper violate the late-convergence ceiling, only Cartpole has clearly sub-one held-out state NMSE, and no baseline or five-mode control was run. The official ledger remains 0/225 (§2.9/§7.12).
+12. V11 is a structurally cleaner hypothesis but a completed negative development result. Its V11b implementation separates live suffix prediction from detached relative-displacement log-energy ranking and passes several algebraic receipts, yet the nominated held-out mean is `.581525` versus `.476157` for its legal integrator. Raw-difference ranking is screen-best at `.577987`, amplitude and geometry miss their 2% gates, ranking/action controls win only 2/4 tasks, only Cartpole clears the rank-semantic requirements, and all 32 curves worsen late. The mandatory outcome is `SCREEN_NO_GO / OFFICIAL_NO_LAUNCH`; the official ledger is 0/240 pilot and 0/400 final, with no pilot result (§2.10/§7.13).
 
-That is a coherent **diagnostic study**. It is not yet the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language. V8 is itself an adaptive response selected on the same development tasks, V9 is selected after opening V8, and V10-J is an adaptive host repair whose ORBIT comparisons remain unrun (§7.10–7.12).
+That is a coherent **diagnostic study**. It is not the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language. V8 is itself an adaptive response selected on the same development tasks, V9 is selected after opening V8, V10-J is an adaptive host repair whose ORBIT comparisons remain unrun, and V11 is an adaptively designed successor stopped by its own mandatory development screen before any official cell (§7.10–7.13).
 
 ### Blocking scientific issues
 
@@ -1782,7 +2205,7 @@ That is a coherent **diagnostic study**. It is not yet the broad “learnable se
 
 ### Novelty and positioning risk
 
-The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4–V9 are compact predict/correct recurrent filters. V8's compact no-auxiliary filter is effective but does not win its direct controls; completed V9 overlaps established adaptive filtering/Kalman and selective-state-space ideas and then loses its learned-pole/two-bank controls. V10's exact action-conditioned rotations are more structurally distinctive, but unitary RNNs, Homomorphism Autoencoders, seq-JEPA, and FloWM already cover norm preservation, learned group actions, sequential JEPA aggregation, and structured partially observed dynamics. ORBIT becomes a contribution only if its additive/scaled/no-action/static controls and external baselines pass; the adaptive host audit is not novelty evidence. The related-work comparison must also include at least:
+The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4–V9 are compact predict/correct recurrent filters. V8's compact no-auxiliary filter is effective but does not win its direct controls; completed V9 overlaps established adaptive filtering/Kalman and selective-state-space ideas and then loses its learned-pole/two-bank controls. V10's exact action-conditioned rotations are more structurally distinctive, but unitary RNNs, Homomorphism Autoencoders, seq-JEPA, and FloWM already cover norm preservation, learned group actions, sequential JEPA aggregation, and structured partially observed dynamics. V11's potentially useful combination is narrower: learned amplitude times a Stiefel action direction inside an exactly invertible kick–drift prior, ordered clean-OAS correction, and detached same-source executed/deranged displacement ranking beside a live suffix loss. Orthogonal parameterizations, reversible mechanics priors, robust/Kalman filtering, and contrastive ranking each exist separately. The completed screen supplies no performance-based novelty claim: full does not clear `fixedscale`, normalized `unconstrained`, `noactionswap`, `noaction`, or the legal integrator jointly, and external recurrent comparisons remain unrun because the official 0/400 grid was not launched. The comparison would still have to include:
 
 - [ELMUR: External Layer Memory with Update/Rewrite for Long-Horizon RL Problems](https://openreview.net/forum?id=bm3rbtEMFj), an ICLR 2026 poster that evaluates long-horizon POMDP control on T-Maze, POPGym, and visual robotic manipulation with task success/return.
 - [seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models](https://proceedings.neurips.cc/paper_files/paper/2025/hash/2f63d2963526bdd9ff1b8bcc2dc9905a-Abstract-Conference.html), a NeurIPS 2025 paper whose JEPA world model uses a Transformer to aggregate short action-conditioned observation sequences.
@@ -1804,9 +2227,9 @@ If targeting ICLR, reframe the work around a title such as **“When Does a JEPA
 4. Make the diagnostic result central: static V2 gates, amplitude confounding, failed sparse frontier, V3's exact black-sentinel gate, V4–V9's causally necessary but heterogeneous action path, positive-but-heterogeneous shrinkage/evidence switching, failed slow state/rate spectrum/self-supervised objectives/action specialization/recovery/compaction-equivalence/learned poles/two-bank hierarchy, and the conditions where SSM/hold win. Remove “general input-conditioned selectivity,” “overall best,” calibrated uncertainty, and “automatic sizing” as achieved contributions.
 5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
 6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
-7. Treat completed V7–V10 strictly according to scope. V7–V9 have immutable negative labels. V10-J is an adaptive representation-validity audit with a `NO LAUNCH` decision, not a pilot or memory comparison. Any successor must use new confirmation tasks, freeze the host before opening them, and still add separately frozen executed-return evaluation plus tuned recurrent/SSM/Transformer baselines.
+7. Treat completed V7–V11 strictly according to scope. V7–V9 have immutable negative labels. V10-J is an adaptive representation-validity audit with a `NO LAUNCH` decision; V11b is an excluded adaptive `SCREEN_NO_GO`, not a pilot, and its official grid is `OFFICIAL_NO_LAUNCH` at 0/240 and 0/400. Any successor must use new confirmation tasks, freeze the host before opening them, and still add separately frozen executed-return evaluation plus tuned recurrent/SSM/Transformer baselines.
 
-**Recommendation.** The V3–V9 prospective studies all return negative pilot/final labels. Full V9 is only +2.55% versus SSM, ranks 7/13, loses to V7/V8/fixed-`α`/single-bank controls, and wins no task envelope; compact V8 leads its freshly retrained grid at +6.38%. V10-J fixes the end-to-end collapse problem but fails its prerequisite state-quality/convergence audit, so spending 225 runs on the unchanged cohort is not justified. Do **not** submit the current version to the ICLR main track and do not describe V10-J as an ORBIT result. Retain the narrower workshop/diagnostic framing unless a separately frozen successor on new tasks clears representation, convergence, matched baselines, mechanism controls, and executed-return evaluation.
+**Recommendation.** The V3–V9 prospective studies all return negative pilot/final labels. Full V9 is only +2.55% versus SSM, ranks 7/13, loses to V7/V8/fixed-`α`/single-bank controls, and wins no task envelope; compact V8 leads its freshly retrained grid at +6.38%. V10-J fixes the end-to-end collapse problem but fails its prerequisite state-quality/convergence audit. V11b is also complete and negative: its default loses the legal integrator, raw-difference ranking is only marginally better, mechanism gates do not jointly clear, and 32/32 curves worsen late. The correct closeout is `SCREEN_NO_GO / OFFICIAL_NO_LAUNCH`, with 0/240 pilot and 0/400 final. Do **not** submit the current version to the ICLR main track or describe V10/V11 as positive memory results. Retain the narrower workshop/diagnostic framing unless a separately frozen successor on new tasks clears representation, convergence, matched baselines, mechanism controls, and executed-return evaluation before any official launch.
 
 ## References
 
