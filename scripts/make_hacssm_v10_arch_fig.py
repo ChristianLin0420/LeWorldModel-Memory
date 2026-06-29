@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the frozen pre-launch ORBIT-v10 architecture and five-mode contract."""
+"""Render final ORBIT-v10-J, its five-mode contract, and measured host audit."""
 
 from pathlib import Path
 
@@ -41,10 +41,10 @@ def main() -> None:
     ax.axis("off")
 
     ax.text(9, 14.86,
-            "ORBIT-v10: orthogonal recurrent belief for end-to-end LeWorldModel",
+            "ORBIT-v10-J: orthogonal recurrent belief with a joint-gradient causal host",
             ha="center", fontsize=19, fontweight="bold", color="#17202a")
     ax.text(9, 14.48,
-            "Frozen pre-launch architecture and falsification map — no V10 result is reported",
+            "Five-task 100-epoch host audit observed • official five-mode grid not launched (0/225)",
             ha="center", fontsize=11, color="#607d8b")
 
     # Online causal path.
@@ -52,7 +52,7 @@ def main() -> None:
         "raw pixels\npossibly corrupted context\nno DINO/precompute",
         "#e3f2fd", body_size=7.0)
     box(ax, 2.85, 11.45, 2.35, 2.25, "causal encoder $E_\\theta$",
-        "ViT, per-frame operations\nencoder_norm = none\nbatch-size-one valid",
+        "ViT + affine-free per-frame LN\nno peer/future statistics\nbatch-size-one valid",
         "#dcedc8", body_size=7.0)
     box(ax, 5.65, 11.45, 2.05, 2.25, "observation $x_t$",
         "$z_t=E_\\theta(o_t)$\n$x_t=W_xz_t$\n$W_x=I$ initially",
@@ -85,18 +85,17 @@ def main() -> None:
         "Every block and their product preserve norm; the two overlapping pairings can form "
         "non-commuting action maps.",
         "#ede7f6", title_size=11, body_size=7.4)
-    box(ax, 9.05, 8.15, 8.55, 2.55, "ordinary end-to-end LeWM objective only",
-        "clean next RGB $o^{clean}_{t+1} \\rightarrow$ the same trainable encoder "
-        "$\\rightarrow z^{clean}_{t+1}$\n"
-        "$\\mathcal{L}=\\|\\hat z_{t+1}-z^{clean}_{t+1}\\|_2^2"
-        "+\\lambda\\,\\mathrm{SIGReg}(z^{clean})$\n"
-        "No memory teacher • no stop-gradient memory target • no horizon loss • no visibility "
-        "oracle • no memory-specific coefficient\n"
-        "Corrupted context and clean target are two views of the same unlabeled trajectory; all "
-        "baselines receive the identical views.",
-        "#e8f5e9", title_size=11, body_size=7.25)
+    box(ax, 9.05, 8.15, 8.55, 2.55, "V10-J joint self-supervised objective",
+        "clean RGB $o^{clean} \\rightarrow E_\\theta^{eval}$ (dropout off; gradients active) "
+        "$\\rightarrow U$; no EMA/teacher/stop-gradient\n"
+        "$C=(U-\\bar U)^\\top(U-\\bar U)/(N-1)$\n"
+        "$\\mathcal{L}=\\mathcal{L}_{pred}+\\mathrm{mean}_d[1-\\sqrt{C_{dd}+\\epsilon}]_+"
+        "+\\sum_{i\\ne j}C_{ij}^2/D$  (unit weights)\n"
+        "SIGReg: detached diagnostic, optimization weight 0 • no horizon/visibility/memory loss\n"
+        "Context and clean target are synchronized views of the same unlabeled trajectory.",
+        "#e8f5e9", title_size=11, body_size=6.85)
 
-    ax.text(0.40, 7.72, "Five same-schema V10 modes (all results pending)",
+    ax.text(0.40, 7.72, "Five same-schema ORBIT modes (official contrasts all PENDING)",
             fontsize=12.5, fontweight="bold", color="#37474f")
     modes = (
         ("orbitv10 — full", "normalized two-layer rotations\ndynamic V8-style shrinkage gate\n"
@@ -121,23 +120,22 @@ def main() -> None:
         "The gate bias is initialization only. There is no decay, pole, bank route, or fixed "
         "memory horizon.",
         "#eceff1", title_size=10.5, body_size=7.2)
-    box(ax, 9.05, 2.75, 8.55, 2.20, "pre-launch falsification receipts",
-        "full vs end-to-end compact V8 and matched SSM • full vs additive/scaled/static/no-action\n"
-        "held-out physics-state NMSE • clean/deep-gap/first-post error • private latent diagnostic\n"
-        "action permutation • $\\|T^\\top T-I\\|$ and norm drift • gate intervention • "
-        "encoder rank • batch-one streaming\n"
-        "Additive uses placeholder rotation tensors only for schema compatibility; its "
-        "orthogonality receipt is explicitly non-applicable.",
-        "#f3e5f5", title_size=10.5, body_size=6.95)
+    box(ax, 9.05, 2.75, 8.55, 2.20, "measured V10-J host receipts (excluded, 100 epochs)",
+        "Walker: ceiling .8247; held-out 1.0387; late -7.53% • Pendulum: .9246 / 1.3097 / +.12%\n"
+        "Cartpole: .1187 / .7704 / -3.63% • Fish: 1.0233 / 1.2181 / -3.02%\n"
+        "Hopper: .7323 / 1.0969 / -5.46% • only Cartpole held-out <1\n"
+        "variance .164–.401 • rank 36.86–78.91 • singleton/prefix <2e-6\n"
+        "orthogonality <=2.98e-7 • streaming <=1.43e-6 • no matched baseline/control cell",
+        "#f3e5f5", title_size=10.5, body_size=6.45)
 
-    box(ax, 0.35, 0.55, 17.25, 1.62, "sealed study boundary",
-        "V10 must not select on the opened Ball-in-Cup, Cheetah, Finger, Reacher, or OGBench-Cube "
-        "V8/V9 grid.\nIt freezes Walker, Hopper, Cartpole, Pendulum, and Fish with new rollout "
-        "seeds, non-black corruption families, and gap lengths; this study has no executed-return "
-        "outcome.\n"
-        "Pilot decisions are immutable; completion cannot rescue a failed pilot. Until the runner "
-        "manifest is sealed and jobs finish, every V10 performance cell is PENDING and no ICLR "
-        "claim follows from this diagram.",
+    box(ax, 0.35, 0.55, 17.25, 1.62, "adaptive audit boundary and no-launch decision",
+        "Normalization-only hosts failed: none -> point collapse; per-frame LN -> fixed vector; "
+        "causal BN -> rank 1; group whitening -> train/eval mismatch. EMA+VICReg also remained "
+        "weak/nonconverged.\n"
+        "V10-J fixes representation collapse, not memory efficacy. Fish is not state-decodable "
+        "and Walker/Hopper violate the 5% late-change ceiling, so the 225-cell grid was not launched.\n"
+        "Official count 0/225 • five mechanism modes and all baselines PENDING • no executed return "
+        "• no ICLR superiority claim.",
         "#ffebee", title_size=10.8, body_size=7.35, edge="#b71c1c", linewidth=1.8)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

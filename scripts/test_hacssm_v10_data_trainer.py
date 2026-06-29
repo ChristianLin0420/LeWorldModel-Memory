@@ -22,7 +22,12 @@ from scripts.hacssm_v10_data import (
     sidecar_path,
     write_cache,
 )
-from scripts.train_hacssm_v10 import DESIGNS, build_model, main as train_main
+from scripts.train_hacssm_v10 import (
+    DESIGNS,
+    build_model,
+    encode_joint_clean_deterministic,
+    main as train_main,
+)
 
 
 def _arrays(episodes: int, length: int, size: int, action_dim: int,
@@ -102,9 +107,43 @@ def test_all_designs_build_with_causal_normalization() -> None:
         args = Args()
         args.memory_mode = design
         model = build_model(args, action_dim=2)
-        output = model.compute_loss(observations, actions, observations.clone())
+        joint_clean = model.encode(observations)
+        output = model.compute_loss(
+            observations, actions, target_embeddings=joint_clean,
+            diversity_embeddings=joint_clean, objective="v10j",
+            detach_target_embeddings=False)
         assert torch.isfinite(output["loss"])
-        assert model.encoder_norm == "none" and model.predictor_norm == "none"
+        assert model.encoder_norm == "causal" and model.predictor_norm == "none"
+
+
+def test_clean_student_diversity_forward_is_deterministic() -> None:
+    class Args:
+        img_size = 16
+        patch_size = 4
+        embed_dim = 8
+        encoder_layers = 1
+        encoder_heads = 2
+        predictor_layers = 1
+        predictor_heads = 2
+        history_len = 3
+        dropout = 0.5
+        sigreg_lambda = 0.1
+        sigreg_projections = 4
+        memory_mode = "orbitv10"
+
+    model = build_model(Args(), action_dim=2)
+    model.train()
+    frame = torch.rand(1, 1, 3, 16, 16)
+    duplicates = frame.expand(3, 5, -1, -1, -1).clone()
+    first = encode_joint_clean_deterministic(model, duplicates)
+    second = encode_joint_clean_deterministic(model, duplicates)
+    assert model.encoder.training is True
+    assert torch.equal(first, second)
+    reference = first[:, :1].expand_as(first)
+    assert torch.equal(first, reference)
+    first.sum().backward()
+    assert model.encoder.patch_embed.weight.grad is not None
+    assert torch.isfinite(model.encoder.patch_embed.weight.grad).all()
 
 
 def test_tiny_cli_smoke_writes_complete_local_payload() -> None:
@@ -141,7 +180,24 @@ def test_tiny_cli_smoke_writes_complete_local_payload() -> None:
         assert (run / "eval_rollout.npz").is_file()
         metrics = json.loads((run / "metrics.json").read_text())
         assert np.isfinite(metrics["heldout_state_nmse"])
-        assert metrics["encoder_norm"] == metrics["predictor_norm"] == "none"
+        assert metrics["encoder_norm"] == "causal"
+        assert metrics["predictor_norm"] == "none"
+        assert metrics["ema_target_active"] is False
+        assert metrics["target_stop_gradient"] is False
+        assert metrics["clean_target_gradient_active"] is True
+        assert metrics["training_objective"] == (
+            "v10j_joint_pred_variance_covariance_equal_weight")
+        assert metrics["vicreg_gradient_active"] is True
+        assert metrics["sigreg_gradient_active"] is False
+        assert metrics["prediction_loss_weight"] == 1.0
+        assert metrics["variance_loss_weight"] == 1.0
+        assert metrics["covariance_loss_weight"] == 1.0
+        assert metrics["final_train_loss"] > 0.0
+        assert metrics["val_pred_loss"] > 0.0
+        assert metrics["encoder_mean_channel_variance"] > 1e-5
+        assert metrics["encoder_covariance_effective_rank"] > 2.0
+        assert metrics["encoder_singleton_max_abs"] <= 1e-6
+        assert metrics["encoder_prefix_max_abs"] <= 1e-6
         checkpoint = torch.load(run / "model.pt", map_location="cpu", weights_only=False)
         assert set(checkpoint) == {
             "model_state_dict", "args", "final_metrics", "history", "state_probe"}
@@ -160,6 +216,7 @@ def test_tiny_cli_smoke_writes_complete_local_payload() -> None:
 def main() -> None:
     test_cache_and_corruptions_are_deterministic()
     test_all_designs_build_with_causal_normalization()
+    test_clean_student_diversity_forward_is_deterministic()
     test_tiny_cli_smoke_writes_complete_local_payload()
     print("V10 data/trainer tests passed.")
 

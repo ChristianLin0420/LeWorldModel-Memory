@@ -46,13 +46,13 @@ def make_precomputed_model(mode: str = "orbitv10") -> MemoryLeWorldModel:
         predictor_heads=2,
         history_len=2,
         dropout=0.0,
-        encoder_norm="none",
+        encoder_norm="causal",
         predictor_norm="none",
         sigreg_projections=8,
         encoder_type="precomputed",
         memory_impl=mode,
         memory_mode="both",
-        # V10 must remain a two-term model even if legacy caller plumbing is nonzero.
+        # ORBIT itself contributes no memory auxiliary under either host objective.
         hier_loss_weight=0.2,
     )
 
@@ -230,18 +230,36 @@ def test_static_gate_is_input_independent() -> None:
     assert not torch.allclose(dynamic_details["gates"], expected)
 
 
-def test_causal_encoder_norm_has_no_batch_peer_dependency() -> None:
+def test_affine_free_causal_norm_is_framewise_and_streaming_safe() -> None:
     torch.manual_seed(1009)
     encoder = ViTTinyEncoder(
         img_size=8, patch_size=4, embed_dim=8, num_layers=1, num_heads=2,
-        dropout=0.0, encoder_norm="none")
+        dropout=0.0, encoder_norm="causal")
+    projector_norm = encoder.projector[1]
+    assert isinstance(projector_norm, nn.LayerNorm)
+    assert projector_norm.elementwise_affine is False
+    assert projector_norm.weight is None and projector_norm.bias is None
+    assert not tuple(projector_norm.parameters())
+
+    sequence = torch.randn(4, 5, 3, 8, 8)
+    full = encoder(sequence.flatten(0, 1)).reshape(4, 5, -1)
+    changed = sequence.clone()
+    changed[:, 3:] = 20.0 * torch.randn_like(changed[:, 3:])
+    counterfactual = encoder(changed.flatten(0, 1)).reshape(4, 5, -1)
+    assert torch.allclose(full[:, :3], counterfactual[:, :3], atol=2e-6, rtol=1e-5)
+    assert not torch.allclose(full[:, 3:], counterfactual[:, 3:])
+    assert torch.allclose(full.mean(dim=-1), torch.zeros(4, 5), atol=2e-6, rtol=0.0)
+    assert torch.allclose(
+        full.var(dim=-1, unbiased=False), torch.ones(4, 5), atol=1e-2, rtol=0.0)
+
     encoder.eval()
-    frame = torch.randn(1, 3, 8, 8)
-    peers = torch.randn(5, 3, 8, 8)
+    frame = sequence[:1, 0]
     alone = encoder(frame)
-    batched = encoder(torch.cat((frame, peers), dim=0))[:1]
-    assert torch.allclose(alone, batched, atol=1e-7, rtol=1e-6)
-    assert isinstance(encoder.projector[1], nn.Identity)
+    paired = encoder(torch.cat((frame, sequence[1:2, -1]), dim=0))[:1]
+    assert torch.allclose(alone, paired, atol=1e-7, rtol=1e-6)
+    encoded_full = encoder(sequence.flatten(0, 1)).reshape(4, 5, -1)
+    encoded_prefix = encoder(sequence[:, :3].flatten(0, 1)).reshape(4, 3, -1)
+    assert torch.allclose(encoded_full[:, :3], encoded_prefix, atol=1e-7, rtol=1e-6)
 
     legacy = ViTTinyEncoder(
         img_size=8, patch_size=4, embed_dim=8, num_layers=1, num_heads=2,
@@ -257,36 +275,92 @@ def test_causal_encoder_norm_has_no_batch_peer_dependency() -> None:
         raise AssertionError("invalid encoder normalization was accepted")
 
 
-def test_end_to_end_model_uses_only_lewm_two_term_loss() -> None:
+def test_v10j_equal_weight_objective_and_active_target_gradient() -> None:
     torch.manual_seed(1010)
     model = MemoryLeWorldModel(
         img_size=8, patch_size=4, embed_dim=8, action_dim=3,
         encoder_layers=1, encoder_heads=2, predictor_layers=1, predictor_heads=2,
-        history_len=2, dropout=0.0, encoder_norm="none", predictor_norm="none",
+        history_len=2, dropout=0.0, encoder_norm="causal", predictor_norm="none",
         sigreg_projections=8, encoder_type="vit", memory_impl="orbitv10",
         memory_mode="both", hier_loss_weight=0.2)
     observations = torch.randn(3, 6, 3, 8, 8)
     clean_targets = torch.randn(3, 6, 3, 8, 8)
     actions = torch.randn(3, 5, 3)
+    legacy_target = torch.randn(3, 6, 8, requires_grad=True)
+    legacy = model.compute_loss(
+        observations, actions, target_embeddings=legacy_target)
+    legacy["loss"].backward()
+    assert legacy_target.grad is None
+    model.zero_grad(set_to_none=True)
+
+    joint_clean = model.encode(clean_targets)
+    joint_clean.retain_grad()
+    joint_targets = torch.randn_like(joint_clean, requires_grad=True)
     losses = model.compute_loss(
-        observations, actions, target_observations=clean_targets)
+        observations, actions, target_embeddings=joint_targets,
+        diversity_embeddings=joint_clean, objective="v10j",
+        detach_target_embeddings=False)
     assert set(losses) == {
-        "loss", "pred_loss", "sigreg_loss", "pred_loss_all_valid",
+        "loss", "pred_loss", "variance_loss", "covariance_loss", "sigreg_loss",
+        "pred_loss_all_valid",
     }
     assert torch.equal(
-        losses["loss"], losses["pred_loss"] + model.sigreg_lambda * losses["sigreg_loss"])
+        losses["loss"], losses["pred_loss"] + losses["variance_loss"]
+        + losses["covariance_loss"])
+    assert losses["sigreg_loss"].requires_grad is False
     assert not any("teacher" in name or "hier_" in name for name in model.state_dict())
     losses["loss"].backward()
+    assert joint_targets.grad is not None and torch.isfinite(joint_targets.grad).all()
+    assert float(joint_targets.grad.abs().sum()) > 0.0
+    assert joint_clean.grad is not None and torch.isfinite(joint_clean.grad).all()
     assert model.encoder.patch_embed.weight.grad is not None
     assert torch.isfinite(model.encoder.patch_embed.weight.grad).all()
     assert model.mem_orbitv10.W_o.weight.grad is not None
     assert torch.isfinite(model.mem_orbitv10.W_o.weight.grad).all()
+
+    assert float(losses["variance_loss"].detach()) > 0.0
+    assert float(losses["covariance_loss"].detach()) >= 0.0
+    assert float(losses["pred_loss"].detach()) > 0.0
+    assert float(losses["sigreg_loss"].detach()) > 0.0
+    model.eval()
 
     with torch.no_grad():
         model.mem_orbitv10.W_o.weight.copy_(torch.eye(8))
         influence = model.memory_influence(observations, actions)
     assert set(influence) == {"pred_full", "infl_all"}
     assert all(torch.isfinite(value).all() for value in influence.values())
+
+
+def test_v10j_covariance_penalty_rejects_rank_one_features() -> None:
+    torch.manual_seed(1011)
+    model = make_precomputed_model()
+    batch, length, dimension = 4, 6, 8
+    observations = torch.randn(batch, length, dimension)
+    actions = torch.randn(batch, length - 1, 3)
+    targets = torch.randn(batch, length, dimension)
+    sample_count = batch * length
+
+    scalar = torch.linspace(-1.0, 1.0, sample_count)
+    scalar = (scalar - scalar.mean()) / scalar.std(unbiased=True)
+    rank_one = scalar[:, None].expand(-1, dimension).reshape(batch, length, dimension)
+
+    identity = torch.zeros(sample_count, dimension)
+    amplitude = ((sample_count - 1) / 2.0) ** 0.5
+    for channel in range(dimension):
+        identity[2 * channel, channel] = amplitude
+        identity[2 * channel + 1, channel] = -amplitude
+    identity = identity.reshape(batch, length, dimension)
+
+    rank_one_loss = model.compute_loss(
+        observations, actions, target_embeddings=targets,
+        diversity_embeddings=rank_one, objective="v10j",
+        detach_target_embeddings=False)["covariance_loss"]
+    identity_loss = model.compute_loss(
+        observations, actions, target_embeddings=targets,
+        diversity_embeddings=identity, objective="v10j",
+        detach_target_embeddings=False)["covariance_loss"]
+    assert torch.allclose(rank_one_loss, torch.tensor(7.0), atol=2e-5, rtol=0.0)
+    assert torch.allclose(identity_loss, torch.tensor(0.0), atol=1e-7, rtol=0.0)
 
 
 if __name__ == "__main__":
@@ -298,8 +372,9 @@ if __name__ == "__main__":
         test_forward_details_and_streaming_step_agree,
         test_gate_and_action_overrides_are_exact,
         test_static_gate_is_input_independent,
-        test_causal_encoder_norm_has_no_batch_peer_dependency,
-        test_end_to_end_model_uses_only_lewm_two_term_loss,
+        test_affine_free_causal_norm_is_framewise_and_streaming_safe,
+        test_v10j_equal_weight_objective_and_active_target_gradient,
+        test_v10j_covariance_penalty_rejects_rank_one_features,
     )
     for test in tests:
         test()

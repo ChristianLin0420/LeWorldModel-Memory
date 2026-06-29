@@ -39,7 +39,7 @@ def main() -> None:
     ax.set_ylim(0, 29.7)
     ax.axis('off')
 
-    ax.text(9, 29.35, 'Learnable-memory architecture map: V1–V10 and tested/frozen controls',
+    ax.text(9, 29.35, 'Learnable-memory architecture map: V1–V10 and tested/adaptive controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
     ax.text(9, 28.95,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
@@ -75,9 +75,9 @@ def main() -> None:
     card(ax, xs[8], top_y, width, top_h, 'LOIF-v9',
          'learned ordered poles\nevidence scale + gain\n'
          'inverse-scale fusion\ncomplete; locked NO_GO', '#7e57c2', body_size=4.20)
-    card(ax, xs[9], top_y, width, top_h, 'ORBIT-v10',
+    card(ax, xs[9], top_y, width, top_h, 'ORBIT-v10-J',
          'one persistent $D$-state\n2 action Givens layers\nno decay / no horizon\n'
-         'raw-pixel E2E; PENDING', '#673ab7', body_size=4.20)
+         'joint VICReg host\nNO LAUNCH', '#673ab7', body_size=4.05)
     for index in range(9):
         arrow(ax, (xs[index] + width, 27.22), (xs[index + 1], 27.22))
 
@@ -115,10 +115,10 @@ def main() -> None:
              title_size=7.25, body_size=5.15)
 
     ax.text(0.35, 21.62,
-            'V10 ORBIT frozen pre-launch modes (34,562 parameters at D=128/A=6; every result pending)',
+            'V10-J ORBIT modes (34,562 parameters at D=128/A=6; full host audit only, official 0/225)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v10_controls = (
-        ('orbitv10', 'normalized 2-layer rotations\ndynamic shrinkage gate\nPENDING', '#673ab7'),
+        ('orbitv10', 'normalized 2-layer rotations\n5-task 100e host audit\nNO LAUNCH', '#673ab7'),
         ('no-action', '$T(a)=I$\ntests action transport\nPENDING', '#ffe0b2'),
         ('additive', 'V8-like additive prior\nsame tensor schema\nPENDING', '#ffecb3'),
         ('scaled', 'unnormalized complex blocks\ntests exact isometry\nPENDING', '#f8bbd0'),
@@ -238,15 +238,15 @@ def main() -> None:
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
-            'V9 complete: 325 runs, locked negative label.  V10 frozen pre-launch: 0/225 cells.',
+            'V9 complete: 325 runs, locked negative label.  V10-J adaptive audit: 5×100 epochs; official 0/225.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
-            'Completed evidence stops at V9. V10 is a raw-pixel, single-state, no-decay proposal; '
-            'its five mode cards contain no observed performance.',
+            'V10-J fixes causal representation collapse, but Fish ceiling = 1.0233 and '
+            'Walker/Hopper late change = -7.53%/-5.46%; no matched baseline/control or ORBIT claim.',
             ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

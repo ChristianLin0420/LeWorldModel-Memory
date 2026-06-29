@@ -834,14 +834,18 @@ class MemoryLeWorldModel(LeWorldModel):
         memory_update_mask: torch.Tensor = None,
         gate_override=None,
         first_post_loss_weight: float = 0.0,
+        target_embeddings: torch.Tensor = None,
+        diversity_embeddings: torch.Tensor = None,
+        objective: str = 'lewm',
+        detach_target_embeddings: bool = True,
     ) -> Dict[str, torch.Tensor]:
-        """Two-term loss over a length-L chunk.
+        """Prediction loss over a length-L chunk with an optional diversity objective.
 
         Args:
             observations: (B, L, C, H, W) -- a contiguous chunk (L can be >> history_len).
             actions: (B, L-1, A) -- action a_t maps obs_t -> obs_{t+1}.
             target_observations: optional synchronized clean frames. When provided, memory is
-                driven by ``observations`` but prediction targets and SIGReg use these frames.
+                driven by ``observations`` while prediction targets use these frames.
             target_valid_mask: optional (B,L) bool mask; false target frames do not contribute
                 to prediction loss (used to keep hidden clean blackout frames evaluation-only).
             memory_update_mask: optional (B,L) visibility/update mask for an oracle memory. It is
@@ -849,6 +853,14 @@ class MemoryLeWorldModel(LeWorldModel):
             gate_override: optional scalar/tensor SMT-v3 gate override for counterfactual analysis.
             first_post_loss_weight: convex weight on the first valid target immediately after a
                 masked interval. Zero preserves the legacy all-valid prediction objective.
+            target_embeddings: optional externally encoded synchronized targets. By default they
+                are detached, preserving historical stop-gradient behavior for external targets.
+            diversity_embeddings: online clean embeddings used by the V10-R/J variance and
+                covariance terms.
+            objective: ``lewm`` for prediction plus active SIGReg, or ``v10r``/``v10j`` for
+                equal-weight prediction, variance, and off-diagonal covariance.
+            detach_target_embeddings: whether external target embeddings are stop-gradient.
+                V10-J explicitly sets this false so the clean target path remains end-to-end.
         Returns:
             dict with 'loss', 'pred_loss', 'sigreg_loss'.
         """
@@ -859,7 +871,17 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Encode all frames (memoryless, per-frame).
         z = self.encode(observations)                      # (B, L, D)
-        z_target = z if target_observations is None else self.encode(target_observations)
+        if target_observations is not None and target_embeddings is not None:
+            raise ValueError('provide target observations or target embeddings, not both')
+        if target_embeddings is not None:
+            if target_embeddings.shape != (B, L, D):
+                raise ValueError(
+                    f'target_embeddings shape {tuple(target_embeddings.shape)} != {(B, L, D)}')
+            z_target = (
+                target_embeddings.detach()
+                if detach_target_embeddings else target_embeddings)
+        else:
+            z_target = z if target_observations is None else self.encode(target_observations)
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
@@ -923,14 +945,62 @@ class MemoryLeWorldModel(LeWorldModel):
             pred_loss_first_post = per_window_error[first_post].mean()
             pred_loss = ((1.0 - first_post_loss_weight) * pred_loss_all_valid +
                          first_post_loss_weight * pred_loss_first_post)
-        if target_valid_mask is None:
-            sigreg_features = z_target.reshape(B * L, D)
+        if objective not in {'lewm', 'v10r', 'v10j'}:
+            raise ValueError(f'unknown training objective {objective!r}')
+        if objective in {'v10r', 'v10j'}:
+            if objective == 'v10j' and detach_target_embeddings:
+                raise ValueError('v10j requires active target-embedding gradients')
+            if diversity_embeddings is None or diversity_embeddings.shape != (B, L, D):
+                shape = None if diversity_embeddings is None else tuple(diversity_embeddings.shape)
+                raise ValueError(
+                    f'{objective} diversity_embeddings shape {shape} != {(B, L, D)}')
+            if target_valid_mask is None:
+                diversity_features = diversity_embeddings.reshape(B * L, D)
+            else:
+                diversity_features = diversity_embeddings[
+                    target_valid_mask.to(diversity_embeddings.device, dtype=torch.bool)]
+            if len(diversity_features) < 2:
+                raise ValueError(
+                    f'{objective} diversity requires at least two clean online embeddings')
+            # Diversity statistics stay in FP32 under AMP; the cast remains differentiable.
+            with torch.autocast(device_type=diversity_features.device.type, enabled=False):
+                stats_features = diversity_features.float()
+                centered = stats_features - stats_features.mean(dim=0, keepdim=True)
+                variance = centered.square().sum(dim=0) / (len(centered) - 1)
+                # The unit-variance target is fixed by affine-free LayerNorm. Averaging over D
+                # makes this term independent of representation width.
+                variance_loss = torch.relu(1.0 - torch.sqrt(
+                    variance + torch.finfo(variance.dtype).eps)).mean()
+                covariance = centered.T @ centered / (len(centered) - 1)
+                off_diagonal = covariance - torch.diag_embed(torch.diagonal(covariance))
+                covariance_loss = (
+                    # Standard VICReg dimension normalization: a unit-variance rank-one
+                    # representation costs D-1, while an identity covariance costs zero.
+                    off_diagonal.square().sum() / D
+                    if D > 1 else covariance.new_zeros(()))
+            # SIGReg is retained only as a collapse diagnostic. It has no optimization
+            # gradient in V10-R/J; all three optimized terms have exactly unit weight.
+            with torch.no_grad():
+                sigreg_loss = self.sigreg(diversity_features.detach())
+            total = pred_loss + variance_loss + covariance_loss
+            out = {
+                'loss': total,
+                'pred_loss': pred_loss,
+                'variance_loss': variance_loss,
+                'covariance_loss': covariance_loss,
+                'sigreg_loss': sigreg_loss,
+                'pred_loss_all_valid': pred_loss_all_valid,
+            }
         else:
-            sigreg_features = z_target[target_valid_mask.to(z_target.device, dtype=torch.bool)]
-        sigreg_loss = self.sigreg(sigreg_features)              # never regularize hidden clean targets
-        total = pred_loss + self.sigreg_lambda * sigreg_loss
-        out = {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss,
-               'pred_loss_all_valid': pred_loss_all_valid}
+            if target_valid_mask is None:
+                sigreg_features = z_target.reshape(B * L, D)
+            else:
+                sigreg_features = z_target[
+                    target_valid_mask.to(z_target.device, dtype=torch.bool)]
+            sigreg_loss = self.sigreg(sigreg_features)
+            total = pred_loss + self.sigreg_lambda * sigreg_loss
+            out = {'loss': total, 'pred_loss': pred_loss, 'sigreg_loss': sigreg_loss,
+                   'pred_loss_all_valid': pred_loss_all_valid}
         if pred_loss_first_post is not None:
             out['pred_loss_first_post'] = pred_loss_first_post
         if self.memory_impl == 'ocsmt' and self.l0_lambda > 0 and self.mem_ocsmt.last_l0 is not None:

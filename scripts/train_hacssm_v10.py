@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Train and evaluate the locked end-to-end HACSSM-v10 study.
+"""Train and evaluate the joint-gradient ORBIT V10-J prototype.
 
-Every model learns its own causal RGB encoder with active gradients on both the
-clean next-latent target and SIGReg.  Cross-model comparison is made in normalized
-simulator-state space through a fixed train-only ridge probe, never by pooling
-private latent-coordinate MSEs.
+Every design shares an affine-free per-frame encoder and an equal-weight
+prediction/variance/off-diagonal-covariance objective. The deterministic clean online
+embedding is both an active prediction target and the diversity view. SIGReg is logged
+only as a diagnostic. Cross-model comparison uses a train-only physics-state ridge
+probe in the same online coordinate, never private latent-coordinate MSE across models.
 """
 
 from __future__ import annotations
@@ -97,6 +98,9 @@ def _design_metadata(design: str) -> dict[str, Any]:
         "memory_teacher_present": False,
         "memory_fixed_horizon": False if is_orbit else None,
         "encoder_trained_end_to_end": True,
+        "encoder_ema_teacher_present": False,
+        "target_stop_gradient": False,
+        "training_objective": "v10j_joint_pred_variance_covariance_equal_weight",
     }
 
 
@@ -120,7 +124,7 @@ def build_model(args: argparse.Namespace, action_dim: int) -> MemoryLeWorldModel
         predictor_layers=args.predictor_layers,
         predictor_heads=args.predictor_heads,
         predictor_norm="none",
-        encoder_norm="none",
+        encoder_norm="causal",
         history_len=args.history_len,
         dropout=args.dropout,
         sigreg_lambda=args.sigreg_lambda,
@@ -131,11 +135,30 @@ def build_model(args: argparse.Namespace, action_dim: int) -> MemoryLeWorldModel
         hier_loss_weight=0.0,
         encoder_type="vit",
     )
-    if getattr(model, "encoder_norm", "none") != "none":
-        raise RuntimeError("V10 requires encoder_norm='none'")
+    if getattr(model, "encoder_norm", None) != "causal":
+        raise RuntimeError("V10-J requires encoder_norm='causal'")
     if model.predictor_norm != "none":
-        raise RuntimeError("V10 requires predictor_norm='none'")
+        raise RuntimeError("V10-J requires predictor_norm='none'")
     return model
+
+
+def encode_frames(encoder: torch.nn.Module, observations: torch.Tensor) -> torch.Tensor:
+    if observations.dim() == 5:
+        batch, length, channels, height, width = observations.shape
+        encoded = encoder(observations.reshape(batch * length, channels, height, width))
+        return encoded.reshape(batch, length, -1)
+    return encoder(observations)
+
+
+def encode_joint_clean_deterministic(
+        model: MemoryLeWorldModel, clean: torch.Tensor) -> torch.Tensor:
+    """Encode the joint target/diversity view without dropout while retaining gradients."""
+    was_training = model.encoder.training
+    model.encoder.eval()
+    try:
+        return model.encode(clean)
+    finally:
+        model.encoder.train(was_training)
 
 
 def _loader(dataset: V10TrajectoryDataset, args: argparse.Namespace, *, train: bool,
@@ -158,7 +181,13 @@ def run_epoch(model: MemoryLeWorldModel, loader: DataLoader,
               use_amp: bool) -> dict[str, float]:
     train = optimizer is not None
     model.train(train)
-    totals = {"loss": 0.0, "pred_loss": 0.0, "sigreg_loss": 0.0}
+    totals = {
+        "loss": 0.0,
+        "pred_loss": 0.0,
+        "variance_loss": 0.0,
+        "covariance_loss": 0.0,
+        "sigreg_loss": 0.0,
+    }
     count = 0
     context = torch.enable_grad() if train else torch.no_grad()
     with context:
@@ -173,13 +202,22 @@ def run_epoch(model: MemoryLeWorldModel, loader: DataLoader,
                 if use_amp else torch.autocast("cpu", enabled=False)
             )
             with amp_context:
-                losses = model.compute_loss(observed, actions, clean)
+                joint_clean = encode_joint_clean_deterministic(model, clean)
+                losses = model.compute_loss(
+                    observed,
+                    actions,
+                    target_embeddings=joint_clean,
+                    diversity_embeddings=joint_clean,
+                    objective="v10j",
+                    detach_target_embeddings=False,
+                )
             if train:
                 losses["loss"].backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
             batch_size = observed.shape[0]
-            for key in totals:
+            for key in ("loss", "pred_loss", "variance_loss", "covariance_loss",
+                        "sigreg_loss"):
                 totals[key] += float(losses[key].detach()) * batch_size
             count += batch_size
     if count == 0:
@@ -190,8 +228,11 @@ def run_epoch(model: MemoryLeWorldModel, loader: DataLoader,
 @torch.no_grad()
 def _encode_clean(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
                   args: argparse.Namespace, device: torch.device,
-                  use_amp: bool) -> tuple[np.ndarray, np.ndarray]:
+                  use_amp: bool, encoder: torch.nn.Module | None = None
+                  ) -> tuple[np.ndarray, np.ndarray]:
     model.eval()
+    selected_encoder = model.encoder if encoder is None else encoder
+    selected_encoder.eval()
     latent_chunks, state_chunks = [], []
     for batch in _loader(dataset, args, train=False):
         clean = batch["clean"].to(device, non_blocking=True)
@@ -200,7 +241,7 @@ def _encode_clean(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
             if use_amp else torch.autocast("cpu", enabled=False)
         )
         with amp_context:
-            latent = model.encode(clean)
+            latent = encode_frames(selected_encoder, clean)
         latent_chunks.append(latent[:, args.history_len:].float().cpu().numpy())
         state_chunks.append(
             batch["physics_state"][:, args.history_len:].float().numpy())
@@ -212,8 +253,10 @@ def _encode_clean(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
 
 def fit_state_probe(model: MemoryLeWorldModel, train_clean: V10TrajectoryDataset,
                     args: argparse.Namespace, device: torch.device,
-                    use_amp: bool) -> dict[str, np.ndarray]:
-    features, states = _encode_clean(model, train_clean, args, device, use_amp)
+                    use_amp: bool, encoder: torch.nn.Module | None = None
+                    ) -> dict[str, np.ndarray]:
+    features, states = _encode_clean(
+        model, train_clean, args, device, use_amp, encoder=encoder)
     x_mean = features.mean(axis=0, dtype=np.float64)
     x_std = features.std(axis=0, dtype=np.float64).clip(min=1e-6)
     y_mean = states.mean(axis=0, dtype=np.float64)
@@ -364,20 +407,27 @@ def evaluate_condition(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
 
 @torch.no_grad()
 def encoder_diagnostics(model: MemoryLeWorldModel, clean_dataset: V10TrajectoryDataset,
-                        args: argparse.Namespace, device: torch.device) -> dict[str, float]:
+                        args: argparse.Namespace, device: torch.device,
+                        encoder: torch.nn.Module | None = None) -> dict[str, float]:
     model.eval()
+    selected_encoder = model.encoder if encoder is None else encoder
+    selected_encoder.eval()
     sample0 = clean_dataset[0]["clean"]
     sample1 = clean_dataset[1]["clean"]
     frame = sample0[0].unsqueeze(0).to(device)
-    singleton = model.encoder(frame).float()
-    paired = model.encoder(torch.stack((sample0[0], sample1[-1])).to(device))[0:1].float()
-    prefix = model.encode(sample0[:8].unsqueeze(0).to(device)).float()
-    whole_prefix = model.encode(sample0.unsqueeze(0).to(device))[:, :8].float()
+    singleton = selected_encoder(frame).float()
+    paired = selected_encoder(
+        torch.stack((sample0[0], sample1[-1])).to(device))[0:1].float()
+    prefix = encode_frames(
+        selected_encoder, sample0[:8].unsqueeze(0).to(device)).float()
+    whole_prefix = encode_frames(
+        selected_encoder, sample0.unsqueeze(0).to(device))[:, :8].float()
 
     loader = _loader(clean_dataset, args, train=False, batch_size=min(args.batch_size, 32))
     latents = []
     for batch_index, batch in enumerate(loader):
-        latents.append(model.encode(batch["clean"].to(device)).float().cpu())
+        latents.append(encode_frames(
+            selected_encoder, batch["clean"].to(device)).float().cpu())
         if batch_index >= 1:
             break
     matrix = torch.cat(latents).reshape(-1, args.embed_dim).double()
@@ -426,8 +476,10 @@ def orbit_diagnostics(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
 @torch.no_grad()
 def probe_ceiling(model: MemoryLeWorldModel, dataset: V10TrajectoryDataset,
                   probe: dict[str, np.ndarray], args: argparse.Namespace,
-                  device: torch.device, use_amp: bool) -> dict[str, float]:
-    features, states = _encode_clean(model, dataset, args, device, use_amp)
+                  device: torch.device, use_amp: bool,
+                  encoder: torch.nn.Module | None = None) -> dict[str, float]:
+    features, states = _encode_clean(
+        model, dataset, args, device, use_amp, encoder=encoder)
     prediction = _probe_predict(
         torch.from_numpy(features).to(device), probe).cpu().numpy()
     y_std = probe["y_std"]
@@ -494,7 +546,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--val-data", required=True)
     parser.add_argument("--memory-mode", choices=DESIGNS, required=True)
     parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument("--output-dir", default="outputs/hacssm_v10_shared")
+    parser.add_argument("--output-dir", default="outputs/hacssm_v10_r1_shared")
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -521,7 +573,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--wandb-entity", default=None)
     parser.add_argument("--wandb-project", default="lewm-memory-popgym")
     parser.add_argument("--wandb-mode", choices=("online", "offline"), default="online")
-    parser.add_argument("--wandb-study", default="hacssm-v10")
+    parser.add_argument("--wandb-study", default="hacssm-v10-r1")
     parser.add_argument("--extra-tag", default="")
     return parser.parse_args(argv)
 
@@ -530,8 +582,8 @@ def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     if args.epochs < 1 or args.batch_size < 1 or args.num_workers < 0:
         raise ValueError("invalid training budget")
-    if args.sigreg_lambda <= 0 or args.sigreg_projections < 1:
-        raise ValueError("V10 requires active SIGReg")
+    if args.sigreg_projections < 1:
+        raise ValueError("V10-J requires a SIGReg diagnostic projection")
     if args.probe_ridge < 0 or not math.isfinite(args.probe_ridge):
         raise ValueError("probe ridge must be finite and non-negative")
     if args.wandb and args.wandb_mode != "online":
@@ -611,8 +663,16 @@ def main(argv: Iterable[str] | None = None) -> None:
                 "env": env_name,
                 "action_dim": train_metadata.action_dim,
                 "state_dim": train_metadata.state_dim,
-                "encoder_norm": "none",
+                "encoder_norm": "causal",
                 "predictor_norm": "none",
+                "training_objective": "v10j_joint_pred_variance_covariance_equal_weight",
+                "clean_target_gradient_active": True,
+                "ema_target_active": False,
+                "target_stop_gradient": False,
+                "prediction_loss_weight": 1.0,
+                "variance_loss_weight": 1.0,
+                "covariance_loss_weight": 1.0,
+                "sigreg_optimization_weight": 0.0,
                 "train_data_sha256": train_metadata.file_sha256,
                 "val_data_sha256": val_metadata.file_sha256,
             }),
@@ -627,7 +687,7 @@ def main(argv: Iterable[str] | None = None) -> None:
 
     print(
         f"=== {run_name} | params={model.num_parameters():,} | "
-        f"RGB end-to-end | amp={use_amp} ===", flush=True)
+        f"RGB end-to-end V10-J | amp={use_amp} ===", flush=True)
     history = []
     for epoch in range(1, args.epochs + 1):
         started = time.time()
@@ -639,7 +699,8 @@ def main(argv: Iterable[str] | None = None) -> None:
         print(
             f"e{epoch:3d}/{args.epochs} ({time.time() - started:.1f}s) "
             f"train={train_metrics['loss']:.5f} pred={train_metrics['pred_loss']:.5f} "
-            f"sig={train_metrics['sigreg_loss']:.5f} | "
+            f"var={train_metrics['variance_loss']:.5f} "
+            f"cov={train_metrics['covariance_loss']:.5f} | "
             f"val={val_metrics['loss']:.5f}", flush=True)
         if wb is not None:
             wb.log({
@@ -650,6 +711,9 @@ def main(argv: Iterable[str] | None = None) -> None:
             }, step=epoch)
 
     probe = fit_state_probe(model, train_clean, args, device, use_amp)
+    online_diagnostics = encoder_diagnostics(model, val_clean, args, device)
+    online_ceiling = probe_ceiling(
+        model, val_clean, probe, args, device, use_amp)
     metrics: dict[str, Any] = {
         "schema_version": 1,
         "env": env_name,
@@ -658,14 +722,22 @@ def main(argv: Iterable[str] | None = None) -> None:
         "epochs": args.epochs,
         "encoder_type": "vit",
         "encoder_frozen": False,
-        "encoder_norm": "none",
+        "encoder_norm": "causal",
         "predictor_norm": "none",
         "end_to_end_rgb": True,
         "clean_target_gradient_active": True,
-        "sigreg_gradient_active": True,
+        "ema_target_active": False,
+        "target_stop_gradient": False,
+        "training_objective": "v10j_joint_pred_variance_covariance_equal_weight",
+        "prediction_loss_weight": 1.0,
+        "variance_loss_weight": 1.0,
+        "covariance_loss_weight": 1.0,
+        "vicreg_gradient_active": True,
+        "sigreg_gradient_active": False,
+        "sigreg_optimization_weight": 0.0,
         "sigreg_lambda": args.sigreg_lambda,
         "probe_ridge": args.probe_ridge,
-        "probe_fit_split": "clean_train_only",
+        "probe_fit_split": "clean_train_online_joint_only",
         "headline_metric": "heldout_state_nmse",
         "train_data": str(train_metadata.path),
         "val_data": str(val_metadata.path),
@@ -682,9 +754,9 @@ def main(argv: Iterable[str] | None = None) -> None:
         "final_train_loss": history[-1]["train"]["loss"],
         "final_val_loss": history[-1]["val"]["loss"],
         "val_pred_loss": history[-1]["val"]["pred_loss"],
-        **encoder_diagnostics(model, val_clean, args, device),
+        **online_diagnostics,
         **orbit_diagnostics(model, val_clean, device),
-        **probe_ceiling(model, val_clean, probe, args, device, use_amp),
+        **online_ceiling,
     }
     window = min(10, max(1, args.epochs // 2))
     recent = np.mean([row["val"]["loss"] for row in history[-window:]])

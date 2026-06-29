@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Run the frozen 225-cell ORBIT-v10 end-to-end confirmation study.
+"""Run the frozen 225-cell ORBIT-v10-J/R1 adaptive confirmation study.
 
-Five previously unopened DMC tasks are trained from native RGB with active
-SIGReg.  Each environment owns one immutable train and validation bundle; the
+Five DMC tasks are trained from native RGB with a joint-gradient clean target
+and equal-weight prediction, variance, and covariance losses.  Each environment
+owns one immutable train and validation bundle; the
 bundles contain clean simulator state plus deterministic train and held-out
 corruption views.  Seeds 0--2 are an immutable pilot and seeds 3--4 always run.
 
-This wrapper deliberately reuses the battle-tested staged/W&B orchestration
-from HACSSM-v5, while replacing its fixed-feature assumptions with strict V10
-data, native-encoder, state-probe, ORBIT, and rollout contracts.
+R1 is an explicitly adaptive revision after the invalid predecessor's
+normalization audit.  It retains the exact 225-cell grid and data while moving
+every new local and W&B artifact into an isolated namespace and sealing the
+predecessor provenance in the protocol.
 """
 
 from __future__ import annotations
@@ -41,20 +43,39 @@ TRAIN_SCRIPT = ROOT / "scripts" / "train_hacssm_v10.py"
 DATA_SCRIPT = ROOT / "scripts" / "hacssm_v10_data.py"
 ANALYZE_SCRIPT = ROOT / "scripts" / "analyze_hacssm_v10.py"
 DATA_ROOT = ROOT / "outputs" / "hacssm_v10_data"
-OUTPUT_ROOT = ROOT / "outputs" / "hacssm_v10_shared"
-LOG_ROOT = ROOT / "logs" / "hacssm_v10_shared"
+OUTPUT_ROOT = ROOT / "outputs" / "hacssm_v10_r1_shared"
+LOG_ROOT = ROOT / "logs" / "hacssm_v10_r1_shared"
 PROTOCOL_PATH = OUTPUT_ROOT / "protocol.json"
 PILOT_DECISION_PATH = OUTPUT_ROOT / "pilot_decision.json"
 FINAL_DECISION_PATH = OUTPUT_ROOT / "decision.json"
-MANIFEST_PATH = OUTPUT_ROOT / "hacssm_v10_manifest.json"
-MANIFEST_SHA_PATH = OUTPUT_ROOT / "hacssm_v10_manifest.sha256"
-LOCK_PATH = OUTPUT_ROOT / ".run_hacssm_v10.lock"
+MANIFEST_PATH = OUTPUT_ROOT / "hacssm_v10_r1_manifest.json"
+MANIFEST_SHA_PATH = OUTPUT_ROOT / "hacssm_v10_r1_manifest.sha256"
+LOCK_PATH = OUTPUT_ROOT / ".run_hacssm_v10_r1.lock"
 
 WANDB_ENTITY = "crlc112358"
 WANDB_PROJECT = "lewm-memory-popgym"
 WANDB_MODE = "online"
-WANDB_STUDY = "hacssm-v10"
+WANDB_STUDY = "hacssm-v10-r1"
 EVAL_ROLLOUT_EPISODE = 0
+SCOPE = "adaptive_after_normalization_audit"
+V10J_OBJECTIVE = "v10j_joint_pred_variance_covariance_equal_weight"
+PREDECESSOR_PROVENANCE = {
+    "study": "hacssm-v10",
+    "producer_git_commit": "5d561cc2a5e312f0e9c06d2492859e85fc1debe9",
+    "protocol_sha256": "d446b70abb0ece3560ea7939117bc4c8b9b909dbab6c9517790971d3b1c20934",
+    "protocol_archive": (
+        "outputs/hacssm_v10_invalid_none_norm_20260629T1707/protocol.json"
+    ),
+    "output_archive": "outputs/hacssm_v10_invalid_none_norm_20260629T1707",
+    "log_archive": "logs/hacssm_v10_invalid_none_norm_20260629T1707",
+    "wandb_run_ids": ["jqf47nm9", "zlk8974u", "kbn9rxpt", "69sb8eod"],
+    "completed_cells": 0,
+    "partially_trained_cells": 4,
+    "invalidation_reason": (
+        "encoder_norm=none failed the representation-quality audit; all predecessor "
+        "partial cells are excluded from R1"
+    ),
+}
 
 ENVIRONMENTS = (
     ("dmc:walker.walk", "dmc:walker.walk"),
@@ -81,6 +102,12 @@ ALL_SEEDS = PILOT_SEEDS + COMPLETION_SEEDS
 
 TRAIN_CORRUPTIONS = ("cutout", "meanframe")
 HELDOUT_CORRUPTIONS = ("freeze", "gaussian_noise", "checkerboard", "long_freeze")
+ENCODER_RECEIPT_BASES = (
+    "encoder_mean_channel_variance",
+    "encoder_covariance_effective_rank",
+    "encoder_singleton_max_abs",
+    "encoder_prefix_max_abs",
+)
 COMMON = {
     "train_episodes": 1200,
     "val_episodes": 240,
@@ -95,7 +122,7 @@ COMMON = {
     "encoder_heads": 4,
     "predictor_layers": 4,
     "predictor_heads": 8,
-    "encoder_norm": "none",
+    "encoder_norm": "causal",
     "predictor_norm": "none",
     "epochs": 100,
     "train_dataloader_workers": 2,
@@ -105,6 +132,10 @@ COMMON = {
     "corruption_seed": 10_012,
     "sigreg_lambda": 0.1,
     "sigreg_projections": 512,
+    "training_objective": V10J_OBJECTIVE,
+    "prediction_loss_weight": 1.0,
+    "variance_loss_weight": 1.0,
+    "covariance_loss_weight": 1.0,
     "state_probe_ridge": 1e-3,
     "first_post_loss_weight": 0.0,
     "hier_loss_weight": 0.0,
@@ -372,6 +403,9 @@ def design_metadata(design: str) -> dict[str, Any]:
         "memory_teacher_present": False,
         "memory_fixed_horizon": False if design in ORBIT_DESIGNS else None,
         "encoder_trained_end_to_end": True,
+        "encoder_ema_teacher_present": False,
+        "target_stop_gradient": False,
+        "training_objective": V10J_OBJECTIVE,
     }
 
 
@@ -435,20 +469,26 @@ def build_protocol(
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "study": "ORBIT-v10 native end-to-end held-out confirmation",
-        "scope": "prospectively_heldout_end_to_end_confirmation",
+        "study": "ORBIT-v10-J/R1 adaptive end-to-end held-out confirmation",
+        "study_id": WANDB_STUDY,
+        "scope": SCOPE,
+        "adaptive_revision": "R1",
+        "predecessor_provenance": PREDECESSOR_PROVENANCE,
         "producer_git_commit": commit,
         "producer_git_clean": clean,
         "common_protocol": COMMON,
         "data_contract": {
-            "unopened_tasks": [environment for environment, _ in ENVIRONMENTS],
+            "tasks": [environment for environment, _ in ENVIRONMENTS],
+            "unopened_task_claim": False,
+            "adaptive_reuse_of_predecessor_data": True,
             "training_corruptions": list(TRAIN_CORRUPTIONS),
             "heldout_corruptions": list(HELDOUT_CORRUPTIONS),
             "deterministic_by_split_episode": True,
             "synchronized_clean_view_targets_used_for_training": True,
             "clean_view_target_kind": (
-                "same-trajectory clean RGB encoded online by the jointly trained encoder"
+                "same-trajectory clean RGB encoded by the joint-gradient online encoder"
             ),
+            "clean_view_target_gradient_active": True,
             "simulator_physics_state_used_for_training": False,
             "simulator_physics_state_role": "evaluation-only normalized ridge-probe target",
             "primary_metric": "heldout_state_nmse",
@@ -465,7 +505,17 @@ def build_protocol(
             "correction": "causal learned innovation gate",
             "fixed_decay_or_horizon": False,
             "memory_auxiliary_or_teacher": False,
-            "training_objective": "ordinary next-clean-latent MSE plus 0.1 SIGReg",
+            "encoder_normalization": "causal affine-free per-frame LayerNorm",
+            "encoder_ema_teacher": False,
+            "target_stop_gradient": False,
+            "clean_target_gradient_active": True,
+            "training_objective": V10J_OBJECTIVE,
+            "objective_weights": {
+                "prediction": 1.0,
+                "variance": 1.0,
+                "covariance": 1.0,
+            },
+            "sigreg_role": "zero-weight diagnostic only",
             "variants": {
                 "orbitv10_noaction": "identity memory transport; predictor actions retained",
                 "orbitv10_additive": "V8-style additive action transport control",
@@ -499,6 +549,11 @@ def build_protocol(
             "vs_static": ">=1%, >=9/15, >=3/5",
             "clean_harm_vs_each_ssm_and_v8": "<=2%",
             "convergence": "absolute median <1%, p95 <3%, maximum <5%",
+            "orbit_orthogonality_and_streaming": "each <=1e-5",
+            "online_encoder_quality": (
+                "finite variance >=1e-5, covariance effective rank >=16, singleton "
+                "and prefix parity <=1e-5, clean state-probe ceiling <1"
+            ),
         },
         "final_success_criteria": {
             "requires_pilot_pass": True,
@@ -511,8 +566,8 @@ def build_protocol(
             "convergence": "absolute median <1%, p95 <3%, maximum <5%",
             "orbit_orthogonality_and_streaming": "each <=1e-5",
             "encoder_quality": (
-                "finite; mean channel variance >=1e-5; covariance effective rank >=16; "
-                "singleton and prefix parity <=1e-5"
+                "online encoder finite; mean channel variance >=1e-5; covariance effective "
+                "rank >=16; singleton and prefix parity <=1e-5; clean state-probe ceiling <1"
             ),
         },
         "analysis_gate": {
@@ -587,14 +642,32 @@ def validate_history(history: Any, job: shared.Job) -> None:
             raise RunnerError(f"{job.run_name}: malformed history epoch {epoch}")
         if set(record) != {"epoch", "train", "val"}:
             raise RunnerError(f"{job.run_name}: unexpected history fields")
+        expected_metrics = {
+            "loss", "pred_loss", "variance_loss", "covariance_loss", "sigreg_loss",
+        }
         for split in ("train", "val"):
             values = record.get(split)
-            if not isinstance(values, dict):
+            if not isinstance(values, dict) or set(values) != expected_metrics:
                 raise RunnerError(f"{job.run_name}: absent {split} history")
-            for key in ("loss", "pred_loss", "sigreg_loss"):
+            for key in expected_metrics:
                 value = values.get(key)
                 if type(value) not in (int, float) or not math.isfinite(float(value)):
                     raise RunnerError(f"{job.run_name}: invalid {split}.{key} at {epoch}")
+            for key in (
+                "loss", "pred_loss", "variance_loss", "covariance_loss", "sigreg_loss",
+            ):
+                if float(values[key]) < 0.0:
+                    raise RunnerError(f"{job.run_name}: negative {split}.{key} at {epoch}")
+            optimized_sum = sum(
+                float(values[key])
+                for key in ("pred_loss", "variance_loss", "covariance_loss")
+            )
+            if not math.isclose(
+                float(values["loss"]), optimized_sum, rel_tol=1e-5, abs_tol=1e-7
+            ):
+                raise RunnerError(
+                    f"{job.run_name}: {split} loss is not the equal-weight V10-J sum at {epoch}"
+                )
             if any(key.startswith("hier_") for key in values):
                 raise RunnerError(f"{job.run_name}: forbidden hierarchy metric in history")
             shared.assert_finite_tree(values, f"{job.run_name}.{epoch}.{split}")
@@ -623,6 +696,17 @@ def validate_model_state(state: Any, job: shared.Job) -> None:
     ):
         raise RunnerError(f"{job.run_name}: ORBIT checkpoint contains foreign memory tensors")
 
+
+def validate_probe(probe: Any, job: shared.Job, label: str) -> None:
+    expected = {"x_mean", "x_std", "y_mean", "y_std", "weights"}
+    if not isinstance(probe, dict) or set(probe) != expected:
+        raise RunnerError(f"{job.run_name}: invalid {label} state-probe payload")
+    for key, value in probe.items():
+        array = np.asarray(value)
+        if array.dtype.hasobject or array.size == 0 or not np.isfinite(array).all():
+            raise RunnerError(f"{job.run_name}: invalid {label} state-probe array {key}")
+        if key.endswith("_std") and np.any(array <= 0.0):
+            raise RunnerError(f"{job.run_name}: non-positive {label} state-probe scale {key}")
 
 def _finite_metric(metrics: Mapping[str, Any], key: str, job: shared.Job) -> float:
     value = metrics.get(key)
@@ -733,21 +817,12 @@ def validate_job(job: shared.Job, *, allow_missing: bool) -> bool:
     except Exception as exc:
         raise RunnerError(f"cannot load {job.model_path}: {exc}") from exc
     if not isinstance(checkpoint, dict) or set(checkpoint) != {
-        "model_state_dict", "args", "final_metrics", "history", "state_probe"
+        "model_state_dict", "args", "final_metrics", "history", "state_probe",
     }:
         raise RunnerError(f"{job.model_path}: unexpected checkpoint structure")
     if not shared.stable_equal(metrics, checkpoint["final_metrics"]):
         raise RunnerError(f"{job.run_name}: metrics/checkpoint mismatch")
-    probe = checkpoint["state_probe"]
-    expected_probe = {"x_mean", "x_std", "y_mean", "y_std", "weights"}
-    if not isinstance(probe, dict) or set(probe) != expected_probe:
-        raise RunnerError(f"{job.run_name}: invalid state-probe payload")
-    for key, value in probe.items():
-        array = np.asarray(value)
-        if array.dtype.hasobject or array.size == 0 or not np.isfinite(array).all():
-            raise RunnerError(f"{job.run_name}: invalid state-probe array {key}")
-        if key.endswith("_std") and np.any(array <= 0.0):
-            raise RunnerError(f"{job.run_name}: non-positive state-probe scale {key}")
+    validate_probe(checkpoint["state_probe"], job, "online")
     if not shared.stable_equal(checkpoint["args"], expected_args(job)):
         actual = checkpoint.get("args")
         differing = sorted(
@@ -762,8 +837,7 @@ def validate_job(job: shared.Job, *, allow_missing: bool) -> bool:
     required_metrics = (
         "heldout_state_nmse", "clean_state_nmse", "final_val_loss", "val_pred_loss",
         "probe_ceiling_state_nmse", "probe_ceiling_r2",
-        "encoder_mean_channel_variance", "encoder_covariance_effective_rank",
-        "encoder_singleton_max_abs", "encoder_prefix_max_abs",
+        *ENCODER_RECEIPT_BASES,
         "convergence_relative_change", "trainable_parameters",
         *(f"{condition}_state_nmse" for condition in HELDOUT_CORRUPTIONS),
         *(f"{condition}_predicted_state_r2" for condition in HELDOUT_CORRUPTIONS),
@@ -798,7 +872,8 @@ def validate_job(job: shared.Job, *, allow_missing: bool) -> bool:
         "action_dim": train_metadata.action_dim,
         "state_dim": train_metadata.state_dim,
         "probe_ridge": COMMON["state_probe_ridge"],
-        "probe_fit_split": "clean_train_only",
+        "probe_fit_split": "clean_train_online_joint_only",
+        "training_objective": V10J_OBJECTIVE,
     }
     for key, wanted in exact_metadata.items():
         if not shared.stable_equal(metrics.get(key), wanted):
@@ -812,18 +887,50 @@ def validate_job(job: shared.Job, *, allow_missing: bool) -> bool:
         float(metrics["heldout_state_nmse"]), condition_mean, rel_tol=1e-6, abs_tol=1e-8
     ):
         raise RunnerError(f"{job.run_name}: heldout_state_nmse is not an equal mean")
-    if metrics.get("encoder_norm") != "none" or metrics.get("predictor_norm") != "none":
+    if metrics.get("encoder_norm") != "causal" or metrics.get("predictor_norm") != "none":
         raise RunnerError(f"{job.run_name}: noncausal encoder/predictor normalization")
     if (
         metrics.get("encoder_type") != "vit"
         or metrics.get("encoder_frozen") is not False
         or metrics.get("end_to_end_rgb") is not True
         or metrics.get("clean_target_gradient_active") is not True
-        or metrics.get("sigreg_gradient_active") is not True
+        or metrics.get("ema_target_active") is not False
+        or metrics.get("target_stop_gradient") is not False
+        or metrics.get("vicreg_gradient_active") is not True
+        or metrics.get("sigreg_gradient_active") is not False
     ):
-        raise RunnerError(f"{job.run_name}: not native end-to-end LeWM")
-    if metrics.get("sigreg_lambda") != 0.1:
-        raise RunnerError(f"{job.run_name}: SIGReg contract mismatch")
+        raise RunnerError(f"{job.run_name}: not native joint-gradient V10-J LeWM")
+    forbidden_metrics = {
+        "ema_schedule", "ema_optimizer_steps", "ema_final_momentum",
+        "teacher_student_parameter_mse", "student_probe_fit_split",
+        "student_probe_ceiling_state_nmse", "student_probe_ceiling_r2",
+    }
+    forbidden_metrics.update(
+        key for key in metrics if key.startswith("student_encoder_")
+    )
+    present_forbidden = sorted(forbidden_metrics & set(metrics))
+    if present_forbidden:
+        raise RunnerError(
+            f"{job.run_name}: forbidden EMA/student metrics {present_forbidden}"
+        )
+    for key in ("prediction_loss_weight", "variance_loss_weight", "covariance_loss_weight"):
+        if metrics.get(key) != 1.0:
+            raise RunnerError(f"{job.run_name}: unequal V10-J objective weight {key}")
+    if metrics.get("sigreg_lambda") != 0.1 or metrics.get("sigreg_optimization_weight") != 0.0:
+        raise RunnerError(f"{job.run_name}: SIGReg diagnostic-only contract mismatch")
+    variance = _finite_metric(metrics, "encoder_mean_channel_variance", job)
+    effective_rank = _finite_metric(metrics, "encoder_covariance_effective_rank", job)
+    singleton = _finite_metric(metrics, "encoder_singleton_max_abs", job)
+    prefix_error = _finite_metric(metrics, "encoder_prefix_max_abs", job)
+    probe_ceiling = _finite_metric(metrics, "probe_ceiling_state_nmse", job)
+    if variance < 1e-5:
+        raise RunnerError(f"{job.run_name}: collapsed online encoder variance")
+    if effective_rank < 16.0:
+        raise RunnerError(f"{job.run_name}: low-rank online encoder")
+    if not 0.0 <= singleton <= 1e-5 or not 0.0 <= prefix_error <= 1e-5:
+        raise RunnerError(f"{job.run_name}: noncausal online encoder receipt")
+    if not 0.0 <= probe_ceiling < 1.0:
+        raise RunnerError(f"{job.run_name}: failed online probe ceiling")
     if job.design in ORBIT_DESIGNS:
         for key in ("orbit_orthogonality_error_max", "orbit_streaming_max_abs"):
             if _finite_metric(metrics, key, job) < 0.0:
@@ -997,7 +1104,7 @@ def read_pilot_decision() -> tuple[bool, dict[str, Any]]:
     expected = "PILOT_CONFIRMATION_PASS" if decision["pilot_screen_passed"] else "NO_GO"
     if decision.get("decision") != expected:
         raise RunnerError("pilot decision label/boolean conflict")
-    if decision.get("scope") != "prospectively_heldout_end_to_end_confirmation":
+    if decision.get("scope") != SCOPE:
         raise RunnerError("pilot decision scope mismatch")
     shared.assert_finite_tree(decision, "pilot_decision")
     return bool(decision["pilot_screen_passed"]), decision
@@ -1014,6 +1121,7 @@ def validate_final_decision(final: Any, pilot_passed: bool) -> bool:
         or final.get("completed_runs") != 225
         or final.get("pilot_screen_passed") is not pilot_passed
         or type(confirmed) is not bool
+        or final.get("scope") != SCOPE
     ):
         raise RunnerError("invalid final decision contract")
     if confirmed and (not pilot_passed or final["decision"] != "END_TO_END_CONFIRMATION_PASS"):
@@ -1033,6 +1141,10 @@ def write_final_manifest(
     manifest = {
         "schema_version": 1,
         "study": protocol["study"],
+        "study_id": WANDB_STUDY,
+        "scope": SCOPE,
+        "adaptive_revision": "R1",
+        "predecessor_provenance": PREDECESSOR_PROVENANCE,
         "producer_git_commit": protocol["producer_git_commit"],
         "producer_git_clean": True,
         "completed_runs": 225,
@@ -1148,7 +1260,9 @@ def check_command_interfaces(python: str) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the frozen 225-cell ORBIT-v10 study.")
+    parser = argparse.ArgumentParser(
+        description="Run the frozen 225-cell ORBIT-v10-R1 adaptive study."
+    )
     parser.add_argument("--python", default=str(ROOT / ".venv" / "bin" / "python"))
     parser.add_argument(
         "--gpus", type=shared.parse_gpu_ids, default=shared.parse_gpu_ids("0,1,2,3")
@@ -1162,7 +1276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_shared()
     args = build_parser().parse_args(argv)
     if args.workers != 4 or len(args.gpus) != 4:
-        raise RunnerError("V10 is frozen to exactly four workers on four GPU ids")
+        raise RunnerError("V10-R1 is frozen to exactly four workers on four GPU ids")
     commit, porcelain = shared.git_provenance()
     clean = not porcelain
     if not args.dry_run and not clean:
@@ -1205,11 +1319,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         for job in PILOT_JOBS:
             validate_job(job, allow_missing=False)
         verify_provenance_unchanged(protocol)
-        shared.status("running immutable ORBIT-v10 pilot analyzer")
+        shared.status("running immutable ORBIT-v10-R1 pilot analyzer")
         shared.run_analyzer(args.python, "pilot")
         pilot_passed, pilot = read_pilot_decision()
         shared.status(
-            f"V10 pilot={pilot['decision']} passed={pilot_passed}; completion is mandatory"
+            f"V10-R1 pilot={pilot['decision']} passed={pilot_passed}; completion is mandatory"
         )
 
         shared.run_stage(args.python, COMPLETION_JOBS, args.gpus, args.workers)
@@ -1217,7 +1331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_job(job, allow_missing=False)
         verify_provenance_unchanged(protocol)
         cloud = verify_wandb_cloud(ALL_JOBS)
-        shared.status("running final ORBIT-v10 analyzer")
+        shared.status("running final ORBIT-v10-R1 analyzer")
         shared.run_analyzer(args.python, "final")
         final = shared.read_json(FINAL_DECISION_PATH)
         confirmed = validate_final_decision(final, pilot_passed)
@@ -1227,7 +1341,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             protocol, pilot, pilot_passed, args.gpus, args.workers, cloud, final
         )
         shared.status(
-            f"ORBIT-v10 complete: 225/225; end_to_end_confirmation_passed={confirmed}"
+            f"ORBIT-v10-R1 complete: 225/225; end_to_end_confirmation_passed={confirmed}"
         )
         return 0
     finally:
@@ -1244,5 +1358,5 @@ if __name__ == "__main__":
         raise SystemExit(130)
     except RunnerError as exc:
         shared.terminate_active_processes()
-        print(f"ORBIT-v10 runner error: {exc}", file=sys.stderr)
+        print(f"ORBIT-v10-R1 runner error: {exc}", file=sys.stderr)
         raise SystemExit(2)

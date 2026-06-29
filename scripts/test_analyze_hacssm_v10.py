@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for the frozen ORBIT-v10 decision analysis."""
+"""Unit tests for the frozen ORBIT-v10-R1 decision analysis."""
 
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ def synthetic_rows(seeds, *, candidate=0.80):
                     "encoder_covariance_effective_rank": 80.0,
                     "encoder_singleton_max_abs": 1e-7,
                     "encoder_prefix_max_abs": 1e-7,
+                    "probe_ceiling_state_nmse": 0.2,
                 }
                 for condition in analysis.HELDOUT_CONDITIONS:
                     row[f"{condition}_state_nmse"] = primary
@@ -81,6 +82,7 @@ class V10AnalysisTests(unittest.TestCase):
         decision = analysis.pilot_decision(rows, synthetic_convergence(rows))
         self.assertTrue(decision["pilot_screen_passed"])
         self.assertEqual(decision["decision"], "PILOT_CONFIRMATION_PASS")
+        self.assertEqual(decision["scope"], analysis.SCOPE)
         self.assertTrue(all(decision["criteria"].values()))
 
     def test_noaction_magnitude_failure_is_no_go(self):
@@ -120,6 +122,17 @@ class V10AnalysisTests(unittest.TestCase):
         decision = analysis.pilot_decision(rows, synthetic_convergence(rows))
         self.assertFalse(decision["criteria"]["clean_harm_vs_ssm_le_2pct"])
         self.assertFalse(decision["criteria"]["clean_harm_vs_hacssmv8_le_2pct"])
+
+    def test_online_rank_and_probe_ceiling_are_required(self):
+        rows = synthetic_rows(analysis.PILOT_SEEDS)
+        for row in rows:
+            if row["design"] == "orbitv10":
+                row["encoder_covariance_effective_rank"] = 15.0
+                row["probe_ceiling_state_nmse"] = 1.0
+        decision = analysis.pilot_decision(rows, synthetic_convergence(rows))
+        self.assertFalse(decision["criteria"]["encoder_effective_rank_min_ge_16"])
+        self.assertFalse(decision["criteria"]["probe_ceiling_max_lt_1"])
+        self.assertFalse(decision["pilot_screen_passed"])
 
     def test_private_latent_mse_cannot_change_decision(self):
         rows = synthetic_rows(analysis.PILOT_SEEDS)

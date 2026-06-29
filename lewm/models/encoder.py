@@ -7,15 +7,15 @@ arXiv:2603.19312
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Tuple
+from typing import Optional
 
 
 class ViTTinyEncoder(nn.Module):
     """
     ViT-Tiny encoder from raw pixels.
     Paper config: patch_size=14, 12 layers, 3 attention heads, hidden_dim=192.
-    Uses [CLS] token embedding from last layer, projected through 1-layer MLP + BatchNorm.
+    Uses the last-layer [CLS] token, followed by a one-layer projector and a
+    configurable output normalization.
     """
 
     def __init__(
@@ -67,13 +67,18 @@ class ViTTinyEncoder(nn.Module):
             projector_norm = nn.BatchNorm1d(embed_dim, track_running_stats=False)
         elif encoder_norm == 'layer':
             projector_norm = nn.LayerNorm(embed_dim)
+        elif encoder_norm == 'causal':
+            # V10-J: per-frame, batch-independent, and affine-free. Explicit train-time
+            # variance/covariance terms provide cross-frame anti-collapse pressure.
+            projector_norm = nn.LayerNorm(embed_dim, elementwise_affine=False)
         elif encoder_norm == 'none':
             # Batch-independent path for causal batch-size-one streaming.  The ViT itself
             # already uses only per-token LayerNorm; this leaves no cross-example operation.
             projector_norm = nn.Identity()
         else:
             raise ValueError(
-                f"unknown encoder_norm {encoder_norm!r}; expected batch, layer, or none")
+                f"unknown encoder_norm {encoder_norm!r}; "
+                "expected batch, layer, causal, or none")
 
         # Keep the historical one-layer projection and its parameter names.  Only the optional
         # normalization module changes, so ``encoder_norm='batch'`` remains checkpoint-compatible.
@@ -93,8 +98,9 @@ class ViTTinyEncoder(nn.Module):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
         elif isinstance(m, nn.LayerNorm):
-            nn.init.ones_(m.weight)
-            nn.init.zeros_(m.bias)
+            if m.elementwise_affine:
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -126,7 +132,6 @@ class ViTTinyEncoder(nn.Module):
         # Extract [CLS] token embedding
         cls_emb = x[:, 0]
 
-        # Project through the configured head.  ``none`` and ``layer`` are per-frame causal.
         z = self.projector(cls_emb)
 
         return z

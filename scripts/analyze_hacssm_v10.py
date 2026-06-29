@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Fail-closed analysis for the frozen ORBIT-v10 end-to-end study.
+"""Fail-closed analysis for the frozen ORBIT-v10-R1 adaptive study.
 
 The headline metric is ``heldout_state_nmse``: a per-checkpoint state-probe
 metric in normalized simulator coordinates, averaged equally over the four
-prospectively held-out corruptions.  Private latent MSE is deliberately not a
+locked corruption conditions.  Private latent MSE is deliberately not a
 cross-model estimand because every design learns its own encoder coordinates.
 
-Seeds 0--2 form an immutable pilot.  Seeds 3--4 are mandatory precision runs;
-they can never reopen a failed pilot decision.
+R1 is explicitly scoped as adaptive after the predecessor normalization audit.
+Within R1, seeds 0--2 form an immutable pilot and seeds 3--4 are mandatory
+precision runs; they can never reopen a failed pilot decision.
 """
 
 from __future__ import annotations
@@ -61,6 +62,8 @@ GEOMETRY_CONTROLS = ("orbitv10_additive", "orbitv10_scaled")
 NOACTION_CONTROL = "orbitv10_noaction"
 STATIC_CONTROL = "orbitv10_static"
 HELDOUT_CONDITIONS = ("freeze", "gaussian_noise", "checkerboard", "long_freeze")
+SCOPE = "adaptive_after_normalization_audit"
+DEFAULT_ROOT = Path("outputs/hacssm_v10_r1_shared")
 
 BOOTSTRAP_DRAWS = 100_000
 BOOTSTRAP_SEED = 10_010
@@ -92,6 +95,10 @@ ENCODER_RECEIPTS = (
     "encoder_covariance_effective_rank",
     "encoder_singleton_max_abs",
     "encoder_prefix_max_abs",
+)
+REPRESENTATION_RECEIPTS = (
+    *ENCODER_RECEIPTS,
+    "probe_ceiling_state_nmse",
 )
 ROW_METRICS = (
     "val_pred_loss",
@@ -159,7 +166,9 @@ def load_cells(root: Path, seeds: Sequence[int]):
                 row["val_pred_loss"] = _finite(
                     history[-1]["val"]["pred_loss"], f"{run}.final_val_pred_loss"
                 )
-                for key in (PRIMARY, CLEAN_METRIC, "val_pred_loss", *ENCODER_RECEIPTS):
+                for key in (
+                    PRIMARY, CLEAN_METRIC, "val_pred_loss", *REPRESENTATION_RECEIPTS,
+                ):
                     if row[key] == "":
                         raise ValueError(f"{run}: required metric {key} is absent")
                     if key in (PRIMARY, CLEAN_METRIC) and float(row[key]) <= 0.0:
@@ -319,10 +328,21 @@ def candidate_receipts(rows: Sequence[Mapping[str, Any]]) -> dict[str, float]:
     return {
         "orthogonality_max": max(float(row[ORBIT_RECEIPTS[0]]) for row in candidate),
         "streaming_max": max(float(row[ORBIT_RECEIPTS[1]]) for row in candidate),
-        "encoder_variance_min": min(float(row[ENCODER_RECEIPTS[0]]) for row in candidate),
-        "encoder_effective_rank_min": min(float(row[ENCODER_RECEIPTS[1]]) for row in candidate),
-        "encoder_singleton_max": max(float(row[ENCODER_RECEIPTS[2]]) for row in candidate),
-        "encoder_prefix_max": max(float(row[ENCODER_RECEIPTS[3]]) for row in candidate),
+        "encoder_variance_min": min(
+            float(row[ENCODER_RECEIPTS[0]]) for row in candidate
+        ),
+        "encoder_effective_rank_min": min(
+            float(row[ENCODER_RECEIPTS[1]]) for row in candidate
+        ),
+        "encoder_singleton_max": max(
+            float(row[ENCODER_RECEIPTS[2]]) for row in candidate
+        ),
+        "encoder_prefix_max": max(
+            float(row[ENCODER_RECEIPTS[3]]) for row in candidate
+        ),
+        "probe_ceiling_max": max(
+            float(row["probe_ceiling_state_nmse"]) for row in candidate
+        ),
     }
 
 
@@ -357,12 +377,27 @@ def _quality_criteria(observed: Mapping[str, Any]) -> dict[str, bool]:
         "convergence_absolute_median_lt_1pct": convergence["median"] < 0.01,
         "convergence_absolute_p95_lt_3pct": convergence["p95"] < 0.03,
         "convergence_absolute_max_lt_5pct": convergence["max"] < 0.05,
-        "orbit_orthogonality_max_le_1e_5": receipts["orthogonality_max"] <= 1e-5,
-        "orbit_streaming_max_le_1e_5": receipts["streaming_max"] <= 1e-5,
-        "encoder_variance_min_ge_1e_5": receipts["encoder_variance_min"] >= 1e-5,
-        "encoder_effective_rank_min_ge_16": receipts["encoder_effective_rank_min"] >= 16.0,
-        "encoder_singleton_max_le_1e_5": receipts["encoder_singleton_max"] <= 1e-5,
-        "encoder_prefix_max_le_1e_5": receipts["encoder_prefix_max"] <= 1e-5,
+        "orbit_orthogonality_max_le_1e_5": (
+            0.0 <= receipts["orthogonality_max"] <= 1e-5
+        ),
+        "orbit_streaming_max_le_1e_5": 0.0 <= receipts["streaming_max"] <= 1e-5,
+        "encoder_variance_min_ge_1e_5": (
+            math.isfinite(receipts["encoder_variance_min"])
+            and receipts["encoder_variance_min"] >= 1e-5
+        ),
+        "encoder_effective_rank_min_ge_16": (
+            math.isfinite(receipts["encoder_effective_rank_min"])
+            and receipts["encoder_effective_rank_min"] >= 16.0
+        ),
+        "encoder_singleton_max_le_1e_5": (
+            0.0 <= receipts["encoder_singleton_max"] <= 1e-5
+        ),
+        "encoder_prefix_max_le_1e_5": (
+            0.0 <= receipts["encoder_prefix_max"] <= 1e-5
+        ),
+        "probe_ceiling_max_lt_1": (
+            0.0 <= receipts["probe_ceiling_max"] < 1.0
+        ),
     }
 
 
@@ -431,7 +466,7 @@ def pilot_decision(rows, convergence) -> dict[str, Any]:
             "bootstrap_contract": BOOTSTRAP_CONTRACT,
             "bootstrap_contract_sha256": BOOTSTRAP_CONTRACT_SHA256,
         },
-        "scope": "prospectively_heldout_end_to_end_confirmation",
+        "scope": SCOPE,
         "note": "Immutable seeds-0--2 pilot; completion seeds run regardless.",
     }
 
@@ -464,8 +499,9 @@ def final_decision(rows, convergence, *, pilot_screen_passed: bool) -> dict[str,
             "bootstrap_contract": BOOTSTRAP_CONTRACT,
             "bootstrap_contract_sha256": BOOTSTRAP_CONTRACT_SHA256,
         },
-        "scope": "prospectively_heldout_end_to_end_confirmation",
+        "scope": SCOPE,
         "limitations": [
+            "R1 is adaptive after the predecessor normalization audit and is not a prospectively unopened study.",
             "A positive screen establishes the frozen five-task corruption cohort, not universal superiority.",
             "Private next-latent MSE is diagnostic only and is never pooled across learned encoders.",
             "Executed task return remains a separate outcome unless explicitly present in the sealed artifacts.",
@@ -530,8 +566,8 @@ def strict_validate_cells(root: Path, seeds: Sequence[int]) -> None:
 
 
 def parse_args(argv: Sequence[str] | None = None):
-    parser = argparse.ArgumentParser(description="Analyze the locked ORBIT-v10 grid.")
-    parser.add_argument("--root", type=Path, default=Path("outputs/hacssm_v10_shared"))
+    parser = argparse.ArgumentParser(description="Analyze the locked ORBIT-v10-R1 grid.")
+    parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--phase", choices=("pilot", "final"), required=True)
     return parser.parse_args(argv)
 
