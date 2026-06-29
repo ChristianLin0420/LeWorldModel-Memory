@@ -38,10 +38,10 @@ DONOR_CONTRACT = {
         "arithmetic mean over all training episodes and donor times in the same "
         "frozen phase with t_prime <= t"
     ),
-    "phase_strata": (
+    "phase_strata": [
         "pre", "blackout_transition", "deep_blackout", "first_post", "recovery",
         "late_post",
-    ),
+    ],
     "future_or_validation_donors": False,
 }
 DONOR_CONTRACT_SHA256 = hashlib.sha256(

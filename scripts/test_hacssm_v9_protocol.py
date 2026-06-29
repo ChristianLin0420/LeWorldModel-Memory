@@ -93,6 +93,11 @@ def test_grid_is_exact_unique_and_stage_locked() -> None:
     assert all(item.stage == "completion" for item in runner.COMPLETION_JOBS)
 
     protocol = _build_protocol()
+    # Protocol publication is a JSON round trip; tuple/list drift would make the freshly
+    # published lock differ from the still-live in-memory object before the first cell.
+    assert runner.shared.stable_equal(
+        protocol, json.loads(json.dumps(protocol, allow_nan=False))
+    )
     assert protocol["adaptive_development_only"] is True
     assert protocol["stages"]["pilot"] == {
         "designs": list(runner.DESIGNS), "seeds": [0, 1, 2], "runs": 195,
