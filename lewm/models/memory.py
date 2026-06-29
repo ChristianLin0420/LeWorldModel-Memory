@@ -965,6 +965,117 @@ class HierarchicalCounterfactualRecoveryMemory(HierarchicalActionConditionedMemo
 HCRDv7Memory = HierarchicalCounterfactualRecoveryMemory
 
 
+class SharedActionShrinkageMemory(HierarchicalActionConditionedMemory):
+    """HACSSM-v8 shared-action shrinkage predict/correct memory.
+
+    V8 retains only the V7 inference mechanisms supported by the completed ablations: two
+    fixed rates ``tau=(2,8)``, causal action transport, per-level convex shrinkage between
+    static and dynamic correction, and a joint read.  The nominated mode has one *physical*
+    ``A -> 2D`` action projection shared by both levels.  It has no teacher and defines no
+    internal-state auxiliary objective; those are model/trainer concerns and deliberately do
+    not appear in this module.
+
+    ``rho1`` and ``rho0`` are exact dynamic/static shrinkage endpoints. ``levelaction`` restores
+    V7's separate heads, while ``redundant`` keeps the same wide tensor but averages its heads
+    before either transition.  The latter is an optimization/parameterization receipt for the
+    compact shared head, not the nominated architecture.
+    """
+
+    MODES = {
+        # ``dynamic`` is required internally because the parent constructor validates through
+        # the subclass mode set.  It is not exposed by the CLI or the seven-design V8 protocol.
+        'dynamic', 'learned', 'rho1', 'rho0', 'levelaction', 'redundant',
+        'noaction', 'single',
+    }
+    TAUS = (2.0, 8.0)
+
+    def __init__(self, embed_dim: int, action_dim: int, mode: str = 'learned',
+                 rms_eps: float = 1e-6):
+        if mode not in self.MODES:
+            raise ValueError(f"unknown HACSSM-v8 mode '{mode}'")
+        parent_mode = mode if mode in {'noaction', 'single'} else 'dynamic'
+        super().__init__(
+            embed_dim=embed_dim, action_dim=action_dim, mode=parent_mode,
+            rms_eps=rms_eps, taus=self.TAUS)
+        self.v8_mode = mode
+        self.shrink_logits = nn.Parameter(torch.zeros(self.K))
+
+        # The nominated/shared endpoint modes retain the parent's physical A->2D map.  Only the
+        # two explicit action-parameterization controls instantiate V7's A->(K*2D) tensor.
+        if mode in {'levelaction', 'redundant'}:
+            self.W_a = nn.Linear(action_dim, self.K * 2 * embed_dim, bias=False)
+            nn.init.zeros_(self.W_a.weight)
+
+    @classmethod
+    def expected_parameter_count(cls, embed_dim: int, action_dim: int,
+                                 *, wide_action: bool = False) -> int:
+        """Return ``2D^2 + 2AD + 2D + 3K`` (or ``2D^2 + 2KAD + 2D + 3K``)."""
+        K = len(cls.TAUS)
+        action_parameters = 2 * (K if wide_action else 1) * action_dim * embed_dim
+        return (2 * embed_dim * embed_dim + action_parameters
+                + 2 * embed_dim + 3 * K)
+
+    def shrinkage(self) -> torch.Tensor:
+        if self.v8_mode == 'rho1':
+            return torch.ones_like(self.shrink_logits)
+        if self.v8_mode == 'rho0':
+            return torch.zeros_like(self.shrink_logits)
+        return torch.sigmoid(self.shrink_logits)
+
+    def _action_features(self, action: torch.Tensor) -> torch.Tensor:
+        """Return functional action features as ``(B,K,2D)`` for exact mode auditing."""
+        B = action.shape[0]
+        if self.v8_mode == 'noaction':
+            return action.new_zeros(B, self.K, 2 * self.embed_dim)
+        if self.v8_mode in {'levelaction', 'redundant'}:
+            features = self.W_a(action).view(B, self.K, 2 * self.embed_dim)
+            if self.v8_mode == 'redundant':
+                features = features.mean(dim=1, keepdim=True).expand(-1, self.K, -1)
+            return features
+        shared = self.W_a(action).unsqueeze(1)
+        return shared.expand(-1, self.K, -1)
+
+    def _action_prior_unchecked(self, states: torch.Tensor,
+                                action: torch.Tensor) -> torch.Tensor:
+        features = self._action_features(action)
+        d, v = features.chunk(2, dim=-1)
+        normalized = F.layer_norm(states, (self.embed_dim,))
+        delta = torch.tanh(v + d * normalized)
+        beta = self.betas.to(device=states.device, dtype=states.dtype).view(1, self.K, 1)
+        return states + beta * delta
+
+    def _dynamic_gate(self, z_t: torch.Tensor, x_t: torch.Tensor,
+                      prior: torch.Tensor) -> torch.Tensor:
+        dynamic = super()._dynamic_gate(z_t, x_t, prior)
+        static = torch.sigmoid(self.gate_bias).view(1, self.K, 1).expand_as(dynamic)
+        rho = self.shrinkage().to(device=z_t.device, dtype=z_t.dtype).view(1, self.K, 1)
+        return (1.0 - rho) * static + rho * dynamic
+
+    def horizons(self) -> Dict[str, float]:
+        result = super().horizons()
+        rho = self.shrinkage().detach()
+        result.update({
+            'rho_fast': float(rho[0]),
+            'rho_medium': float(rho[1]),
+        })
+        if self.v8_mode in {'levelaction', 'redundant'}:
+            action_heads = self.W_a.weight.detach().view(
+                self.K, 2 * self.embed_dim, self.action_dim)
+            result.update({
+                'action_head_fast_norm': float(action_heads[0].norm()),
+                'action_head_medium_norm': float(action_heads[1].norm()),
+                'action_head_cosine': float(F.cosine_similarity(
+                    action_heads[0].reshape(1, -1),
+                    action_heads[1].reshape(1, -1), dim=-1)[0]),
+            })
+        else:
+            result['action_head_shared_norm'] = float(self.W_a.weight.detach().norm())
+        return result
+
+
+SASPCv8Memory = SharedActionShrinkageMemory
+
+
 class HierarchicalActionConditionedSSMMemory(nn.Module):
     """HACSSM-v5: a hard-monotone, action-conditioned two-level SSM memory.
 

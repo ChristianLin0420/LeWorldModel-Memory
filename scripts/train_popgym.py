@@ -110,6 +110,35 @@ def counterfactual_recovery_metadata(memory_mode):
     }
 
 
+def shared_action_shrinkage_metadata(memory_mode):
+    """Machine-readable HACSSM-v8 inference-only architecture contract."""
+    if not memory_mode.startswith('hacssmv8'):
+        return {}
+    if memory_mode == 'hacssmv8_levelaction':
+        action_kind = 'level_specific'
+    elif memory_mode == 'hacssmv8_redundant':
+        action_kind = 'redundant_shared_average'
+    elif memory_mode == 'hacssmv8_noaction':
+        action_kind = 'none'
+    else:
+        action_kind = 'physically_shared'
+    shrinkage = (
+        'dynamic_only' if memory_mode == 'hacssmv8_dynamic'
+        else 'static_only' if memory_mode == 'hacssmv8_static'
+        else 'learned_static_dynamic_convex'
+    )
+    return {
+        'memory_arch_schema_version': 8,
+        'memory_architecture': 'shared_action_shrinkage_predict_correct',
+        'memory_inference_taus': [2.0, 8.0],
+        'memory_action_kind': action_kind,
+        'memory_shrinkage_kind': shrinkage,
+        'memory_joint_read': memory_mode != 'hacssmv8_single',
+        'memory_internal_auxiliary': 'none',
+        'memory_teacher_present': False,
+    }
+
+
 def run_epoch(model, loader, opt, device, train, use_amp, first_post_loss_weight=0.0):
     model.train(train)
     if not any(p.requires_grad for p in model.encoder.parameters()):
@@ -420,7 +449,10 @@ def main():
                             'hacssmv7', 'hacssmv7_noaux', 'hacssmv7_sharedaction',
                             'hacssmv7_noshrink', 'hacssmv7_actiononly',
                             'hacssmv7_uniform', 'hacssmv7_norecovery',
-                            'hacssmv7_noaction', 'hacssmv7_single'])
+                            'hacssmv7_noaction', 'hacssmv7_single',
+                            'hacssmv8', 'hacssmv8_dynamic', 'hacssmv8_static',
+                            'hacssmv8_levelaction', 'hacssmv8_redundant',
+                            'hacssmv8_noaction', 'hacssmv8_single'])
     p.add_argument('--smt-router', default='softmax',
                    choices=['softmax', 'scaled_softmax', 'sigmoid'])
     p.add_argument('--seed', type=int, default=0)
@@ -503,6 +535,11 @@ def main():
         raise ValueError('--hier-loss-schedule v5_frontload requires at least 120 epochs')
     if args.hier_loss_schedule == 'v6_bootstrap' and args.epochs < 100:
         raise ValueError('--hier-loss-schedule v6_bootstrap requires at least 100 epochs')
+    if args.memory_mode.startswith('hacssmv8') and (
+            args.hier_loss_weight != 0.0 or args.hier_loss_schedule != 'fixed'):
+        raise ValueError(
+            'HACSSM-v8 has no internal auxiliary; require --hier-loss-weight 0 '
+            'and --hier-loss-schedule fixed')
 
     feature_mode = any((args.train_feature_cache, args.val_feature_cache, args.feature_manifest))
     if feature_mode and not all((args.train_feature_cache, args.val_feature_cache, args.feature_manifest)):
@@ -609,7 +646,8 @@ def main():
             tags=tags, dir=str(wandb_dir),
             config=(vars(args) | {'n_actions': n_actions, 'benchmark': 'popgym-arcade'}
                     | hierarchical_objective_metadata(args.memory_mode)
-                    | counterfactual_recovery_metadata(args.memory_mode)),
+                    | counterfactual_recovery_metadata(args.memory_mode)
+                    | shared_action_shrinkage_metadata(args.memory_mode)),
             settings=wandb.Settings(init_timeout=120),
         )
         if args.wandb_mode is not None:
@@ -654,7 +692,10 @@ def main():
             'hacssmv6_noaction', 'hacssmv6_static', 'hacssmv6_single',
             'hacssmv7', 'hacssmv7_noaux', 'hacssmv7_sharedaction',
             'hacssmv7_noshrink', 'hacssmv7_actiononly', 'hacssmv7_uniform',
-            'hacssmv7_norecovery', 'hacssmv7_noaction', 'hacssmv7_single') else 'ema'
+            'hacssmv7_norecovery', 'hacssmv7_noaction', 'hacssmv7_single',
+            'hacssmv8', 'hacssmv8_dynamic', 'hacssmv8_static',
+            'hacssmv8_levelaction', 'hacssmv8_redundant',
+            'hacssmv8_noaction', 'hacssmv8_single') else 'ema'
     ema_mode = 'both' if impl != 'ema' else args.memory_mode
     model = MemoryLeWorldModel(
         img_size=args.img_size, patch_size=args.patch_size, embed_dim=args.embed_dim, action_dim=n_actions,
@@ -828,6 +869,7 @@ def main():
             'trainable_parameters': model.num_parameters(),
             **hierarchical_objective_metadata(args.memory_mode),
             **counterfactual_recovery_metadata(args.memory_mode),
+            **shared_action_shrinkage_metadata(args.memory_mode),
             **tau_json}
     for key, value in va.items():
         if key.startswith('hier_'):
@@ -900,7 +942,8 @@ def main():
                     'sha256': best['eval_rollout_sha256'],
                     'semantics': 'closed-loop-on-observations clean-next-latent evaluation trace',
                 } | hierarchical_objective_metadata(args.memory_mode)
-                  | counterfactual_recovery_metadata(args.memory_mode),
+                  | counterfactual_recovery_metadata(args.memory_mode)
+                  | shared_action_shrinkage_metadata(args.memory_mode),
             )
             rollout_artifact.add_file(str(rollout_path), name='eval_rollout.npz')
             wb.log_artifact(rollout_artifact)

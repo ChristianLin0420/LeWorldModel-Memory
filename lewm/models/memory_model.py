@@ -29,7 +29,8 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 SelectiveMultiTimescaleMemory, SelectiveUpdateMemoryV3,
                                 HierarchicalActionConditionedMemory,
                                 HierarchicalActionConditionedSSMMemory,
-                                HierarchicalCounterfactualRecoveryMemory, OCSMTMemory)
+                                HierarchicalCounterfactualRecoveryMemory,
+                                SharedActionShrinkageMemory, OCSMTMemory)
 
 
 _SMTV3_MODES = {
@@ -103,6 +104,16 @@ _HACSSMV7_HIERARCHICAL_HORIZONS = ((0, 1), (0, 2), (1, 4), (1, 8))
 _HACSSMV7_UNIFORM_HORIZONS = tuple(
     (level, horizon) for level in (0, 1) for horizon in (1, 2, 4, 8)
 )
+
+_HACSSMV8_MODES = {
+    'hacssmv8': 'learned',
+    'hacssmv8_dynamic': 'rho1',
+    'hacssmv8_static': 'rho0',
+    'hacssmv8_levelaction': 'levelaction',
+    'hacssmv8_redundant': 'redundant',
+    'hacssmv8_noaction': 'noaction',
+    'hacssmv8_single': 'single',
+}
 
 
 class MemoryLeWorldModel(LeWorldModel):
@@ -189,6 +200,10 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_hacssmv7_teacher = copy.deepcopy(self.mem_hacssmv7)
             self.mem_hacssmv7_teacher.requires_grad_(False)
             self.hier_teacher_momentum = 0.99
+        elif memory_impl in _HACSSMV8_MODES:                # compact shared-action shrinkage
+            self.mem_hacssmv8 = SharedActionShrinkageMemory(
+                embed_dim=self.embed_dim, action_dim=self.action_dim,
+                mode=_HACSSMV8_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -212,9 +227,10 @@ class MemoryLeWorldModel(LeWorldModel):
         if (return_memory_details and self.memory_impl not in _HACSMV4_MODES
                 and self.memory_impl not in _HACSSMV5_MODES
                 and self.memory_impl not in _HACSSMV6_MODES
-                and self.memory_impl not in _HACSSMV7_MODES):
+                and self.memory_impl not in _HACSSMV7_MODES
+                and self.memory_impl not in _HACSSMV8_MODES):
             raise ValueError(
-                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7')
+                'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/v7/v8')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -274,6 +290,17 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_hacssmv7.fuse(z, mixed), details
             return self.mem_hacssmv7.fuse(z, result)
+        if self.memory_impl in _HACSSMV8_MODES:
+            if actions is None:
+                raise ValueError('HACSSM-v8 requires actions with a_t mapping z_t to z_{t+1}')
+            result = self.mem_hacssmv8(
+                z, actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override, action_override=action_override,
+                return_details=return_memory_details)
+            if return_memory_details:
+                mixed, details = result
+                return self.mem_hacssmv8.fuse(z, mixed), details
+            return self.mem_hacssmv8.fuse(z, result)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -300,6 +327,8 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_hacssmv6.horizons()
         if self.memory_impl in _HACSSMV7_MODES:
             return self.mem_hacssmv7.horizons()
+        if self.memory_impl in _HACSSMV8_MODES:
+            return self.mem_hacssmv8.horizons()
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -770,7 +799,14 @@ class MemoryLeWorldModel(LeWorldModel):
 
         # Memory over the full causal history (ema / multi / gru), injected into the predictor input.
         memory_details = None
-        if (self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES
+        if self.memory_impl in _HACSSMV8_MODES:
+            # V8 is an action-conditioned two-level inference memory, but intentionally has no
+            # teacher or internal-state auxiliary.  Do not request details here: the generic
+            # hierarchy tail below interprets non-None details as a request to add an auxiliary.
+            z_tilde = self._inject(
+                z, actions=actions, memory_update_mask=memory_update_mask,
+                gate_override=gate_override)
+        elif (self.memory_impl in _HACSMV4_MODES or self.memory_impl in _HACSSMV5_MODES
                 or self.memory_impl in _HACSSMV6_MODES
                 or self.memory_impl in _HACSSMV7_MODES):
             z_tilde, memory_details = self._inject(
@@ -930,6 +966,7 @@ class MemoryLeWorldModel(LeWorldModel):
             or self.memory_impl in _HACSSMV5_MODES
             or self.memory_impl in _HACSSMV6_MODES
             or self.memory_impl in _HACSSMV7_MODES
+            or self.memory_impl in _HACSSMV8_MODES
         )
         if hierarchical:
             z_full, details = self._inject(
@@ -942,8 +979,10 @@ class MemoryLeWorldModel(LeWorldModel):
                 memory = self.mem_hacssmv5
             elif self.memory_impl in _HACSSMV6_MODES:
                 memory = self.mem_hacssmv6
-            else:
+            elif self.memory_impl in _HACSSMV7_MODES:
                 memory = self.mem_hacssmv7
+            else:
+                memory = self.mem_hacssmv8
             states = details['states']
             route = details['route'].to(device=states.device, dtype=states.dtype)
 
