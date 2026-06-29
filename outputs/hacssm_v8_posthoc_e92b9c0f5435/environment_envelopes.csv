@@ -1,0 +1,6 @@
+env,candidate_mse,candidate_rank_all_13,performance_winner,performance_winner_mse,candidate_beats_performance_envelope,endpoint_environment_winner,endpoint_environment_winner_mse,candidate_beats_endpoint_environment_mean,last_visible_hold_mse,candidate_beats_last_visible_hold
+dmc:reacher.hard.occ,0.8291808605194092,7,ssm,0.8172305583953857,False,hacssmv8_dynamic,0.8312952160835266,True,0.7168161869049072,False
+dmc:ball_in_cup.catch.occ,0.9317137479782105,5,hacssmv6_static,0.8935149788856507,False,hacssmv8_static,0.9160898208618165,False,2.2903213500976562,True
+dmc:finger.spin.occ,1.1369792461395263,3,hacssmv8_dynamic,1.1279508352279664,False,hacssmv8_dynamic,1.1279508352279664,False,1.2537477016448975,True
+dmc:cheetah.run.occ,0.5503265023231506,3,hacssmv6_static,0.5297807931900025,False,hacssmv8_static,0.5391395211219787,False,1.0144654512405396,True
+ogbench:cube-single.occ,1.3597899198532104,7,hacssmv7_norecovery,1.3450101137161254,False,hacssmv8_static,1.3580640792846679,False,1.7784466743469238,True

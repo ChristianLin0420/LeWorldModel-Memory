@@ -1,0 +1,211 @@
+{
+  "bootstrap_contract": {
+    "algorithm": "crossed_environment_seed_percentile_bootstrap",
+    "draws": 100000,
+    "estimand": "mean paired relative reduction (reference-candidate)/reference",
+    "quantiles": {
+      "method": "linear",
+      "reported": [
+        0.05,
+        0.025,
+        0.975,
+        0.95
+      ]
+    },
+    "resampling": "independently sample E environment indices and S optimizer-seed indices with replacement; evaluate the E-by-S Cartesian product; equal-weight mean",
+    "rng": "numpy.random.Generator(numpy.random.PCG64)",
+    "schema_version": 1,
+    "seed": 8008
+  },
+  "bootstrap_contract_sha256": "b387010d207f96e9e6777c272ec51629764bfc190cbfd3f323fe6196c38f969e",
+  "candidate_environment_ranks": {
+    "dmc:ball_in_cup.catch.occ": 5,
+    "dmc:cheetah.run.occ": 3,
+    "dmc:finger.spin.occ": 3,
+    "dmc:reacher.hard.occ": 7,
+    "ogbench:cube-single.occ": 7
+  },
+  "convergence_all_designs": {
+    "absolute_window_change_max": 0.02754212360044176,
+    "absolute_window_change_median": 0.003972539092966782,
+    "absolute_window_change_p95": 0.01665603371298386,
+    "n_runs": 325
+  },
+  "envelope_summary": {
+    "endpoint_environment_wins": 1,
+    "endpoint_per_cell": {
+      "environment_mean_wins": 1,
+      "mean_paired_relative_reduction": -0.009600068426559137,
+      "paired_wins": 9
+    },
+    "last_visible_hold_environment_wins": 4,
+    "performance_environment_wins": 0
+  },
+  "failed_final_criteria": [
+    "compact_redundant_abs_mean_le_0_25pct",
+    "compact_redundant_all_env_abs_le_1pct",
+    "compact_redundant_ci90_inside_plusminus_1pct",
+    "learned_vs_endpoint_envelope_env_wins_ge_3_of_5",
+    "learned_vs_endpoint_envelope_reduction_ge_1pct",
+    "learned_vs_endpoint_envelope_wins_ge_15_of_25",
+    "performance_envelope_wins_ge_3_of_5",
+    "redundant_vs_levelaction_reduction_ge_0_5pct",
+    "redundant_vs_levelaction_wins_ge_15_of_25",
+    "vs_ssm_reduction_ge_7pct",
+    "vs_static_env_wins_ge_3_of_5",
+    "vs_v6_static_reduction_ge_1pct",
+    "vs_v6_static_wins_ge_15_of_25",
+    "vs_v7_norecovery_env_wins_ge_3_of_5",
+    "vs_v7_norecovery_wins_ge_13_of_25",
+    "vs_v7_shared_reduction_ge_1pct",
+    "vs_v7_shared_wins_ge_15_of_25"
+  ],
+  "interpretation": [
+    "Compact V8 is second by paired reduction versus SSM, behind V7 shared-action.",
+    "Action transport and the joint read remain large positive structural mechanisms.",
+    "Action tying, compact/redundant equivalence, and dominance of the retrained endpoint envelope do not clear their locked gates.",
+    "Pilot/completion sign changes in close contrasts make them descriptive rather than confirmation."
+  ],
+  "key_final_bootstrap_intervals": {
+    "action_tying": {
+      "candidate": "hacssmv8_redundant",
+      "ci90_high": 0.01089636705502777,
+      "ci90_low": -0.007820913774516474,
+      "ci95_high": 0.0132983438479402,
+      "ci95_low": -0.009949226310589776,
+      "point_mean_paired_relative_reduction": 0.0015534296205156894,
+      "reference": "hacssmv8_levelaction"
+    },
+    "compact_redundant_equivalence": {
+      "candidate": "hacssmv8",
+      "ci90_high": 0.012699764512132297,
+      "ci90_low": -0.0051455919500155425,
+      "ci95_high": 0.01533785696710089,
+      "ci95_low": -0.006563484344750267,
+      "point_mean_paired_relative_reduction": 0.0027444557990346976,
+      "reference": "hacssmv8_redundant"
+    },
+    "direct": {
+      "candidate": "hacssmv8",
+      "ci90_high": 0.10510486334141557,
+      "ci90_low": 0.02071629610154138,
+      "ci95_high": 0.1146375449221425,
+      "ci95_low": 0.013957441991250978,
+      "point_mean_paired_relative_reduction": 0.062035640739721905,
+      "reference": "ssm"
+    },
+    "per_cell_endpoint_envelope": {
+      "candidate": "hacssmv8",
+      "ci90_high": 0.0016771185092708024,
+      "ci90_low": -0.024449063639561498,
+      "ci95_high": 0.004189054651394749,
+      "ci95_low": -0.02832954711295106,
+      "point_mean_paired_relative_reduction": -0.009600068426559137,
+      "reference": "min(hacssmv8_dynamic,hacssmv8_static)_per_cell"
+    },
+    "v7_leader_noninferiority": {
+      "candidate": "hacssmv8",
+      "ci90_high": 0.006214286357812286,
+      "ci90_low": -0.010565928650759051,
+      "ci95_high": 0.00861598767014785,
+      "ci95_low": -0.01260065880004873,
+      "point_mean_paired_relative_reduction": -0.0022835395297511173,
+      "reference": "hacssmv7_sharedaction"
+    }
+  },
+  "learned_compact_v8_parameters": {
+    "action_head_delta_l2": {
+      "max": 3.495475967342883,
+      "mean": 3.182417312733846,
+      "min": 2.847316853248503,
+      "population_std": 0.1979620144999381
+    },
+    "action_head_l2": {
+      "max": 4.577459747595373,
+      "mean": 3.8915147286978113,
+      "min": 3.2555520343055107,
+      "population_std": 0.4034947516318943
+    },
+    "action_head_velocity_l2": {
+      "max": 3.00765942598256,
+      "mean": 2.1563062092030045,
+      "min": 0.9432362680845765,
+      "population_std": 0.7000496545574991
+    },
+    "design": "hacssmv8",
+    "n_runs": 25,
+    "rho_fast": {
+      "max": 0.6455554488876986,
+      "mean": 0.6198841735358191,
+      "min": 0.6023189199925215,
+      "population_std": 0.012096074751041085
+    },
+    "rho_medium": {
+      "max": 0.5772562713255779,
+      "mean": 0.5417733731839462,
+      "min": 0.5176361825589506,
+      "population_std": 0.017700230503526298
+    },
+    "route_fast": {
+      "max": 0.6429966625509945,
+      "mean": 0.5563943765318804,
+      "min": 0.4861179997556464,
+      "population_std": 0.04851598604924552
+    },
+    "route_medium": {
+      "max": 0.5138820002443535,
+      "mean": 0.4436056234681196,
+      "min": 0.35700333744900553,
+      "population_std": 0.04851598604924552
+    },
+    "static_gate_fast": {
+      "max": 0.8457858956150696,
+      "mean": 0.8397841726459039,
+      "min": 0.8355690019623572,
+      "population_std": 0.0032336744920751642
+    },
+    "static_gate_medium": {
+      "max": 0.8989539841759222,
+      "mean": 0.8824036335743682,
+      "min": 0.8640779844653939,
+      "population_std": 0.01256035138831843
+    },
+    "trainable_parameters": {
+      "max": 851078.0,
+      "mean": 851078.0,
+      "min": 851078.0,
+      "population_std": 0.0
+    }
+  },
+  "limitations": [
+    "V8 was selected adaptively after V1-V7 on the same tasks and trajectories.",
+    "The package reports latent prediction rather than simulator state or executed return.",
+    "Raw PCA MSE is reported only within an environment and is never pooled across environments."
+  ],
+  "locked_record": {
+    "completed_runs": 325,
+    "final_decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+    "good_enough_for_compact_noninferiority_claim": false,
+    "good_enough_for_overall_best_claim": false,
+    "pilot_decision": "NO_GO",
+    "pilot_screen_passed": false,
+    "primary_manifest_sha256": "e92b9c0f5435ae8252f1f6f0a7e5995ac3647de136c889ff79b9b3aa5adb841c",
+    "producer_git_commit": "c75d628b635d6e6ad158753aa9bbe34a0534bac6"
+  },
+  "schema_version": 1,
+  "scope": "descriptive sealed-record post-hoc diagnostics; cannot alter the pilot or final decision",
+  "ssm_relative_ranking": {
+    "candidate": {
+      "design": "hacssmv8",
+      "environment_mean_wins": 4,
+      "mean_paired_relative_reduction": 0.062035640739721905,
+      "paired_wins": 22,
+      "rank": 2
+    },
+    "leader": {
+      "design": "hacssmv7_sharedaction",
+      "mean_paired_relative_reduction": 0.06425820970303893,
+      "rank": 1
+    }
+  }
+}

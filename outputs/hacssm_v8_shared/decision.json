@@ -1,0 +1,408 @@
+{
+  "adaptive_development_only": true,
+  "best_in_focused_locked_grid": false,
+  "compact_noninferior_to_v7_leader": false,
+  "completed_runs": 325,
+  "criteria": {
+    "beats_hold_ge_4_of_5": true,
+    "compact_redundant_abs_mean_le_0_25pct": false,
+    "compact_redundant_all_env_abs_le_1pct": false,
+    "compact_redundant_ci90_inside_plusminus_1pct": false,
+    "convergence_absolute_max_lt_5pct": true,
+    "convergence_absolute_median_lt_1pct": true,
+    "convergence_absolute_p95_lt_3pct": true,
+    "learned_vs_endpoint_envelope_env_wins_ge_3_of_5": false,
+    "learned_vs_endpoint_envelope_reduction_ge_1pct": false,
+    "learned_vs_endpoint_envelope_wins_ge_15_of_25": false,
+    "performance_envelope_wins_ge_3_of_5": false,
+    "redundant_vs_levelaction_env_wins_ge_3_of_5": true,
+    "redundant_vs_levelaction_reduction_ge_0_5pct": false,
+    "redundant_vs_levelaction_wins_ge_15_of_25": false,
+    "vs_dynamic_env_wins_ge_3_of_5": true,
+    "vs_dynamic_positive": true,
+    "vs_dynamic_wins_ge_13_of_25": true,
+    "vs_full_v6_env_wins_ge_3_of_5": true,
+    "vs_full_v6_reduction_ge_1pct": true,
+    "vs_full_v6_wins_ge_15_of_25": true,
+    "vs_noaction_env_wins_ge_3_of_5": true,
+    "vs_noaction_reduction_ge_3pct": true,
+    "vs_noaction_wins_ge_17_of_25": true,
+    "vs_single_env_wins_ge_3_of_5": true,
+    "vs_single_reduction_ge_3pct": true,
+    "vs_single_wins_ge_17_of_25": true,
+    "vs_ssm_env_wins_ge_4_of_5": true,
+    "vs_ssm_reduction_ge_7pct": false,
+    "vs_ssm_wins_ge_20_of_25": true,
+    "vs_static_env_wins_ge_3_of_5": false,
+    "vs_static_positive": true,
+    "vs_static_wins_ge_13_of_25": true,
+    "vs_v6_static_env_wins_ge_3_of_5": true,
+    "vs_v6_static_reduction_ge_1pct": false,
+    "vs_v6_static_wins_ge_15_of_25": false,
+    "vs_v7_norecovery_env_wins_ge_3_of_5": false,
+    "vs_v7_norecovery_positive": true,
+    "vs_v7_norecovery_wins_ge_13_of_25": false,
+    "vs_v7_shared_env_wins_ge_3_of_5": true,
+    "vs_v7_shared_reduction_ge_1pct": false,
+    "vs_v7_shared_wins_ge_15_of_25": false
+  },
+  "decision": "PILOT_NO_GO_FINAL_DESCRIPTIVE",
+  "good_enough_for_compact_noninferiority_claim": false,
+  "good_enough_for_overall_best_claim": false,
+  "limitations": [
+    "V8 was selected after inspecting V1-V7 on the same five tasks, corruption, and seed-7777 trajectories.",
+    "Optimizer seeds do not make the task/corruption/trajectory grid untouched.",
+    "No simulator-state outcome, executed-control return, or tuned contemporary baseline is measured.",
+    "The redundant control is excluded from the performance envelope because it is an equivalence receipt."
+  ],
+  "noninferiority_criteria": {
+    "compact_redundant_abs_mean_le_0_25pct": false,
+    "compact_redundant_all_env_abs_le_1pct": false,
+    "compact_redundant_ci90_inside_plusminus_1pct": false,
+    "learned_vs_endpoint_envelope_env_wins_ge_3_of_5": false,
+    "learned_vs_endpoint_envelope_reduction_ge_1pct": false,
+    "learned_vs_endpoint_envelope_wins_ge_15_of_25": false,
+    "noninferiority_convergence_max_lt_5pct": true,
+    "noninferiority_convergence_median_lt_1pct": true,
+    "noninferiority_convergence_p95_lt_3pct": true,
+    "noninferiority_vs_ssm_reduction_ge_6pct": true,
+    "redundant_vs_levelaction_env_wins_ge_3_of_5": true,
+    "redundant_vs_levelaction_reduction_ge_0_5pct": false,
+    "redundant_vs_levelaction_wins_ge_15_of_25": false,
+    "vs_v7_leader_bootstrap95_lower_gt_minus_1pct": false,
+    "vs_v7_leader_envs_gt_minus_1pct_ge_4_of_5": true,
+    "vs_v7_leader_point_gt_minus_0_5pct": true
+  },
+  "note": "All labels are deterministic adaptive-development labels only. Even OVERALL_BEST_ADAPTIVE_DEV is not an untouched-test or ICLR claim.",
+  "observed": {
+    "bootstrap_contract": {
+      "algorithm": "crossed_environment_seed_percentile_bootstrap",
+      "draws": 100000,
+      "estimand": "mean paired relative reduction (reference-candidate)/reference",
+      "quantiles": {
+        "method": "linear",
+        "reported": [
+          0.05,
+          0.025,
+          0.975,
+          0.95
+        ]
+      },
+      "resampling": "independently sample E environment indices and S optimizer-seed indices with replacement; evaluate the E-by-S Cartesian product; equal-weight mean",
+      "rng": "numpy.random.Generator(numpy.random.PCG64)",
+      "schema_version": 1,
+      "seed": 8008
+    },
+    "bootstrap_contract_sha256": "b387010d207f96e9e6777c272ec51629764bfc190cbfd3f323fe6196c38f969e",
+    "convergence_absolute": {
+      "max": 0.02754212360044176,
+      "median": 0.003972539092966782,
+      "p95": 0.01665603371298386
+    },
+    "environment_mean_wins": {
+      "hacssmv6": 4,
+      "hacssmv6_static": 3,
+      "hacssmv7_noaux": 3,
+      "hacssmv7_norecovery": 2,
+      "hacssmv7_sharedaction": 3,
+      "hacssmv8_dynamic": 4,
+      "hacssmv8_levelaction": 3,
+      "hacssmv8_noaction": 4,
+      "hacssmv8_redundant": 3,
+      "hacssmv8_single": 5,
+      "hacssmv8_static": 2,
+      "ssm": 4
+    },
+    "hold_environment_wins": 4,
+    "mechanism": {
+      "action_sharing": {
+        "candidate": "hacssmv8_redundant",
+        "environment_mean_reductions": {
+          "dmc:ball_in_cup.catch.occ": 0.0034714562040907802,
+          "dmc:cheetah.run.occ": -0.00045312121474530353,
+          "dmc:finger.spin.occ": 0.00403931259423157,
+          "dmc:reacher.hard.occ": -0.001430754043375125,
+          "ogbench:cube-single.occ": 0.0028094554046167227
+        },
+        "environment_mean_wins": 3,
+        "mean_paired_relative_reduction": 0.0015534296205156894,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 12,
+        "reference": "hacssmv8_levelaction"
+      },
+      "compact_redundant_equivalence": {
+        "bootstrap": {
+          "candidate": "hacssmv8",
+          "ci90": [
+            -0.0051455919500155425,
+            0.012699764512132297
+          ],
+          "ci95": [
+            -0.006563484344750267,
+            0.01533785696710089
+          ],
+          "contract_sha256": "b387010d207f96e9e6777c272ec51629764bfc190cbfd3f323fe6196c38f969e",
+          "environment_mean_reductions": {
+            "dmc:ball_in_cup.catch.occ": 0.002196859349779986,
+            "dmc:cheetah.run.occ": 0.01748985223145319,
+            "dmc:finger.spin.occ": 0.004576206868728275,
+            "dmc:reacher.hard.occ": -0.002001143509376536,
+            "ogbench:cube-single.occ": -0.008539495945411427
+          },
+          "n_environments": 5,
+          "n_seeds": 5,
+          "point_mean_paired_relative_reduction": 0.0027444557990346976,
+          "reference": "hacssmv8_redundant"
+        },
+        "criteria": {
+          "compact_redundant_abs_mean_le_0_25pct": false,
+          "compact_redundant_all_env_abs_le_1pct": false,
+          "compact_redundant_ci90_inside_plusminus_1pct": false
+        },
+        "pairwise": {
+          "candidate": "hacssmv8",
+          "environment_mean_reductions": {
+            "dmc:ball_in_cup.catch.occ": 0.002438007082403235,
+            "dmc:cheetah.run.occ": 0.01795379742115069,
+            "dmc:finger.spin.occ": 0.004583331733042174,
+            "dmc:reacher.hard.occ": -0.0020306768616026117,
+            "ogbench:cube-single.occ": -0.008530554084963698
+          },
+          "environment_mean_wins": 3,
+          "mean_paired_relative_reduction": 0.0027444557990346976,
+          "n_pairs": 25,
+          "paired_ties": 0,
+          "paired_wins": 12,
+          "reference": "hacssmv8_redundant"
+        }
+      },
+      "endpoint_envelope": {
+        "candidate": "hacssmv8",
+        "environment_best_endpoint_mse": {
+          "dmc:ball_in_cup.catch.occ": 0.9160898208618165,
+          "dmc:cheetah.run.occ": 0.5391395211219787,
+          "dmc:finger.spin.occ": 1.1279508352279664,
+          "dmc:reacher.hard.occ": 0.8312952160835266,
+          "ogbench:cube-single.occ": 1.3580640792846679
+        },
+        "environment_candidate_mse": {
+          "dmc:ball_in_cup.catch.occ": 0.9317137479782105,
+          "dmc:cheetah.run.occ": 0.5503265023231506,
+          "dmc:finger.spin.occ": 1.1369792461395263,
+          "dmc:reacher.hard.occ": 0.8291808605194092,
+          "ogbench:cube-single.occ": 1.3597899198532104
+        },
+        "environment_mean_wins": 1,
+        "mean_paired_relative_reduction": -0.009600068426559137,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 9,
+        "references": [
+          "hacssmv8_dynamic",
+          "hacssmv8_static"
+        ],
+        "selection": "minimum retrained endpoint independently within each paired cell"
+      },
+      "v7_leader_noninferiority": {
+        "bootstrap": {
+          "candidate": "hacssmv8",
+          "ci90": [
+            -0.010565928650759051,
+            0.006214286357812286
+          ],
+          "ci95": [
+            -0.01260065880004873,
+            0.00861598767014785
+          ],
+          "contract_sha256": "b387010d207f96e9e6777c272ec51629764bfc190cbfd3f323fe6196c38f969e",
+          "environment_mean_reductions": {
+            "dmc:ball_in_cup.catch.occ": -0.017206438419323077,
+            "dmc:cheetah.run.occ": 0.007986938717022232,
+            "dmc:finger.spin.occ": 0.005195136403663074,
+            "dmc:reacher.hard.occ": 0.0007122217328258602,
+            "ogbench:cube-single.occ": -0.008105556082943671
+          },
+          "n_environments": 5,
+          "n_seeds": 5,
+          "point_mean_paired_relative_reduction": -0.0022835395297511173,
+          "reference": "hacssmv7_sharedaction"
+        },
+        "criteria": {
+          "vs_v7_leader_bootstrap95_lower_gt_minus_1pct": false,
+          "vs_v7_leader_envs_gt_minus_1pct_ge_4_of_5": true,
+          "vs_v7_leader_point_gt_minus_0_5pct": true
+        },
+        "pairwise": {
+          "candidate": "hacssmv8",
+          "environment_mean_reductions": {
+            "dmc:ball_in_cup.catch.occ": -0.01721822755074149,
+            "dmc:cheetah.run.occ": 0.00817635652352825,
+            "dmc:finger.spin.occ": 0.005145300284305795,
+            "dmc:reacher.hard.occ": 0.000700849638135687,
+            "ogbench:cube-single.occ": -0.008175998114376054
+          },
+          "environment_mean_wins": 3,
+          "mean_paired_relative_reduction": -0.0022835395297511173,
+          "n_pairs": 25,
+          "paired_ties": 0,
+          "paired_wins": 11,
+          "reference": "hacssmv7_sharedaction"
+        }
+      }
+    },
+    "overall_contrasts": {
+      "hacssmv6": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.010523589301526406,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 18,
+        "reference": "hacssmv6",
+        "reference_mean_mse": ""
+      },
+      "hacssmv6_static": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.0010427292223064615,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 13,
+        "reference": "hacssmv6_static",
+        "reference_mean_mse": ""
+      },
+      "hacssmv7_noaux": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0044359787503261035,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 12,
+        "reference": "hacssmv7_noaux",
+        "reference_mean_mse": ""
+      },
+      "hacssmv7_norecovery": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0007521797265319156,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 9,
+        "reference": "hacssmv7_norecovery",
+        "reference_mean_mse": ""
+      },
+      "hacssmv7_sharedaction": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": -0.0022835395297511165,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 11,
+        "reference": "hacssmv7_sharedaction",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_dynamic": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.014878953455579104,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 19,
+        "reference": "hacssmv8_dynamic",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_levelaction": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0044359787503261035,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 12,
+        "reference": "hacssmv8_levelaction",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_noaction": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.14868605551927075,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 22,
+        "reference": "hacssmv8_noaction",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_redundant": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0027444557990346976,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 12,
+        "reference": "hacssmv8_redundant",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_single": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0933737304151012,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 25,
+        "reference": "hacssmv8_single",
+        "reference_mean_mse": ""
+      },
+      "hacssmv8_static": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.005378937874374637,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 14,
+        "reference": "hacssmv8_static",
+        "reference_mean_mse": ""
+      },
+      "ssm": {
+        "candidate": "hacssmv8",
+        "candidate_mean_mse": "",
+        "env": "__overall__",
+        "mean_paired_relative_reduction": 0.0620356407397219,
+        "n_pairs": 25,
+        "paired_ties": 0,
+        "paired_wins": 22,
+        "reference": "ssm",
+        "reference_mean_mse": ""
+      }
+    },
+    "performance_envelope_designs": [
+      "ssm",
+      "hacssmv6",
+      "hacssmv6_static",
+      "hacssmv7_noaux",
+      "hacssmv7_sharedaction",
+      "hacssmv7_norecovery",
+      "hacssmv8_dynamic",
+      "hacssmv8_static",
+      "hacssmv8_levelaction",
+      "hacssmv8_noaction",
+      "hacssmv8_single"
+    ],
+    "performance_envelope_env_wins": 0
+  },
+  "phase": "final",
+  "pilot_noninferiority_screen_passed": false,
+  "pilot_screen_passed": false,
+  "schema_version": 1,
+  "scope": "adaptive_development_only"
+}

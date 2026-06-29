@@ -1,0 +1,69 @@
+{
+  "artifact_audit": {
+    "eval_rollout_artifacts": {
+      "files": 5,
+      "records": 5,
+      "symlinks": 0
+    },
+    "feature_artifacts": {
+      "files": 15,
+      "records": 15,
+      "symlinks": 0
+    },
+    "log_artifacts": {
+      "files": 327,
+      "records": 327,
+      "symlinks": 0
+    },
+    "output_artifacts": {
+      "files": 4562,
+      "records": 5862,
+      "symlinks": 1300
+    },
+    "protocol": {
+      "files": 1,
+      "records": 1,
+      "symlinks": 0
+    },
+    "source_artifacts": {
+      "files": 11,
+      "records": 11,
+      "symlinks": 0
+    }
+  },
+  "identity_all_exact": {
+    "sealed_anchors": true,
+    "v8_levelaction_v7_noaux": true,
+    "v8_redundant_heads": true
+  },
+  "identity_counts": {
+    "sealed_anchor_identities": 150,
+    "v8_levelaction_v7_noaux_identities": 25,
+    "v8_redundant_head_receipts": 25
+  },
+  "locked_equivalence_receipts_sha256": "28e4c6dceef671196fe992cbf0b84df273ec1e0fc61ad86b90f363a3b5603b7c",
+  "locked_final_decision_sha256": "28388137708d27211bbb8ee3f1a4f7842e4b329e3c383185720ccac25cc4645b",
+  "locked_pilot_decision_sha256": "1c5e47386cb75325f22e1a20d19190615774eb0e483b9673d67f78d8ed5a1cb7",
+  "locked_primary_manifest_sha256": "e92b9c0f5435ae8252f1f6f0a7e5995ac3647de136c889ff79b9b3aa5adb841c",
+  "schema_version": 1,
+  "sealed_v7_manifest_sha256": "98eda8abec229753381bed5f22c70317428242470cc6f40b6a3f9c16d0f55c11",
+  "validated_jobs": 325,
+  "wandb_cloud_verification": {
+    "entity": "crlc112358",
+    "project": "lewm-memory-popgym",
+    "study": "hacssm-v8",
+    "verified_at": "2026-06-29T03:42:21.575843+00:00",
+    "verified_complete_epoch_histories": 325,
+    "verified_finished_runs": 325,
+    "verified_rollout_artifacts": 325,
+    "verified_rollout_tables": 325,
+    "verified_rollout_videos": 325
+  },
+  "wandb_modes": {
+    "online": 325
+  },
+  "wandb_run_records": 325,
+  "wandb_states": {
+    "finished": 325
+  }
+}

@@ -1,0 +1,1112 @@
+{
+  "adaptive_development_only": true,
+  "analysis_gate": {
+    "command": "scripts/analyze_hacssm_v8.py --phase pilot",
+    "decision_file": "outputs/hacssm_v8_shared/pilot_decision.json",
+    "fail_closed_result": "NO_GO",
+    "final_claim_field": "best_in_focused_locked_grid",
+    "pilot_pass_result": "PILOT_OVERALL_BEST_PASS",
+    "scope": "adaptive_development_only"
+  },
+  "common_protocol": {
+    "batch_size": 64,
+    "epochs": 200,
+    "eval_rollout_episode": 0,
+    "feature_dim": 128,
+    "first_post_loss_weight": 0.5,
+    "fixed_alpha": true,
+    "history_len": 3,
+    "learning_rate": 0.0003,
+    "length": 32,
+    "predictor_norm": "none",
+    "prototype_seed": 0,
+    "smt_router": "sigmoid",
+    "train_dataloader_workers": 2,
+    "train_episodes": 600,
+    "train_rollout_seed": 0,
+    "val_episodes": 150,
+    "val_rollout_seed": 7777,
+    "wandb": true,
+    "wandb_entity": "crlc112358",
+    "wandb_mode": "online",
+    "wandb_project": "lewm-memory-popgym",
+    "wandb_study": "hacssm-v8",
+    "weight_decay": 1e-05
+  },
+  "compact_noninferiority_criteria": {
+    "bootstrap_contract": {
+      "algorithm": "crossed_environment_seed_percentile_bootstrap",
+      "draws": 100000,
+      "estimand": "mean paired relative reduction (reference-candidate)/reference",
+      "quantiles": {
+        "method": "linear",
+        "reported": [
+          0.05,
+          0.025,
+          0.975,
+          0.95
+        ]
+      },
+      "resampling": "independently sample E environment indices and S optimizer-seed indices with replacement; evaluate the E-by-S Cartesian product; equal-weight mean",
+      "rng": "numpy.random.Generator(numpy.random.PCG64)",
+      "schema_version": 1,
+      "seed": 8008
+    },
+    "bootstrap_contract_sha256": "b387010d207f96e9e6777c272ec51629764bfc190cbfd3f323fe6196c38f969e",
+    "final": {
+      "redundant_vs_levelaction": ">=0.5% reduction, >=15/25 wins, >=3/5 environment wins",
+      "requires_strict_pilot_pass": true,
+      "vs_better_endpoint_envelope": ">=1% reduction, >=15/25 wins, >=3/5 environment wins"
+    },
+    "pilot": {
+      "redundant_vs_levelaction": ">=0.5% reduction, >=9/15 wins, >=3/5 environment wins",
+      "role": "diagnostic receipt only; cannot reopen a failed strict pilot",
+      "vs_better_endpoint_envelope": ">=0.5% reduction, >=9/15 wins, >=3/5 environment wins"
+    },
+    "shared_requirements": {
+      "compact_redundant_equivalence": "absolute mean <=0.25%, every environment within +/-1%, crossed-bootstrap 90% interval inside +/-1%",
+      "convergence": "absolute median <1%, p95 <3%, max <5%",
+      "vs_ssm": ">=6% reduction",
+      "vs_v7_sharedaction": "point estimate >-0.5%, >=4/5 environment effects >-1%, deterministic crossed-bootstrap 95% lower bound >-1%"
+    }
+  },
+  "design_protocol": {
+    "hacssmv6": {
+      "auxiliary_gradients_active": true,
+      "hier_aux_action_kind": "observed_transition_actions",
+      "hier_aux_horizons": {
+        "fast": [
+          1,
+          2
+        ],
+        "medium": [
+          4,
+          8
+        ]
+      },
+      "hier_distance": "affine_free_layer_norm_smooth_l1",
+      "hier_endpoint_kind": "target_valid_mask_visible_only",
+      "hier_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "hier_loss_schedule": "v6_bootstrap",
+      "hier_loss_weight": 0.02,
+      "hier_objective_schema_version": 1,
+      "hier_source_gradient": false,
+      "hier_target_kind": "same_level_posterior_stop_gradient"
+    },
+    "hacssmv6_static": {
+      "auxiliary_gradients_active": true,
+      "hier_aux_action_kind": "observed_transition_actions",
+      "hier_aux_horizons": {
+        "fast": [
+          1,
+          2
+        ],
+        "medium": [
+          4,
+          8
+        ]
+      },
+      "hier_distance": "affine_free_layer_norm_smooth_l1",
+      "hier_endpoint_kind": "target_valid_mask_visible_only",
+      "hier_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "hier_loss_schedule": "v6_bootstrap",
+      "hier_loss_weight": 0.02,
+      "hier_objective_schema_version": 1,
+      "hier_source_gradient": false,
+      "hier_target_kind": "same_level_posterior_stop_gradient"
+    },
+    "hacssmv7_noaux": {
+      "auxiliary_gradients_active": false,
+      "hier_action_kind": "level_specific",
+      "hier_aux_horizons": {
+        "fast": [
+          1,
+          2
+        ],
+        "medium": [
+          4,
+          8
+        ]
+      },
+      "hier_aux_kind": "counterfactual_bridge_and_recovery",
+      "hier_black_token_kind": "mean_observed_original_blackout_input",
+      "hier_distance": "affine_free_layer_norm_smooth_l1",
+      "hier_endpoint_kind": "synthetic_spans_inside_original_visible_runs_only",
+      "hier_hidden_clean_targets_used": false,
+      "hier_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "hier_level_specific_action": true,
+      "hier_loss_schedule": "v6_bootstrap",
+      "hier_loss_weight": 0.02,
+      "hier_objective_schema_version": 2,
+      "hier_shrinkage_kind": "learned_static_dynamic_convex",
+      "hier_target_kind": "ema_teacher_same_level_posterior_stop_gradient",
+      "hier_teacher_momentum": 0.99
+    },
+    "hacssmv7_norecovery": {
+      "auxiliary_gradients_active": true,
+      "hier_action_kind": "level_specific",
+      "hier_aux_horizons": {
+        "fast": [
+          1,
+          2
+        ],
+        "medium": [
+          4,
+          8
+        ]
+      },
+      "hier_aux_kind": "bridge_only",
+      "hier_black_token_kind": "mean_observed_original_blackout_input",
+      "hier_distance": "affine_free_layer_norm_smooth_l1",
+      "hier_endpoint_kind": "synthetic_spans_inside_original_visible_runs_only",
+      "hier_hidden_clean_targets_used": false,
+      "hier_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "hier_level_specific_action": true,
+      "hier_loss_schedule": "v6_bootstrap",
+      "hier_loss_weight": 0.02,
+      "hier_objective_schema_version": 2,
+      "hier_shrinkage_kind": "learned_static_dynamic_convex",
+      "hier_target_kind": "ema_teacher_same_level_posterior_stop_gradient",
+      "hier_teacher_momentum": 0.99
+    },
+    "hacssmv7_sharedaction": {
+      "auxiliary_gradients_active": true,
+      "hier_action_kind": "shared",
+      "hier_aux_horizons": {
+        "fast": [
+          1,
+          2
+        ],
+        "medium": [
+          4,
+          8
+        ]
+      },
+      "hier_aux_kind": "counterfactual_bridge_and_recovery",
+      "hier_black_token_kind": "mean_observed_original_blackout_input",
+      "hier_distance": "affine_free_layer_norm_smooth_l1",
+      "hier_endpoint_kind": "synthetic_spans_inside_original_visible_runs_only",
+      "hier_hidden_clean_targets_used": false,
+      "hier_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "hier_level_specific_action": false,
+      "hier_loss_schedule": "v6_bootstrap",
+      "hier_loss_weight": 0.02,
+      "hier_objective_schema_version": 2,
+      "hier_shrinkage_kind": "learned_static_dynamic_convex",
+      "hier_target_kind": "ema_teacher_same_level_posterior_stop_gradient",
+      "hier_teacher_momentum": 0.99
+    },
+    "hacssmv8": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "physically_shared",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "learned_static_dynamic_convex",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_dynamic": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "physically_shared",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "dynamic_only",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_levelaction": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "level_specific",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "learned_static_dynamic_convex",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_noaction": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "none",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "learned_static_dynamic_convex",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_redundant": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "redundant_shared_average",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "learned_static_dynamic_convex",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_single": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "physically_shared",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": false,
+      "memory_shrinkage_kind": "learned_static_dynamic_convex",
+      "memory_teacher_present": false
+    },
+    "hacssmv8_static": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0,
+      "memory_action_kind": "physically_shared",
+      "memory_arch_schema_version": 8,
+      "memory_architecture": "shared_action_shrinkage_predict_correct",
+      "memory_inference_taus": [
+        2.0,
+        8.0
+      ],
+      "memory_internal_auxiliary": "none",
+      "memory_joint_read": true,
+      "memory_shrinkage_kind": "static_only",
+      "memory_teacher_present": false
+    },
+    "ssm": {
+      "auxiliary_gradients_active": false,
+      "hier_loss_schedule": "fixed",
+      "hier_loss_weight": 0.0
+    }
+  },
+  "endpoint_envelope": {
+    "environment_wins": "compare the candidate environment mean with the minimum of the dynamic and static endpoint environment means",
+    "pairwise_reduction_and_wins": "select min(dynamic, static) independently within every environment-seed cell"
+  },
+  "environments": [
+    {
+      "clean_target": "dmc:reacher.hard",
+      "occluded": "dmc:reacher.hard.occ"
+    },
+    {
+      "clean_target": "dmc:ball_in_cup.catch",
+      "occluded": "dmc:ball_in_cup.catch.occ"
+    },
+    {
+      "clean_target": "dmc:finger.spin",
+      "occluded": "dmc:finger.spin.occ"
+    },
+    {
+      "clean_target": "dmc:cheetah.run",
+      "occluded": "dmc:cheetah.run.occ"
+    },
+    {
+      "clean_target": "ogbench:cube-single",
+      "occluded": "ogbench:cube-single.occ"
+    }
+  ],
+  "eval_rollout_artifacts": {
+    "outputs/popgym_data/dmc_ball_in_cup.catch_v3_proto0_n150_L32_s64_seed7777.npz": {
+      "bytes": 2166507,
+      "sha256": "d8a75854acf9063d97d0076e5da71d3b6fcf0323827cc0284c5a86cfd815bd0b"
+    },
+    "outputs/popgym_data/dmc_cheetah.run_v3_proto0_n150_L32_s64_seed7777.npz": {
+      "bytes": 7172507,
+      "sha256": "5196de859dcf1a7cd3443c63b4a7037670b69dbf00d32acf792ce1a200ea6fe2"
+    },
+    "outputs/popgym_data/dmc_finger.spin_v3_proto0_n150_L32_s64_seed7777.npz": {
+      "bytes": 3003437,
+      "sha256": "9af6f1cb1536bb6f7a5271fbd8da37cb207707ebf99a0268aa1a67a818f0eb01"
+    },
+    "outputs/popgym_data/dmc_reacher.hard_v3_proto0_n150_L32_s64_seed7777.npz": {
+      "bytes": 1613827,
+      "sha256": "41a1a8a9d54157cfcdfd7ee0ef8769ef48a48526210e801a4d0ed906f1467e05"
+    },
+    "outputs/popgym_data/ogbench_cube-single_v3_proto0_n150_L32_s64_seed7777.npz": {
+      "bytes": 6966250,
+      "sha256": "bf303050c9dcd55d123adb243a354aeb1fc1118ccce0486a30aab9eadb20a30c"
+    }
+  },
+  "expected_runs": {
+    "completion": [
+      "lewm-dmc:reacher.hard.occ-ssm-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv6-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv6_static-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_dynamic-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_static-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_noaction-s3",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_single-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-ssm-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_dynamic-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_static-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_noaction-s3",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_single-s3",
+      "lewm-dmc:finger.spin.occ-ssm-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv6-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv6_static-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_dynamic-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_static-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_noaction-s3",
+      "lewm-dmc:finger.spin.occ-hacssmv8_single-s3",
+      "lewm-dmc:cheetah.run.occ-ssm-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv6-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv6_static-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_dynamic-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_static-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_noaction-s3",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_single-s3",
+      "lewm-ogbench:cube-single.occ-ssm-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv6-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv6_static-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_dynamic-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_static-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_noaction-s3",
+      "lewm-ogbench:cube-single.occ-hacssmv8_single-s3",
+      "lewm-dmc:reacher.hard.occ-ssm-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv6-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv6_static-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_dynamic-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_static-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_noaction-s4",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_single-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-ssm-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_dynamic-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_static-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_noaction-s4",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_single-s4",
+      "lewm-dmc:finger.spin.occ-ssm-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv6-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv6_static-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_dynamic-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_static-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_noaction-s4",
+      "lewm-dmc:finger.spin.occ-hacssmv8_single-s4",
+      "lewm-dmc:cheetah.run.occ-ssm-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv6-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv6_static-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_dynamic-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_static-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_noaction-s4",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_single-s4",
+      "lewm-ogbench:cube-single.occ-ssm-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv6-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv6_static-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_dynamic-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_static-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_noaction-s4",
+      "lewm-ogbench:cube-single.occ-hacssmv8_single-s4"
+    ],
+    "pilot": [
+      "lewm-dmc:reacher.hard.occ-ssm-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv6-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv6_static-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_dynamic-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_static-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_noaction-s0",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_single-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-ssm-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_dynamic-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_static-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_noaction-s0",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_single-s0",
+      "lewm-dmc:finger.spin.occ-ssm-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv6-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv6_static-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_dynamic-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_static-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_noaction-s0",
+      "lewm-dmc:finger.spin.occ-hacssmv8_single-s0",
+      "lewm-dmc:cheetah.run.occ-ssm-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv6-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv6_static-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_dynamic-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_static-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_noaction-s0",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_single-s0",
+      "lewm-ogbench:cube-single.occ-ssm-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv6-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv6_static-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_dynamic-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_static-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_noaction-s0",
+      "lewm-ogbench:cube-single.occ-hacssmv8_single-s0",
+      "lewm-dmc:reacher.hard.occ-ssm-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv6-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv6_static-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_dynamic-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_static-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_noaction-s1",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_single-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-ssm-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_dynamic-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_static-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_noaction-s1",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_single-s1",
+      "lewm-dmc:finger.spin.occ-ssm-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv6-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv6_static-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_dynamic-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_static-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_noaction-s1",
+      "lewm-dmc:finger.spin.occ-hacssmv8_single-s1",
+      "lewm-dmc:cheetah.run.occ-ssm-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv6-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv6_static-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_dynamic-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_static-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_noaction-s1",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_single-s1",
+      "lewm-ogbench:cube-single.occ-ssm-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv6-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv6_static-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_dynamic-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_static-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_noaction-s1",
+      "lewm-ogbench:cube-single.occ-hacssmv8_single-s1",
+      "lewm-dmc:reacher.hard.occ-ssm-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv6-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv6_static-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_dynamic-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_static-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_noaction-s2",
+      "lewm-dmc:reacher.hard.occ-hacssmv8_single-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-ssm-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_dynamic-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_static-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_noaction-s2",
+      "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_single-s2",
+      "lewm-dmc:finger.spin.occ-ssm-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv6-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv6_static-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_dynamic-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_static-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_noaction-s2",
+      "lewm-dmc:finger.spin.occ-hacssmv8_single-s2",
+      "lewm-dmc:cheetah.run.occ-ssm-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv6-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv6_static-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_dynamic-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_static-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_noaction-s2",
+      "lewm-dmc:cheetah.run.occ-hacssmv8_single-s2",
+      "lewm-ogbench:cube-single.occ-ssm-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv6-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv6_static-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_dynamic-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_static-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_noaction-s2",
+      "lewm-ogbench:cube-single.occ-hacssmv8_single-s2"
+    ]
+  },
+  "feature_artifacts": {
+    "outputs/smt_v3_shared/dino_features_d128/dmc_ball_in_cup_catch_manifest.json": {
+      "bytes": 1497200,
+      "sha256": "3706892e9d8598be68781da2ccd723cd649eb11b19f0a3538adee12583d7576f"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_ball_in_cup_catch_train.npz": {
+      "bytes": 16707516,
+      "sha256": "d48e0f512a824fed9c908a70ecf3010391b4f2c10740d4fd82b9cf1ca7308a36"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_ball_in_cup_catch_val.npz": {
+      "bytes": 4180355,
+      "sha256": "5c2ec44a40de88d7c8e7b434085e803367786348b0e7e6dc0e46445942b267d4"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_cheetah_run_manifest.json": {
+      "bytes": 1497323,
+      "sha256": "09f4f22b53b0305eff936844401dacb8b6ec4d872b8c5c624980e4abe5413cf2"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_cheetah_run_train.npz": {
+      "bytes": 16740347,
+      "sha256": "000b2058dc6b1093d5c47820ecd9b6bc37eaceda611a35847ffd84d20a6aac28"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_cheetah_run_val.npz": {
+      "bytes": 4187600,
+      "sha256": "371fe1e7db5292eaae7a784fe4be93b06ef70d5ff0366240122e206afb15e775"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_finger_spin_manifest.json": {
+      "bytes": 1497249,
+      "sha256": "2b61735665aef736c41f4dd68f59f316c9e2163763573ec40ffdbf690d4988dd"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_finger_spin_train.npz": {
+      "bytes": 16725716,
+      "sha256": "2e24c043e38700762b700c60f1e9f23711a0c6d823f822034c7b6fd03a07c233"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_finger_spin_val.npz": {
+      "bytes": 4183840,
+      "sha256": "ee092c09ab7d7dd725b0c9e38f615296f055ac40d8b01a3a75f9dd87ba0297d7"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_reacher_hard_manifest.json": {
+      "bytes": 1497111,
+      "sha256": "20b338e765c457d64d65e9bb290c599664c0b9bc77ab521ecc6df1950008f63c"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_reacher_hard_train.npz": {
+      "bytes": 16711214,
+      "sha256": "ee8fa95889f8a385c78f73a9be0cde3d3090f471b9b3ffd54960536c94116be3"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/dmc_reacher_hard_val.npz": {
+      "bytes": 4180016,
+      "sha256": "55853430940c35b897a88f48b07e9f63e5dcd0fab9c9bfaf65903220502338cd"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/ogbench_cube_single_manifest.json": {
+      "bytes": 1497677,
+      "sha256": "ac20238ff9e99f816cc3b1aa0978244536f78b612334544666c1d5b5f996b699"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/ogbench_cube_single_train.npz": {
+      "bytes": 16708915,
+      "sha256": "e3d53316a5f9db48f371cd501a070f4c9d4ac6abfdec1b705d758fde24812d91"
+    },
+    "outputs/smt_v3_shared/dino_features_d128/ogbench_cube_single_val.npz": {
+      "bytes": 4179821,
+      "sha256": "fec6cd4b7a133952e230e54491c785631553cce6e5bf8d324ab366acbb076497"
+    }
+  },
+  "feature_root": "outputs/smt_v3_shared/dino_features_d128",
+  "final_success_criteria": {
+    "compact_redundant_equivalence": "absolute mean <=0.25%, every environment within +/-1%, crossed-bootstrap 90% interval inside +/-1%",
+    "convergence": "absolute median <1%, p95 <3%, max <5%",
+    "envelope_and_hold": ">=3/5 wins over the frozen performance-envelope design list (redundant excluded) and >=4/5 last-visible-hold wins",
+    "redundant_vs_levelaction": ">=0.5% reduction, >=15/25 wins, >=3/5 environment wins",
+    "requires_pilot_pass": true,
+    "structural_controls": ">=3% reduction, >=17/25 wins, >=3/5 environment wins",
+    "vs_better_endpoint_envelope": ">=1% reduction, >=15/25 wins, >=3/5 environment wins",
+    "vs_each_shrinkage_endpoint": "positive reduction, >=13/25 wins, >=3/5 environment wins",
+    "vs_full_v6": ">=1% reduction, >=15/25 wins, >=3/5 environment wins",
+    "vs_ssm": ">=7% reduction, >=20/25 wins, >=4/5 environment wins",
+    "vs_v6_static": ">=1% reduction, >=15/25 wins, >=3/5 environment wins",
+    "vs_v7_norecovery": "positive reduction, >=13/25 wins, >=3/5 environment wins",
+    "vs_v7_sharedaction": ">=1% reduction, >=15/25 wins, >=3/5 environment wins"
+  },
+  "identity_contract": {
+    "receipt_file": "outputs/hacssm_v8_shared/equivalence_receipts.json",
+    "sealed_v7_reference": {
+      "completed_runs": 325,
+      "identity_designs": [
+        "hacssmv6",
+        "hacssmv6_static",
+        "hacssmv7_noaux",
+        "hacssmv7_norecovery",
+        "hacssmv7_sharedaction",
+        "ssm"
+      ],
+      "manifest": "outputs/hacssm_v7_shared/hacssm_v7_manifest.json",
+      "manifest_sha256": "98eda8abec229753381bed5f22c70317428242470cc6f40b6a3f9c16d0f55c11",
+      "producer_git_commit": "56a294a67b0d8bf8d04a75f31f275b6063c4c8f6",
+      "sidecar": "outputs/hacssm_v7_shared/hacssm_v7_manifest.sha256"
+    },
+    "v7_anchor_reruns": "model tensors, histories, primary metrics, rollout arrays bit-exact",
+    "v8_levelaction_vs_v7_noaux": "student tensors after namespace mapping, primary histories/metrics, and rollouts bit-exact",
+    "v8_redundant": "two action-head blocks remain bit-exact equal"
+  },
+  "log_root": "logs/hacssm_v8_shared",
+  "memory_contract": {
+    "action_dim": 6,
+    "compact_signature": [
+      [
+        "w_z",
+        [
+          128
+        ]
+      ],
+      [
+        "w_e",
+        [
+          128
+        ]
+      ],
+      [
+        "gate_bias",
+        [
+          2
+        ]
+      ],
+      [
+        "route_logits",
+        [
+          2
+        ]
+      ],
+      [
+        "shrink_logits",
+        [
+          2
+        ]
+      ],
+      [
+        "W_x.weight",
+        [
+          128,
+          128
+        ]
+      ],
+      [
+        "W_a.weight",
+        [
+          256,
+          6
+        ]
+      ],
+      [
+        "W_o.weight",
+        [
+          128,
+          128
+        ]
+      ]
+    ],
+    "embed_dim": 128,
+    "expanded_signature": [
+      [
+        "w_z",
+        [
+          128
+        ]
+      ],
+      [
+        "w_e",
+        [
+          128
+        ]
+      ],
+      [
+        "gate_bias",
+        [
+          2
+        ]
+      ],
+      [
+        "route_logits",
+        [
+          2
+        ]
+      ],
+      [
+        "shrink_logits",
+        [
+          2
+        ]
+      ],
+      [
+        "W_x.weight",
+        [
+          128,
+          128
+        ]
+      ],
+      [
+        "W_a.weight",
+        [
+          512,
+          6
+        ]
+      ],
+      [
+        "W_o.weight",
+        [
+          128,
+          128
+        ]
+      ]
+    ],
+    "memory_parameters": {
+      "hacssmv6_all_modes": 34564,
+      "hacssmv7_frozen_teacher": 36102,
+      "hacssmv7_student": 36102,
+      "hacssmv8_compact_modes": 34566,
+      "hacssmv8_expanded_controls": 36102,
+      "ssm": 33024
+    },
+    "parameter_matching_scope": "compact modes match each other; levelaction/redundant match each other; the complete V8 ladder is intentionally not parameter matched",
+    "streaming_recurrent_floats": {
+      "hacssmv6": 256,
+      "hacssmv7": 256,
+      "hacssmv8": 256,
+      "ssm": 128
+    },
+    "v8_checkpoint_contains_teacher": false,
+    "v8_counts_by_design": {
+      "hacssmv8": 34566,
+      "hacssmv8_dynamic": 34566,
+      "hacssmv8_levelaction": 36102,
+      "hacssmv8_noaction": 34566,
+      "hacssmv8_redundant": 36102,
+      "hacssmv8_single": 34566,
+      "hacssmv8_static": 34566
+    },
+    "v8_trainable_memory_parameters_include_teacher": false
+  },
+  "output_root": "outputs/hacssm_v8_shared",
+  "performance_envelope": {
+    "designs": [
+      "ssm",
+      "hacssmv6",
+      "hacssmv6_static",
+      "hacssmv7_noaux",
+      "hacssmv7_sharedaction",
+      "hacssmv7_norecovery",
+      "hacssmv8_dynamic",
+      "hacssmv8_static",
+      "hacssmv8_levelaction",
+      "hacssmv8_noaction",
+      "hacssmv8_single"
+    ],
+    "excluded": [
+      "hacssmv8",
+      "hacssmv8_redundant"
+    ],
+    "rationale": "the candidate cannot be its own reference; redundant is a statistical equivalence/optimization receipt, not a distinct deployable architecture"
+  },
+  "pilot_success_criteria": {
+    "compact_redundant_equivalence": "absolute mean <=0.25%, every environment within +/-1%, crossed-bootstrap 90% interval inside +/-1%",
+    "convergence": "absolute median <1%, p95 <3%, max <5%",
+    "redundant_vs_levelaction": ">=0.5% reduction, >=9/15 wins, >=3/5 environment wins",
+    "structural_controls": ">=3% reduction, >=11/15 wins, >=3/5 environment wins",
+    "vs_better_endpoint_envelope": ">=0.5% reduction, >=9/15 wins, >=3/5 environment wins",
+    "vs_each_shrinkage_endpoint": "positive reduction, >=8/15 wins, >=3/5 environment wins",
+    "vs_full_v6": ">=1% reduction, >=9/15 wins, >=3/5 environment wins",
+    "vs_ssm": ">=6% reduction, >=10/15 wins, >=4/5 environment wins",
+    "vs_v6_static": "positive reduction, >=8/15 wins, >=3/5 environment wins",
+    "vs_v7_norecovery": "positive reduction, >=8/15 wins, >=3/5 environment wins",
+    "vs_v7_sharedaction": ">=0.5% reduction, >=9/15 wins, >=3/5 environment wins"
+  },
+  "producer_git_clean": true,
+  "producer_git_commit": "c75d628b635d6e6ad158753aa9bbe34a0534bac6",
+  "schema_version": 1,
+  "source_artifacts": {
+    "lewm/data.py": {
+      "bytes": 13160,
+      "sha256": "4e91f082244773bbe6c991bef1185e7b3c26328a93cc0ee034b927173c47aca1"
+    },
+    "lewm/models/encoder.py": {
+      "bytes": 13085,
+      "sha256": "c1cd3f82aaeccd11200ac7420b60bd5e22b0205383ad4a0e199d7602e3147d1e"
+    },
+    "lewm/models/leworldmodel.py": {
+      "bytes": 8233,
+      "sha256": "9fe340132fcd155cb2d8662904b0c664a8f22673c79705b8eedf6ff8b77479f6"
+    },
+    "lewm/models/memory.py": {
+      "bytes": 86561,
+      "sha256": "53a6cb3aae089314044778207e8d3d4fa5deb5623dd881fa23884264d10daa0c"
+    },
+    "lewm/models/memory_model.py": {
+      "bytes": 53805,
+      "sha256": "6b6a3ca5d6b85e3d4dfdd5016ce67def33f35cd37259f6d1236757a2ac7e9da4"
+    },
+    "lewm/models/sigreg.py": {
+      "bytes": 5896,
+      "sha256": "5436b824507a4cb91471c2267837f98427668a34bc16c9bf3e61f9127e21bd47"
+    },
+    "scripts/analyze_hacssm_v5.py": {
+      "bytes": 27934,
+      "sha256": "5d7dfedeb382eb3cb5078309248bd9d4750b2c86ea0b81c5176292a39cd86852"
+    },
+    "scripts/analyze_hacssm_v8.py": {
+      "bytes": 34295,
+      "sha256": "7ed0674050a95cf658b98bd009bd5a5862a0668e75ce0b2778984d0e8cd56b34"
+    },
+    "scripts/run_hacssm_v5.py": {
+      "bytes": 74970,
+      "sha256": "f26f6a3839717a219cc95eb86485ea21da68cb3fca3bf7bbb674d90b1ac509e4"
+    },
+    "scripts/run_hacssm_v8.py": {
+      "bytes": 51832,
+      "sha256": "678c2cd747fb0bb2fbd29f4c91e1392a59947f8130dbab829a12026a6c41c9b4"
+    },
+    "scripts/train_popgym.py": {
+      "bytes": 56072,
+      "sha256": "1f8a1d81af947422fe0c8c8235e8ae62506b3cfa34975d74001812aca04bdc3b"
+    }
+  },
+  "stages": {
+    "completion": {
+      "completed_total_runs": 325,
+      "designs": [
+        "ssm",
+        "hacssmv6",
+        "hacssmv6_static",
+        "hacssmv7_noaux",
+        "hacssmv7_sharedaction",
+        "hacssmv7_norecovery",
+        "hacssmv8",
+        "hacssmv8_dynamic",
+        "hacssmv8_static",
+        "hacssmv8_levelaction",
+        "hacssmv8_redundant",
+        "hacssmv8_noaction",
+        "hacssmv8_single"
+      ],
+      "runs": 130,
+      "runs_regardless_of_pilot_screen": true,
+      "seeds": [
+        3,
+        4
+      ]
+    },
+    "pilot": {
+      "designs": [
+        "ssm",
+        "hacssmv6",
+        "hacssmv6_static",
+        "hacssmv7_noaux",
+        "hacssmv7_sharedaction",
+        "hacssmv7_norecovery",
+        "hacssmv8",
+        "hacssmv8_dynamic",
+        "hacssmv8_static",
+        "hacssmv8_levelaction",
+        "hacssmv8_redundant",
+        "hacssmv8_noaction",
+        "hacssmv8_single"
+      ],
+      "runs": 195,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  },
+  "study": "HACSSM-v8 compact shared-action shrinkage adaptive-development study",
+  "v8_architecture_contract": {
+    "hidden_clean_blackout_targets_used": false,
+    "hier_loss_schedule": "fixed",
+    "hier_loss_weight": 0.0,
+    "inference": "fixed taus 2 and 8; shared causal action predict/correct; learned per-level convex shrinkage; joint global read",
+    "internal_auxiliary": "none",
+    "teacher": "none",
+    "training_signal": "ordinary next-latent prediction on visible targets only; no special internal-state self-supervision",
+    "variants": {
+      "hacssmv8": "compact physically shared action head and learned shrinkage",
+      "hacssmv8_dynamic": "compact shared head; rho fixed to one",
+      "hacssmv8_levelaction": "expanded level-specific action heads",
+      "hacssmv8_noaction": "compact tensors; action features forced to zero",
+      "hacssmv8_redundant": "expanded heads averaged before both transitions",
+      "hacssmv8_single": "compact tensors; medium-only inference read",
+      "hacssmv8_static": "compact shared head; rho fixed to zero"
+    }
+  },
+  "wandb": {
+    "authenticated": true,
+    "base_url": "https://api.wandb.ai",
+    "entity": "crlc112358",
+    "mode": "online",
+    "project": "lewm-memory-popgym",
+    "sdk_version": "0.28.0",
+    "study": "hacssm-v8"
+  },
+  "wandb_requirements": {
+    "all_cells_online": true,
+    "complete_epoch_history_per_cell": 200,
+    "evaluation_rollout_npz_table_video_per_cell": true
+  }
+}

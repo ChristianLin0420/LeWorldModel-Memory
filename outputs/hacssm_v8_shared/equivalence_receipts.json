@@ -1,0 +1,1666 @@
+{
+  "counts": {
+    "sealed_anchor_identities": 150,
+    "v8_levelaction_v7_noaux_identities": 25,
+    "v8_redundant_head_receipts": 25
+  },
+  "schema_version": 1,
+  "sealed_anchor_identities": [
+    {
+      "current_model_sha256": "053d5e95e7d809483e416841af259de375a763786815912db3b11ac3f70c260c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "1ea0338f23554eef12fb3d0b63d2ea0a3b22e9f0846b8fce8be86990ffd126ef",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-ssm-s0"
+    },
+    {
+      "current_model_sha256": "c1989d8d92363225932cf7ae56ecc24eac11cd5cd27ca8f2ce555fe9a9002519",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4eb68cbc89fa60eac6192bcc66e87ae7357c16eda3543e620719111ea2ec531f",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6-s0"
+    },
+    {
+      "current_model_sha256": "0ae01201877c578b4a0525142ee636a6b7ab0552d3a737de949350b44143637b",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "205dfa2037e49c1566973d1e6985addddaba167548e22753acdcb986ce61a391",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6_static-s0"
+    },
+    {
+      "current_model_sha256": "b7e970df90af38efc660ee6261d63aa5b616a1acdb9d4b0d98a8b9d45cdf6c90",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4c72e141a46e3430c760fb10d66706b9d4ee236bb9971b2486552ee77cd724d9",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s0"
+    },
+    {
+      "current_model_sha256": "929e68e2fa8cef4582484d8ae6d25cb9904737def78edef86ec4f0b8024a6aed",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "e84cb7e91934ea767d8cbe7e50daad88fdc4d14f01d13b107dc68b26a98990b2",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s0"
+    },
+    {
+      "current_model_sha256": "8f7599e228f0e27fdb1d69ed32df584ae4682749e4ec30cb9dca41eb2394829e",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "fa605c6d717a98d3fb24afbb5634039ac9449b71947e4dc28aa76c2f913e00f1",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s0"
+    },
+    {
+      "current_model_sha256": "8b030844e1146f4aa7a30107ddf9512bab846829e231b64188ab6dac01aeae74",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ca0aa6cd2538dc8cb8e42ee5b8efe6397a0139e4c1a1a494a2a80bd43c21ef27",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-ssm-s0"
+    },
+    {
+      "current_model_sha256": "61250fd6ee92ac61b273fdb3d02dc290cd13d97532e51bdc00d070b976bab4e7",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d66f9e2fb1a758e0fee6f406e880dc5dc1c1b9c9c69710a9304eee4c8317591a",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s0"
+    },
+    {
+      "current_model_sha256": "515137a45af0ee9e01bbbaeecf711fd64315afe75217cd24b31ab9ce8ffb5563",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d52701c26476053190f6408b4fe272a57c41efdac50feec632ef79d4e7f02d69",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s0"
+    },
+    {
+      "current_model_sha256": "b3ec9680a82bd8eb3d33713f1f077411c8f35442aa464b688b1dfc42a08397e2",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "719c702e616072b9f77ac40247510322507c0d37a354494532267460209db859",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s0"
+    },
+    {
+      "current_model_sha256": "89c3d5cb836624824cd4faab337f09543cbf6091cbb7a63d68810a11a598b0f9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "b5a7c6cb99d30ecd738d93554df440162ec82b4320ee92741cd06097388f6247",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s0"
+    },
+    {
+      "current_model_sha256": "24df890d33fe9c1e386d50f89a2b59a0e4d09a9a9ff452f154e157e34ffd0a61",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "fbe3258385ade6080e11e8f4c883b84032ceabf42abb771ee9a079c3a4ddf31e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s0"
+    },
+    {
+      "current_model_sha256": "b884b539e94b4722a9feb9fd2db5f622ea6c59a86d4e27a0f0ae6bcdbe73011f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "9e197e110e23ac36a7d5a1685a75e386e9a6f812fd48d417ef06ff93ed6b2fdc",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-ssm-s0"
+    },
+    {
+      "current_model_sha256": "ab481376ee14ef904fdf3f068890c1a5148acd0d60bc9d87f90be6e60b98d954",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a56a955cb14e555f0124f000e75154791829c18bf1407dc16d62aec06611157e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6-s0"
+    },
+    {
+      "current_model_sha256": "da54f221038d334b2bd75b4bdf8a293a2dd2546aa353f4d8fdbc19e9f96b39db",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "b5f63f1190a4c89d0f6a988f2ada529a13829ad296f8be3926ce695301c4a3ea",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6_static-s0"
+    },
+    {
+      "current_model_sha256": "8829182a750dd4d0bace054ba68588620eb18eee16dad788942411045104955a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4f638b74abe00de69bc789a3fc60f94e70cd4d7f544a5b170e8152d5853dc3d2",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s0"
+    },
+    {
+      "current_model_sha256": "4ed24f81177f109e13c8cd5a98c708808faa576e48380cb4a4d2e369a7a58435",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6b0c090bff948cccc63d1789e9f91170640a4dc3bc1f109583570e8170a63f4e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s0"
+    },
+    {
+      "current_model_sha256": "4f751c6786f983d394345c25cc3dbce100c6857d2c9b19b559ef29b8e9727852",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4195dca0e1d01b7b1148e1b96c6b579fde58ff07acf5d24497488d95bb92be12",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s0"
+    },
+    {
+      "current_model_sha256": "9581e8863d8c3516d07e7ab8f078ad81f89407f10e7ed3c32fb89eaad4aafabc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d7cf5adf533da3f2905ace2f4ca77c0190a9b374d580f559ebc2c9653320eaba",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-ssm-s0"
+    },
+    {
+      "current_model_sha256": "39ee507e98da10e9b14a82e00107d7b4a703ce1b21907e813d74f77c7616b95c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "3df84768338b8af8ff03299ff41125ad2dbfdb37076313cc15a9fbb2d12a2157",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6-s0"
+    },
+    {
+      "current_model_sha256": "e623662e4958961ff003045e2b83f85bc65c1542dcd40f8e34a09c37436f28ea",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "cd8ab47129f2342dd05d771e742c8b29dcf742799972b41f0e5d322ab27444e5",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6_static-s0"
+    },
+    {
+      "current_model_sha256": "4e2c9dee73913d88c99e8feae88ff5134fa7e27f34e94da841cbe43f92c2c161",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "1ca8eac544a7d48070dc26cf1c2e56d4e66457375507f1e9f835d37cb4b33b3b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s0"
+    },
+    {
+      "current_model_sha256": "a40c37b31a9a0dc96769c4a680eb57fad48cde02111378394a35b499a3485b13",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "498a4f93b4f42bfec8edddf2ed698860008542c865b4285e310429435e4e09ca",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s0"
+    },
+    {
+      "current_model_sha256": "3ed97a11db5efa083f0b8a5a92ad567d86d12dd86dc018c55e6dce8d452bbbdc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f26f97f940d1c0f74651aa58f7687f6c8b7474ba00bd4ac323f6a25ea704d74b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s0"
+    },
+    {
+      "current_model_sha256": "c456f6a0f3e3149213ec4b3b57f6077c000461808d690aae172dc55c2083774a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "24c126e01e454624e202bcc517a03f81199bcdfac5a53d3c42da3e87450bcd91",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-ssm-s0"
+    },
+    {
+      "current_model_sha256": "b475bf9e73f4dfb1a7b895cf2a10529ebbb3c7f2bed772189be0fc41cbb1de05",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "afe57175780c2a93dbc3eaaf59fab5d9e3e53eac2657ec8093c8e7c45f186249",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6-s0"
+    },
+    {
+      "current_model_sha256": "09b6489961958749dd0c1959af9243d39e136685eb77415af0c254933508e8c3",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "500b1ac8ff115d8347b49843d9108f6be4c116877120bb2aabe9072ab5b32f05",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6_static-s0"
+    },
+    {
+      "current_model_sha256": "3adc24ca47468d63518ce0e0b5bde12fade550dabaa5f490949a4adc7a6e84da",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0046b0309501bec26bf39c8d5e4df254bcfb39a902962f3444dae582e56bac97",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s0"
+    },
+    {
+      "current_model_sha256": "cc9c7c1cdc15f06afbca90e60086eeceb98dd56b84d6ed9bcc0b760f77057fad",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5dda815d0d7cd25311559ed52a60abe71c81bf477759520a577ba1deb7f05209",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s0"
+    },
+    {
+      "current_model_sha256": "ad65f6a59b6a36b1e4b2f26c9ecd41d46517b534f96349b93d5d202b911937b3",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d1a2ff43c7b579176f74ff439a06366c348ba2c9ab420264e39e8f79312139db",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s0"
+    },
+    {
+      "current_model_sha256": "696e8c9852a89e780ec2bdc0ff32c67249a558bd5de0df74723e473bd1719ebd",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "44ac16cd6e6d8ad8ee54bfd777e03727d690171434f8380c124e2167d4ee15b6",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-ssm-s1"
+    },
+    {
+      "current_model_sha256": "dcd9acedbbd679e1f50ab5c70706129685783837d8ca530b9679b9e2383e098d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "1a674ecf3fcc65f09a83df3d2263896757a8566b581cc4238e11dd7fdb86b3f4",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6-s1"
+    },
+    {
+      "current_model_sha256": "76f65873e5cea63509d39b4fc5a445f0855164b50bfc782062f1ed90837968e1",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "67a41093a0996160e63a8b3269c48fca9a5736a4c2545821846b16cdefefac1d",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6_static-s1"
+    },
+    {
+      "current_model_sha256": "99322eb684f62a813851e021fdef8a0eda9d9fc4a04e002fe70c85846605a6c2",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "c8a8985f256ce78e6ceed21ba834171b29c230c4b74db3cbedf5d650a5a0c488",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s1"
+    },
+    {
+      "current_model_sha256": "8580fb3ddb1b099eeb9f3741b4a2e03946e3e907d34e4e0151e85d7634eeab64",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ed2bf18fc78d7820be3849438ed013e838883a760b1e9fc2b7c25715b7ba888b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s1"
+    },
+    {
+      "current_model_sha256": "7c8414d1527b937544bf12617569dafb437a87b9e4ef74f8ac0e16a4253495fc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "3aa188799983201fc6a8b50a2a468b2412bd96e7d0dae77596c5647e14fb5f14",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s1"
+    },
+    {
+      "current_model_sha256": "8c75e249d1216145b91eb37d57ffa6b1208ee9f9ff2daa7c7a818b4dd95485b9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5ed8469e8a1ba106aff57729d73263aa469faa5e9558617da6e1f3fd2df7858f",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-ssm-s1"
+    },
+    {
+      "current_model_sha256": "2ad1c93dedccff2d7ed190a1b916dd99f9d741f7a53671471e048cf27dce8df9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a62421e4e64721cce5f626d904aec732df486b752101f66630426694e28d48d6",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s1"
+    },
+    {
+      "current_model_sha256": "b5aef85f6e5ad9e7db1887c260e547c572adb694f2aac38d42b27f37be5f51ab",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f6da80126035b9f017391a901ba90b8b227e0381e6b4dcee9623367e590ffd84",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s1"
+    },
+    {
+      "current_model_sha256": "e2ba1437140d2d6bf07b104992bc89ee3e67494714ce2926e66f7fa3133c13d8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "dac28180eb59c31dd4ed2c4c39f3a61b144ad0cdf091e05b735f0c3e9b3fcbc4",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s1"
+    },
+    {
+      "current_model_sha256": "bac724096f0e1d4ff9ff06d3b938ab16ac2e426a12ac08dc7dfe19979e2e8181",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a210eb675d08e1eeca69b0bd3cd5e68102dc06508190eb174b788dae25d60764",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s1"
+    },
+    {
+      "current_model_sha256": "ce281ba4cc0f0954d0dd924993d2c7eba7a6d109b43fe17c231a5a8ff3c34672",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "63331e8d7175a7105036a4491609fe326e6a2942ce0a747db6a159caf4adbc75",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s1"
+    },
+    {
+      "current_model_sha256": "a3a330d92c37a69d0767f57a8d269b0af8843da17a5ca19e87654d8b47884e76",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "759e5477c721ddbe9ec7459909a37c620e43e8d55d0d497d3b43135b74cdadce",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-ssm-s1"
+    },
+    {
+      "current_model_sha256": "a2b296ff521488c749392b3811a6865447b23f7ee01e73ff38df0fd92606e791",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "9af942a9b16d18e978eb71f4e15169e44f41e8d63a2eb0d276dcbccd5bcbadd8",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6-s1"
+    },
+    {
+      "current_model_sha256": "e496006282e75c0f8cfdd9ee5f8cc1321a4ada91d7688baf1be5ae2298511c67",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "87c12568a958b75c124b7dde8a084894b85f66f8491d4aeaef20b0aa28d1a5ca",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6_static-s1"
+    },
+    {
+      "current_model_sha256": "9689906932158990f8b8a791c367c6414baa2a67103942c28842f197b64293e5",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "08edfd0cd0c9a82bfccc3d3a88344cc0164d133ee54f857a6281cfa85669fea7",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s1"
+    },
+    {
+      "current_model_sha256": "527374e88b140865d59dcf9c9e3b245cc7e068c7e11cb62ddf119badb0682f2e",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "2308da5f2802ece82508f2b589b7a04d851e81f9bc0982b4e13db2f9597740bc",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s1"
+    },
+    {
+      "current_model_sha256": "fe5a27ff508c6bd28d5e0a7d6ead0f9a093092bcee475b1d27a957dd568eeb62",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "666b05ae256d94fda4438c91d4941ed04351493875c0ae866d9a015b7390392b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s1"
+    },
+    {
+      "current_model_sha256": "c4112db845d73fb8341eee8770ece0d1e15f361d0e90899c16a270d55a6ee213",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "44384037a9a9df29e43618d58b1fe573b917383c57dee4dd16bea30c559a96fe",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-ssm-s1"
+    },
+    {
+      "current_model_sha256": "ae3da1852400ff8f9227692159936aebb8a19c279e04b128568434ce234183b7",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "9df7b298ce6299cf4853585ea4a949a89e2978d8bf592e5c227b997d7cd6c6ab",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6-s1"
+    },
+    {
+      "current_model_sha256": "398c190a98d87eb593cf8d85b46b89ff5fe7146d7803c1d3c3c1384c8a119943",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f359cb5d348375b547f5b145ec40cb0919d15f1f60f734b0d409d9ba66a1cdfd",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6_static-s1"
+    },
+    {
+      "current_model_sha256": "7ac2dd983457ec2cfd110eed5054afd21803ae279ad3146977445538dcac3d15",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "c5a978b2c7e46f47147f95737b16897058e2d297ff8948b9881a31b018b6c06b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s1"
+    },
+    {
+      "current_model_sha256": "f6ad9a7362a036dba60031a3d3e170cb5750f70bc3eaf5eb13e1c6db181f79c6",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "53639e451171b19e80b2f2e3ad3e05891dfb79c3165c4ff4a89497c25cc8433d",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s1"
+    },
+    {
+      "current_model_sha256": "0682a05c75a1dcf8b656ce2f87248b37567114bf72bcaef6c5699ee0045959ee",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "2bbf1fba652a0eaed0fd1a6c19c3cf1328608fa2e3d96af9af84c5418cd6319b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s1"
+    },
+    {
+      "current_model_sha256": "9f3f1b17baa4870ed4b837b67fa8e4d5806a276b6346805243a5590199bd703a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6cbf90d4bf89de167233effd9330a19d837d69b767a446995fd557d9c6ee0ef8",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-ssm-s1"
+    },
+    {
+      "current_model_sha256": "06cb4d175a50c7b141d9d324569649843c29d848af9252adfb6533ba77cf1f23",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6158f84aff3b02524663cc2f709ff5cbd88a9cd510f3a72537a613fa2683f6ad",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6-s1"
+    },
+    {
+      "current_model_sha256": "cf1cfd1eef1d6d7973f98d6b94d320c5d79080bea4518280941cd7ad5f2c362e",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ec1b9c3da6e10e5a34c68be8daf6ad2a1afd89424eaae9e05c80b133f5525392",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6_static-s1"
+    },
+    {
+      "current_model_sha256": "53dc9784f419cef9e2bc97a73dbbcb02180a4678ab040ceb753d50952a50ef4b",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "bd8ae67d20ec02421f3e13d46d52294848ff85d4bbbe577e7c5ed0ed65cc8fea",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s1"
+    },
+    {
+      "current_model_sha256": "150f8a881946d14d4d25dedf7c1bc91ec6e481e52e7fcab214000ce67c6d4dfe",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0444d4da6b52baec219f84092dfaa28b25dac2046b9b5d5d3c465f3dead47f0d",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s1"
+    },
+    {
+      "current_model_sha256": "71a38999e6f964f2dd0bcf6c125fa30f86133e7fe1621c152dc6c6d437b548e9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "10d4f8e8391edf9eeca6a231220c7b664d710a01d143dc8a0c3df46c8de65092",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s1"
+    },
+    {
+      "current_model_sha256": "d385723094186d0150dbc204533ee28bdb9fe90875f7d46b99ed671bcfe1933e",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4f04788d6884bfafdf851c303c32b00108507314877b038114dfd5763bbe4b2b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-ssm-s2"
+    },
+    {
+      "current_model_sha256": "74e6e2960fbbbe74524be913d90fff303630d03eadb113699d4585ed34b36321",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a80dfe519d5afa31adc1efc8645038774c9b73aa5826fceed18949677a4c166e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6-s2"
+    },
+    {
+      "current_model_sha256": "8c0f55b7c04c2202ce41744885a9f2554ba401d2b54b255eedae091d73a6e873",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "50ab70e22d5260a1dc1ef9e3045e46b098fe0c0da5ac431c6e6f7589ef7a7c7b",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6_static-s2"
+    },
+    {
+      "current_model_sha256": "eaf60db333a8dc91601be15feb955f0675338bdc786badde363b73200ba92b62",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5cf78cf3c1b363df0ef3b2b1c3708bab8ec80e95634aa5d7c05b47332f4130d8",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s2"
+    },
+    {
+      "current_model_sha256": "8838a1f076f31a5ae4ae30ecc517ae71d7db1f2927c5d8f247b514bf10cd19cc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "e4000420269733fcd2db1e5b7cfa74651020f9e67089af74712e518926849b7e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s2"
+    },
+    {
+      "current_model_sha256": "4a9df98a38136873b0e2b3cfbc55a761d2cacd02a3a8591aa212a14f9bf54bcf",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "92a4b33831f869a45ff96e2de3c56712b4d9c716785d20eac2a9a7ce13ad3be9",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s2"
+    },
+    {
+      "current_model_sha256": "ecaa56b7c509ab344b5f76682c3ebfaac06ac582555e14b05abf64e136a6d1dd",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "3f8d6cb6969e9c66dee7cda27dfebd47011521a93d81bf65610d2ab2dfea1e23",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-ssm-s2"
+    },
+    {
+      "current_model_sha256": "e9f791b4c3135f02f1bf467e391ddaa8a405783e0fddac240049954f8a7d10e0",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "de7cf71b8b502436d7b908d7df351107ed47a75498ec341b8027d2a8d4cef8ba",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s2"
+    },
+    {
+      "current_model_sha256": "ba88bc5141f4e96d292d3967883c9bccc653fb8cdb301508abed413ab0b132d4",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6dec8df3fad3fc26a3c795e76a0cbc18f60bcc42708cc8976da87833e3128148",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s2"
+    },
+    {
+      "current_model_sha256": "9248fedb355788c5d9d45739f109fd6c755f0108887112a989f786d4981d87eb",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5efdd560914654fa472ba041c6f4692c46c11c26f705364eba7e536a3ca972d1",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s2"
+    },
+    {
+      "current_model_sha256": "1c6dd399c6c3b521210dbaa4f32e63947dd03c1da3c441daea6b84bce3040443",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "cfda2dffadb38d873570d2b6ae6299fbd47f2385499929e3f4e3ee4f998257eb",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s2"
+    },
+    {
+      "current_model_sha256": "cc4cc70bbf76c58ef43eab0af2a498b3dd317deb1a0db398bb6e13efbc989f0f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f4a3addb9f0bf01c15070ae32e2a6b8412a31f533fdda25fa34d50808de4e3fe",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s2"
+    },
+    {
+      "current_model_sha256": "53cb74b866fcb2b37a2cce6abc3731cc0a6d1ef15cc00b3dff5160bd055b5e04",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "c28fee3c9de8531ab8e639350a7ec15b0de52269856c6ea7da1adb6566a59f4e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-ssm-s2"
+    },
+    {
+      "current_model_sha256": "9140d4baeefc1ec4e0e5546fe06f7eeddd4e94898c84968ffbd92026b08d1398",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "33945f20724fc0a1e631542be1fe8e2fa6b64cd76a86950f5369c072aca8215e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6-s2"
+    },
+    {
+      "current_model_sha256": "094aec01c400daf4fcdb443765ae9c21564b30dc9b1e3301cc9b04ae4b85300a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ce5c65bd3ab71fc081a3f22e36527312825b71c7eaeedb881bca89a37b87c734",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6_static-s2"
+    },
+    {
+      "current_model_sha256": "d97132b94b12121309e49a110f693ec5c98473ddf04d3778f11d9afbb5272fa8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "74955d144ef7d67e01469ca79e6cd35f6ebb676b9909e5fa379d159648fa3016",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s2"
+    },
+    {
+      "current_model_sha256": "9633800ec86aa3774abcbc9020e56a2cb79dc84f66f0229afc270a756318894c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5a05549ab45a009c9b2c47c8005d6ac55f72641e5a4bcc34c6b69162f32077bb",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s2"
+    },
+    {
+      "current_model_sha256": "9f3b829440e0868715fa2c1e07f25d87ba23b5692a98283d2c07a4a9f865ae2a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "24ffa3f8616dcc61c5f078f65dd690f2ed0388529763de517610535a9e900a57",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s2"
+    },
+    {
+      "current_model_sha256": "4e528efac95dd2c3954304f66d4f96f5254ab9f10a3cb7c83c1028d305ac3810",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5f4935bdd2da284251bc94b37a6918a2c9a6c26796840577b4859f07843ad8ff",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-ssm-s2"
+    },
+    {
+      "current_model_sha256": "8851a41fadf93c0a5ddedfad2804460bb4d14d14835831f51729a7101b7be8a3",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6652685bff86a28f4e503cd6a3ac441e084b53685c19c4abba195912eecda992",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6-s2"
+    },
+    {
+      "current_model_sha256": "d271526ace08434222e244ad9f7c4d088551cffe2a201063da797fd18bf586b6",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6562089a7fa9ad9446d06367a45db19d84cb7151984cfc42660d247448dc4c29",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6_static-s2"
+    },
+    {
+      "current_model_sha256": "c2ffb52030cc54391092d0e2c465197a1549f55df543e9b94f9958c33c12a29f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "88eb481d85c8f9433ed130e79822fa276494f751dfc44cc79ac1812fd2c36871",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s2"
+    },
+    {
+      "current_model_sha256": "594fd50f7062b6b683462a3487e75d13d0ccc41a8166b9f0a9da97cf9f2615d0",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "3edf56a1f723e7fc3e35be63e332cd4245a23c0aa5196d8c7b369e1102d1bffd",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s2"
+    },
+    {
+      "current_model_sha256": "0861360acf8327cbca4c1d05646e5a7eca529a3eeabf4bac346252de1c2a2994",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a32a048085b09ac1801c912abcc9f07f236857a0e21238d3923381d2053cfee1",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s2"
+    },
+    {
+      "current_model_sha256": "64dbea65aef0ef0208a362415e6a0b25dbd2630acd53afa4734e2529d0e54f98",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "787bdb5735b50b58e1cd331cf29fa58b88fd2f11223c2b2c66a2e49d0e3da70f",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-ssm-s2"
+    },
+    {
+      "current_model_sha256": "8939282cd0ccddc1fbc3f10cbf178f28c60363ae8f579dc31395c25b6c524029",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "46df163a793c2daa8c6518d46a35899c74e30d4bb740c4df5cec328fd8233ea3",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6-s2"
+    },
+    {
+      "current_model_sha256": "7fda5ff9554e6476ffce6fb5aa460fef78f5081a17120b54a171140eeeba2d9f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "73762e784d078748f34defafe6896ee443a178adf389c1c5732744b7d363f9df",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6_static-s2"
+    },
+    {
+      "current_model_sha256": "387a5e44adfe63265f2c468599fcbf8e7f10cd835a2d749c8b5fdb4a95563d76",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0751eec7efb83ed5a792e6d1d5c1cad588ebb4a1ee853ad88f52f4e0acaa2c37",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s2"
+    },
+    {
+      "current_model_sha256": "5a3493f5dc94fa635aa5d6ee6ed7be7ed273657b514235e7a1ccc410d262014b",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "8a465253b6ca3aef8d65595c90dc403fe8601bb387e0cc2dcd2005ad32d7efb2",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s2"
+    },
+    {
+      "current_model_sha256": "afa86b3ce95d6898d7899e33026e3d86893676a4b61259af166a39ce1ed121b9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "8baff19f95f28ace2784a07c4ca6e5ccf4c0930bcf52e9f252f4903736194bad",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s2"
+    },
+    {
+      "current_model_sha256": "54598c67546485e18a5f0c2b9903e4518d7674dffd2f62bc4bcb61a819c90361",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f7b21cd20f43c1c2b21abcc83ce4e18d960e894c936976210ab3b21650910abc",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-ssm-s3"
+    },
+    {
+      "current_model_sha256": "d3dae5ed5a43cd3f8c9163c6a7886e153dcba140e9d6c6cd812c36422aa88fe8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "70ca72832bf1c8b12f8747a9fa0a2184900fea0f73b59cb89e6a99e140ec7f1f",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6-s3"
+    },
+    {
+      "current_model_sha256": "2c3461d4eaf99bb2b02842b779349dc8b0767a54acbe14560b9a2f6714115c2c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "7e0b31081802e7eea1629ff3f7efc2b3480212c7d5b385c5e69fa30a0b8f57dd",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6_static-s3"
+    },
+    {
+      "current_model_sha256": "00d359edfb69348463536a2864ab0fdec9fced24933a032cc9c217c86b206348",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "eb4c96bb69a3269516fbf3b6da930fd7b95442c66c3bc95038bcb82d0b00279a",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s3"
+    },
+    {
+      "current_model_sha256": "5c05a7cdf4d9e61a4be9a155cb2e45b0609050c176ce13bdf76cb89866960614",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0a36be47c6ae9533d4d5378b91fd98dd0ab8baec60795e00c382f84469f044df",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s3"
+    },
+    {
+      "current_model_sha256": "b4c9363a6f8c50a28bb98964789dc7fab90e5fff3fab065bcd72f251b5c38dce",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "62970bdf64c6d1df60b2e4ac38394338459e8e0817dcd396b738cf4a0af49fcb",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s3"
+    },
+    {
+      "current_model_sha256": "a750e5e8bb8158b02af6d6918b53f97d18f4841ba037f2709fa6a46b034113cd",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "7a940de40d6b8f7e46d31f430207597eab6ca5b546b54565b093660904809d57",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-ssm-s3"
+    },
+    {
+      "current_model_sha256": "40151099dbf999576862e1fe95a25dceeba28ffa8e599f852f803167e61387f6",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "34f9c29efdbe22f67db57f96b7097e5ccdabd7faecd0b5d0ed32d30a07b3fc57",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s3"
+    },
+    {
+      "current_model_sha256": "bb1ce5dd782d5c0e16419a7f398d8ba9b16fc74ad1a937c4c465a36effb9b9e3",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "bf29be8a18330776e3d64dbc8e9a405618f1f3a8e7320e9be8074b40ce495496",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s3"
+    },
+    {
+      "current_model_sha256": "045b591989e3599447a70adae956610b2a1d3d8c3e0cf32404a662fa65c5012d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "019f5a7160d66333d4fcbbadad8db5e27e297dad362e967886750f2d386be9c6",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s3"
+    },
+    {
+      "current_model_sha256": "7c0e4106177982945b0728bb6089440f1144bbd890582883dfc18aa219c7e65d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f214464a7185ca6b490c4631b6741358f380123bcee50bd52276860f00df7dae",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s3"
+    },
+    {
+      "current_model_sha256": "572fa94a3b1a266377842ca072e63fe24f13a2cc6ae0ebf461aed0a6405160e2",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6becbb981be4c39a6a7c44ef43d3c32c65214cdc130416ac4956f4ee7dab58b0",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s3"
+    },
+    {
+      "current_model_sha256": "e318027b730e5d9d9c5454d84f282349f5fa031e9a582e44c3826376feb5b7e3",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "e4f5879829b6d79ba3f794676e32ab24916ad3a99020d531c8f2b664f0a1f279",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-ssm-s3"
+    },
+    {
+      "current_model_sha256": "385a776fbd90a5a13bfd107185c89f58cb7fa2c45520129a5fec2bd022199b63",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "84f10c599caea82e09488dddd4fb4530bcbf82853f340bdafe1b27972cc2a038",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6-s3"
+    },
+    {
+      "current_model_sha256": "bf5052bbaf0ccece3b3270c814ce4a4f3cf3f40695e12eef0c1e6f8f42bde9e7",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "33170e31d7a0ef39e15f466530604c63dd68e2ca8e6646f33409b06bf3615481",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6_static-s3"
+    },
+    {
+      "current_model_sha256": "eefba5befded7348ad8342decf73c6fff09697d946f6d10dd0eab7f82ffce2ea",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d5c15a31bcf59aa0e9258105b6d38113b2c3322b8cefa861a986ff3b3c2d0a07",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s3"
+    },
+    {
+      "current_model_sha256": "5547aef271355feb5db31b2a86bf85a832ec0302c9006e296b6409737ad11538",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "4472c3dd2092779a76cde151d8a9aa6ac32eb55bda4654c3d721c0aecb8b3082",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s3"
+    },
+    {
+      "current_model_sha256": "0dbb73a65f46d33feab1eba02cd095a180759ebc59db195c5e1fd07fa31e3b22",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "6928791cdeeb51ba58ea3972254f666678cad93d12cf5ece342086d56a786368",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s3"
+    },
+    {
+      "current_model_sha256": "ca2d272bc2e8b98e2b58a72fc823a6b261e8c5d7a005f617c08f9e632bafb580",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "446fc5b24c4e5edf6ff7d259bd2c9c7dd52561083590789ca1d979c04e70a87a",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-ssm-s3"
+    },
+    {
+      "current_model_sha256": "8d8ae59a6f151c48bfbf15cbbdbf3f76f54e91b9afa8f4efd8f08377a8f9c5b7",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "454fa0e1ac277c7b9093965949bf44ce331d5c9069d785a22ab0c30ecab7bcb7",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6-s3"
+    },
+    {
+      "current_model_sha256": "ba1661e4c0116366fe32d0c80d6a70a20e288a688e0897fc61a33156d4336cea",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ef1d90593dc9300efdfed42c8385691b45d697e06fe0a4c3eeb9daf6c706529d",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6_static-s3"
+    },
+    {
+      "current_model_sha256": "49be0db2758a80e1e9e3da866f69c7f27869e1451ec117c25aa676ef43502a8a",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "cd08e87cd946d8e622dad8aca73621f6280c464a28c9be53c53453c1043bfe97",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s3"
+    },
+    {
+      "current_model_sha256": "ca5944735f9beccd88710459e027134b49b2f16c63c87783f4c85f9ab3e1dd5d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "a67dd8dc171f8ff3b41d3358800bf37e248abd84757fdb88196839dfce88d442",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s3"
+    },
+    {
+      "current_model_sha256": "2dc7302f721fbd27ba538aa5627a93fc542f70cbae1b4d8a52f54f3834d36b9c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "06afabe88c84729bd330e4d00be16a9f41e96afe05ca8895a88b1dfc93a1497f",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s3"
+    },
+    {
+      "current_model_sha256": "86776dd11e50d68b2316fb442be8b931ab0875509990ebbd427d01a3e6a8447d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "d7c44ee3385b471e80995f6eca17ff5724e65e1d017981082ae6382d4ad317bc",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-ssm-s3"
+    },
+    {
+      "current_model_sha256": "27b651990fff46cede2202263cbc091af6676fffd6b888ca1e4bdd26b82dad79",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "85aff0a79f38f33ec9573df41e738fde7673bdb205e5f9b77a06f440417d06bb",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6-s3"
+    },
+    {
+      "current_model_sha256": "32fc374bf3a4842112ba4f8d0ced2ed04c65abc59d557f0c91e7a6fa8ac251fc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "5b23a3e6d3748d317be42f706185d3a5962c223c764a09fa1082b72c7ec406d2",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6_static-s3"
+    },
+    {
+      "current_model_sha256": "2078e87b31f00d4f0e5a095a328391351cadb039cc0efd038cb2e2357a9b5ac1",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "48935872173e670468efcf769139477957206fac01209e6383a685db40844f9d",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s3"
+    },
+    {
+      "current_model_sha256": "fc0097c3f31f07454ce4f09bdf878d677e8ba61f13d9eef7f0a1b50365840a08",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "46ff60cb488648f376f9a1037a98c3bb6a5eee7ef8c92482360845d81d0bd7b1",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s3"
+    },
+    {
+      "current_model_sha256": "25195758447a89de4ca3a6a83a09182fe8cb40a1ce0222e73588a6865a7630a8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "7462fe1d4483c44642a8b6eeee6c533978d01157a84f00b9d1148cb95cc34ef2",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s3"
+    },
+    {
+      "current_model_sha256": "890f0f7dfc9b2abf192625dfff1786a2d16997dfee69766ebb2d4bf0c5810c33",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "976c9099c5b9834534a2912b3f2c156b56937b918fc0af903436b6c16831d8fd",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-ssm-s4"
+    },
+    {
+      "current_model_sha256": "db9ba8eb63f55225ead9a1cbc9b6136577b9733674108d518f95a325acf38db9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "69324d0f05a19994909c431a34d6988b23fbf274602b5c8eead3409d2004808e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6-s4"
+    },
+    {
+      "current_model_sha256": "75d470283d1b43bf5aa7c430e8c5fae9872a58644b4c803aec0d5a1b28a69be1",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0603975936359c0822529b230d48896f1fbe4f475a2fbfabf3afa43fd33936f9",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv6_static-s4"
+    },
+    {
+      "current_model_sha256": "2274d52ca3775cc0fc301710a429956f3a8c470c313bcee58e54b3698c33ba7d",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0edfc3b5a29e783c5cd6e79b26f010f8df818112c89aaf4cf24a76a58bf61ded",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s4"
+    },
+    {
+      "current_model_sha256": "9a0523ad4ce305e9a5dc89421396cd10b7707d22b14fb7b74ca17d9edf838f1f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "af7250c74f6855421e5d5291073a7fb3a7253e5c5a8b893ae963b063c6de8fec",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_sharedaction-s4"
+    },
+    {
+      "current_model_sha256": "1c9bb17e28018621aadd558e8e44bd676aeb4fb38453dbed9d18be4b177282cc",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "568d489d4b7a28f6298d66b52b22859c40827eb0bfc021b4afb3d1cd8867abdc",
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv7_norecovery-s4"
+    },
+    {
+      "current_model_sha256": "e10015bad378268090a1e4e516faaf700f662d4176f719b35f37a6182e477de0",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "234022b89fda9df813e3c8b9206c863dcf66740be2de40ccf1267051b7655f0c",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-ssm-s4"
+    },
+    {
+      "current_model_sha256": "c08083c92b957a5c7e03514db5dd525ff445ba22fd3ad382b78b146ca0bd8688",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f1fc8258b2494a4ca060e612fe64de6f5227814efb0eded892feeeafaafb4fcd",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6-s4"
+    },
+    {
+      "current_model_sha256": "ce10a4313c5c81f80cdb30a8da03c780ee6d73d97464f94fb0aabb035f89a466",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "60b082ca350c841918fe722dfc52e21477828fc8689c6e47ab2914990f45e7d8",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv6_static-s4"
+    },
+    {
+      "current_model_sha256": "08a268b1dfc1a12fe68f938cf87b2baa30af5f1cd4cf370314a48eebba2554c5",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "13f5474bd46d4421c9517a5c7dbe7d62bae306b71273c3b156f2b8ebba5d6a92",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s4"
+    },
+    {
+      "current_model_sha256": "e7807c3659a81d1117a872f78eddb97817bc42d3f4e2b085208939904b9bf900",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "984a03f92f54dd7c6aea521e23acef4aa2e9f1424748c6bc37832300110257c0",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_sharedaction-s4"
+    },
+    {
+      "current_model_sha256": "8836fa6ce35e16bfa1e7dceb9346514358e7f448d00885f5fe9a86cd7ac98de9",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "66e0261525d4cd61a48bc4ccb8409da6d4b07aa858e6df2ef4b0361be82983c7",
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_norecovery-s4"
+    },
+    {
+      "current_model_sha256": "754f7eda1fc11cdb57fea618889698383d23df7baeaf11abaf4b23ba1c9024a6",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "80eac7325357ab4ea8dfdf9b057697ff4305f188059b36fa1fefd74cd28b417d",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-ssm-s4"
+    },
+    {
+      "current_model_sha256": "170f7f45ff72e66ba3663d03b9f6f9659e0950f292cbdaf4cef4d8e21fac6fe6",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f5df590d29e526414a2f0dce2b131cb6d7bff7aa439e4a363f4ea5fa8716642d",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6-s4"
+    },
+    {
+      "current_model_sha256": "cf66809f17a28b548775b0317bdf411336cbdec0d2c50ca475aba18a3e601b0e",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "ee81912f61ba270f4de2232e69e29701c652a090a23a0d979219de40ea3c01e0",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv6_static-s4"
+    },
+    {
+      "current_model_sha256": "d59fe738820dff61cd9dfbe1b7bdc8af13b3e037a6e1d781d31cf2a994ad9593",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "9f98675af646766bea1633ad59d035e7e5ba5315cc3f96f040a628e9fab2ef21",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s4"
+    },
+    {
+      "current_model_sha256": "caa48bbe6c62fd90fc6d3ec59cbb33ca56827823649be41d798941ad813dabce",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "f3a0aadfeeef3e9b5da03641b80253a30c58bf70e839a8b18114b5152d46f4df",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_sharedaction-s4"
+    },
+    {
+      "current_model_sha256": "9799ffe2dd746449f1a2498e042720c204eee825cd07e42d3ace6be6830a87c8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "8f7de6d5a4ac7f8410aae651e1bb9af42d32484961e7f2a1b9d66122e2361aca",
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv7_norecovery-s4"
+    },
+    {
+      "current_model_sha256": "0ea7fb7230183178c6d74e9d7d333bfaf03905a6c3852e0a5583563c86f9640c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "c7b144b67fb4a99deb8ee9ee262387c3b047e9ac336fbbf4eb6af75315e57642",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-ssm-s4"
+    },
+    {
+      "current_model_sha256": "1ba1a26d6a76f4ffafd7fbbdde59be948619f5a3d6b02bf2b6dedd3abd2d1384",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "67a72b9ae74d49e41c6036a91acc0d359c9515f2717cbe2ee0ac135aee91ce33",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6-s4"
+    },
+    {
+      "current_model_sha256": "9bf00237f32e5aebfa3d51218e8a76fa536010344eb0ec624ebbc2326ea4c475",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "bb21aa16937b00fd160817e162b822d84eb80b0444f310344c65a245aec737b5",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv6_static-s4"
+    },
+    {
+      "current_model_sha256": "de33329755d35d6df0ef188bc0222f45e244890f87db7118c8e75eccd8567c9f",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "2f9197a8a65cc60dc4a83fbc6fb7879cca74816a8b0c25dd5838d3aa966c019e",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s4"
+    },
+    {
+      "current_model_sha256": "5260cbd1a72dbb7e5224a44efbed0d6e5d400424c1072c134bb3f00c3d8b6e0b",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "3793667186b5918fbb2b035d629f96e164c24302db0f1c1b234747f47430a3d5",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_sharedaction-s4"
+    },
+    {
+      "current_model_sha256": "fbdd295a2703a6e2bc4762af3fa94ec0a358bac671e3d84f6ceb9c7ad32bf86c",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "8698c806c350be63a63336f329da0acc123d7dab19242662a59a83b51189c2a5",
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv7_norecovery-s4"
+    },
+    {
+      "current_model_sha256": "833dbf01aff7c1ef61fcbea4a0ef9483729d3105f51d6f2792bbdec784f594a7",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "041237ac9988e021c879eeb56d87bbc532c66d1d6a5c845544e732b41822a8d8",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-ssm-s4"
+    },
+    {
+      "current_model_sha256": "c6d70bb310b685e4d79794e7bd545663b0b048f900a495144c57d94c806167f1",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "39720a263cfb98b7f87d46430c227bbfcc383c55cf26298d412d4eb138b86307",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6-s4"
+    },
+    {
+      "current_model_sha256": "9593f9744c7f6d73e7ecdd3078f55851c72e98b2ad2a7870f64263a277bc85d8",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "875a0af4f3b8d06f6032d9506396be9726e353ce30b0ecee704659830dfa04e1",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv6_static-s4"
+    },
+    {
+      "current_model_sha256": "69c883ae468f0df11ece7cc0b55337737422fb5fb7d6d9d8d41d9a194a8c0536",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "0e3ff5ece24a76f5f2604548a5c56f43d77a1c298a2653be38c562f68ae730f6",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s4"
+    },
+    {
+      "current_model_sha256": "c525bc106f6f7ca4de30f98d9cd689ed4615e20a288babf2c9ff92e4fa9770f5",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "505454b7c2906b09b90afd184ca35b32ef6c0e06ab5be51ef5e7cb5b78a546ba",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_sharedaction-s4"
+    },
+    {
+      "current_model_sha256": "2a0093b0c3d79eb780c4f95666f33624cc0551d76a208128389f50f8e52397df",
+      "history_exact": true,
+      "model_tensors_exact": true,
+      "primary_metrics_exact": true,
+      "reference_model_sha256": "2d0e4fe29486048d90d6501ddd506429677ea9bd1ddeb2f4adfeac52acc95dfb",
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv7_norecovery-s4"
+    }
+  ],
+  "sealed_v7_manifest_sha256": "98eda8abec229753381bed5f22c70317428242470cc6f40b6a3f9c16d0f55c11",
+  "v8_levelaction_v7_noaux_identities": [
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s0",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s0",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s0",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s0",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s0",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s0",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s0",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s0",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s0",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s0",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s1",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s1",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s1",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s1",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s1",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s1",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s1",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s1",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s1",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s1",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s2",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s2",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s2",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s2",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s2",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s2",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s2",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s2",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s2",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s2",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s3",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s3",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s3",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s3",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s3",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s3",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s3",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s3",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s3",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s3",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:reacher.hard.occ-hacssmv7_noaux-s4",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_levelaction-s4",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:ball_in_cup.catch.occ-hacssmv7_noaux-s4",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_levelaction-s4",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:finger.spin.occ-hacssmv7_noaux-s4",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_levelaction-s4",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-dmc:cheetah.run.occ-hacssmv7_noaux-s4",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_levelaction-s4",
+      "student_tensors_exact": true
+    },
+    {
+      "base_history_exact": true,
+      "peer": "lewm-ogbench:cube-single.occ-hacssmv7_noaux-s4",
+      "primary_metrics_exact": true,
+      "rollout_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_levelaction-s4",
+      "student_tensors_exact": true
+    }
+  ],
+  "v8_redundant_head_receipts": [
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s0"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s0"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s0"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s0"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s0"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s1"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s1"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s1"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s1"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s1"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s2"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s2"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s2"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s2"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s2"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s3"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s3"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s3"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s3"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s3"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:reacher.hard.occ-hacssmv8_redundant-s4"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:ball_in_cup.catch.occ-hacssmv8_redundant-s4"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:finger.spin.occ-hacssmv8_redundant-s4"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-dmc:cheetah.run.occ-hacssmv8_redundant-s4"
+    },
+    {
+      "head_blocks_exact": true,
+      "run": "lewm-ogbench:cube-single.occ-hacssmv8_redundant-s4"
+    }
+  ],
+  "validated_jobs": 325
+}

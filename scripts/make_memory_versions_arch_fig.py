@@ -33,49 +33,52 @@ def arrow(ax, start, end, label=''):
 
 
 def main() -> None:
-    fig, ax = plt.subplots(figsize=(18, 25.4), dpi=180)
+    fig, ax = plt.subplots(figsize=(18, 27.4), dpi=180)
     fig.patch.set_facecolor('#fbfcfd')
     ax.set_xlim(0, 18)
-    ax.set_ylim(0, 25.4)
+    ax.set_ylim(0, 27.4)
     ax.axis('off')
 
-    ax.text(9, 25.03, 'Learnable-memory architecture map: V1–V8 and tested controls',
+    ax.text(9, 27.03, 'Learnable-memory architecture map: V1–V9 and tested/proposed controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
-    ax.text(9, 24.65,
+    ax.text(9, 26.65,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
             'mask shifts, and K/M/τ sweeps are experimental settings.',
             ha='center', fontsize=10.5, color='#607d8b')
 
-    xs = tuple(0.10 + index * 2.23 for index in range(8))
-    width, top_y, top_h = 2.00, 21.98, 2.05
+    xs = tuple(0.08 + index * 1.98 for index in range(9))
+    width, top_y, top_h = 1.74, 23.98, 2.05
     card(ax, xs[0], top_y, width, top_h, 'SMT-v1',
          r'value-gated EMA write' + '\n' + r'$i_t\odot z_t$; old state still decays' + '\n'
-         + 'softmax horizon read', '#e3f2fd', body_size=6.1)
+         + 'softmax horizon read', '#e3f2fd', body_size=5.35)
     card(ax, xs[1], top_y, width, top_h, 'SMT-v2',
          'same erasing write\nindependent sigmoid reads\n'
-         'larger mass; gates become static', '#dcedc8', body_size=6.1)
+         'larger mass; gates become static', '#dcedc8', body_size=5.35)
     card(ax, xs[2], top_y, width, top_h, 'SMT-v3-W',
          'whole-update scalar gate\n$g_t=0$ exactly freezes all EMA banks\n'
-         'global simplex; action-blind', '#fff3e0', body_size=6.1)
+         'global simplex; action-blind', '#fff3e0', body_size=5.35)
     card(ax, xs[3], top_y, width, top_h, 'HACSM-v4',
          'three belief levels $\\tau=\\{2,8,32\\}$\naction prior $p_t=T(m_{t-1},a_{t-1})$\n'
-         'selective correction + fixed auxiliary', '#e1bee7', body_size=5.8)
+         'selective correction + fixed auxiliary', '#e1bee7', body_size=5.05)
     card(ax, xs[4], top_y, width, top_h, 'HACSSM-v5',
          'two fast/medium states\nhard-monotone channel gains\n'
-         'action predict/correct\nboundary-only shaping', '#d1c4e9', body_size=5.8)
+         'action predict/correct\nboundary-only shaping', '#d1c4e9', body_size=5.05)
     card(ax, xs[5], top_y, width, top_h, 'HACSSM-v6',
          'fixed scalar $\\tau=\\{2,8\\}$ anchor\ndense visible-endpoint\n'
-         'same-level action consistency', '#c5cae9', body_size=5.9)
+         'same-level action consistency', '#c5cae9', body_size=5.15)
     card(ax, xs[6], top_y, width, top_h, 'HACSSM-v7',
          'level-specific action heads\nstatic/dynamic gate shrinkage\n'
-         'EMA counterfactual recovery', '#b39ddb', body_size=5.8)
+         'EMA counterfactual recovery', '#b39ddb', body_size=5.05)
     card(ax, xs[7], top_y, width, top_h, 'SAS-PC-v8',
          'one physical shared action head\nlearned gate shrinkage\n'
-         'joint read; no internal auxiliary', '#9575cd', body_size=5.8)
-    for index in range(7):
-        arrow(ax, (xs[index] + width, 23.00), (xs[index + 1], 23.00))
+         'joint read; no internal auxiliary', '#9575cd', body_size=5.05)
+    card(ax, xs[8], top_y, width, top_h, 'LOIF-v9',
+         'learned ordered poles\nevidence scale + gain\n'
+         'inverse-scale fusion; design only', '#7e57c2', body_size=4.85)
+    for index in range(8):
+        arrow(ax, (xs[index] + width, 25.00), (xs[index + 1], 25.00))
 
-    ax.text(0.35, 21.58,
+    ax.text(0.35, 23.58,
             'V8 shared-action shrinkage controls (34,566 compact / 36,102 expanded parameters)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v8_controls = (
@@ -88,8 +91,25 @@ def main() -> None:
         ('single', 'medium-only read\nboth states retained', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v8_controls):
-        card(ax, 0.15 + index * 2.55, 19.90, 2.30, 1.34, title, body, color,
+        card(ax, 0.15 + index * 2.55, 21.90, 2.30, 1.34, title, body, color,
              title_size=8.5, body_size=6.2)
+
+    ax.text(0.35, 21.50,
+            'V9 LOIF design-only controls (34,563 proposed memory parameters; no V9 run)',
+            fontsize=11.5, fontweight='bold', color='#37474f')
+    v9_controls = (
+        ('loifv9', 'learned poles + full evidence\ninverse-scale fusion', '#7e57c2'),
+        ('fixed-$\\alpha$', '$\\alpha=(e^{-1/2},e^{-1/8})$\ntau-mapped control', '#fff3e0'),
+        ('global-$R$', '$R_t=softplus(b_R)+\\epsilon$\nconditioning control', '#f8bbd0'),
+        ('innovation-only', 'disconnect direct latent\nsentinel-path control', '#e1f5fe'),
+        ('latent-only', 'disconnect innovation\nsentinel-only control', '#fce4ec'),
+        ('uniform-fusion', 'uniform prior + output\nscale-fusion control', '#b3e5fc'),
+        ('no-action', 'zero action innovation\nstructural receipt', '#ffe0b2'),
+        ('single-bank', 'fast state path disconnected\ntrue hierarchy control', '#b2ebf2'),
+    )
+    for index, (title, body, color) in enumerate(v9_controls):
+        card(ax, 0.12 + index * 2.22, 19.82, 2.05, 1.34, title, body, color,
+             title_size=7.25, body_size=5.15)
 
     ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
             fontsize=11.5, fontweight='bold', color='#37474f')
@@ -198,15 +218,16 @@ def main() -> None:
 
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
-            'V7 complete: 325 runs.  V8 frozen: 325-run adaptive-development grid (§7.10).',
+            'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
+            'V9: design-only proposal (§2.8/§7.11).',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
-            'V8 removes the V7 teacher/objective: compact shared modes use 34,566 parameters; '
-            'ordinary next-latent learning remains self-supervised.',
+            'V9 proposes learned ordered poles + evidence-conditioned gains under one unweighted '
+            'visible-target MSE; every reference must be retrained. No implementation or result.',
             ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
