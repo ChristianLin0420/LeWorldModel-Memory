@@ -39,7 +39,7 @@ def main() -> None:
     ax.set_ylim(0, 27.4)
     ax.axis('off')
 
-    ax.text(9, 27.03, 'Learnable-memory architecture map: V1–V9 and tested/prelaunch controls',
+    ax.text(9, 27.03, 'Learnable-memory architecture map: V1–V9 and completed controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
     ax.text(9, 26.65,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
@@ -74,7 +74,7 @@ def main() -> None:
          'joint read; no internal auxiliary', '#9575cd', body_size=5.05)
     card(ax, xs[8], top_y, width, top_h, 'LOIF-v9',
          'learned ordered poles\nevidence scale + gain\n'
-         'inverse-scale fusion; prelaunch', '#7e57c2', body_size=4.85)
+         'inverse-scale fusion\ncomplete; locked NO_GO', '#7e57c2', body_size=4.65)
     for index in range(8):
         arrow(ax, (xs[index] + width, 25.00), (xs[index + 1], 25.00))
 
@@ -95,17 +95,17 @@ def main() -> None:
              title_size=8.5, body_size=6.2)
 
     ax.text(0.35, 21.50,
-            'V9 LOIF implemented prelaunch controls (34,563 memory parameters; no official run)',
+            'V9 LOIF completed controls (34,563 memory parameters; 325 cells; paired full-vs-control delta)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v9_controls = (
-        ('loifv9', 'learned poles + full evidence\ninverse-scale fusion', '#7e57c2'),
-        ('fixed-$\\alpha$', '$\\alpha=(e^{-1/2},e^{-1/8})$\ntau-mapped control', '#fff3e0'),
-        ('global-$R$', '$R_t=softplus(b_R)+\\epsilon$\nconditioning control', '#f8bbd0'),
-        ('innovation-only', 'disconnect direct latent\nsentinel-path control', '#e1f5fe'),
-        ('latent-only', 'disconnect innovation\nsentinel-only control', '#fce4ec'),
-        ('uniform-fusion', 'uniform prior + output\nscale-fusion control', '#b3e5fc'),
-        ('no-action', 'zero action innovation\nstructural receipt', '#ffe0b2'),
-        ('single-bank', 'fast state path disconnected\ntrue hierarchy control', '#b2ebf2'),
+        ('loifv9', '+2.551% vs SSM\nrank 7/13; NO_GO', '#7e57c2'),
+        ('fixed-$\\alpha$', '$\\alpha=(e^{-1/2},e^{-1/8})$\nfull delta = -0.671%', '#fff3e0'),
+        ('global-$R$', '$R_t=softplus(b_R)+\\epsilon$\nfull delta = +30.556%', '#f8bbd0'),
+        ('innovation-only', 'disconnect direct latent\nfull delta = +19.189%', '#e1f5fe'),
+        ('latent-only', 'disconnect innovation\nfull delta = +0.475%', '#fce4ec'),
+        ('uniform-fusion', 'uniform prior + output\nfull delta = +0.340%', '#b3e5fc'),
+        ('no-action', 'zero action innovation\nfull delta = +8.293%', '#ffe0b2'),
+        ('single-bank', 'fast state disconnected\nfull delta = -2.220%', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v9_controls):
         card(ax, 0.12 + index * 2.22, 19.82, 2.05, 1.34, title, body, color,
@@ -208,26 +208,28 @@ def main() -> None:
         card(ax, 0.15 + index * 2.55, 3.22, 2.30, 1.42, title, body, '#eceff1',
              title_size=9.0, body_size=6.8, edge='#607d8b', linewidth=1.2)
 
-    card(ax, 0.35, 1.53, 17.30, 1.12, 'Shared leakage-safe V5/V6/V7/V8 comparison contract',
+    card(ax, 0.35, 1.53, 17.30, 1.12, 'Shared leakage-safe V5–V9 data / normalization / tracking contract',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
-         'first-post-balanced objective • final epoch, no best-checkpoint selection\n'
+         'cohort-frozen objective: V5–V8 first-post weight .5; V9 weight 0 • '
+         'SIGReg constant/no-gradient • '
+         'final epoch, no best-checkpoint selection\n'
          'online W&B for every cell: 200 epoch logs + fixed evaluation-rollout '
          'trace / paired video / hashed artifact',
-         '#e8eaf6', title_size=10.5, body_size=7.6, linewidth=1.4)
+         '#e8eaf6', title_size=10.5, body_size=7.2, linewidth=1.4)
 
     ax.text(9, 1.05,
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
-            'V9: implemented prelaunch; no official result (§2.8/§7.11).',
+            'V9 complete: 325 runs, locked negative label (§2.8/§7.11).',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
             'not imply that raw MSE values are pooled across incompatible target spaces.',
             ha='center', fontsize=8.8, color='#607d8b')
     ax.text(9, 0.27,
-            'V9 implements learned ordered poles + evidence-conditioned gains under one unweighted '
-            'visible-target MSE; every reference is retrained. Official grid not launched.',
+            'V9 full: +2.551% vs SSM, rank 7/13; compact V8 leads the retrained grid at +6.377%. '
+            'Fixed alpha and one slow bank beat the learned two-bank hierarchy.',
             ha='center', fontsize=8.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

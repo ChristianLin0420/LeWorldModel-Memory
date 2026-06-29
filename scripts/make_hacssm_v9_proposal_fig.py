@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the implemented prelaunch HACSSM-v9 / LOIF architecture contract."""
+"""Generate the completed HACSSM-v9 / LOIF architecture and result contract."""
 
 from pathlib import Path
 
@@ -41,7 +41,7 @@ def main() -> None:
             "HACSSM-v9 / LOIF: Learned Ordered Innovation Filter",
             ha="center", fontsize=18.0, fontweight="bold", color="#17202a")
     ax.text(9, 10.65,
-            "Implemented after V8 NO_GO • official grid not launched; no performance result",
+            "325 cells complete • immutable pilot NO_GO • final PILOT_NO_GO_FINAL_DESCRIPTIVE",
             ha="center", fontsize=10.0, color="#7b1fa2")
 
     ax.text(0.32, 10.12, "CAUSAL FILTER", fontsize=11.2,
@@ -89,7 +89,7 @@ def main() -> None:
               dashed=True,
               connection="arc3,rad=-0.10" if symbol == "f" else "arc3,rad=0.10")
         arrow(ax, (13.25, y), (8.20, y), color="#5e35b1", dashed=True,
-              connection="arc3,rad=0.34" if symbol == "f" else "arc3,rad=-0.34")
+              connection="arc3,rad=0.34" if symbol == "f" else "arc3,rad=-0.16")
 
     box(ax, (9.76, 6.02), 2.12, 0.82,
         "inverse-scale prior mixture\n"
@@ -137,11 +137,12 @@ def main() -> None:
     ax.text(9, 5.70, "SELF-SUPERVISED CONTRACT", fontsize=11.2,
             fontweight="bold", ha="center", color="#37474f")
     box(ax, (0.52, 4.18), 5.30, 1.18,
-        "one unweighted causal objective\nmean next-latent MSE over eligible visible targets\n"
+        "effective trainable objective: unweighted visible next-latent MSE\n"
+        "SIGReg logged but constant/no-gradient with fixed features\n"
         "all SSM/V7/V8 references retrained identically",
         "#e8f5e9", size=8.25, edge="#2e7d32", linewidth=1.7)
     box(ax, (6.35, 4.18), 5.30, 1.18,
-        "no tau grid • no hand-assigned memory horizons • no rho\n"
+        "no tau grid • matched tau-init; no fixed retention thereafter • no rho\n"
         "no route logits • no teacher/momentum • no auxiliary weight\n"
         "nominal direct old-state coefficient: alpha_k (1-K_t^k)",
         "#f3e5f5", size=8.15, edge="#6a1b9a", linewidth=1.7)
@@ -150,38 +151,38 @@ def main() -> None:
         "operational scales—not calibrated variances",
         "#e8eaf6", size=8.1, edge="#3949ab", linewidth=1.7)
 
-    ax.text(0.35, 3.84, "FROZEN FALSIFICATION MAP", fontsize=11.2,
+    ax.text(0.35, 3.84, "COMPLETED FALSIFICATION MAP", fontsize=11.2,
             fontweight="bold", color="#37474f")
     variants = (
-        ("loifv9", "learned poles + full evidence\ninverse-scale fusion", "#9575cd"),
-        ("fixedalpha", r"$\alpha=(e^{-1/2},e^{-1/8})$" + "\ntau-mapped control", "#fff3e0"),
-        ("globalR", r"$R_t=softplus(b_R)+\epsilon$" + "\nconditioning control", "#f8bbd0"),
-        ("innovationonly", "disconnect direct latent\nsentinel-path control", "#e1f5fe"),
-        ("latentonly", "disconnect innovation\nsentinel-only control", "#fce4ec"),
-        ("uniformfusion", "uniform prior + output\nscale-fusion control", "#b3e5fc"),
-        ("loifv9_noaction", "zero action innovation\nstructural receipt", "#ffe0b2"),
-        ("singlebank", "fast state path disconnected\ntrue hierarchy control", "#b2ebf2"),
+        ("loifv9", "full filter: +2.551% vs SSM\nrank 7/13; locked NO_GO", "#9575cd"),
+        ("fixedalpha", r"$\alpha=(e^{-1/2},e^{-1/8})$" + "\nfull delta = -0.671%", "#fff3e0"),
+        ("globalR", r"$R_t=softplus(b_R)+\epsilon$" + "\nfull delta = +30.556%", "#f8bbd0"),
+        ("innovationonly", "disconnect direct latent\nfull delta = +19.189%", "#e1f5fe"),
+        ("latentonly", "disconnect innovation\nfull delta = +0.475%", "#fce4ec"),
+        ("uniformfusion", "uniform prior + output\nfull delta = +0.340%", "#b3e5fc"),
+        ("loifv9_noaction", "zero action innovation\nfull delta = +8.293%", "#ffe0b2"),
+        ("singlebank", "fast state disconnected\nfull delta = -2.220%", "#b2ebf2"),
     )
     for index, (title, body, color) in enumerate(variants):
         x = 0.22 + index * 2.20
         box(ax, (x, 2.40), 1.98, 1.22, title + "\n" + body, color,
-            size=5.65, linewidth=1.3)
+            size=5.35, linewidth=1.3)
 
     ax.text(9, 1.94,
-            "Implemented memory cost at D=128,A=6: 34,563 parameters; streaming state: "
-            "2D+2=258 floats; linear time in sequence length.",
+            "325/325 cells • 65,000 W&B epochs • 325 rollout bundles • manifest e87b560a… • "
+            "34,563 memory parameters • 258 streaming floats.",
             ha="center", fontsize=8.7, color="#455a64")
     ax.text(9, 1.53,
-            "V8 motivation: action +14.87% and joint read +9.34% survive; global shrinkage "
-            "loses 0.96% to the endpoint envelope and is 1.21% worse than SSM deep in blackout.",
+            "Full LOIF: +2.551% vs SSM, -4.149% vs compact V8, -4.994% vs the endpoint "
+            "envelope; compact V8 leads the retrained grid at +6.377%.",
             ha="center", fontsize=8.45, color="#455a64")
     ax.text(9, 1.11,
-            "Not literally hyperparameter-free: D, two-bank capacity, optimizer, data, numeric "
-            "constants, and matched tau-init remain; retention is learned after initialization.",
+            "Delta is paired full-LOIF reduction relative to each control: evidence/action paths "
+            "are active, but fixed alpha and one slow bank beat the learned hierarchy.",
             ha="center", fontsize=8.45, color="#455a64")
     ax.text(9, 0.58,
-            "V9 is a post-V8 adaptive prelaunch study. Publication evidence requires a separate "
-            "cohort with unseen seeds, gaps/corruptions, state outcomes, and executed return.",
+            "V9 is negative adaptive-development evidence—not an overall-best/ICLR claim. "
+            "Any confirmation requires unseen corruptions/seeds, state outcomes, and return.",
             ha="center", fontsize=8.9, fontweight="bold", color="#6a1b9a")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
