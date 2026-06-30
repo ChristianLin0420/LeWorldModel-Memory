@@ -41,21 +41,21 @@ def arrow(ax, start, end, label=''):
 
 
 def main() -> None:
-    fig, ax = plt.subplots(figsize=(18, 40.8), dpi=180)
+    fig, ax = plt.subplots(figsize=(18, 44.8), dpi=180)
     fig.patch.set_facecolor('#fbfcfd')
     ax.set_xlim(0, 18)
-    ax.set_ylim(0, 40.8)
+    ax.set_ylim(0, 44.8)
     ax.axis('off')
 
-    ax.text(9, 40.45, 'Learnable-memory architecture map: V1–V12 and tested/adaptive controls',
+    ax.text(9, 44.45, 'Learnable-memory architecture map: V1–V13 and tested/adaptive controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
-    ax.text(9, 40.05,
+    ax.text(9, 44.05,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
             'mask shifts, and K/M/τ sweeps are experimental settings.',
             ha='center', fontsize=10.5, color='#607d8b')
 
-    xs = tuple(0.05 + index * 1.49 for index in range(12))
-    width, top_y, top_h = 1.26, 37.25, 2.05
+    xs = tuple(0.04 + index * 1.38 for index in range(13))
+    width, top_y, top_h = 1.14, 41.25, 2.05
     card(ax, xs[0], top_y, width, top_h, 'SMT-v1',
          r'value-gated EMA write' + '\n' + r'$i_t\odot z_t$; old state still decays' + '\n'
          + 'softmax horizon read', '#e3f2fd', body_size=4.75)
@@ -94,10 +94,13 @@ def main() -> None:
          'anchor + residual + action\nstable FWL fit; paired OAS K\n'
          '28/28 artifacts; rank 21/28\nNO_GO; no 100e',
          '#3949ab', body_size=2.65)
-    for index in range(11):
-        arrow(ax, (xs[index] + width, 38.27), (xs[index + 1], 38.27))
+    card(ax, xs[12], top_y, width, top_h, 'CF-HIRO',
+         'v13 split-agreement Hankel\nnormal modal state + complement\nfixed DARE gain\nREADY_NOT_RUN 0/36',
+         '#283593', title_size=9.0, body_size=2.25)
+    for index in range(12):
+        arrow(ax, (xs[index] + width, 42.27), (xs[index + 1], 42.27))
 
-    ax.text(0.35, 36.83,
+    ax.text(0.35, 40.83,
             'V8 shared-action shrinkage controls (34,566 compact / 36,102 expanded parameters)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v8_controls = (
@@ -110,10 +113,10 @@ def main() -> None:
         ('single', 'medium-only read\nboth states retained', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v8_controls):
-        card(ax, 0.15 + index * 2.55, 35.15, 2.30, 1.34, title, body, color,
+        card(ax, 0.15 + index * 2.55, 39.15, 2.30, 1.34, title, body, color,
              title_size=8.5, body_size=6.2)
 
-    ax.text(0.35, 34.75,
+    ax.text(0.35, 38.75,
             'V9 LOIF completed controls (34,563 memory parameters; 325 cells; paired full-vs-control delta)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v9_controls = (
@@ -127,10 +130,10 @@ def main() -> None:
         ('single-bank', 'fast state disconnected\nfull delta = -2.220%', '#b2ebf2'),
     )
     for index, (title, body, color) in enumerate(v9_controls):
-        card(ax, 0.12 + index * 2.22, 33.07, 2.05, 1.34, title, body, color,
+        card(ax, 0.12 + index * 2.22, 37.07, 2.05, 1.34, title, body, color,
              title_size=7.25, body_size=5.15)
 
-    ax.text(0.35, 32.67,
+    ax.text(0.35, 36.67,
             'V10-J ORBIT modes (34,562 parameters at D=128/A=6; full host audit only, official 0/225)',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v10_controls = (
@@ -141,10 +144,10 @@ def main() -> None:
         ('static', '$g_t=\\sigma(b)$\ntests innovation evidence\nPENDING', '#fff3e0'),
     )
     for index, (title, body, color) in enumerate(v10_controls):
-        card(ax, 0.20 + index * 3.55, 30.97, 3.22, 1.34, title, body, color,
+        card(ax, 0.20 + index * 3.55, 34.97, 3.22, 1.34, title, body, color,
              title_size=8.5, body_size=5.8)
 
-    ax.text(0.35, 30.53,
+    ax.text(0.35, 34.53,
             'V11 registered grid: 16 × 5 × 5 = 400 cells / 40,000 epoch rows — UNLAUNCHED 0/400 after development NO_GO; '
             '17,796 nominal optimizer + 8,255 closed-form OAS = 26,051 total scalars',
             fontsize=10.4, fontweight='bold', color='#37474f')
@@ -168,15 +171,15 @@ def main() -> None:
     )
     for index, (title, body, color) in enumerate(v11_controls):
         row, col = divmod(index, 4)
-        card(ax, 0.20 + col * 4.43, 28.85 - row * 1.615, 4.02, 1.34,
+        card(ax, 0.20 + col * 4.43, 32.85 - row * 1.615, 4.02, 1.34,
              title, body, color, title_size=8.2, body_size=5.55)
 
-    ax.text(9, 23.62,
+    ax.text(9, 27.62,
             'V11 closeout: rawdiff .577987 (best), default .581525, legal integrator .476157; '
             'all V11b late changes negative → NO_GO / NO_LAUNCH; official matrix stays 0/400.',
             ha='center', fontsize=8.25, fontweight='bold', color='#b71c1c')
 
-    ax.text(0.35, 23.15,
+    ax.text(0.35, 27.15,
             'V12 SIRO completed adaptive screen: seven designs × four tasks = 28/28 artifact-valid cells; 21 rank-valid / 7 rank-fail',
             fontsize=11.5, fontweight='bold', color='#37474f')
     v12_controls = (
@@ -189,15 +192,37 @@ def main() -> None:
         ('retrained V11', 'rawdiff KDIO predecessor\nNMSE .564069 • artifacts 4/4', '#d1c4e9'),
     )
     for index, (title, body, color) in enumerate(v12_controls):
-        card(ax, 0.15 + index * 2.55, 21.43, 2.30, 1.34, title, body, color,
+        card(ax, 0.15 + index * 2.55, 25.43, 2.30, 1.34, title, body, color,
              title_size=7.8, body_size=5.65)
-    card(ax, 0.35, 19.75, 17.30, 1.45,
+    card(ax, 0.35, 23.75, 17.30, 1.45,
          'SIRO-v12 closeout: SCREEN_NO_GO / NO 100-EPOCH LAUNCH',
          'Full .935218 vs retrained V11 .564069 vs legal integrator .469803. Shared $A$ + full $R=I$ gives exact '
          '$v=r+u$: $v^-=Av+Ba+b$, so the full split is bookkeeping—not a functionally distinct hierarchy.\n'
          'V12b zero-step replay tested old-history $K$ .723578, identity $K$ .727920, deployed-history LMMSE '
          '$2.008\\times10^{12}$, current-$A$ Riccati .724090, and normal-$A$ Riccati .376639; action partial-$R^2$ positive 0/4 → STOP.',
          '#ffebee', title_size=9.4, body_size=5.25, edge='#b71c1c', linewidth=1.6)
+
+    ax.text(0.35, 23.30,
+            'V13 CF-HIRO prospective screen: six same-schema modes + SSM / compact V8 / KDIO; READY_NOT_RUN, 0/36',
+            fontsize=10.8, fontweight='bold', color='#37474f')
+    v13_controls = (
+        ('full', r'complement $c_\perp$' '\npositive-part fold $g$\n' r'normal $A$ + fixed $K_\infty$', '#a5d6a7'),
+        ('fullanchor', r'$c=z_0-\mu_z,x_0=0$' '\nfull frozen anchor\nscreen-only', '#b3e5fc'),
+        ('triangular', 'retain Schur\ninter-block coupling\nscreen-only', '#f8bbd0'),
+        ('noshrink', '$g_i=1$ exactly\nno fold reliability\nretained if launch', '#e1bee7'),
+        ('noaction', '$B_{eff}=0$ exactly\nfitted $B$ retained\nretained if launch', '#ffccbc'),
+        ('nocorrect', '$K_{eff}=0$ exactly\n' r'fitted $K_\infty$ retained' '\nscreen-only', '#ffe0b2'),
+    )
+    for index, (title, body, color) in enumerate(v13_controls):
+        card(ax, 0.20 + index * 2.95, 21.58, 2.70, 1.30, title, body, color,
+             title_size=7.6, body_size=5.35)
+    card(ax, 0.35, 19.92, 17.30, 1.36,
+         'CF-HIRO-v13 frozen protocol: 36-cell 30e screen; conditional 72-cell 100e wave only after every gate',
+         'All-lag split-fold moments → positive-part agreement → full-order Ho–Kalman state → real-normal blocks → '
+         'all-lag $B$ refit → paired OAS/DARE. Direct-sum read ' r'$\mu_z+c_\perp+Cx$' '; no online covariance or memory loss.\n'
+         'Gates: full rank 4/4; all six numerical; ≥5% vs noaction/external/integrator, ≥2% vs other controls, each 3/4 wins; both RMS >1e-8. '
+         'No V13 W&B/result; not cross-fitted, hyperparameter-free, automatically sized, fundamentally novel, or ICLR-ready.',
+         '#e8eaf6', title_size=8.7, body_size=5.35, edge='#c62828', linewidth=1.5)
 
     ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
             fontsize=11.5, fontweight='bold', color='#37474f')
@@ -297,7 +322,7 @@ def main() -> None:
              title_size=9.0, body_size=6.8, edge='#607d8b', linewidth=1.2)
 
     card(ax, 0.35, 1.53, 17.30, 1.12,
-         'Historical V5–V9 leakage-safe contract; V10–V12 use separate causal-host protocols',
+         'Historical V5–V9 leakage-safe contract; V10–V13 use separate causal-host protocols',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
          'cohort-frozen objective: V5–V8 first-post weight .5; V9 weight 0 • '
@@ -311,7 +336,8 @@ def main() -> None:
             'V5 complete: 300 runs.  V6 complete: 325 runs.  '
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
             'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
-            'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.',
+            'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.  '
+            'V13: READY_NOT_RUN, screen 0/36; conditional 0/72.',
             ha='center', fontsize=7.9, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
@@ -320,7 +346,8 @@ def main() -> None:
     ax.text(9, 0.27,
             'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
             'V12 loses to retrained V11 and the legal integrator; its shared-A full read collapses exactly to one $r+u$ state, '
-            'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).',
+            'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).  '
+            'V13 architecture/smoke readiness is not performance or novelty evidence.',
             ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

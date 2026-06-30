@@ -1507,8 +1507,10 @@ def main(argv: Iterable[str] | None = None) -> None:
         for namespace in ("train/*", "val/*", "fit/*", "mem/*", "perf/*"):
             wb.define_metric(namespace, step_metric="epoch")
 
+    architecture_label = _design_metadata(args.memory_mode).get("method", "SIRO")
     print(
-        f"=== {run_name} | params={model.num_parameters():,} | SIRO | amp={use_amp} ===",
+        f"=== {run_name} | params={model.num_parameters():,} | "
+        f"{architecture_label} | amp={use_amp} ===",
         flush=True)
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)

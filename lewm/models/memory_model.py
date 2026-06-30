@@ -35,6 +35,7 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
                                 OrthogonalRecurrentBeliefMemory,
                                 KickDriftInnovationObserverMemory, OCSMTMemory)
 from lewm.models.siro import StableIdentifiedResidualObserverMemory
+from lewm.models.cf_hiro import CFHIROv13Memory
 
 
 _SMTV3_MODES = {
@@ -163,6 +164,15 @@ _SIROV12_MODES = {
     'sirov12_noanchor': 'noanchor',
 }
 
+_CFHIROV13_MODES = {
+    'cfhirov13': 'full',
+    'cfhirov13_fullanchor': 'fullanchor',
+    'cfhirov13_triangular': 'triangular',
+    'cfhirov13_noshrink': 'noshrink',
+    'cfhirov13_noaction': 'noaction',
+    'cfhirov13_nocorrect': 'nocorrect',
+}
+
 
 class MemoryLeWorldModel(LeWorldModel):
     """LeWorldModel + two-timescale EMA memory injected into the predictor input.
@@ -191,6 +201,7 @@ class MemoryLeWorldModel(LeWorldModel):
         oc_stochastic_gates: bool = True,
         l0_lambda: float = 0.0,
         hier_loss_weight: float = 0.1,
+        cf_hiro_state_dim: int = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -268,6 +279,16 @@ class MemoryLeWorldModel(LeWorldModel):
             self.mem_sirov12 = StableIdentifiedResidualObserverMemory(
                 embed_dim=self.embed_dim, action_dim=self.action_dim,
                 mode=_SIROV12_MODES[memory_impl])
+        elif memory_impl in _CFHIROV13_MODES:               # fitted normal predictive observer
+            if (not isinstance(cf_hiro_state_dim, int)
+                    or isinstance(cf_hiro_state_dim, bool)
+                    or cf_hiro_state_dim < 1):
+                raise ValueError(
+                    'CF-HIRO-v13 requires a positive fixed cf_hiro_state_dim')
+            self.mem_cfhirov13 = CFHIROv13Memory(
+                output_dim=self.embed_dim, action_dim=self.action_dim,
+                state_dim=cf_hiro_state_dim,
+                mode=_CFHIROV13_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -297,10 +318,11 @@ class MemoryLeWorldModel(LeWorldModel):
                 and self.memory_impl not in _LOIFV9_MODES
                 and self.memory_impl not in _ORBITV10_MODES
                 and self.memory_impl not in _KDIOV11_MODES
-                and self.memory_impl not in _SIROV12_MODES):
+                and self.memory_impl not in _SIROV12_MODES
+                and self.memory_impl not in _CFHIROV13_MODES):
             raise ValueError(
                 'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/'
-                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11/SIRO-v12')
+                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11/SIRO-v12/CF-HIRO-v13')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -425,6 +447,18 @@ class MemoryLeWorldModel(LeWorldModel):
                 mixed, details = result
                 return self.mem_sirov12.fuse(z, mixed), details
             return self.mem_sirov12.fuse(z, result)
+        if self.memory_impl in _CFHIROV13_MODES:
+            if actions is None:
+                raise ValueError('CF-HIRO-v13 requires actions with a_t mapping z_t to z_{t+1}')
+            if memory_update_mask is not None or gate_override is not None:
+                raise ValueError('CF-HIRO-v13 has no visibility mask or learned gate override')
+            if action_override is not None or resistance_override is not None:
+                raise ValueError('CF-HIRO-v13 has no external action/resistance override')
+            result = self.mem_cfhirov13(
+                z, actions, return_details=return_memory_details)
+            # CF-HIRO's posterior read is itself the predictor coordinate.  There is no
+            # observation bypass or additive fusion around the identified observer.
+            return result
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -461,6 +495,11 @@ class MemoryLeWorldModel(LeWorldModel):
             return self.mem_kdiov11.horizons()
         if self.memory_impl in _SIROV12_MODES:
             return self.mem_sirov12.horizons()
+        if self.memory_impl in _CFHIROV13_MODES:
+            method = getattr(self.mem_cfhirov13, 'horizons', None)
+            if method is not None:
+                return method()
+            return {'state_dim': float(self.mem_cfhirov13.state_dim)}
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -956,8 +995,9 @@ class MemoryLeWorldModel(LeWorldModel):
         if (self.memory_impl in _HACSSMV8_MODES or self.memory_impl in _LOIFV9_MODES
                 or self.memory_impl in _ORBITV10_MODES
                 or self.memory_impl in _KDIOV11_MODES
-                or self.memory_impl in _SIROV12_MODES):
-            # V8--V12 are action-conditioned inference memories with no teacher or internal-state
+                or self.memory_impl in _SIROV12_MODES
+                or self.memory_impl in _CFHIROV13_MODES):
+            # V8--V13 are action-conditioned inference memories with no teacher or internal-state
             # auxiliary in the shared LeWM loss.  Do not request details here: the generic tail
             # interprets non-None details as a request to add an auxiliary.
             z_tilde = self._inject(
