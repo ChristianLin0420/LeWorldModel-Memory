@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the prospective CF-HIRO-v13 architecture and frozen screen contract."""
+"""Render the CF-HIRO-v13 architecture and completed screen result."""
 
 from pathlib import Path
 
@@ -59,7 +59,7 @@ def main() -> None:
             "CF-HIRO-v13: split-agreement normal predictive observer",
             ha="center", fontsize=18, fontweight="bold", color=INK)
     ax.text(10, 19.69,
-            "PROSPECTIVE STATUS: READY_NOT_RUN — 0/36 screen cells, 0/72 conditional 100-epoch cells",
+            "FINAL STATUS: SCREEN_NO_GO — 36/36 screen cells complete; conditional 100-epoch wave not launched (0/72)",
             ha="center", fontsize=10.3, fontweight="bold", color=AUDIT)
 
     tag(ax, .35, 19.22, "PAIRED TRAIN-ONLY SELF-SUPERVISION", ONLINE)
@@ -137,54 +137,54 @@ def main() -> None:
 
     tag(ax, .35, 10.55, "SIX SAME-SCHEMA CANDIDATE MODES", CONTROL)
     controls = (
-        ("full", "complement anchor\npositive-part $g$\n" r"normal $A$ + $K_\infty$", "#a5d6a7"),
-        ("fullanchor", r"$c=z_0-\mu_z,\ x_0=0$" "\nisolates canonical\ndirect-sum initialization", "#b3e5fc"),
-        ("triangular", "retain strict-upper\nreal-Schur coupling\nisolates normality", "#f8bbd0"),
-        ("noshrink", r"$g_i=1$ exactly" "\nisolates split-fold\nagreement shrinkage", "#e1bee7"),
-        ("noaction", r"$B_{eff}=0$ exactly" "\nfitted $B$ retained\naction-causal control", "#ffccbc"),
-        ("nocorrect", r"$K_{eff}=0$ exactly" "\n" r"fitted $K_\infty$ retained" "\nobserver control", "#ffe0b2"),
+        ("full", "complement anchor\npositive-part $g$\n" r"normal $A$ + $K_\infty$" "\nNMSE 3.9653", "#a5d6a7"),
+        ("fullanchor", r"$c=z_0-\mu_z,\ x_0=0$" "\nfull frozen anchor\nNMSE 7.7190", "#b3e5fc"),
+        ("triangular", "retain strict-upper\nreal-Schur coupling\nNMSE 17.4006", "#f8bbd0"),
+        ("noshrink", r"$g_i=1$ exactly" "\nno fold reliability\nNMSE 21.5095", "#e1bee7"),
+        ("noaction", r"$B_{eff}=0$ exactly" "\nfitted $B$ retained\nNMSE 5.3298", "#ffccbc"),
+        ("nocorrect", r"$K_{eff}=0$ exactly" "\nBEST V13\nNMSE 0.8170", "#ffe0b2"),
     )
     for index, (title, body, color) in enumerate(controls):
         box(ax, .35 + index * 3.23, 8.55, 2.88, 1.55, title, body, color,
             title_size=8.8, body_size=6.2)
 
-    tag(ax, .35, 8.03, "FROZEN FOUR-GPU SCREEN / CONDITIONAL CONTINUATION", AUDIT)
-    box(ax, .35, 5.50, 6.15, 2.05, "30-epoch adaptive screen: 36 cells",
+    tag(ax, .35, 8.03, "COMPLETED FOUR-GPU SCREEN / STOPPED CONTINUATION", AUDIT)
+    box(ax, .35, 5.50, 6.15, 2.05, "30-epoch adaptive screen: 36/36 complete",
         "9 designs × 4 tasks × seed 13001; four persistent GPU workers\n"
         "six modes + fresh SSM + compact V8 + rawdiff KDIO-v11\n"
-        "every cell: online W&B epoch rows + checkpoint + metrics\n"
-        "+ rollout table/video/hashed NPZ; clean pushed HEAD required; current ledger 0/36",
+        "all cells: finished online W&B + checkpoint + metrics\n"
+        "+ rollout table/video/hashed NPZ; artifact integrity passed",
         "#e8eaf6", body_size=6.35)
-    box(ax, 6.90, 5.50, 7.00, 2.05, "conjunctive launch gates",
-        "36/36 integrity • full rank 4/4 • all six numerical/streaming validity • late curves non-worsening\n"
-        "≥5% vs noaction + SSM/V8/KDIO/integrator; ≥2% vs other controls; each ≥3/4 wins\n"
-        r"held-fold action-predictive $R^2>0$ both directions on ≥3/4 tasks" "\n"
-        "suffix advantage >0 + pair accuracy >.5 on same tasks; both direct-sum RMS >1e-8 on 4/4",
+    box(ax, 6.90, 5.50, 7.00, 2.05, "gate outcome: numerical PASS; scientific FAIL",
+        "operator/streaming/DARE receipts pass for all six V13 modes\n"
+        "representation rank fails 2/4 • action semantics pass 1/4\n"
+        "direct-sum energy fails Walker • convergence ceilings fail\n"
+        "full loses every required performance contrast and the legal integrator",
         "#fff8e1", edge=AUDIT, body_size=6.2)
-    box(ax, 14.30, 5.50, 5.35, 2.05, "only if every gate passes: 72 cells",
-        "100 epochs; three fresh seeds 13002–13004\n"
-        "retained: full, noaction, noshrink,\nSSM, compact V8, KDIO-v11\n"
-        "6 × 4 × 3 = 72; current ledger 0/72",
+    box(ax, 14.30, 5.50, 5.35, 2.05, "SCREEN_NO_GO: 100e wave not launched",
+        "full 3.9653 • nocorrect 0.8170 (best V13)\n"
+        "KDIO-v11 0.5644 (overall best)\n"
+        "registered continuation condition failed\n"
+        "6 × 4 × 3 = 72; final ledger 0/72",
         "#ffebee", edge=AUDIT, body_size=6.35)
     arrow(ax, (6.50, 6.52), (6.90, 6.52), color=AUDIT)
     arrow(ax, (13.90, 6.52), (14.30, 6.52), color=AUDIT)
 
     box(ax, .35, 2.70, 19.30, 2.25,
-        "implementation preflight only — not scientific evidence",
-        "Four full-size D=128 / 6-layer-encoder / 4-layer-predictor, one-epoch, no-W&B smokes "
-        "completed on four GPUs with two fits, checkpoints, metrics, rollouts, and streaming error 0.  "
-        "Held-out values (Cart 1.230296, Fish 1.017661, Pendulum .957932, Walker .885543) are smoke telemetry, not results.\n"
-        "Two earlier attempts trained/refit successfully but exposed diagnostics-only AMP dtype boundaries: "
-        "FP32 actions × BF16 action map in suffix transition, then the same mismatch in action-effect RMS. "
-        "Both paths now cast explicitly to operator dtype and have regression coverage. No V13 W&B run exists yet.",
+        "decisive screen result — fixed correction is the dominant failure",
+        "Mean held-out prior NMSE (lower is better): full 3.965301, nocorrect .816999, fresh KDIO-v11 .564411.\n"
+        "Compact V8 is 2.497537, SSM 2.654614, and the legal integrator .502502.\n"
+        "Full Gaussian-noise mean is 12.932790 versus .823785 with correction disabled; Pendulum reaches 40.618581.\n"
+        "The fixed Riccati gain converts sensor noise into state error despite passing algebraic/numerical checks.\n"
+        "Nocorrect is the strongest V13 mode, but still trails KDIO-v11 and does not validate the proposed observer.",
         "#eceff1", edge="#607d8b", title_size=9.6, body_size=6.65)
 
     box(ax, .35, .48, 19.30, 1.70,
-        "claim boundary before launch",
+        "final claim boundary",
         "CF-HIRO is reward-free and state-label-free but action-observed, using paired clean/corrupted views. "
         "Its folds estimate agreement; pooled realization/covariance fits are not cross-fitted.\n"
         "Ho–Kalman/ERA, DMDc, predictive-state representations, OAS, DARE, and Kalman correction are established.\n"
-        "READY_NOT_RUN means architecture/protocol readiness only—no superiority, hierarchy, calibration, or ICLR novelty evidence.",
+        "The complete screen supplies negative evidence: numerical validity does not yield robust correction, hierarchy, superiority, or an ICLR-ready method.",
         "#ffebee", edge=AUDIT, title_size=9.5, body_size=6.7)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

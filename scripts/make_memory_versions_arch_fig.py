@@ -95,7 +95,7 @@ def main() -> None:
          '28/28 artifacts; rank 21/28\nNO_GO; no 100e',
          '#3949ab', body_size=2.65)
     card(ax, xs[12], top_y, width, top_h, 'CF-HIRO',
-         'v13 split-agreement Hankel\nnormal modal state + complement\nfixed DARE gain\nREADY_NOT_RUN 0/36',
+         'v13 split-agreement Hankel\nnormal modal state + complement\nfixed DARE gain\nNO_GO 36/36',
          '#283593', title_size=9.0, body_size=2.25)
     for index in range(12):
         arrow(ax, (xs[index] + width, 42.27), (xs[index + 1], 42.27))
@@ -203,25 +203,25 @@ def main() -> None:
          '#ffebee', title_size=9.4, body_size=5.25, edge='#b71c1c', linewidth=1.6)
 
     ax.text(0.35, 23.30,
-            'V13 CF-HIRO prospective screen: six same-schema modes + SSM / compact V8 / KDIO; READY_NOT_RUN, 0/36',
+            'V13 CF-HIRO completed screen: six same-schema modes + SSM / compact V8 / KDIO; 36/36, SCREEN_NO_GO',
             fontsize=10.8, fontweight='bold', color='#37474f')
     v13_controls = (
-        ('full', r'complement $c_\perp$' '\npositive-part fold $g$\n' r'normal $A$ + fixed $K_\infty$', '#a5d6a7'),
-        ('fullanchor', r'$c=z_0-\mu_z,x_0=0$' '\nfull frozen anchor\nscreen-only', '#b3e5fc'),
-        ('triangular', 'retain Schur\ninter-block coupling\nscreen-only', '#f8bbd0'),
-        ('noshrink', '$g_i=1$ exactly\nno fold reliability\nretained if launch', '#e1bee7'),
-        ('noaction', '$B_{eff}=0$ exactly\nfitted $B$ retained\nretained if launch', '#ffccbc'),
-        ('nocorrect', '$K_{eff}=0$ exactly\n' r'fitted $K_\infty$ retained' '\nscreen-only', '#ffe0b2'),
+        ('full', r'complement $c_\perp$' '\n' r'normal $A$ + fixed $K_\infty$' '\nNMSE 3.9653', '#a5d6a7'),
+        ('fullanchor', r'$c=z_0-\mu_z,x_0=0$' '\nfull frozen anchor\nNMSE 7.7190', '#b3e5fc'),
+        ('triangular', 'retain Schur\ninter-block coupling\nNMSE 17.4006', '#f8bbd0'),
+        ('noshrink', '$g_i=1$ exactly\nno fold reliability\nNMSE 21.5095', '#e1bee7'),
+        ('noaction', '$B_{eff}=0$ exactly\nfitted $B$ retained\nNMSE 5.3298', '#ffccbc'),
+        ('nocorrect', '$K_{eff}=0$ exactly\nBEST V13\nNMSE .8170', '#ffe0b2'),
     )
     for index, (title, body, color) in enumerate(v13_controls):
         card(ax, 0.20 + index * 2.95, 21.58, 2.70, 1.30, title, body, color,
              title_size=7.6, body_size=5.35)
     card(ax, 0.35, 19.92, 17.30, 1.36,
-         'CF-HIRO-v13 frozen protocol: 36-cell 30e screen; conditional 72-cell 100e wave only after every gate',
+         'CF-HIRO-v13 closeout: 36/36 screen cells, SCREEN_NO_GO; conditional 100e wave not launched (0/72)',
          'All-lag split-fold moments → positive-part agreement → full-order Ho–Kalman state → real-normal blocks → '
          'all-lag $B$ refit → paired OAS/DARE. Direct-sum read ' r'$\mu_z+c_\perp+Cx$' '; no online covariance or memory loss.\n'
-         'Gates: full rank 4/4; all six numerical; ≥5% vs noaction/external/integrator, ≥2% vs other controls, each 3/4 wins; both RMS >1e-8. '
-         'No V13 W&B/result; not cross-fitted, hyperparameter-free, automatically sized, fundamentally novel, or ICLR-ready.',
+         'Numerical gates pass, but scientific gates fail: full 3.9653, nocorrect .8170 (best V13), KDIO .5644 (overall best). '
+         'Full Gaussian NMSE 12.9328 vs nocorrect .8238 identifies fixed correction as the dominant failure.',
          '#e8eaf6', title_size=8.7, body_size=5.35, edge='#c62828', linewidth=1.5)
 
     ax.text(0.35, 19.38, 'Pre-V4 architecture controls used in the mechanism studies',
@@ -337,7 +337,7 @@ def main() -> None:
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
             'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
             'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.  '
-            'V13: READY_NOT_RUN, screen 0/36; conditional 0/72.',
+            'V13: screen 36/36, SCREEN_NO_GO; conditional 100e 0/72.',
             ha='center', fontsize=7.9, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
@@ -347,7 +347,7 @@ def main() -> None:
             'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
             'V12 loses to retrained V11 and the legal integrator; its shared-A full read collapses exactly to one $r+u$ state, '
             'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).  '
-            'V13 architecture/smoke readiness is not performance or novelty evidence.',
+            'V13 passes numerical checks but its fixed correction amplifies Gaussian noise; nocorrect is best V13, while KDIO remains best overall.',
             ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
