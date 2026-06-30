@@ -215,7 +215,7 @@ def main() -> None:
     arrow(ax, (13.70, 3.50), (14.05, 3.50), color=AUDIT)
 
     box(ax, .35, .25, 19.30, 1.76,
-        "diagnostic closeout → V15 Cross-View Predictive Filtration (IMPLEMENTED / SCREEN PENDING)",
+        "diagnostic closeout → V15 Cross-View Predictive Filtration (INCOMPLETE_OR_INVALID / FAIL_CLOSED)",
         "V14: action reliability=0 on 4/4; correction reliability≈1 but full loses nocorrect; "
         "machine support stays full while encoder rank fails 3/4.\n"
         "*Producer core codimension=128 is rounded-projector telemetry, not fit 104/8/104/0; "
@@ -223,8 +223,8 @@ def main() -> None:
         "FP64 direct sums are exact; mixed-precision runtime reconstruction fails 18 cells.\n"
         r"V15: $3D$ anchor/action/observation future coefficients, $H=47$, per-mode $g_j=\rho_jw_j$, "
         "and non-expansive projected shifts.\n"
-        "Differentiable minibatch OAS envelope + detach/no-envelope controls; 49 tests pass and two excluded smokes completed; "
-        "the prospective 52-cell screen has no result yet.",
+        "V15 frozen closeout: canonical analyzer 44/52; norisk 3/4 and norho 0/4; scientific gates not evaluated. "
+        "Post-failure exact-command/W&B repair leaves 47/52 bundles; audit FAIL_CLOSED; continuation 0/156.",
         "#ffebee", edge=AUDIT, title_size=9.2, body_size=5.75)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

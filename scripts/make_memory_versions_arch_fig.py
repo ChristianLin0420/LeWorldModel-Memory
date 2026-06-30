@@ -47,7 +47,7 @@ def main() -> None:
     ax.set_ylim(0, 50.2)
     ax.axis('off')
 
-    ax.text(9, 49.85, 'Learnable-memory architecture map: V1–V14 evidence and implemented V15 successor',
+    ax.text(9, 49.85, 'Learnable-memory architecture map: V1–V15 evidence and fail-closed V15 screen',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
     ax.text(9, 49.45,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
@@ -83,12 +83,12 @@ def main() -> None:
          'Robustness receipts pass; continuation is false and remains 0/96.',
          '#ffebee', title_size=8.9, body_size=5.65, edge='#c62828', linewidth=1.6)
     card(ax, 11.10, 44.78, 6.55, 1.45,
-         'V15 CVPF — IMPLEMENTED / PROSPECTIVE SCREEN',
+         'V15 CVPF — INCOMPLETE_OR_INVALID / FAIL_CLOSED',
          '3D=384 anchor/action/observation future coefficients; H=47\n'
          r'per-mode $g_j=\rho_jw_j$; OAS/PLS + projected suffix shifts' '\n'
-         'live/detached/no-envelope gradient controls; 49 tests pass\n'
-         '52-cell W&B/rollout screen not yet launched; no result',
-         '#e0f2f1', title_size=8.0, body_size=5.1, edge='#00796b', linewidth=1.6)
+         'canonical 44/52; current 47/52; norho fails 4/4\n'
+         'no scientific aggregate; audit FAIL_CLOSED; continuation 0/156',
+         '#ffebee', title_size=7.5, body_size=5.1, edge='#c62828', linewidth=1.6)
 
     xs = tuple(0.04 + index * 1.38 for index in range(13))
     width, top_y, top_h = 1.14, 41.25, 2.05
@@ -378,12 +378,12 @@ def main() -> None:
          'V5: 300 runs; V6–V9: 325 each, with V8/V9 locked negative.  '
          'V10-J: five-run audit, official 0/225; V11: development NO_GO, official 0/400.\n'
          'V12: 28/28 SCREEN_NO_GO, continuation 0/28; V13: 36/36 SCREEN_NO_GO, continuation 0/72; '
-         'V14: 40/40 SCREEN_NO_GO, continuation 0/96; V15: implemented, prospective screen 0/52.\n'
+         'V14: 40/40 SCREEN_NO_GO, continuation 0/96; V15: canonical 44/52 INCOMPLETE_OR_INVALID, continuation 0/156.\n'
          'Historical V1–V4 protocols and target spaces remain separate; architecture cards do not pool raw metrics across cohorts.\n'
          'V11 fails its launch screen. V12 loses KDIO/integrator and collapses to one r+u state. '
          'V13 fixed correction amplifies noise; nocorrect is best V13.\n'
          'V14 passes narrow energy/radial receipts but fails representation, reconstruction, performance, mechanism, and convergence; '
-         'norisk is best V14 and KDIO best overall. V15 has 49 passing tests and two excluded smokes, but no screen result.',
+         'norisk is best V14 and KDIO best overall. V15 fails closed: norho 0/4, norisk 3/4, current bundles 47/52.',
          '#eceff1', title_size=8.0, body_size=5.15, edge='#607d8b', linewidth=1.2)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

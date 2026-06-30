@@ -14,6 +14,8 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "figures" / "fig_cvpf_v15_arch.png"
 ANALYSIS = ROOT / "outputs" / "hacssm_v15_screen_cvpf30" / "screen_analysis.json"
+POSTFAILURE = (
+    ROOT / "outputs" / "hacssm_v15_screen_cvpf30" / "postfailure_analysis.json")
 
 
 def box(
@@ -46,12 +48,20 @@ def _analysis() -> dict[str, Any] | None:
 def _result_text(value: dict[str, Any] | None) -> tuple[str, str]:
     if value is None:
         return (
-            "PROSPECTIVE SCREEN — NOT YET RUN",
-            "49 V15 tests pass; two excluded Pendulum smokes completed\n"
-            "52 cells = 8 V15 designs (full + 7 interventions) + 5 fresh references × 4 tasks\n"
-            "seed 15001 • 30 epochs • online W&B • held-out rollout artifacts\n"
-            "The 156-command continuation is prewritten/tested but unauthorized.")
+            "SCREEN RECEIPT UNAVAILABLE",
+            "The frozen V15 screen status cannot be rendered without screen_analysis.json.\n"
+            "Do not infer an unrun, passed, or failed scientific screen from this figure.")
     status = str(value.get("status", "UNKNOWN"))
+    if status == "INCOMPLETE_OR_INVALID":
+        postfailure = _analysis_file(POSTFAILURE)
+        current = int(postfailure.get("artifact_complete_cells_after_sync_repair", 44)) \
+            if postfailure else 44
+        return (
+            "FROZEN SCREEN FAIL-CLOSED — INCOMPLETE_OR_INVALID",
+            f"Canonical analyzer: {value.get('completed_cells', 0)}/52; artifact integrity false; scientific gates not evaluated\n"
+            "norisk 3/4: Cartpole guard after 27 rows • norho 0/4: guards before row 1\n"
+            f"Post-failure exact-command completion + W&B sync: {current}/52 bundles (non-promoting)\n"
+            "Independent audit: FAIL_CLOSED, 0/52 • continuation unauthorized, 0/156")
     means = value.get("design_means", {})
     rows = []
     if isinstance(means, dict):
@@ -69,6 +79,13 @@ def _result_text(value: dict[str, Any] | None) -> tuple[str, str]:
         f"scientific continuation gate: {gate}\n{result}\n"
         f"completed {value.get('completed_cells', 0)}/{value.get('expected_cells', 52)} cells; "
         "continuation never auto-launched")
+
+
+def _analysis_file(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    return value if isinstance(value, dict) else None
 
 
 def main() -> None:
