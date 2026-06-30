@@ -41,18 +41,46 @@ def arrow(ax, start, end, label=''):
 
 
 def main() -> None:
-    fig, ax = plt.subplots(figsize=(18, 44.8), dpi=180)
+    fig, ax = plt.subplots(figsize=(18, 50.2), dpi=180)
     fig.patch.set_facecolor('#fbfcfd')
     ax.set_xlim(0, 18)
-    ax.set_ylim(0, 44.8)
+    ax.set_ylim(0, 50.2)
     ax.axis('off')
 
-    ax.text(9, 44.45, 'Learnable-memory architecture map: V1–V13 and tested/adaptive controls',
+    ax.text(9, 49.85, 'Learnable-memory architecture map: V1–V14 and tested/adaptive controls',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
-    ax.text(9, 44.05,
+    ax.text(9, 49.45,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
             'mask shifts, and K/M/τ sweeps are experimental settings.',
             ha='center', fontsize=10.5, color='#607d8b')
+
+    ax.text(0.35, 48.95,
+            'V14 CF-EBO prospective repair: cross-fold-calibrated energy-bounded observer — READY_NOT_RUN',
+            fontsize=11.8, fontweight='bold', color='#37474f')
+    card(ax, 0.20, 46.72, 4.35, 1.86, 'CF-EBO-v14',
+         'pooled V13 normal coordinate\n'
+         r'$F^\top F+H^\top H=P_{obs}$; machine support' '\n'
+         'opposite-fold empirical-Bayes action/correction\n'
+         'OAS whiten + unit cap + radial gate',
+         '#1a237e', title_size=10.2, body_size=6.25)
+    v14_controls = (
+        ('full', 'risk-calibrated action + correction\ncap + radial', '#9fa8da'),
+        ('nocorrect', r'$\alpha_K=0$ exactly' '\nopen-loop observer', '#ffe0b2'),
+        ('noaction', r'$G=0$ exactly' '\naction-path control', '#ffccbc'),
+        ('norisk', r'$\alpha_B=\alpha_K=1$' '\nunshrunk maps', '#e1bee7'),
+        ('noenergycap', r'raw $\sigma_i(M)$' '\ncap removed', '#f8bbd0'),
+        ('noradial', r'$g_t=1$' '\noutlier gate removed', '#b3e5fc'),
+    )
+    for index, (title, body, color) in enumerate(v14_controls):
+        card(ax, 4.78 + index * 2.16, 46.72, 1.94, 1.86,
+             title, body, color, title_size=7.1, body_size=5.25)
+    card(ax, 0.35, 44.78, 17.30, 1.45,
+         'Frozen V14 evidence contract: 10 designs × 4 tasks × seed 14001 × 30 epochs = 40; current 0/40',
+         'Fresh baselines: V13-nocorrect / SSM / compact V8 / raw-difference KDIO-v11. '
+         'Online W&B + rollout bundles required; clean pushed HEAD and source/data/command hashes; no overwrite.\n'
+         'Conditional continuation: 8 designs × 4 tasks × seeds 14002–14004 × 100e = 96, '
+         'currently 0/96 and NOT_AUTHORIZED. Smoke values excluded; val_train_view is validation-cache telemetry, not fit data.',
+         '#e8eaf6', title_size=9.1, body_size=6.2, edge='#1a237e', linewidth=1.6)
 
     xs = tuple(0.04 + index * 1.38 for index in range(13))
     width, top_y, top_h = 1.14, 41.25, 2.05
@@ -99,6 +127,10 @@ def main() -> None:
          '#283593', title_size=9.0, body_size=2.25)
     for index in range(12):
         arrow(ax, (xs[index] + width, 42.27), (xs[index + 1], 42.27))
+    ax.add_patch(FancyArrowPatch(
+        (xs[12] + width / 2, top_y + top_h),
+        (xs[12] + width / 2, 44.78),
+        arrowstyle='-|>', mutation_scale=14, color='#546e7a', linewidth=1.7))
 
     ax.text(0.35, 40.83,
             'V8 shared-action shrinkage controls (34,566 compact / 36,102 expanded parameters)',
@@ -322,7 +354,7 @@ def main() -> None:
              title_size=9.0, body_size=6.8, edge='#607d8b', linewidth=1.2)
 
     card(ax, 0.35, 1.53, 17.30, 1.12,
-         'Historical V5–V9 leakage-safe contract; V10–V13 use separate causal-host protocols',
+         'Historical V5–V9 leakage-safe contract; V10–V14 use separate causal-host protocols',
          'fixed DINOv2-PCA targets • $a_t:z_t\\rightarrow z_{t+1}$ • output norm = none '
          '(no cross-window statistics) • blackout targets excluded • '
          'cohort-frozen objective: V5–V8 first-post weight .5; V9 weight 0 • '
@@ -337,7 +369,8 @@ def main() -> None:
             'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
             'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
             'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.  '
-            'V13: screen 36/36, SCREEN_NO_GO; conditional 100e 0/72.',
+            'V13: screen 36/36, SCREEN_NO_GO; conditional 100e 0/72.  '
+            'V14: READY_NOT_RUN, screen 0/40; conditional 100e 0/96.',
             ha='center', fontsize=7.9, color='#607d8b')
     ax.text(9, 0.66,
             'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
@@ -347,7 +380,8 @@ def main() -> None:
             'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
             'V12 loses to retrained V11 and the legal integrator; its shared-A full read collapses exactly to one $r+u$ state, '
             'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).  '
-            'V13 passes numerical checks but its fixed correction amplifies Gaussian noise; nocorrect is best V13, while KDIO remains best overall.',
+            'V13 passes numerical checks but its fixed correction amplifies Gaussian noise; nocorrect is best V13, while KDIO remains best overall.  '
+            'V14 is prospective only: cross-fold-calibrated, not fully cross-fitted; its pooled refits and composed primitives carry no performance claim.',
             ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
