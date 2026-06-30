@@ -23,7 +23,9 @@ from lewm.models.cf_ebo import (
     _directional_risk,
     _direct_sum_maps,
     _fit_correction,
+    _matrix_rank,
     _observable_energy_coordinates,
+    _projector_rank,
     _symmetric_reliability,
     fit_cf_ebo,
 )
@@ -183,6 +185,40 @@ def test_rank_aware_direct_sum_and_zero_codimension_are_explicit() -> None:
     assert receipts["complement_present"] is False
     assert torch.allclose(complement, torch.zeros_like(complement), atol=2e-12)
     assert torch.allclose(full_row_read @ initial, output, atol=2e-12)
+
+
+def test_float32_live_projector_rank_ignores_quantization_dust() -> None:
+    fit = _fit()
+    memory = CrossFitEnergyBoundedObserverMemory.from_fit(
+        fit, dtype=torch.float32)
+    expected = int(fit.receipts["complement_codimension"])
+    assert expected == 1
+    # A float64 machine cutoff sees quantization dust in every nominal null
+    # direction; the projector-spectrum rank must recover the fitted rank.
+    assert _matrix_rank(memory.complement_projector.double()) == memory.output_dim
+    assert _projector_rank(memory.complement_projector) == expected
+
+    memory._fit_receipts.update({
+        "complement_codimension": memory.output_dim,
+        "complement_present": False,
+    })
+    diagnostics = memory.diagnostics()
+    assert diagnostics["complement_codimension"] == expected
+    assert diagnostics["complement_present"] is True
+
+    # Diagnostics remain authoritative to live state, not to fit receipts.
+    with torch.no_grad():
+        memory.complement_projector.zero_()
+    diagnostics = memory.diagnostics()
+    assert diagnostics["complement_codimension"] == 0
+    assert diagnostics["complement_present"] is False
+
+    with torch.no_grad():
+        memory.complement_projector.copy_(torch.eye(
+            memory.output_dim, dtype=memory.complement_projector.dtype))
+    diagnostics = memory.diagnostics()
+    assert diagnostics["complement_codimension"] == memory.output_dim
+    assert diagnostics["complement_present"] is True
 
 
 def test_modes_are_exact_and_schema_matched() -> None:

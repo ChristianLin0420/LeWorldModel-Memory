@@ -58,6 +58,20 @@ def _canonical_mode(mode: str) -> str:
     return mode
 
 
+def _projector_rank(projector: Tensor) -> int:
+    """Rank an orthogonal projector from its live, possibly quantized spectrum."""
+    if projector.numel() == 0:
+        return 0
+    if projector.dim() != 2 or not projector.is_floating_point():
+        raise ValueError("projector must be a floating-point matrix")
+    # Projector singular values are structurally zero or one.  The midpoint is
+    # invariant to the storage dtype and ignores float32/BF16 quantization dust;
+    # upcasting first and applying a float64 machine-rank cutoff would instead
+    # promote every such residual to an active direction.
+    singular = torch.linalg.svdvals(projector.detach().cpu().double())
+    return int(torch.count_nonzero(singular > 0.5))
+
+
 @dataclass(frozen=True)
 class EnergyRealization:
     """Observable energy coordinates derived from one stable V13 realization."""
@@ -1065,7 +1079,7 @@ class CrossFitEnergyBoundedObserverMemory(nn.Module):
         support_rank = _matrix_rank(support.cpu())
         inactive = torch.eye(
             self.state_dim, dtype=torch.float64, device=state.device) - support
-        complement_rank = _matrix_rank(self.complement_projector.double().cpu())
+        complement_rank = _projector_rank(self.complement_projector)
         # Fit receipts are useful telemetry, but deployed operator state is the
         # authority for core diagnostics. Starting from receipts and then
         # installing live values prevents an old or malformed receipt from

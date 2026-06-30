@@ -47,7 +47,7 @@ def main() -> None:
     ax.set_ylim(0, 50.2)
     ax.axis('off')
 
-    ax.text(9, 49.85, 'Learnable-memory architecture map: V1–V14 and tested/adaptive controls',
+    ax.text(9, 49.85, 'Learnable-memory architecture map: V1–V14 evidence and proposed V15 successor',
             ha='center', fontsize=18, fontweight='bold', color='#17202a')
     ax.text(9, 49.45,
             'Architecture-changing variants are shown explicitly; seeds, optimizer settings, '
@@ -55,32 +55,40 @@ def main() -> None:
             ha='center', fontsize=10.5, color='#607d8b')
 
     ax.text(0.35, 48.95,
-            'V14 CF-EBO prospective repair: cross-fold-calibrated energy-bounded observer — READY_NOT_RUN',
+            'V14 CF-EBO completed adaptive screen: 40/40 — SCREEN_NO_GO / NO 100-EPOCH CONTINUATION',
             fontsize=11.8, fontweight='bold', color='#37474f')
     card(ax, 0.20, 46.72, 4.35, 1.86, 'CF-EBO-v14',
          'pooled V13 normal coordinate\n'
          r'$F^\top F+H^\top H=P_{obs}$; machine support' '\n'
          'opposite-fold empirical-Bayes action/correction\n'
-         'OAS whiten + unit cap + radial gate',
+         'OAS whiten + unit cap + radial gate\n'
+         'full held-out NMSE .8967',
          '#1a237e', title_size=10.2, body_size=6.25)
     v14_controls = (
-        ('full', 'risk-calibrated action + correction\ncap + radial', '#9fa8da'),
-        ('nocorrect', r'$\alpha_K=0$ exactly' '\nopen-loop observer', '#ffe0b2'),
-        ('noaction', r'$G=0$ exactly' '\naction-path control', '#ffccbc'),
-        ('norisk', r'$\alpha_B=\alpha_K=1$' '\nunshrunk maps', '#e1bee7'),
-        ('noenergycap', r'raw $\sigma_i(M)$' '\ncap removed', '#f8bbd0'),
-        ('noradial', r'$g_t=1$' '\noutlier gate removed', '#b3e5fc'),
+        ('full .8967', 'risk-calibrated action + correction\ncap + radial', '#9fa8da'),
+        ('nocorrect .8908', r'$\alpha_K=0$ exactly' '\nopen-loop observer', '#ffe0b2'),
+        ('noaction .8982', r'$G=0$ exactly' '\naction-path control', '#ffccbc'),
+        ('norisk .8489', r'$\alpha_B=\alpha_K=1$' '\nbest V14 mode', '#e1bee7'),
+        ('noenergycap .9121', r'raw $\sigma_i(M)$' '\ncap removed', '#f8bbd0'),
+        ('noradial .9040', r'$g_t=1$' '\noutlier gate removed', '#b3e5fc'),
     )
     for index, (title, body, color) in enumerate(v14_controls):
         card(ax, 4.78 + index * 2.16, 46.72, 1.94, 1.86,
              title, body, color, title_size=7.1, body_size=5.25)
-    card(ax, 0.35, 44.78, 17.30, 1.45,
-         'Frozen V14 evidence contract: 10 designs × 4 tasks × seed 14001 × 30 epochs = 40; current 0/40',
-         'Fresh baselines: V13-nocorrect / SSM / compact V8 / raw-difference KDIO-v11. '
-         'Online W&B + rollout bundles required; clean pushed HEAD and source/data/command hashes; no overwrite.\n'
-         'Conditional continuation: 8 designs × 4 tasks × seeds 14002–14004 × 100e = 96, '
-         'currently 0/96 and NOT_AUTHORIZED. Smoke values excluded; val_train_view is validation-cache telemetry, not fit data.',
-         '#e8eaf6', title_size=9.1, body_size=6.2, edge='#1a237e', linewidth=1.6)
+    card(ax, 0.35, 44.78, 10.45, 1.45,
+         'V14 closeout: artifact-valid, scientifically negative',
+         '40 finished online W&B histories + 40 hashed rollouts; independent audit PASS_COMPLETE_NEGATIVE. '
+         'KDIO .5683 and V13-nocorrect .7920 beat full .8967; legal integrator .5071 wins 4/4.\n'
+         'Representation, runtime reconstruction, external/internal, action-mechanism, and convergence gates fail. '
+         'Robustness receipts pass; continuation is false and remains 0/96.',
+         '#ffebee', title_size=8.9, body_size=5.65, edge='#c62828', linewidth=1.6)
+    card(ax, 11.10, 44.78, 6.55, 1.45,
+         'V15 CVPF — PROPOSED_NOT_IMPLEMENTED',
+         r'$p_0=E[F|z_0]$; $p_a=E[F|z_0,a]-p_0$' '\n'
+         r'$p_o=E[F|z_0,a,z^{obs}]-E[F|z_0,a]$' '\n'
+         'cross-view canonical future modes + per-mode evidence\n'
+         'implicit gradients; no hidden-state pseudoinverse or result',
+         '#e0f2f1', title_size=8.0, body_size=5.1, edge='#00796b', linewidth=1.6)
 
     xs = tuple(0.04 + index * 1.38 for index in range(13))
     width, top_y, top_h = 1.14, 41.25, 2.05
@@ -129,8 +137,9 @@ def main() -> None:
         arrow(ax, (xs[index] + width, 42.27), (xs[index + 1], 42.27))
     ax.add_patch(FancyArrowPatch(
         (xs[12] + width / 2, top_y + top_h),
-        (xs[12] + width / 2, 44.78),
+        (10.60, 44.78),
         arrowstyle='-|>', mutation_scale=14, color='#546e7a', linewidth=1.7))
+    arrow(ax, (10.80, 45.50), (11.10, 45.50), 'successor')
 
     ax.text(0.35, 40.83,
             'V8 shared-action shrinkage controls (34,566 compact / 36,102 expanded parameters)',
@@ -364,25 +373,18 @@ def main() -> None:
          'trace / paired video / hashed artifact',
          '#e8eaf6', title_size=10.5, body_size=7.2, linewidth=1.4)
 
-    ax.text(9, 1.05,
-            'V5 complete: 300 runs.  V6 complete: 325 runs.  '
-            'V7 complete: 325 runs.  V8 complete: 325 runs, locked negative label.  '
-            'V9 complete: 325 runs, locked negative label.  V10-J audit: 5×100 epochs; official 0/225.  '
-            'V11 development: 64 cells, NO_GO; official 0/400.  V12 adaptive screen: 28/28 artifacts, NO_GO; 100e 0/28.  '
-            'V13: screen 36/36, SCREEN_NO_GO; conditional 100e 0/72.  '
-            'V14: READY_NOT_RUN, screen 0/40; conditional 100e 0/96.',
-            ha='center', fontsize=7.9, color='#607d8b')
-    ax.text(9, 0.66,
-            'Historical V1–V4 cohorts retain their documented protocols; architecture cards do '
-            'not imply that raw MSE values are pooled across incompatible target spaces.',
-            ha='center', fontsize=8.8, color='#607d8b')
-    ax.text(9, 0.27,
-            'V11 action/objective variants all fail the development gate; its official matrix was never launched.  '
-            'V12 loses to retrained V11 and the legal integrator; its shared-A full read collapses exactly to one $r+u$ state, '
-            'and the V12b normal–Riccati repair has no replicated action signal (0/4 tasks).  '
-            'V13 passes numerical checks but its fixed correction amplifies Gaussian noise; nocorrect is best V13, while KDIO remains best overall.  '
-            'V14 is prospective only: cross-fold-calibrated, not fully cross-fitted; its pooled refits and composed primitives carry no performance claim.',
-            ha='center', fontsize=7.8, fontweight='bold', color='#455a64')
+    card(ax, 0.20, 0.05, 17.60, 1.50,
+         'Cohort, result, and metric boundary',
+         'V5: 300 runs; V6–V9: 325 each, with V8/V9 locked negative.  '
+         'V10-J: five-run audit, official 0/225; V11: development NO_GO, official 0/400.\n'
+         'V12: 28/28 SCREEN_NO_GO, continuation 0/28; V13: 36/36 SCREEN_NO_GO, continuation 0/72; '
+         'V14: 40/40 SCREEN_NO_GO, continuation 0/96; V15: PROPOSED_NOT_IMPLEMENTED.\n'
+         'Historical V1–V4 protocols and target spaces remain separate; architecture cards do not pool raw metrics across cohorts.\n'
+         'V11 fails its launch screen. V12 loses KDIO/integrator and collapses to one r+u state. '
+         'V13 fixed correction amplifies noise; nocorrect is best V13.\n'
+         'V14 passes narrow energy/radial receipts but fails representation, reconstruction, performance, mechanism, and convergence; '
+         'norisk is best V14 and KDIO best overall. V15 has no code, launch, or result.',
+         '#eceff1', title_size=8.0, body_size=5.15, edge='#607d8b', linewidth=1.2)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUTPUT, bbox_inches='tight', facecolor=fig.get_facecolor())

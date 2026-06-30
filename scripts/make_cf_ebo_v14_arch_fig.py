@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the prospective CF-EBO-v14 architecture and frozen screen contract."""
+"""Render the completed CF-EBO-v14 architecture, screen, and V15 successor."""
 
 from pathlib import Path
 
@@ -59,7 +59,7 @@ def main() -> None:
             "CF-EBO-v14: cross-fold-calibrated energy-bounded predictive observer",
             ha="center", fontsize=18, fontweight="bold", color=INK)
     ax.text(10, 21.18,
-            "PROSPECTIVE / READY_NOT_RUN — frozen 40-cell screen; conditional 100-epoch manifest only (0/96)",
+            "COMPLETED ADAPTIVE SCREEN: 40/40 • SCREEN_NO_GO • conditional 100-epoch continuation not launched (0/96)",
             ha="center", fontsize=10.3, fontweight="bold", color=AUDIT)
 
     tag(ax, .35, 20.72, "DETACHED TRAIN-ONLY COORDINATE FIT", FIT)
@@ -169,12 +169,12 @@ def main() -> None:
 
     tag(ax, .35, 9.34, "SIX CANDIDATE MODES — ONE FIXED STATE/API SCHEMA", CONTROL)
     controls = (
-        ("full", r"$\alpha_B,\alpha_K$ risk" "\ncap + radial gate", "#a5d6a7"),
-        ("nocorrect", r"$\alpha_K=0$ exactly" "\nopen-loop control", "#ffe0b2"),
-        ("noaction", r"$G_{eff}=0$ exactly" "\ncorrection retained", "#ffccbc"),
-        ("norisk", r"$\alpha_B=\alpha_K=1$" "\ncap + radial retained", "#e1bee7"),
-        ("noenergycap", r"$M=M_0$" "\nradial retained", "#f8bbd0"),
-        ("noradial", r"$g_t=1$" "\nrisk + cap retained", "#b3e5fc"),
+        ("full  .8967", r"$\alpha_B,\alpha_K$ risk" "\ncap + radial gate", "#a5d6a7"),
+        ("nocorrect  .8908", r"$\alpha_K=0$ exactly" "\nopen-loop control", "#ffe0b2"),
+        ("noaction  .8982", r"$G_{eff}=0$ exactly" "\ncorrection retained", "#ffccbc"),
+        ("norisk  .8489", r"$\alpha_B=\alpha_K=1$" "\nbest V14 mode", "#e1bee7"),
+        ("noenergycap  .9121", r"$M=M_0$" "\nradial retained", "#f8bbd0"),
+        ("noradial  .9040", r"$g_t=1$" "\nrisk + cap retained", "#b3e5fc"),
     )
     for index, (title, body, color) in enumerate(controls):
         box(ax, .35 + index * 3.23, 7.52, 2.88, 1.35, title, body, color,
@@ -182,44 +182,49 @@ def main() -> None:
 
     tag(ax, .35, 7.03, "FOUR FRESH BASELINES", CONTROL)
     baselines = (
-        ("V13 nocorrect", "best V13 mode\nfixed normal open loop"),
-        ("SSM", "fresh learned\ndiagonal recurrence"),
-        ("compact V8", "fresh shared-action\ntwo-state filter"),
-        ("KDIO-v11", "fresh raw-difference\nkick–drift observer"),
+        ("V13 nocorrect  .7920", "fresh normal\nopen-loop observer"),
+        ("SSM  1.2948", "fresh learned\ndiagonal recurrence"),
+        ("compact V8  2.0622", "fresh shared-action\ntwo-state filter"),
+        ("KDIO-v11  .5683", "fresh raw-difference\nbest overall"),
     )
     for index, (title, body) in enumerate(baselines):
         box(ax, .35 + index * 4.83, 5.47, 4.48, 1.10, title, body,
             "#eceff1", title_size=8.5, body_size=6.0)
 
-    tag(ax, .35, 4.98, "FROZEN EVIDENCE CONTRACT", AUDIT)
-    box(ax, .35, 2.53, 5.65, 1.95, "40-cell adaptive screen",
-        "10 designs × 4 tasks × seed 14001 × exactly 30 epochs\n"
-        "task-pinned GPUs Cart/Fish/Pend/Walker → 0/1/2/3\n"
-        "online W&B + checkpoint + metrics + hashed rollout per cell\n"
-        "clean/pushed HEAD, source/data/command hashes; no overwrite",
+    tag(ax, .35, 4.98, "COMPLETED EVIDENCE AND DECISION", AUDIT)
+    box(ax, .35, 2.53, 5.65, 1.95, "40/40 artifact-valid cells",
+        "10 designs × 4 tasks × seed 14001 × 30 epochs\n"
+        "40 finished online W&B histories + 40 hashed rollouts\n"
+        "commit 863f335; pushed/clean; source/data/command hashes\n"
+        "independent audit: PASS_COMPLETE_NEGATIVE, 40/40",
         "#e8eaf6", body_size=6.05)
-    box(ax, 6.35, 2.53, 7.35, 1.95, "conjunctive continuation gates",
-        "40/40 artifact integrity • full representation/causality • all-mode numerical exactness\n"
-        "fixed source-order schema + machine-observable support/projector receipts; no selected rank threshold\n"
-        "full beats V13 nocorrect, SSM, compact V8, KDIO, legal integrator, and direct controls\n"
-        "positive action/correction risk support • Gaussian radial suppression and energy bound\n"
-        "condition telemetry separates clean / val_train_view / held-out corruptions • registered convergence ceilings",
+    box(ax, 6.35, 2.53, 7.35, 1.95, "conjunctive gate ledger: FAIL",
+        "PASS: artifact integrity • radial/energy robustness 4/4 • registered complement policy*\n"
+        "FAIL: representation rank (3 tasks) • runtime reconstruction (18 V14 cells)\n"
+        "FAIL: external performance • all five internal controls • action mechanism 0/4\n"
+        "FAIL: convergence (median |late| 15.93%; full max 45.08%)\n"
+        "full .8967 loses KDIO .5683, V13-nocorrect .7920, and its legal integrator .5071",
         "#fff8e1", edge=AUDIT, body_size=5.85)
-    box(ax, 14.05, 2.53, 5.60, 1.95, "conditional continuation: manifest only",
-        "8 retained designs × 4 tasks × seeds 14002–14004\n"
-        "× 100 epochs = 96 prospective cells\n"
-        "runner writes commands with status NOT_AUTHORIZED\n"
-        "no automatic launch; independent analyzer/auditor required",
+    box(ax, 14.05, 2.53, 5.60, 1.95, "SCREEN_NO_GO / no continuation",
+        "analyzer scientific gate = false\n"
+        "decision continue_to_100_epochs = false\n"
+        "automatic launch = false; continuation remains 0/96\n"
+        "adaptive development only—not ICLR confirmation",
         "#ffebee", edge=AUDIT, body_size=6.0)
     arrow(ax, (6.00, 3.50), (6.35, 3.50), color=AUDIT)
     arrow(ax, (13.70, 3.50), (14.05, 3.50), color=AUDIT)
 
-    box(ax, .35, .43, 19.30, 1.58, "prospective claim boundary",
-        "CF-EBO is reward-free and state-label-free, but action-observed and paired-view supervised. "
-        "Its novelty is a composition of opposite-fold empirical-Bayes risk calibration, observable-energy coordinates, "
-        "OAS whitening, spectral correction capping, radial innovation suppression, and rank-aware direct-sum anchoring.\n"
-        "It is not hyperparameter-free, fully cross-fitted, or yet an ICLR performance result. The architecture remains unvalidated until the frozen screen completes.",
-        "#ffebee", edge=AUDIT, title_size=9.4, body_size=6.45)
+    box(ax, .35, .25, 19.30, 1.76,
+        "diagnostic closeout → V15 Cross-View Predictive Filtration (PROPOSED_NOT_IMPLEMENTED)",
+        "V14: action reliability=0 on 4/4; correction reliability≈1 but full loses nocorrect; "
+        "machine support stays full while encoder rank fails 3/4.\n"
+        "*Producer core codimension=128 is rounded-projector telemetry, not fit 104/8/104/0; "
+        "a post-screen telemetry fix recovers those ranks without changing frozen evidence.\n"
+        "FP64 direct sums are exact; mixed-precision runtime reconstruction fails 18 cells.\n"
+        r"V15 proposal: $p_0=E[F|z_0]$, $p_a=E[F|z_0,a]-p_0$, "
+        r"$p_o=E[F|z_0,a,z^{obs}]-E[F|z_0,a]$; per-mode held-fold evidence and implicit gradients.\n"
+        "Future-output coordinates; projected shift must be identified and closure-audited; no V15 code or result exists.",
+        "#ffebee", edge=AUDIT, title_size=9.2, body_size=5.75)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUTPUT, bbox_inches="tight", facecolor=fig.get_facecolor())
