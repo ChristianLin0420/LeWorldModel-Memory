@@ -37,6 +37,7 @@ from lewm.models.memory import (TwoTimescaleMemory, MemoryFusion, MultiTimescale
 from lewm.models.siro import StableIdentifiedResidualObserverMemory
 from lewm.models.cf_hiro import CFHIROv13Memory
 from lewm.models.cf_ebo import CF_EBOv14Memory
+from lewm.models.cvpf import CVPFv15Memory
 
 
 _SMTV3_MODES = {
@@ -183,6 +184,19 @@ _CFEBOv14_MODES = {
     'cfebov14_noradial': 'noradial',
 }
 
+_CVPFV15_MODES = {
+    'cvpfv15': 'full',
+    'cvpfv15_nocorrect': 'nocorrect',
+    'cvpfv15_noaction': 'noaction',
+    'cvpfv15_norisk': 'norisk',
+    'cvpfv15_norho': 'norho',
+    'cvpfv15_anchoronly': 'anchoronly',
+    # These controls change only the optimized objective.  Their deployed fitted
+    # filtration is intentionally identical to the full mode.
+    'cvpfv15_detachid': 'full',
+    'cvpfv15_noenvelope': 'full',
+}
+
 
 class MemoryLeWorldModel(LeWorldModel):
     """LeWorldModel + two-timescale EMA memory injected into the predictor input.
@@ -212,6 +226,7 @@ class MemoryLeWorldModel(LeWorldModel):
         l0_lambda: float = 0.0,
         hier_loss_weight: float = 0.1,
         cf_hiro_state_dim: int = None,
+        cvpf_horizon: int = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -309,6 +324,14 @@ class MemoryLeWorldModel(LeWorldModel):
                 output_dim=self.embed_dim, action_dim=self.action_dim,
                 state_dim=cf_hiro_state_dim,
                 mode=_CFEBOv14_MODES[memory_impl])
+        elif memory_impl in _CVPFV15_MODES:                  # cross-view predictive filtration
+            if (not isinstance(cvpf_horizon, int)
+                    or isinstance(cvpf_horizon, bool)
+                    or cvpf_horizon < 1):
+                raise ValueError('CVPF-v15 requires a positive fixed cvpf_horizon')
+            self.mem_cvpfv15 = CVPFv15Memory(
+                output_dim=self.embed_dim, action_dim=self.action_dim,
+                horizon=cvpf_horizon, mode=_CVPFV15_MODES[memory_impl])
         elif memory_impl == 'ocsmt':                        # over-complete basis + L0 sparse gates
             self.mem_ocsmt = OCSMTMemory(
                 embed_dim=self.embed_dim, M=oc_num, tau_min=oc_tau_min,
@@ -340,10 +363,12 @@ class MemoryLeWorldModel(LeWorldModel):
                 and self.memory_impl not in _KDIOV11_MODES
                 and self.memory_impl not in _SIROV12_MODES
                 and self.memory_impl not in _CFHIROV13_MODES
-                and self.memory_impl not in _CFEBOv14_MODES):
+                and self.memory_impl not in _CFEBOv14_MODES
+                and self.memory_impl not in _CVPFV15_MODES):
             raise ValueError(
                 'memory details are available only for HACSM-v4/HACSSM-v5/HACSSM-v6/'
-                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11/SIRO-v12/CF-HIRO-v13/CF-EBO-v14')
+                'v7/v8/LOIF-v9/ORBIT-v10/KDIO-v11/SIRO-v12/CF-HIRO-v13/'
+                'CF-EBO-v14/CVPF-v15')
         if self.memory_impl == 'ema':
             m_fast, m_slow = self.memory(z)
             return self.fusion(z, m_fast, m_slow)
@@ -491,6 +516,17 @@ class MemoryLeWorldModel(LeWorldModel):
             # observation bypass or learned fusion around the fitted observer.
             return self.mem_cfebov14(
                 z, actions, return_details=return_memory_details)
+        if self.memory_impl in _CVPFV15_MODES:
+            if actions is None:
+                raise ValueError('CVPF-v15 requires actions with a_t mapping z_t to z_{t+1}')
+            if memory_update_mask is not None or gate_override is not None:
+                raise ValueError('CVPF-v15 has no visibility mask or learned gate override')
+            if action_override is not None or resistance_override is not None:
+                raise ValueError('CVPF-v15 has no external action/resistance override')
+            # CVPF's posterior current-output block is already in the clean encoder
+            # coordinate.  It is the predictor input directly, with no observation bypass.
+            return self.mem_cvpfv15(
+                z, actions, return_details=return_memory_details)
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.fuse(z, self.mem_ocsmt(z))
         return self.mem_ret.fuse(z, self.mem_ret(z))  # retrieval
@@ -537,6 +573,11 @@ class MemoryLeWorldModel(LeWorldModel):
             if method is not None:
                 return method()
             return {'state_dim': float(self.mem_cfebov14.state_dim)}
+        if self.memory_impl in _CVPFV15_MODES:
+            method = getattr(self.mem_cvpfv15, 'horizons', None)
+            if method is not None:
+                return method()
+            return {'future_horizon': float(self.mem_cvpfv15.horizon)}
         if self.memory_impl == 'ocsmt':
             return self.mem_ocsmt.horizons()
         return self.mem_ret.horizons()
@@ -1034,8 +1075,9 @@ class MemoryLeWorldModel(LeWorldModel):
                 or self.memory_impl in _KDIOV11_MODES
                 or self.memory_impl in _SIROV12_MODES
                 or self.memory_impl in _CFHIROV13_MODES
-                or self.memory_impl in _CFEBOv14_MODES):
-            # V8--V14 are action-conditioned inference memories with no teacher or internal-state
+                or self.memory_impl in _CFEBOv14_MODES
+                or self.memory_impl in _CVPFV15_MODES):
+            # V8--V15 are action-conditioned inference memories with no teacher or internal-state
             # auxiliary in the shared LeWM loss.  Do not request details here: the generic tail
             # interprets non-None details as a request to add an auxiliary.
             z_tilde = self._inject(

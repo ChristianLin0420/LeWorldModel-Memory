@@ -215,15 +215,16 @@ def main() -> None:
     arrow(ax, (13.70, 3.50), (14.05, 3.50), color=AUDIT)
 
     box(ax, .35, .25, 19.30, 1.76,
-        "diagnostic closeout → V15 Cross-View Predictive Filtration (PROPOSED_NOT_IMPLEMENTED)",
+        "diagnostic closeout → V15 Cross-View Predictive Filtration (IMPLEMENTED / SCREEN PENDING)",
         "V14: action reliability=0 on 4/4; correction reliability≈1 but full loses nocorrect; "
         "machine support stays full while encoder rank fails 3/4.\n"
         "*Producer core codimension=128 is rounded-projector telemetry, not fit 104/8/104/0; "
         "a post-screen telemetry fix recovers those ranks without changing frozen evidence.\n"
         "FP64 direct sums are exact; mixed-precision runtime reconstruction fails 18 cells.\n"
-        r"V15 proposal: $p_0=E[F|z_0]$, $p_a=E[F|z_0,a]-p_0$, "
-        r"$p_o=E[F|z_0,a,z^{obs}]-E[F|z_0,a]$; per-mode held-fold evidence and implicit gradients.\n"
-        "Future-output coordinates; projected shift must be identified and closure-audited; no V15 code or result exists.",
+        r"V15: $3D$ anchor/action/observation future coefficients, $H=47$, per-mode $g_j=\rho_jw_j$, "
+        "and non-expansive projected shifts.\n"
+        "Differentiable minibatch OAS envelope + detach/no-envelope controls; 49 tests pass and two excluded smokes completed; "
+        "the prospective 52-cell screen has no result yet.",
         "#ffebee", edge=AUDIT, title_size=9.2, body_size=5.75)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
