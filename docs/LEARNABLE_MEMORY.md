@@ -1,6 +1,17 @@
-# Learnable memory for LeWorldModel: V1–V15 architecture and evidence record
+# Learnable memory for LeWorldModel: V1–V18 architecture and evidence record
 
-*Design and experiment record. Branch: `learnable-memory`. V1–V11 live in `lewm/models/memory.py`; SIRO-v12, CF-HIRO-v13, CF-EBO-v14, and CVPF-v15 are isolated in `lewm/models/siro.py`, `lewm/models/cf_hiro.py`, `lewm/models/cf_ebo.py`, and `lewm/models/cvpf.py` and integrated through the common LeWM host. Status as of 2026-06-30: V1–V9 are complete with their recorded negative pilot/final labels; V10-J has no official launch; V11's excluded screen is negative and its official grid remains 0/240 pilot and 0/400 final; V12–V14 are complete `SCREEN_NO_GO` studies. CVPF-v15 is implemented with 49 passing core/integration/protocol tests and two excluded smokes. All 52 frozen seed-`15001` commands were attempted and exactly 52 W&B runs exist, but Cartpole `norisk` became nonfinite after 27 epoch rows and `norho` became nonfinite before a completed epoch on all four tasks. The write-once analyzer therefore closed at `44/52, INCOMPLETE_OR_INVALID`; the independent audit is `FAIL_CLOSED`, not `SCREEN_NO_GO`. Exact-command completion and three sync-only W&B repairs leave 47 finished 30-epoch W&B/rollout bundles plus five failed runs, but do not promote the frozen result. Full V15's available descriptive mean is `1.185242`; KDIO is `.556936`, V15-`nocorrect` is `.770936`, and the full checkpoint's legal integrator is `.480505`. Continuation remains unauthorized and unlaunched at 0/156 (§2.14/§7.17).***
+*Design and experiment record. Branch: `learnable-memory`. V1–V11 live in
+`lewm/models/memory.py`; SIRO-v12, CF-HIRO-v13, CF-EBO-v14, and CVPF-v15 use
+their isolated model modules and the common LeWM host. Status as of 2026-07-02:
+V1–V9 are complete with their recorded negative pilot/final labels; V10-J has
+no official launch; V11's excluded screen is negative; V12–V14 are complete
+`SCREEN_NO_GO` studies; and V15 remains `INCOMPLETE_OR_INVALID / FAIL_CLOSED`.
+V16 completed 144/144 opened-cache host-objective cells and found Sub-JEPA
+collapse; V17 completed 72/72 cells with label
+`ADAPTIVE_COLLAPSE_REPAIR_FAILED`. V18 is source-frozen as a new 200-cell,
+five-task raw-pixel confirmation of unchanged compact V8 inside a true sliding
+three-token stabilized LeWM-derived host. No V18 performance result is recorded
+at this source freeze (§7.18–§7.20).*
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -3009,6 +3020,81 @@ All finished links contain 30 epoch rows, evaluation table/video, and a rollout 
 | raw-difference KDIO-v11 | [`of0skun7`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/of0skun7) | [`22myxn7b`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/22myxn7b) | [`ojort320`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/ojort320) | [`tfvbzgn9`](https://wandb.ai/crlc112358/lewm-memory-popgym/runs/tfvbzgn9) |
 
 The immutable status remains **`INCOMPLETE_OR_INVALID / FAIL_CLOSED / NO_100E_LAUNCH`**. Rerunning or numerically repairing the five failures on these opened tasks could guide engineering, but it would be a new adaptive development cohort rather than completion of this registered screen.
+
+### 7.18 Sub-JEPA-v16: complete opened-cache host-objective study
+
+V16 introduced no new memory. It crossed four clean-target representation
+regularizers (`fullsig`, `subjepa16`, `subjepa32`, and VICReg) with no recurrent
+carrier, the diagonal SSM, and compact V8 on the four already opened V11 tasks:
+`4 hosts x 3 memories x 4 tasks x 3 seeds = 144` independent 30-epoch cells.
+All 144 cells and W&B receipts are valid. The Sub-JEPA arms exhibited a
+task-dependent projected-zero collapse plateau and did not beat the stable
+VICReg host; the exact result remains excluded adaptive development, never
+confirmation. The complete frozen contract is in `docs/V16_SUBJEPA.md`, with
+write-once analysis under `outputs/subjepa_v16_development/`.
+
+V16 also exposed a scope issue important for later interpretation: its memory
+study used independent one-token decoding even though the host configuration
+recorded a three-step burn-in. Those results diagnose objective collapse and
+memory carriers, but they are not evidence for integration with LeWM's true
+three-token prediction window.
+
+### 7.19 AutoVISReg-v17: complete negative collapse-repair study
+
+V17 tested a coefficient-free Wasserstein/VISReg update against VICReg over
+`2 hosts x 3 memories x 4 opened tasks x 3 seeds = 72` 30-epoch cells. All 72
+cells and remote receipts are complete. Representation rank and variance were
+repaired, but the registered convergence gates failed and predictive effects
+were heterogeneous; the immutable label is
+**`ADAPTIVE_COLLAPSE_REPAIR_FAILED`**. This is excluded adaptive evidence, not a
+new memory method or confirmation cohort. The exact objective, gradient
+composition, controls, and result boundary are in `docs/V17_AUTOVISREG.md` and
+`outputs/autovisreg_v17_development/development_analysis.json`.
+
+### 7.20 LeWM+V8-v18: frozen unopened-task confirmation (`SOURCE_FROZEN`)
+
+V18 is the first prospective test in this sequence that combines unchanged
+compact V8 with a true sliding three-token LeWM predictor on new raw-pixel DMC
+tasks. It asks whether an explicit persistent action-conditioned state extends
+a healthy finite-context host under partial observability. The motivating claim
+is deliberately narrower than “LeWM lacks memory or causality”: published LeWM
+is causal and action-conditioned, but it has no explicit persistent belief state
+beyond its configured finite observation history.
+
+The frozen grid is:
+
+```text
+tasks:    acrobot.swingup, manipulator.bring_ball, quadruped.run,
+          stacker.stack_4, swimmer.swimmer15
+designs:  vicreg_{none,gru,ssm,hacssmv8,hacssmv8_static,
+                  hacssmv8_dynamic,hacssmv8_noaction,hacssmv8_single}
+seeds:    {18001,18002,18003,18004,18005}
+budget:   100 epochs
+total:    5 tasks x 8 designs x 5 seeds = 200 cells
+```
+
+Every design uses the same end-to-end RGB encoder, true aligned `H=3`
+latent/action windows, active synchronized clean target, and unit-weight VICReg
+variance/covariance stabilization. V8 has no teacher, reward/state target,
+memory-specific loss, selected coefficient, or task-specific setting. GRU and
+SSM are recurrent baselines; static/dynamic form a conservative endpoint
+envelope; no-action and single-read are exact mechanism interventions. Native
+task observations and physics states remain evaluation-only.
+
+The primary gate is held-out pre-observation task-state NMSE. A positive result
+requires 200/200 valid cells; healthy, converged representations in every arm;
+V8 superiority over per-cell GRU/SSM and no-memory references; superiority over
+its own legal initial-state/action integrator; a positive deep-gap interval;
+causal no-action and joint-read contrasts; and noninferiority to the per-cell
+static/dynamic endpoint envelope. The exact thresholds, seeds, scheduling,
+claim boundary, and commands are frozen in `docs/V18_LEWM_V8_CONFIRMATION.md`.
+
+V18 uses LeWM's encoder/predictor architecture under the empirically stable
+VICReg host. It therefore can validate an architectural integration claim, but
+cannot be described as improving the exact original SIGReg-based LeWorldModel
+method. It also does not measure executed return or planning. At this record's
+source freeze no V18 performance cell has been opened; results must later be
+appended without changing this prospective contract.
 
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 

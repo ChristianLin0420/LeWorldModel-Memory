@@ -1,302 +1,267 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1000" viewBox="0 0 1800 1000" role="img" aria-labelledby="title desc">
-  <title id="title">Self-supervised action-conditioned memory for LeWorldModel</title>
-  <desc id="desc">Two-panel academic schematic. Panel a shows the compact HACSSM-v8 SAS-PC model flow with fast and medium action-conditioned predict-correct states, joint read, residual fusion, and a short-window LeWorldModel predictor. Panel b shows synchronized observed, action, and clean-coordinate data streams with visible-target self-supervised training and hidden blackout targets excluded.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1900" viewBox="0 0 1400 1900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">V18 stabilized LeWorldModel with persistent V8 memory</title>
+  <desc id="svg-desc">Two vertically stacked academic panels. Panel a shows corrupted RGB observations encoded frame by frame, updated by a persistent action-conditioned two-state V8 predict-correct memory, fused into a true sliding history of three latents, and passed to a causal LeWorldModel predictor. The shared encoder maps a clean next RGB frame to an active target trained with prediction plus unit-weight VICReg variance and covariance losses. Panel b shows evaluation-only native-state probing and the no-action, single-read, static, and dynamic V8 interventions. Native state and reward never enter training.</desc>
 
   <defs>
-    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3B6FB6"/>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2F6FB0"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E6812F"/>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#D97706"/>
     </marker>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5A8F29"/>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#287A5B"/>
     </marker>
-    <marker id="arrow-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7A5AA6"/>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#6C4AA4"/>
     </marker>
-    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A9D8F"/>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#B6463A"/>
     </marker>
-    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B7280"/>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#68727F"/>
     </marker>
+    <pattern id="cutout" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="16" height="16" fill="#E5E9EE"/>
+      <rect width="6" height="16" fill="#AAB3BE"/>
+    </pattern>
     <style>
-      text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; fill: #17202A; }
-      .title { font-size: 34px; font-weight: 700; letter-spacing: -0.35px; }
-      .subtitle { font-size: 18px; fill: #596574; }
-      .panel-title { font-size: 23px; font-weight: 700; }
-      .section { font-size: 18px; font-weight: 700; }
-      .label { font-size: 17px; font-weight: 600; }
-      .body { font-size: 15px; }
-      .small { font-size: 13.5px; fill: #4F5B67; }
-      .tiny { font-size: 12px; fill: #596574; }
-      .equation { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; font-size: 15px; }
-      .panel { fill: #FFFFFF; stroke: #CAD2DC; stroke-width: 1.8; }
-      .memory-outline { fill: #FBFCFD; stroke: #98A4B3; stroke-width: 1.7; }
-      .obs-box { fill: #E8F1FA; stroke: #3B6FB6; stroke-width: 1.7; }
-      .action-box { fill: #FFF1E3; stroke: #E6812F; stroke-width: 1.7; }
-      .fast-box { fill: #EAF4D3; stroke: #5A8F29; stroke-width: 1.7; }
-      .medium-box { fill: #EEE8FA; stroke: #7A5AA6; stroke-width: 1.7; }
-      .teal-box { fill: #E5F5F2; stroke: #2A9D8F; stroke-width: 1.7; }
-      .neutral-box { fill: #F4F6F8; stroke: #7A8694; stroke-width: 1.5; }
-      .loss-box { fill: #FFF4F2; stroke: #C95D4B; stroke-width: 1.8; }
-      .solid-blue { fill: none; stroke: #3B6FB6; stroke-width: 2.4; marker-end: url(#arrow-blue); }
-      .solid-orange { fill: none; stroke: #E6812F; stroke-width: 2.4; marker-end: url(#arrow-orange); }
-      .solid-green { fill: none; stroke: #5A8F29; stroke-width: 2.4; marker-end: url(#arrow-green); }
-      .solid-violet { fill: none; stroke: #7A5AA6; stroke-width: 2.4; marker-end: url(#arrow-violet); }
-      .solid-teal { fill: none; stroke: #2A9D8F; stroke-width: 2.4; marker-end: url(#arrow-teal); }
-      .target-gray { fill: none; stroke: #6B7280; stroke-width: 2.1; stroke-dasharray: 8 7; marker-end: url(#arrow-gray); }
-      .feedback-green { fill: none; stroke: #5A8F29; stroke-width: 2; stroke-dasharray: 5 5; marker-end: url(#arrow-green); }
-      .feedback-violet { fill: none; stroke: #7A5AA6; stroke-width: 2; stroke-dasharray: 5 5; marker-end: url(#arrow-violet); }
+      text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; fill: #17212B; }
+      .panel-title { font-size: 43px; font-weight: 700; }
+      .section { font-size: 37px; font-weight: 700; }
+      .label { font-size: 34px; font-weight: 700; }
+      .body { font-size: 30px; }
+      .note { font-size: 30px; fill: #4F5B67; }
+      .math { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 30px; }
+      .panel { fill: #FFFFFF; stroke: #B9C3CE; stroke-width: 3; }
+      .obs { fill: #EAF2FA; stroke: #2F6FB0; stroke-width: 3; }
+      .action { fill: #FFF0DF; stroke: #D97706; stroke-width: 3; }
+      .memory { fill: #ECF6F1; stroke: #287A5B; stroke-width: 3; }
+      .fast { fill: #E5F3EB; stroke: #287A5B; stroke-width: 3; }
+      .medium { fill: #F0EBF8; stroke: #6C4AA4; stroke-width: 3; }
+      .predictor { fill: #F0EBF8; stroke: #6C4AA4; stroke-width: 3; }
+      .target { fill: #E7F5F4; stroke: #177F79; stroke-width: 3; }
+      .loss { fill: #FFF0EE; stroke: #B6463A; stroke-width: 3; }
+      .eval { fill: #F2F4F6; stroke: #68727F; stroke-width: 3; }
+      .warn { fill: #FFF7DA; stroke: #B58A15; stroke-width: 3; }
+      .blue-arrow { fill: none; stroke: #2F6FB0; stroke-width: 4; marker-end: url(#arrow-blue); }
+      .orange-arrow { fill: none; stroke: #D97706; stroke-width: 4; marker-end: url(#arrow-orange); }
+      .green-arrow { fill: none; stroke: #287A5B; stroke-width: 4; marker-end: url(#arrow-green); }
+      .purple-arrow { fill: none; stroke: #6C4AA4; stroke-width: 4; marker-end: url(#arrow-purple); }
+      .red-arrow { fill: none; stroke: #B6463A; stroke-width: 4; marker-end: url(#arrow-red); }
+      .gray-arrow { fill: none; stroke: #68727F; stroke-width: 4; stroke-dasharray: 11 9; marker-end: url(#arrow-gray); }
+      .shared { fill: none; stroke: #2F6FB0; stroke-width: 3; stroke-dasharray: 10 8; }
     </style>
   </defs>
 
-  <rect x="0" y="0" width="1800" height="1000" fill="#FBFCFD"/>
-
-  <text x="900" y="48" text-anchor="middle" class="title">Self-Supervised Action-Conditioned Memory for LeWorldModel</text>
-  <text x="900" y="78" text-anchor="middle" class="subtitle">Evidence-backed SAS-PC / HACSSM-v8 flow · adaptive-development architecture, not a confirmation result</text>
+  <rect x="0" y="0" width="1400" height="1900" fill="#FAFBFC"/>
 
   <!-- Panel A -->
-  <rect x="42" y="105" width="1060" height="820" rx="16" class="panel"/>
-  <text x="72" y="145" class="panel-title">(a) Model and causal state flow</text>
-  <text x="1070" y="145" text-anchor="end" class="small">solid arrows: deployed inference</text>
+  <rect x="35" y="35" width="1330" height="1285" rx="18" class="panel"/>
+  <text x="75" y="96" class="panel-title">(a) V18 model, target, and loss flow</text>
 
-  <!-- Inputs and encoder -->
-  <rect x="74" y="178" width="155" height="70" rx="11" class="obs-box"/>
-  <text x="151.5" y="207" text-anchor="middle" class="label">observation</text>
-  <text x="151.5" y="230" text-anchor="middle" class="body">oₜ</text>
+  <!-- Observed RGB stream -->
+  <rect x="75" y="135" width="340" height="165" rx="14" class="obs"/>
+  <text x="245" y="168" text-anchor="middle" class="label">corrupted</text>
+  <text x="245" y="198" text-anchor="middle" class="label">RGB stream</text>
+  <g>
+    <rect x="103" y="211" width="78" height="55" rx="8" fill="#D8E8F5" stroke="#2F6FB0" stroke-width="2.5"/>
+    <circle cx="142" cy="232" r="11" fill="#73A5D1"/>
+    <path d="M116,255 L135,241 L151,250 L168,235" fill="none" stroke="#2F6FB0" stroke-width="3"/>
+    <rect x="206" y="211" width="78" height="55" rx="8" fill="url(#cutout)" stroke="#68727F" stroke-width="2.5"/>
+    <path d="M220,220 L270,257 M270,220 L220,257" stroke="#68727F" stroke-width="4"/>
+    <rect x="309" y="211" width="78" height="55" rx="8" fill="#D8E8F5" stroke="#2F6FB0" stroke-width="2.5"/>
+    <circle cx="348" cy="232" r="11" fill="#73A5D1"/>
+    <path d="M322,255 L341,241 L357,250 L374,235" fill="none" stroke="#2F6FB0" stroke-width="3"/>
+  </g>
+  <text x="245" y="291" text-anchor="middle" class="math">o_obs[t-2 : t]</text>
 
-  <rect x="270" y="178" width="145" height="70" rx="11" class="neutral-box"/>
-  <text x="342.5" y="207" text-anchor="middle" class="label">frame encoder</text>
-  <text x="342.5" y="230" text-anchor="middle" class="body">Eθ</text>
+  <rect x="515" y="157" width="295" height="120" rx="14" class="obs"/>
+  <text x="662" y="196" text-anchor="middle" class="label">shared encoder</text>
+  <text x="662" y="236" text-anchor="middle" class="body">per-frame E_theta</text>
 
-  <rect x="458" y="178" width="128" height="70" rx="11" class="obs-box"/>
-  <text x="522" y="207" text-anchor="middle" class="label">latent</text>
-  <text x="522" y="230" text-anchor="middle" class="body">zₜ</text>
+  <rect x="925" y="157" width="350" height="120" rx="14" class="obs"/>
+  <text x="1100" y="196" text-anchor="middle" class="label">observed</text>
+  <text x="1100" y="232" text-anchor="middle" class="label">latent stream</text>
+  <text x="1100" y="265" text-anchor="middle" class="math">z_obs[0 : t]</text>
 
-  <rect x="628" y="178" width="176" height="70" rx="11" class="obs-box"/>
-  <text x="716" y="207" text-anchor="middle" class="label">observation map</text>
-  <text x="716" y="230" text-anchor="middle" class="body">xₜ = Wₓ zₜ</text>
+  <path d="M415,217 L514,217" class="blue-arrow"/>
+  <path d="M810,217 L924,217" class="blue-arrow"/>
 
-  <path d="M 229 213 L 270 213" class="solid-blue"/>
-  <path d="M 415 213 L 458 213" class="solid-blue"/>
-  <path d="M 586 213 L 628 213" class="solid-blue"/>
+  <!-- Persistent V8 state -->
+  <rect x="75" y="340" width="1250" height="470" rx="16" class="memory"/>
+  <text x="105" y="391" class="section">persistent V8 predict-correct state</text>
+  <text x="105" y="430" class="note">Two states persist beyond H=3.</text>
+  <text x="105" y="465" class="note">Zero reset occurs only at an episode boundary.</text>
 
-  <rect x="74" y="280" width="155" height="70" rx="11" class="action-box"/>
-  <text x="151.5" y="309" text-anchor="middle" class="label">previous action</text>
-  <text x="151.5" y="332" text-anchor="middle" class="body">aₜ₋₁</text>
+  <rect x="440" y="471" width="240" height="82" rx="12" class="action"/>
+  <text x="560" y="508" text-anchor="middle" class="label">action a[t]</text>
+  <text x="560" y="541" text-anchor="middle" class="body">shared W_a</text>
 
-  <rect x="270" y="280" width="185" height="70" rx="11" class="action-box"/>
-  <text x="362.5" y="309" text-anchor="middle" class="label">shared action map</text>
-  <text x="362.5" y="332" text-anchor="middle" class="body">Wₐ</text>
+  <rect x="760" y="471" width="310" height="82" rx="12" class="obs"/>
+  <text x="915" y="508" text-anchor="middle" class="label">observe</text>
+  <text x="915" y="541" text-anchor="middle" class="math">z_obs[t+1]</text>
 
-  <rect x="500" y="280" width="182" height="70" rx="11" class="action-box"/>
-  <text x="591" y="309" text-anchor="middle" class="label">affine update</text>
-  <text x="591" y="332" text-anchor="middle" class="body">(dₜ₋₁, vₜ₋₁)</text>
+  <!-- Fast state row -->
+  <rect x="105" y="565" width="225" height="105" rx="12" class="fast"/>
+  <text x="217" y="607" text-anchor="middle" class="label">fast state</text>
+  <text x="217" y="648" text-anchor="middle" class="math">m_f[t]  tau2</text>
 
-  <path d="M 229 315 L 270 315" class="solid-orange"/>
-  <path d="M 455 315 L 500 315" class="solid-orange"/>
+  <rect x="405" y="565" width="225" height="105" rx="12" class="fast"/>
+  <text x="517" y="607" text-anchor="middle" class="label">predict</text>
+  <text x="517" y="648" text-anchor="middle" class="math">p_f[t+1]</text>
 
-  <!-- Memory block -->
-  <rect x="72" y="383" width="998" height="326" rx="14" class="memory-outline"/>
-  <text x="94" y="413" class="section">Two-state predict–correct memory</text>
-  <text x="1048" y="413" text-anchor="end" class="small">state carried across the short predictor window</text>
+  <rect x="705" y="565" width="270" height="105" rx="12" class="fast"/>
+  <text x="840" y="600" text-anchor="middle" class="label">innovation</text>
+  <text x="840" y="635" text-anchor="middle" class="label">correct</text>
+  <text x="840" y="665" text-anchor="middle" class="math">rho_f learned</text>
 
-  <!-- Fast lane -->
-  <rect x="102" y="440" width="142" height="72" rx="10" class="fast-box"/>
-  <text x="173" y="468" text-anchor="middle" class="label">fast state</text>
-  <text x="173" y="491" text-anchor="middle" class="body">mᶠₜ₋₁ · τᶠ=2</text>
+  <rect x="1050" y="565" width="235" height="105" rx="12" class="fast"/>
+  <text x="1167" y="600" text-anchor="middle" class="label">fast</text>
+  <text x="1167" y="635" text-anchor="middle" class="label">next state</text>
+  <text x="1167" y="665" text-anchor="middle" class="math">m_f[t+1]</text>
 
-  <rect x="292" y="440" width="184" height="72" rx="10" class="fast-box"/>
-  <text x="384" y="468" text-anchor="middle" class="label">action prediction</text>
-  <text x="384" y="491" text-anchor="middle" class="body">pᶠₜ</text>
+  <path d="M330,617 L404,617" class="green-arrow"/>
+  <path d="M630,617 L704,617" class="green-arrow"/>
+  <path d="M975,617 L1049,617" class="green-arrow"/>
 
-  <rect x="532" y="440" width="194" height="72" rx="10" class="fast-box"/>
-  <text x="629" y="468" text-anchor="middle" class="label">bounded correction</text>
-  <text x="629" y="491" text-anchor="middle" class="body">gᶠₜ · (xₜ − pᶠₜ)</text>
+  <!-- Medium state row -->
+  <rect x="105" y="690" width="225" height="105" rx="12" class="medium"/>
+  <text x="217" y="732" text-anchor="middle" class="label">medium</text>
+  <text x="217" y="773" text-anchor="middle" class="math">m_m[t]  tau8</text>
 
-  <rect x="784" y="440" width="142" height="72" rx="10" class="fast-box"/>
-  <text x="855" y="468" text-anchor="middle" class="label">posterior</text>
-  <text x="855" y="491" text-anchor="middle" class="body">mᶠₜ</text>
+  <rect x="405" y="690" width="225" height="105" rx="12" class="medium"/>
+  <text x="517" y="732" text-anchor="middle" class="label">predict</text>
+  <text x="517" y="773" text-anchor="middle" class="math">p_m[t+1]</text>
 
-  <path d="M 244 476 L 292 476" class="solid-green"/>
-  <path d="M 476 476 L 532 476" class="solid-green"/>
-  <path d="M 726 476 L 784 476" class="solid-green"/>
-  <path d="M 855 440 C 855 420, 173 420, 173 439" class="feedback-green"/>
+  <rect x="705" y="690" width="270" height="105" rx="12" class="medium"/>
+  <text x="840" y="725" text-anchor="middle" class="label">innovation</text>
+  <text x="840" y="760" text-anchor="middle" class="label">correct</text>
+  <text x="840" y="790" text-anchor="middle" class="math">rho_m learned</text>
 
-  <!-- Medium lane -->
-  <rect x="102" y="548" width="142" height="72" rx="10" class="medium-box"/>
-  <text x="173" y="576" text-anchor="middle" class="label">medium state</text>
-  <text x="173" y="599" text-anchor="middle" class="body">mᵐₜ₋₁ · τᵐ=8</text>
+  <rect x="1050" y="690" width="235" height="105" rx="12" class="medium"/>
+  <text x="1167" y="725" text-anchor="middle" class="label">medium</text>
+  <text x="1167" y="760" text-anchor="middle" class="label">next state</text>
+  <text x="1167" y="790" text-anchor="middle" class="math">m_m[t+1]</text>
 
-  <rect x="292" y="548" width="184" height="72" rx="10" class="medium-box"/>
-  <text x="384" y="576" text-anchor="middle" class="label">action prediction</text>
-  <text x="384" y="599" text-anchor="middle" class="body">pᵐₜ</text>
+  <path d="M330,742 L404,742" class="purple-arrow"/>
+  <path d="M630,742 L704,742" class="purple-arrow"/>
+  <path d="M975,742 L1049,742" class="purple-arrow"/>
 
-  <rect x="532" y="548" width="194" height="72" rx="10" class="medium-box"/>
-  <text x="629" y="576" text-anchor="middle" class="label">bounded correction</text>
-  <text x="629" y="599" text-anchor="middle" class="body">gᵐₜ · (xₜ − pᵐₜ)</text>
+  <!-- Inputs fan into both update rows -->
+  <path d="M560,553 L560,558 L517,558 L517,564" class="orange-arrow"/>
+  <path d="M560,558 L665,558 L665,682 L517,682 L517,689" class="orange-arrow"/>
+  <path d="M915,553 L915,558 L840,558 L840,564" class="blue-arrow"/>
+  <path d="M915,558 L1000,558 L1000,682 L840,682 L840,689" class="blue-arrow"/>
+  <path d="M1100,277 L1100,317 L915,317 L915,470" class="blue-arrow"/>
 
-  <rect x="784" y="548" width="142" height="72" rx="10" class="medium-box"/>
-  <text x="855" y="576" text-anchor="middle" class="label">posterior</text>
-  <text x="855" y="599" text-anchor="middle" class="body">mᵐₜ</text>
+  <!-- Fusion -->
+  <rect x="165" y="830" width="520" height="125" rx="14" class="memory"/>
+  <text x="425" y="867" text-anchor="middle" class="label">joint RMS read</text>
+  <text x="425" y="903" text-anchor="middle" class="label">+ residual fusion</text>
+  <text x="425" y="938" text-anchor="middle" class="math">z_tilde = z_obs + W_o r</text>
 
-  <path d="M 244 584 L 292 584" class="solid-violet"/>
-  <path d="M 476 584 L 532 584" class="solid-violet"/>
-  <path d="M 726 584 L 784 584" class="solid-violet"/>
-  <path d="M 855 620 C 855 641, 173 641, 173 621" class="feedback-violet"/>
+  <rect x="840" y="830" width="375" height="125" rx="14" class="target"/>
+  <text x="1027" y="877" text-anchor="middle" class="label">fused latents</text>
+  <text x="1027" y="925" text-anchor="middle" class="math">z_tilde[0 : t]</text>
 
-  <!-- Shared input fan-outs -->
-  <path d="M 591 350 L 591 371 L 384 371 L 384 439" class="solid-orange"/>
-  <path d="M 591 371 L 384 371 L 384 547" class="solid-orange"/>
-  <path d="M 716 248 L 716 365 L 629 365 L 629 439" class="solid-blue"/>
-  <path d="M 716 365 L 629 365 L 629 547" class="solid-blue"/>
+  <path d="M700,785 L700,808 L425,808 L425,829" class="green-arrow"/>
+  <path d="M1100,277 L1305,277 L1305,809 L560,809 L560,829" class="blue-arrow"/>
+  <path d="M685,892 L839,892" class="green-arrow"/>
 
-  <text x="516" y="666" text-anchor="middle" class="equation">pₜᵏ = mₜ₋₁ᵏ + βₖ tanh(vₜ₋₁ + dₜ₋₁ ⊙ LN(mₜ₋₁ᵏ))</text>
-  <text x="516" y="692" text-anchor="middle" class="equation">mₜᵏ = pₜᵏ + βₖ gₜᵏ(xₜ − pₜᵏ),  k ∈ {fast, medium}</text>
+  <!-- Sliding predictor -->
+  <rect x="75" y="1005" width="470" height="135" rx="14" class="target"/>
+  <text x="310" y="1050" text-anchor="middle" class="label">sliding context H=3</text>
+  <text x="310" y="1092" text-anchor="middle" class="math">z_tilde[t-2 : t]</text>
+  <text x="310" y="1127" text-anchor="middle" class="body">actions a[t-2 : t]</text>
 
-  <!-- Read and prediction -->
-  <rect x="84" y="758" width="250" height="76" rx="11" class="teal-box"/>
-  <text x="209" y="786" text-anchor="middle" class="label">joint RMS read</text>
-  <text x="209" y="811" text-anchor="middle" class="small">rₜ = RMSNorm(πᶠmᶠₜ + πᵐmᵐₜ)</text>
+  <rect x="615" y="1018" width="410" height="110" rx="14" class="predictor"/>
+  <text x="820" y="1055" text-anchor="middle" class="label">causal LeWM</text>
+  <text x="820" y="1091" text-anchor="middle" class="label">predictor P_phi</text>
 
-  <rect x="370" y="758" width="192" height="76" rx="11" class="teal-box"/>
-  <text x="466" y="786" text-anchor="middle" class="label">residual fusion</text>
-  <text x="466" y="811" text-anchor="middle" class="body">z̃ₜ = zₜ + Wₒrₜ</text>
+  <rect x="1095" y="1018" width="230" height="110" rx="14" class="predictor"/>
+  <text x="1210" y="1061" text-anchor="middle" class="label">prediction</text>
+  <text x="1210" y="1104" text-anchor="middle" class="math">z_hat[t+1]</text>
 
-  <rect x="598" y="758" width="226" height="76" rx="11" class="neutral-box"/>
-  <text x="711" y="786" text-anchor="middle" class="label">short LeWM window</text>
-  <text x="711" y="811" text-anchor="middle" class="body">{z̃ₜ₋ₕ₊₁:ₜ, aₜ₋ₕ₊₁:ₜ}</text>
+  <path d="M1027,955 L1027,980 L310,980 L310,1004" class="green-arrow"/>
+  <path d="M545,1073 L614,1073" class="purple-arrow"/>
+  <path d="M1025,1073 L1094,1073" class="purple-arrow"/>
 
-  <rect x="860" y="758" width="178" height="76" rx="11" class="teal-box"/>
-  <text x="949" y="786" text-anchor="middle" class="label">predictor Pφ</text>
-  <text x="949" y="811" text-anchor="middle" class="body">ẑₜ₊₁</text>
+  <!-- Active clean target and objective -->
+  <rect x="75" y="1180" width="220" height="105" rx="14" class="target"/>
+  <text x="185" y="1222" text-anchor="middle" class="label">clean RGB</text>
+  <text x="185" y="1264" text-anchor="middle" class="body">frame t+1</text>
 
-  <polyline points="926,476 1082,476 1082,718 258,718 258,757" fill="none" stroke="#5A8F29" stroke-width="2.4" marker-end="url(#arrow-green)"/>
-  <polyline points="926,584 1060,584 1060,734 184,734 184,757" fill="none" stroke="#7A5AA6" stroke-width="2.4" marker-end="url(#arrow-violet)"/>
-  <path d="M 334 796 L 370 796" class="solid-teal"/>
-  <path d="M 562 796 L 598 796" class="solid-teal"/>
-  <path d="M 824 796 L 860 796" class="solid-teal"/>
-  <polyline points="522,248 522,365 60,365 60,746 466,746 466,757" fill="none" stroke="#3B6FB6" stroke-width="2.4" marker-end="url(#arrow-blue)"/>
+  <rect x="340" y="1180" width="230" height="105" rx="14" class="obs"/>
+  <text x="455" y="1225" text-anchor="middle" class="label">E_theta</text>
+  <text x="455" y="1265" text-anchor="middle" class="body">shared weights</text>
 
-  <rect x="626" y="858" width="146" height="46" rx="9" class="action-box"/>
-  <text x="699" y="887" text-anchor="middle" class="body">current action aₜ</text>
-  <path d="M 699 858 L 699 835" class="solid-orange"/>
+  <rect x="615" y="1180" width="250" height="105" rx="14" class="target"/>
+  <text x="740" y="1215" text-anchor="middle" class="label">active</text>
+  <text x="740" y="1250" text-anchor="middle" class="label">target</text>
+  <text x="740" y="1280" text-anchor="middle" class="math">z_clean[t+1]</text>
 
-  <text x="85" y="884" class="small">Causal streaming · 2D recurrent state</text>
-  <text x="85" y="906" class="small">No memory teacher · no recovery loss · no memory-specific auxiliary</text>
+  <rect x="885" y="1140" width="440" height="170" rx="14" class="loss"/>
+  <text x="1105" y="1174" text-anchor="middle" class="label">prediction</text>
+  <text x="1105" y="1208" text-anchor="middle" class="label">+ unit VICReg</text>
+  <text x="1105" y="1242" text-anchor="middle" class="math">L = L_pred + L_var</text>
+  <text x="1105" y="1274" text-anchor="middle" class="math">+ L_cov</text>
+  <text x="1105" y="1305" text-anchor="middle" class="body">no memory-specific auxiliary</text>
+
+  <path d="M295,1232 L339,1232" class="blue-arrow"/>
+  <path d="M570,1232 L614,1232" class="blue-arrow"/>
+  <path d="M865,1232 L884,1232" class="red-arrow"/>
+  <path d="M1210,1128 L1210,1139" class="red-arrow"/>
 
   <!-- Panel B -->
-  <rect x="1130" y="105" width="628" height="820" rx="16" class="panel"/>
-  <text x="1160" y="145" class="panel-title">(b) Self-supervised trajectory training</text>
-  <text x="1728" y="172" text-anchor="end" class="small">dashed arrows: target/loss only</text>
+  <rect x="35" y="1350" width="1330" height="515" rx="18" class="panel"/>
+  <text x="75" y="1412" class="panel-title">(b) Evaluation-only probe and exact V8 interventions</text>
 
-  <!-- Timeline labels -->
-  <text x="1160" y="220" class="label">observed view</text>
-  <text x="1160" y="246" class="small">memory input</text>
+  <!-- Evaluation-only probe -->
+  <rect x="75" y="1470" width="205" height="100" rx="13" class="memory"/>
+  <text x="177" y="1506" text-anchor="middle" class="label">frozen V8</text>
+  <text x="177" y="1547" text-anchor="middle" class="body">prior / state</text>
 
-  <!-- Observed frames -->
-  <g>
-    <rect x="1300" y="195" width="70" height="66" rx="8" class="obs-box"/>
-    <circle cx="1335" cy="224" r="12" fill="#7EA7D8"/>
-    <path d="M1315 248 L1332 233 L1343 242 L1357 229" fill="none" stroke="#3B6FB6" stroke-width="3"/>
-    <text x="1335" y="279" text-anchor="middle" class="tiny">t−2</text>
+  <rect x="335" y="1470" width="245" height="100" rx="13" class="eval"/>
+  <text x="457" y="1506" text-anchor="middle" class="label">linear probe</text>
+  <text x="457" y="1547" text-anchor="middle" class="body">evaluation fit only</text>
 
-    <rect x="1383" y="195" width="70" height="66" rx="8" class="obs-box"/>
-    <circle cx="1418" cy="224" r="12" fill="#7EA7D8"/>
-    <path d="M1398 248 L1415 233 L1426 242 L1440 229" fill="none" stroke="#3B6FB6" stroke-width="3"/>
-    <text x="1418" y="279" text-anchor="middle" class="tiny">t−1</text>
+  <rect x="335" y="1620" width="245" height="90" rx="13" class="eval"/>
+  <text x="457" y="1652" text-anchor="middle" class="label">prior-state</text>
+  <text x="457" y="1687" text-anchor="middle" class="label">NMSE</text>
 
-    <rect x="1466" y="195" width="70" height="66" rx="8" fill="#E5E7EB" stroke="#6B7280" stroke-width="1.6"/>
-    <path d="M1478 207 L1524 249 M1524 207 L1478 249" stroke="#8A93A0" stroke-width="4"/>
-    <text x="1501" y="279" text-anchor="middle" class="tiny">t</text>
+  <rect x="75" y="1620" width="205" height="90" rx="13" class="eval"/>
+  <text x="177" y="1660" text-anchor="middle" class="label">state s[t]</text>
+  <text x="177" y="1696" text-anchor="middle" class="body">target only</text>
 
-    <rect x="1549" y="195" width="70" height="66" rx="8" fill="#E5E7EB" stroke="#6B7280" stroke-width="1.6"/>
-    <path d="M1561 207 L1607 249 M1607 207 L1561 249" stroke="#8A93A0" stroke-width="4"/>
-    <text x="1584" y="279" text-anchor="middle" class="tiny">t+1</text>
+  <path d="M280,1520 L334,1520" class="green-arrow"/>
+  <path d="M457,1570 L457,1619" class="gray-arrow"/>
+  <path d="M280,1665 L334,1665" class="gray-arrow"/>
 
-    <rect x="1632" y="195" width="70" height="66" rx="8" class="obs-box"/>
-    <circle cx="1667" cy="224" r="12" fill="#7EA7D8"/>
-    <path d="M1647 248 L1664 233 L1675 242 L1689 229" fill="none" stroke="#3B6FB6" stroke-width="3"/>
-    <text x="1667" y="279" text-anchor="middle" class="tiny">t+2</text>
-  </g>
-  <path d="M 1371 228 L 1382 228 M 1454 228 L 1465 228 M 1537 228 L 1548 228 M 1620 228 L 1631 228" stroke="#3B6FB6" stroke-width="2.2"/>
-  <text x="1542" y="306" text-anchor="middle" class="small">contiguous blackout / missing observations</text>
+  <!-- Exact intervention grid -->
+  <text x="985" y="1460" text-anchor="middle" class="section">exact retrained interventions</text>
 
-  <!-- Action row -->
-  <text x="1160" y="354" class="label">actions</text>
-  <text x="1160" y="380" class="small">executed controls</text>
-  <line x1="1300" y1="365" x2="1702" y2="365" stroke="#E6812F" stroke-width="2.2" marker-end="url(#arrow-orange)"/>
-  <g fill="#FFF1E3" stroke="#E6812F" stroke-width="1.7">
-    <circle cx="1376" cy="365" r="22"/><circle cx="1459" cy="365" r="22"/><circle cx="1542" cy="365" r="22"/><circle cx="1625" cy="365" r="22"/>
-  </g>
-  <g class="body" text-anchor="middle">
-    <text x="1376" y="371">aₜ₋₂</text><text x="1459" y="371">aₜ₋₁</text><text x="1542" y="371">aₜ</text><text x="1625" y="371">aₜ₊₁</text>
-  </g>
+  <rect x="650" y="1490" width="285" height="95" rx="13" class="action"/>
+  <text x="792" y="1528" text-anchor="middle" class="label">no-action</text>
+  <text x="792" y="1570" text-anchor="middle" class="math">W_a a[t] = 0</text>
 
-  <!-- Clean coordinate / target row -->
-  <text x="1160" y="451" class="label">clean targets</text>
-  <text x="1160" y="477" class="small">targets + evaluation</text>
+  <rect x="990" y="1490" width="285" height="110" rx="13" class="predictor"/>
+  <text x="1132" y="1528" text-anchor="middle" class="label">single-read</text>
+  <text x="1132" y="1565" text-anchor="middle" class="body">medium-state</text>
+  <text x="1132" y="1595" text-anchor="middle" class="body">read only</text>
 
-  <g>
-    <rect x="1300" y="426" width="70" height="66" rx="8" class="teal-box"/>
-    <circle cx="1335" cy="455" r="12" fill="#74BFB6"/>
-    <path d="M1315 479 L1332 464 L1343 473 L1357 460" fill="none" stroke="#2A9D8F" stroke-width="3"/>
-    <text x="1335" y="510" text-anchor="middle" class="tiny">visible target</text>
+  <rect x="650" y="1615" width="285" height="105" rx="13" class="fast"/>
+  <text x="792" y="1648" text-anchor="middle" class="label">static</text>
+  <text x="792" y="1682" text-anchor="middle" class="math">rho_f = 0</text>
+  <text x="792" y="1712" text-anchor="middle" class="math">rho_m = 0</text>
 
-    <rect x="1383" y="426" width="70" height="66" rx="8" class="teal-box"/>
-    <circle cx="1418" cy="455" r="12" fill="#74BFB6"/>
-    <path d="M1398 479 L1415 464 L1426 473 L1440 460" fill="none" stroke="#2A9D8F" stroke-width="3"/>
-    <text x="1418" y="510" text-anchor="middle" class="tiny">visible target</text>
+  <rect x="990" y="1615" width="285" height="105" rx="13" class="medium"/>
+  <text x="1132" y="1648" text-anchor="middle" class="label">dynamic</text>
+  <text x="1132" y="1682" text-anchor="middle" class="math">rho_f = 1</text>
+  <text x="1132" y="1712" text-anchor="middle" class="math">rho_m = 1</text>
 
-    <rect x="1466" y="426" width="70" height="66" rx="8" fill="#F2F3F5" stroke="#A4ABB5" stroke-width="1.5"/>
-    <path d="M1478 438 L1524 480 M1524 438 L1478 480" stroke="#B1B7C0" stroke-width="3"/>
-    <text x="1501" y="510" text-anchor="middle" class="tiny">eval only</text>
-
-    <rect x="1549" y="426" width="70" height="66" rx="8" fill="#F2F3F5" stroke="#A4ABB5" stroke-width="1.5"/>
-    <path d="M1561 438 L1607 480 M1607 438 L1561 480" stroke="#B1B7C0" stroke-width="3"/>
-    <text x="1584" y="510" text-anchor="middle" class="tiny">eval only</text>
-
-    <rect x="1632" y="426" width="70" height="66" rx="8" class="teal-box"/>
-    <circle cx="1667" cy="455" r="12" fill="#74BFB6"/>
-    <path d="M1647 479 L1664 464 L1675 473 L1689 460" fill="none" stroke="#2A9D8F" stroke-width="3"/>
-    <text x="1667" y="510" text-anchor="middle" class="tiny">visible target</text>
-  </g>
-
-  <!-- Unroll and loss -->
-  <rect x="1194" y="555" width="500" height="92" rx="12" class="neutral-box"/>
-  <text x="1444" y="586" text-anchor="middle" class="label">causal recurrent unroll</text>
-  <text x="1444" y="612" text-anchor="middle" class="body">{zᵒᵇˢ₀:ₜ, a₀:ₜ} → memory states → ẑₜ₊₁</text>
-  <text x="1444" y="634" text-anchor="middle" class="small">the deployed recurrence is the training recurrence</text>
-
-  <path d="M 1501 261 L 1501 538 L 1444 538 L 1444 554" class="solid-blue"/>
-  <path d="M 1542 388 L 1542 531 L 1480 531 L 1480 554" class="solid-orange"/>
-
-  <rect x="1194" y="702" width="500" height="116" rx="12" class="loss-box"/>
-  <text x="1444" y="734" text-anchor="middle" class="label">ordinary visible next-latent prediction</text>
-  <text x="1444" y="767" text-anchor="middle" class="equation">Lₚᵣₑd = (1 / |V|) ∑ₜ₊₁∈V ‖ ẑₜ₊₁ − sg(zᶜˡᵉᵃⁿₜ₊₁) ‖²₂</text>
-  <text x="1444" y="795" text-anchor="middle" class="small">no task labels · no memory teacher · no hidden blackout target</text>
-
-  <path d="M 1444 647 L 1444 701" class="solid-teal"/>
-  <path d="M 1667 492 C 1667 654, 1585 651, 1585 701" class="target-gray"/>
-  <text x="1642" y="665" text-anchor="middle" class="tiny">stop-gradient target</text>
-
-  <rect x="1194" y="849" width="500" height="48" rx="9" fill="#FFF9E9" stroke="#D7A928" stroke-width="1.4"/>
-  <text x="1444" y="870" text-anchor="middle" class="small">V8 evidence used fixed DINO–PCA coordinates.</text>
-  <text x="1444" y="889" text-anchor="middle" class="small">End-to-end LeWM confirmation remains a separate required study.</text>
-
-  <!-- Global legend -->
-  <g transform="translate(58,952)">
-    <line x1="0" y1="0" x2="42" y2="0" stroke="#3B6FB6" stroke-width="3" marker-end="url(#arrow-blue)"/>
-    <text x="56" y="5" class="small">observation / latent</text>
-    <line x1="230" y1="0" x2="272" y2="0" stroke="#E6812F" stroke-width="3" marker-end="url(#arrow-orange)"/>
-    <text x="286" y="5" class="small">action</text>
-    <line x1="385" y1="0" x2="427" y2="0" stroke="#2A9D8F" stroke-width="3" marker-end="url(#arrow-teal)"/>
-    <text x="441" y="5" class="small">memory read / prediction</text>
-    <line x1="675" y1="0" x2="717" y2="0" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="8 7" marker-end="url(#arrow-gray)"/>
-    <text x="731" y="5" class="small">target-only path</text>
-    <text x="1692" y="5" text-anchor="end" class="tiny">Timing convention: aₜ maps state t → t+1</text>
-  </g>
+  <rect x="75" y="1755" width="1200" height="82" rx="12" class="warn"/>
+  <text x="675" y="1789" text-anchor="middle" class="label">Native state and reward are evaluation only.</text>
+  <text x="675" y="1827" text-anchor="middle" class="body">They never enter encoder, memory, predictor, or training loss.</text>
 </svg>

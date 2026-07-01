@@ -422,8 +422,11 @@ def main(argv: Iterable[str] | None = None) -> None:
     if args.wandb:
         import wandb
         tags = [
-            "lewm-memory", "end-to-end-rgb", "subjepa-v16",
-            "excluded-adaptive-development", f"env:{env_name}",
+            "lewm-memory", "end-to-end-rgb",
+            str(metadata.get("wandb_method_tag", "subjepa-v16")),
+            str(metadata.get(
+                "wandb_scope_tag", "excluded-adaptive-development")),
+            f"env:{env_name}",
             f"design:{args.design}", f"study:{args.wandb_study}",
         ]
         if args.extra_tag:
@@ -694,6 +697,7 @@ def main(argv: Iterable[str] | None = None) -> None:
                 "mode": "offline" if wb.offline else "online",
                 "study": args.wandb_study,
                 "state": "finished",
+                "tags": sorted(str(tag) for tag in tags),
                 "eval_rollout_artifact_name": artifact_name,
                 "eval_rollout_sha256": rollout_hash,
             }
