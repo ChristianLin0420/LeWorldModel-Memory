@@ -160,6 +160,135 @@ class SIGReg(nn.Module):
         return T_stats.mean()
 
 
+class MultiSubspaceSIGReg(nn.Module):
+    """Frozen row-orthonormal multi-subspace SIGReg from Sub-JEPA.
+
+    The ambient embedding is projected into ``num_subspaces`` independently
+    initialized subspaces.  Each projection matrix has orthonormal rows and is
+    stored as a buffer, so it cannot co-adapt with the encoder.  The subspace
+    width is fixed to ``embed_dim // num_subspaces`` as in the paper.
+
+    Within every subspace and at every sequence position, fresh random unit
+    directions are sampled on each forward pass.  Their one-dimensional
+    marginals are matched to ``N(0, 1)`` with the official 17-knot
+    Epps--Pulley characteristic-function statistic.
+
+    Args:
+        embed_dim: Ambient embedding width ``D``.
+        num_subspaces: Number of subspaces ``K``.  ``D`` must be divisible by
+            ``K`` and each subspace has width ``D / K``.
+        num_projections: Number of fresh one-dimensional directions sampled in
+            each subspace on every forward pass.
+    """
+
+    _NUM_KNOTS = 17
+
+    def __init__(
+        self,
+        embed_dim: int = 192,
+        num_subspaces: int = 4,
+        num_projections: int = 1024,
+    ):
+        super().__init__()
+        self.embed_dim = int(embed_dim)
+        self.num_subspaces = int(num_subspaces)
+        self.num_projections = int(num_projections)
+
+        if self.embed_dim <= 0:
+            raise ValueError(f"embed_dim must be positive, got {self.embed_dim}")
+        if self.num_subspaces <= 0:
+            raise ValueError(
+                f"num_subspaces must be positive, got {self.num_subspaces}")
+        if self.embed_dim % self.num_subspaces != 0:
+            raise ValueError(
+                "embed_dim must be divisible by num_subspaces; "
+                f"got embed_dim={self.embed_dim}, num_subspaces={self.num_subspaces}")
+        if self.num_projections <= 0:
+            raise ValueError(
+                f"num_projections must be positive, got {self.num_projections}")
+
+        self.subspace_dim = self.embed_dim // self.num_subspaces
+
+        # Construct W_k in R^(d_s x D) with W_k W_k^T = I using a reduced QR
+        # factorization of a D x d_s Gaussian matrix.  Different subspaces are
+        # sampled independently; row orthogonality is within each W_k.
+        projections = []
+        for _ in range(self.num_subspaces):
+            q, _ = torch.linalg.qr(
+                torch.randn(self.embed_dim, self.subspace_dim, dtype=torch.float32),
+                mode='reduced',
+            )
+            projections.append(q.transpose(0, 1))
+        self.register_buffer(
+            'projection_matrices', torch.stack(projections, dim=0).contiguous())
+
+        # Official Sub-JEPA/LeJEPA Epps--Pulley discretization: 17 knots over
+        # [0, 3], doubled trapezoid weights for the symmetric integral, and the
+        # standard-normal characteristic function as both target and window.
+        t = torch.linspace(0.0, 3.0, self._NUM_KNOTS, dtype=torch.float32)
+        dt = 3.0 / (self._NUM_KNOTS - 1)
+        quadrature = torch.full((self._NUM_KNOTS,), 2.0 * dt, dtype=torch.float32)
+        quadrature[[0, -1]] = dt
+        phi = torch.exp(-t.square() / 2.0)
+        self.register_buffer('t', t)
+        self.register_buffer('phi', phi)
+        self.register_buffer('weights', quadrature * phi)
+
+    def _canonicalize(self, embeddings: torch.Tensor) -> torch.Tensor:
+        if embeddings.dim() == 2:
+            embeddings = embeddings.unsqueeze(1)
+        elif embeddings.dim() != 3:
+            raise ValueError(
+                "MultiSubspaceSIGReg expects (B, D) or (B, T, D), "
+                f"got shape {tuple(embeddings.shape)}")
+        if embeddings.size(-1) != self.embed_dim:
+            raise ValueError(
+                f"expected embedding dimension {self.embed_dim}, "
+                f"got {embeddings.size(-1)}")
+        if embeddings.size(0) == 0 or embeddings.size(1) == 0:
+            raise ValueError(
+                f"batch and sequence dimensions must be non-empty, got {tuple(embeddings.shape)}")
+        if not embeddings.is_floating_point():
+            raise TypeError(
+                f"embeddings must be floating point, got dtype={embeddings.dtype}")
+        return embeddings
+
+    def project(self, embeddings: torch.Tensor) -> torch.Tensor:
+        """Project ``(B,T,D)`` or ``(B,D)`` embeddings to ``(K,T,B,d_s)``."""
+        embeddings = self._canonicalize(embeddings)
+        # The public helper preserves the caller's ordinary dtype behavior.  The
+        # complete loss below explicitly calls it with FP32 inputs outside AMP.
+        projected = torch.einsum(
+            'btd,ked->btke', embeddings, self.projection_matrices.to(embeddings.dtype))
+        return projected.permute(2, 1, 0, 3).contiguous()
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        """Return the scalar mean statistic across subspaces, time, and slices."""
+        embeddings = self._canonicalize(embeddings)
+        device_type = embeddings.device.type
+        # Matmul/einsum and trigonometry must remain FP32 even when the caller is
+        # under BF16/FP16 autocast.  The cast remains differentiable to the input.
+        with torch.autocast(device_type=device_type, enabled=False):
+            projected = self.project(embeddings.float())  # (K, T, B, d_s)
+            directions = torch.randn(
+                self.num_subspaces,
+                self.subspace_dim,
+                self.num_projections,
+                device=projected.device,
+                dtype=torch.float32,
+            )
+            directions.div_(directions.norm(p=2, dim=1, keepdim=True))
+
+            # (K,T,B,d_s) x (K,d_s,M) -> (K,T,B,M,knots).
+            samples = torch.einsum(
+                'ktbd,kdn->ktbn', projected, directions).unsqueeze(-1) * self.t
+            ecf_real = samples.cos().mean(dim=2)
+            ecf_imag = samples.sin().mean(dim=2)
+            error = (ecf_real - self.phi).square() + ecf_imag.square()
+            statistic = (error @ self.weights) * projected.size(2)
+            return statistic.mean()
+
+
 def sigreg_loss(
     z: torch.Tensor,
     num_projections: int = 1024,
