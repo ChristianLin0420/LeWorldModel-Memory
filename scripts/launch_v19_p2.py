@@ -77,6 +77,7 @@ def _launch(job: Job, gpu: int, args: argparse.Namespace, log_dir: Path
         sys.executable, str(REPO / "scripts" / "train_v19_p2.py"),
         "--task", job.task, "--host", args.host, "--arm", job.arm,
         "--seed", str(job.seed), "--output", args.output,
+        "--p0-data-root", "outputs/v19_p0_a2/data",
         "--wandb" if args.wandb else "--no-wandb",
         "--wandb-project", args.project,
     ]
@@ -85,10 +86,35 @@ def _launch(job: Job, gpu: int, args: argparse.Namespace, log_dir: Path
                             env=_job_env(gpu, args.wandb), cwd=REPO)
 
 
+def _pregenerate_caches(args: argparse.Namespace, log_dir: Path) -> None:
+    """Generate each task's data banks once, serially, before any training job.
+
+    The trainers' resolve_banks() lazily creates missing caches; launching a
+    9-way first wave without this step made concurrent jobs race on the same
+    bank files (digest-mismatch crashes across the first P2 attempt).  One
+    renderer per task, sequential, removes the race by construction."""
+    for task in TASKS:
+        command = [sys.executable, "-c",
+                   "import sys; sys.path.insert(0, 'scripts'); "
+                   "import train_v19_p2 as t; "
+                   f"t.resolve_banks({task!r}, 'outputs/v19_p0_a2/data', "
+                   f"{args.output!r} + '/data')"]
+        log = open(log_dir / f"data_{task}.log", "w")
+        env = _job_env(GPUS[0], wandb_on=False)
+        result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT,
+                                env=env, cwd=REPO)
+        if result.returncode != 0:
+            raise SystemExit(f"cache generation failed for {task}; "
+                             f"see {log_dir}/data_{task}.log")
+        print(f"[v19-p2] cache ready: {task}")
+
+
 def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     log_dir = Path(args.output) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    _pregenerate_caches(args, log_dir)
 
     queue = [Job(t, a, s) for t, a, s in product(TASKS, ARMS, SEEDS)]
     queue = [job for job in queue
@@ -118,6 +144,9 @@ def main(argv: Iterable[str] | None = None) -> None:
             crashed += code != 0
             if code != 0:
                 print(f"[v19-p2] CRASH {job.name} (exit {code})")
+                # let the dying process release GPU memory before the slot
+                # is refilled (the first P2 attempt OOMed on this transient)
+                time.sleep(30)
         running = still
         tags = ",".join(f"{j.name}@gpu{g}" for _, j, g in running)
         print(f"\r[v19-p2] {done} done, {crashed} crashed | running: {tags}",
