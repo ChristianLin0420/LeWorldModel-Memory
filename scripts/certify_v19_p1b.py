@@ -44,7 +44,7 @@ sys.path.insert(0, str(ROOT))
 
 from lewm.tasks_v19 import make_task
 from lewm.tasks_v19.base import EpisodeBatch
-from lewm.tasks_v19.certify import _cat_accuracy, _ridge_r2
+from lewm.tasks_v19.certify import _cat_accuracy
 from sklearn.metrics import r2_score
 import scripts.train_v19_p0 as p0
 from scripts.eval_v19_p2 import integrator_floor_features
@@ -53,7 +53,7 @@ P1B_TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev")
 DEFAULT_E_TRAIN = 512
 DEFAULT_E_EVAL = 256
 BANK_SEED_BASE = 190_000       # registered P1b bank-seed namespace
-PERMUTATIONS = 32
+PERMUTATIONS = 200  # calibration 1: 32 made the 95th-pct null ~ the 2nd-largest of 32 draws (high variance)
 NULL_PERCENTILE = 95.0
 SIGHTED_ACC_MIN = 0.75
 T4_POSTERIOR_FRACTION = 0.8
@@ -168,8 +168,27 @@ def trailing_features(embeddings: np.ndarray, window: int | str) -> np.ndarray:
 # Probes
 # --------------------------------------------------------------------------
 
+def _ridge_r2_cv(train_x: np.ndarray, train_y: np.ndarray,
+                 eval_x: np.ndarray, eval_y: np.ndarray) -> float:
+    """Continuous probe with validation-selected ridge strength.
+
+    Calibration 2: the construction-level probe's fixed alpha=1e-3 is fine on
+    low-dimensional ground-truth features but is effectively unregularized on
+    ~512 standardized embedding features, producing wildly negative eval R2
+    even when the information is present (see the a2 truncation curves).
+    RidgeCV selects alpha per fit, so the clause measures information, not
+    conditioning."""
+    from sklearn.linear_model import RidgeCV
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    probe = make_pipeline(StandardScaler(),
+                          RidgeCV(alphas=np.logspace(-3, 3, 7)))
+    probe.fit(train_x, train_y)
+    return float(r2_score(eval_y, probe.predict(eval_x)))
+
+
 def _probe_fn(xi_kind: str) -> Callable[..., float]:
-    return _cat_accuracy if xi_kind == "cat" else _ridge_r2
+    return _cat_accuracy if xi_kind == "cat" else _ridge_r2_cv
 
 
 def probe_with_permutation_null(

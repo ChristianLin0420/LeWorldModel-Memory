@@ -254,6 +254,31 @@ Next: P1b checkpoint-level certificates (permutation-null integrator gates, sigh
 
 **Registered response — Amendment 2 (cue salience), within the P1a↔P0↔P1b loop.** The task parameter that certificates now must set is *salience*: exogenous elements enlarged (drifter 6×6→12×12, T4 target r=3→6 with halo, T2 cups/ball enlarged) and cue windows augmented with a frame-border tint (ξ-colored for T1/T3; fixed-color for T2), so the exogenous factor carries non-negligible pixel variance. All leakage proofs are preserved (post-cue frames remain byte-identical across ξ). The loop re-runs: P1a certificates → P0 preflight on amended tasks (both hosts, with the `need_weights=False` memory fix applied uniformly) → P1b. If the sighted certificate still fails at high salience, the program's honest terminal result for this cohort is the encoder-blindness finding itself, reported under claims-ladder row 2's fail-closed clause.
 
-## 10. Key sources
+## 10. Amendment-2 loop and the freeze (2026-07-04)
+
+**Status: FREEZE DECLARED on the T1/T3/T4 confirmation set. Salience rescues the sighted certificate — the encoder blindness of Section 9 is real but salience-bounded. T2 is retired to descriptive status (task fault, twice measured). Two certificate calibrations were required and are registered below.**
+
+**Loop execution.** P1a re-certification on the amended tasks: all confirmation tasks pass, cue pixel probes now 1.000 ± 0.000 (post-cue byte-identity preserved). P0-a2 preflight (both hosts, amended tasks, memory-fixed attention at 3/GPU, zero OOMs): exact-SIGReg still fails everywhere (ranks 8.8–17.4 — salience does not rescue the exact recipe; host fault re-confirmed); VICReg healthy on T1/T3 (ranks 57.5/53.2, 3/3) and **improved on T4** (rank 62.7 → 80.7 — the salient stochastic target adds representable variance). Calibrated P1b (200-permutation nulls; CV-conditioned continuous probes):
+
+| Task | Integrator vs null (3 seeds) | Sighted | Memory demand | Two-sided |
+|---|---|---|---|---|
+| T1 | 3/3 at chance | **1.000** (3/3) | **0.711 ± 0.006** | **PASS** |
+| T3 | 3/3 at chance | **1.000** (3/3) | **0.758 ± 0.014** | **PASS** |
+| T4 | 3/3 at chance | 0.35–0.39 vs fidelity bar 0.44–0.48 | **0.422 ± 0.023** | PASS under the registered demand definition (see reading) |
+| T2 | 3/3 at chance | 0.30–0.36 (chance) | −0.005 ± 0.032 | **FAIL — retired** |
+
+The truncation curves are now the textbook signature of certified memory demand: T1/T3 read chance at every trailing window (0.24–0.29) and jump to 0.96 only when the history reaches back to the cue; T4 climbs 0.46 → 0.81 with window length.
+
+**Insight 4 — encoder blindness is salience-bounded, and the threshold is measurable.** The same architecture, objective, and data regime that carried *zero* bits about amendment-1 cues (Section 9) carries them at probe accuracy 1.000 once the cue crosses a pixel-variance threshold (border tint + 2× sprites). For T4, the amendment moved the visible stochastic target from *undecodable in its own frame* (R² −0.26) to R² ≈ 0.75 from 32-frame windows — and the host's rank *rose* by 18 points, i.e. above threshold the exogenous factor becomes representation-nourishing rather than discarded noise. Practical rule for the field: **JEPA memory studies must certify, per trained encoder, that the to-be-remembered factor survived encoding — and salience is a controllable knob that determines whether it does.**
+
+**Insight 5 — T2 (tracking-through-motion) fails for a different reason and is retired.** Even at full salience the T2 sighted probe is at chance, and amendment 2 additionally *degraded* the host on T2 (rank 59 → 27 ± 9, convergence 1/3): ξ is not a static attribute but a binding of identity to trajectory, which this host does not represent. Two strikes under the attribution rule → T2 leaves the confirmation set (descriptive only, like T5); the tracking-memory question is deferred to the MIKASA-Robo external arm. `t3dev` (fresh drifter instance) replaces `t2dev` in the development grid so the power analysis keeps two task families.
+
+**Registered calibrations and readings (full disclosure).** (1) Permutation nulls: 32 → 200 refits — with 32, the 95th-percentile threshold is essentially the 2nd-largest draw, and its noise produced two spurious T1 integrator misses by ~0.02. (2) Continuous probes: fixed α=1e-3 ridge is unregularized on ~512 embedding features (eval R² of −6 to −12 with the information demonstrably present); RidgeCV replaces it. (3) T4 reading: the implementation added a fidelity bar (sighted ≥ 0.8× ground-truth posterior R²) beyond the registered §4.4 certificate (memory demand ≥ threshold); under the registered definition T4's demand is 0.422 ≥ 0.30 with the integrator at chance — the freeze adopts the registered reading, and the fidelity shortfall (single-frame positional R² ≈ 0.47; velocity-limited extrapolation) is carried as a descriptive caveat into every T4 result. (4) A chain-automation bug (a gate script mis-reading T4's by-design-skipped identical-rendering clause) launched P0-a2 before human review of P1a-a2; the P1a-a2 gates in fact passed, so no protocol damage — recorded for honesty.
+
+**Freeze event.** Confirmation set T1/T3/T4 (T2, T5 descriptive) × the §4.3 arm deck × seeds from the P2 power analysis; VICReg host; per-task caveats: T4 fidelity note above. The P3 set is closed until P3.
+
+Next: P2 development grid (t1dev + t3dev × 6 arms × 3 seeds) → power analysis → P3.
+
+## 11. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.

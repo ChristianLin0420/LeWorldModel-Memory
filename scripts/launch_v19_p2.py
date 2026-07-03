@@ -28,7 +28,7 @@ REPO = Path(__file__).resolve().parents[1]
 GPUS = (0, 1, 2)
 
 ARMS = ("none", "acgru", "acssm", "lkc", "lkc_nll", "lkc_k0")
-TASKS = ("t1dev", "t2dev")
+TASKS = ("t1dev", "t3dev")
 SEEDS = (0, 1, 2)
 
 

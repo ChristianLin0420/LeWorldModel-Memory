@@ -34,7 +34,7 @@ from lewm.tasks_v19.overlays import (CUE_COLORS, GRAY, OUProcess2D,
                                      draw_border, draw_disc, draw_rect,
                                      draw_ring)
 
-TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev")
+TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev", "t3dev")
 
 # Domain-separation salt for seed derivation: keeps a task's random streams
 # disjoint from every other task's at the same user seed.
@@ -518,6 +518,15 @@ def _build_registry() -> dict[str, V19Task]:
             cup_size=(11, 13)),
         "t3": DrifterTask(),
         "t4": FreezeTrackTask(),
+        # Development-only drifter instance (fresh region + onsets) — added
+        # when the T2 family was retired from the cohort (V19_PROPOSAL.md
+        # section 10) so the P2 development grid keeps two task families
+        # without opening the frozen T1/T3/T4 confirmation set.
+        "t3dev": DrifterTask(
+            name="t3dev", n_classes=3, onset_range=(8, 16),
+            duration_range=(5, 5),
+            ou=OUProcess2D(theta=0.12, sigma=0.9,
+                           x_bounds=(6.0, 30.0), y_bounds=(4.0, 22.0))),
     }
 
 

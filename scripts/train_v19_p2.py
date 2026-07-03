@@ -62,7 +62,7 @@ import scripts.train_v19_p0 as p0
 
 ARMS = ("none", "acgru", "acssm", "lkc", "lkc_nll", "lkc_k0", "lkc_b0",
         "lkc_kfix", "lkc_rfix", "lkc_alearn", "lkc_a2")
-P2_TASKS = (*p0_data.P0_TASKS, "t1dev", "t2dev")
+P2_TASKS = (*p0_data.P0_TASKS, "t1dev", "t2dev", "t3dev")
 DEFAULT_EPOCHS = p0.DEFAULT_EPOCHS
 EXPORT_SCHEMA_VERSION = 1
 EXPORT_CHUNK = 16
