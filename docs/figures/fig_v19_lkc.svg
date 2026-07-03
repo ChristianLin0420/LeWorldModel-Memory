@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="660" viewBox="0 0 980 660" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#252A2E"/>
+    </marker>
+    <marker id="kg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#4B780A"/>
+    </marker>
+    <marker id="kb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#A45A1C"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="660" fill="#FFFFFF"/>
+  <text x="490" y="32" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">V19 carrier: one Latent Kalman Cell (LKC)</text>
+
+  <!-- Observation pipeline -->
+  <rect x="40" y="66" width="110" height="44" rx="9" fill="#F5F6F7" stroke="#252A2E" stroke-width="1.3"/>
+  <text x="95" y="93" text-anchor="middle" font-size="13" fill="#252A2E">o&#8348; (pixels)</text>
+  <line x1="150" y1="88" x2="178" y2="88" stroke="#252A2E" stroke-width="1.5" marker-end="url(#ka)"/>
+
+  <rect x="180" y="60" width="190" height="56" rx="9" fill="#F5F6F7" stroke="#252A2E" stroke-width="1.3"/>
+  <text x="275" y="84" text-anchor="middle" font-size="13" font-weight="bold" fill="#252A2E">Encoder E&#952;</text>
+  <text x="275" y="103" text-anchor="middle" font-size="11" fill="#626E76">exact-SIGReg LeWM host</text>
+
+  <line x1="370" y1="88" x2="404" y2="88" stroke="#252A2E" stroke-width="1.5" marker-end="url(#ka)"/>
+  <rect x="406" y="68" width="48" height="40" rx="9" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.4"/>
+  <text x="430" y="93" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#252A2E">z&#8348;</text>
+
+  <!-- z_t skip to READ -->
+  <path d="M 454 88 L 815 88 L 815 244" fill="none" stroke="#28756D" stroke-width="1.5" marker-end="url(#ka)"/>
+  <text x="640" y="80" text-anchor="middle" font-size="11.5" fill="#28756D">z&#8348; (residual skip)</text>
+
+  <!-- z_t -> W_x -> x_t into CORRECT -->
+  <path d="M 430 108 L 430 138" fill="none" stroke="#4B780A" stroke-width="1.5" marker-end="url(#kg)"/>
+  <rect x="404" y="140" width="52" height="32" rx="8" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.3"/>
+  <text x="430" y="161" text-anchor="middle" font-size="12.5" fill="#4B780A">W&#8339;</text>
+  <path d="M 430 172 L 430 202 L 480 202 L 480 244" fill="none" stroke="#4B780A" stroke-width="1.5" marker-end="url(#kg)"/>
+  <text x="438" y="194" font-size="11.5" fill="#4B780A">x&#8348; = W&#8339;z&#8348;</text>
+
+  <!-- variance head -->
+  <rect x="180" y="140" width="190" height="34" rx="8" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.3" stroke-dasharray="none"/>
+  <text x="275" y="162" text-anchor="middle" font-size="11.5" fill="#4B780A">variance head &#8594; r&#8348; (obs. trust)</text>
+  <line x1="275" y1="116" x2="275" y2="138" stroke="#4B780A" stroke-width="1.3" marker-end="url(#kg)"/>
+  <path d="M 370 157 L 392 157 L 392 226 L 420 244" fill="none" stroke="#4B780A" stroke-width="1.5" marker-end="url(#kg)"/>
+  <text x="382" y="218" text-anchor="end" font-size="11.5" fill="#4B780A">r&#8348;</text>
+
+  <!-- recurrence arc -->
+  <path d="M 520 244 C 465 198, 255 198, 200 244" fill="none" stroke="#A45A1C" stroke-width="1.7" marker-end="url(#kb)"/>
+  <text x="278" y="192" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">m&#8348;, &#963;&#8348; carried across the episode</text>
+
+  <!-- PREDICT box -->
+  <rect x="60" y="246" width="280" height="126" rx="10" fill="#FBF2E8" stroke="#A45A1C" stroke-width="2"/>
+  <rect x="60" y="246" width="280" height="28" rx="10" fill="#A45A1C"/>
+  <text x="200" y="265" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">PREDICT &#8212; causal transport</text>
+  <text x="200" y="296" text-anchor="middle" font-size="12.5" fill="#252A2E">m&#8315;&#8348; = A m&#8348;&#8331;&#8321; + B a&#8348;&#8331;&#8321;</text>
+  <text x="200" y="317" text-anchor="middle" font-size="12.5" fill="#252A2E">&#963;&#8315;&#8348; = diag(A)&#178; &#8857; &#963;&#8348;&#8331;&#8321; + q</text>
+  <text x="200" y="343" text-anchor="middle" font-size="10.8" fill="#626E76">A fixed multi-scale spectrum + one hold channel</text>
+  <text x="200" y="359" text-anchor="middle" font-size="10.8" fill="#626E76">(no learned timescales in the frozen candidate)</text>
+
+  <!-- actions pill -->
+  <rect x="130" y="404" width="140" height="34" rx="17" fill="#FFFFFF" stroke="#A45A1C" stroke-width="1.4"/>
+  <text x="200" y="426" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#A45A1C">action a&#8348;&#8331;&#8321;</text>
+  <line x1="200" y1="404" x2="200" y2="374" stroke="#A45A1C" stroke-width="1.6" marker-end="url(#kb)"/>
+
+  <!-- arrow PREDICT -> CORRECT -->
+  <line x1="340" y1="309" x2="378" y2="309" stroke="#252A2E" stroke-width="1.7" marker-end="url(#ka)"/>
+  <text x="359" y="300" text-anchor="middle" font-size="11" fill="#626E76">m&#8315;, &#963;&#8315;</text>
+
+  <!-- CORRECT box -->
+  <rect x="380" y="246" width="290" height="126" rx="10" fill="#F1F7E8" stroke="#4B780A" stroke-width="2"/>
+  <rect x="380" y="246" width="290" height="28" rx="10" fill="#4B780A"/>
+  <text x="525" y="265" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">CORRECT &#8212; uncertainty-derived gain</text>
+  <text x="525" y="294" text-anchor="middle" font-size="12.5" fill="#252A2E">k&#8348; = &#963;&#8315; / (&#963;&#8315; + r&#8348;)</text>
+  <text x="525" y="314" text-anchor="middle" font-size="12.5" fill="#252A2E">m&#8348; = m&#8315; + k&#8348; &#8857; (x&#8348; &#8722; m&#8315;)</text>
+  <text x="525" y="334" text-anchor="middle" font-size="12.5" fill="#252A2E">&#963;&#8348; = (1 &#8722; k&#8348;) &#8857; &#963;&#8315;</text>
+  <text x="525" y="358" text-anchor="middle" font-size="10.8" fill="#626E76">telemetry exported per step: k&#8348;, &#963;&#8348;, r&#8348;, innovations</text>
+
+  <!-- arrow CORRECT -> READ -->
+  <line x1="670" y1="309" x2="708" y2="309" stroke="#252A2E" stroke-width="1.7" marker-end="url(#ka)"/>
+  <text x="689" y="300" text-anchor="middle" font-size="11" fill="#626E76">m&#8348;</text>
+
+  <!-- READ box -->
+  <rect x="710" y="246" width="230" height="126" rx="10" fill="#EDF7F5" stroke="#28756D" stroke-width="2"/>
+  <rect x="710" y="246" width="230" height="28" rx="10" fill="#28756D"/>
+  <text x="825" y="265" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">READ &#8212; residual</text>
+  <text x="825" y="298" text-anchor="middle" font-size="12.5" fill="#252A2E">z&#771;&#8348; = z&#8348; + W&#8338; m&#8348;</text>
+  <text x="825" y="322" text-anchor="middle" font-size="10.8" fill="#626E76">W&#8338; zero-init &#8658; at step 0 the model</text>
+  <text x="825" y="337" text-anchor="middle" font-size="10.8" fill="#626E76">is exactly the no-carrier host</text>
+
+  <!-- READ -> predictor -> loss -->
+  <line x1="825" y1="372" x2="825" y2="404" stroke="#252A2E" stroke-width="1.7" marker-end="url(#ka)"/>
+  <rect x="710" y="406" width="230" height="52" rx="9" fill="#F5F6F7" stroke="#252A2E" stroke-width="1.3"/>
+  <text x="825" y="428" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#252A2E">Predictor P&#966;</text>
+  <text x="825" y="446" text-anchor="middle" font-size="11" fill="#626E76">causal, sliding window H</text>
+  <line x1="825" y1="458" x2="825" y2="488" stroke="#252A2E" stroke-width="1.7" marker-end="url(#ka)"/>
+  <rect x="710" y="490" width="230" height="46" rx="9" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+  <text x="825" y="509" text-anchor="middle" font-size="12" fill="#252A2E">z&#770;&#8348;&#8330;&#8321; vs z*&#8348;&#8330;&#8321;</text>
+  <text x="825" y="527" text-anchor="middle" font-size="11" fill="#626E76">host loss: L<tspan font-size="8.5" dy="3">pred</tspan><tspan dy="-3">&#8203;</tspan> + &#955;&#183;SIGReg</text>
+
+  <!-- imagine mode chip -->
+  <rect x="60" y="470" width="280" height="102" rx="10" fill="#FFFFFF" stroke="#A45A1C" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="200" y="494" text-anchor="middle" font-size="12" font-weight="bold" fill="#A45A1C">IMAGINE mode (planning / CEM)</text>
+  <text x="200" y="514" text-anchor="middle" font-size="11" fill="#252A2E">no observations &#8658; predict-only,</text>
+  <text x="200" y="530" text-anchor="middle" font-size="11" fill="#252A2E">correction skipped, &#963; grows by q</text>
+  <text x="200" y="552" text-anchor="middle" font-size="10.5" fill="#626E76">open-loop cell contains the legal integrator</text>
+  <text x="200" y="566" text-anchor="middle" font-size="10.5" fill="#626E76">as a limit (hold channel, k&#8594;0)</text>
+
+  <!-- variants chip -->
+  <rect x="380" y="470" width="290" height="102" rx="10" fill="#F5F6F7" stroke="#626E76" stroke-width="1.2"/>
+  <text x="525" y="494" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">Two registered candidates</text>
+  <text x="525" y="516" text-anchor="middle" font-size="11" fill="#252A2E"><tspan font-weight="bold">LKC-pure:</tspan> host loss only (r&#8348; = learned trust)</text>
+  <text x="525" y="538" text-anchor="middle" font-size="11" fill="#252A2E"><tspan font-weight="bold">LKC-NLL:</tspan> + innovation likelihood (unit weight)</text>
+  <text x="525" y="558" text-anchor="middle" font-size="10.5" fill="#626E76">&#189;[(x&#8722;m&#8315;)&#178;/(&#963;&#8315;+r) + log(&#963;&#8315;+r)] &#8658; calibrated gain</text>
+
+  <!-- footer -->
+  <text x="490" y="620" text-anchor="middle" font-size="12" fill="#626E76">Interventions test one knob each: k&#8801;0 (no correction) &#183; B=0 (no action transport) &#183; fixed gain &#183; fixed trust &#183; learned A &#183; two-scalar A</text>
+  <text x="490" y="640" text-anchor="middle" font-size="12" fill="#626E76">Baselines: no carrier &#183; action-conditioned GRU &#183; action-conditioned diagonal SSM &#183; legal integrator (descriptive floor)</text>
+</svg>

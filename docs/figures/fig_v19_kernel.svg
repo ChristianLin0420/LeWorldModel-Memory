@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="580" viewBox="0 0 960 580" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#252A2E"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#A45A1C"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#28756D"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="580" fill="#FFFFFF"/>
+
+  <text x="480" y="34" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">The kernel: transport what you cause &#8212; remember what you saw</text>
+
+  <!-- World state -->
+  <rect x="310" y="56" width="340" height="64" rx="10" fill="#F5F6F7" stroke="#252A2E" stroke-width="1.4"/>
+  <text x="480" y="82" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#252A2E">World state&#160;&#160;s&#8348; = (s<tspan font-size="9.5" dy="3">endo</tspan><tspan dy="-3">&#8203;</tspan>, &#958;&#8348;)</text>
+  <text x="480" y="103" text-anchor="middle" font-size="12" fill="#626E76">observed only through pixels&#160;&#160;o&#8348; = q(s<tspan font-size="9.5" dy="3">endo</tspan><tspan dy="-3">&#8203;</tspan>, &#958;&#8348;)</text>
+
+  <!-- split arrows -->
+  <line x1="400" y1="120" x2="262" y2="158" stroke="#A45A1C" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+  <line x1="560" y1="120" x2="698" y2="158" stroke="#28756D" stroke-width="1.6" marker-end="url(#arrowTeal)"/>
+
+  <!-- Endogenous box -->
+  <rect x="90" y="162" width="330" height="96" rx="10" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="255" y="188" text-anchor="middle" font-size="14" font-weight="bold" fill="#A45A1C">Endogenous s<tspan font-size="9.5" dy="3">endo</tspan><tspan dy="-3">&#8203;</tspan> &#8212; controllable</text>
+  <text x="255" y="212" text-anchor="middle" font-size="12.5" fill="#252A2E">s<tspan font-size="9.5" dy="3">endo,t+1</tspan><tspan dy="-3">&#8203;</tspan> ~ P( &#183; | s<tspan font-size="9.5" dy="3">endo,t</tspan><tspan dy="-3">&#8203;</tspan> , a&#8348; )</text>
+  <text x="255" y="236" text-anchor="middle" font-size="12.5" fill="#626E76">moved by the agent&#8217;s actions</text>
+
+  <!-- actions pill -->
+  <rect x="12" y="184" width="52" height="34" rx="17" fill="#FFFFFF" stroke="#A45A1C" stroke-width="1.4"/>
+  <text x="38" y="206" text-anchor="middle" font-size="13" font-weight="bold" fill="#A45A1C">a&#8348;</text>
+  <line x1="64" y1="201" x2="88" y2="201" stroke="#A45A1C" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+  <text x="38" y="234" text-anchor="middle" font-size="10.5" fill="#626E76">known</text>
+  <text x="38" y="247" text-anchor="middle" font-size="10.5" fill="#626E76">interventions</text>
+
+  <!-- Exogenous box -->
+  <rect x="540" y="162" width="330" height="96" rx="10" fill="#EDF7F5" stroke="#28756D" stroke-width="1.6"/>
+  <text x="705" y="188" text-anchor="middle" font-size="14" font-weight="bold" fill="#28756D">Exogenous &#958; &#8212; autonomous</text>
+  <text x="705" y="212" text-anchor="middle" font-size="12.5" fill="#252A2E">&#958;&#8348;&#8330;&#8321; ~ P( &#183; | &#958;&#8348; ) &#8212; independent of actions</text>
+  <text x="705" y="236" text-anchor="middle" font-size="12.5" fill="#626E76">revealed only transiently (cue, occluded object, &#8230;)</text>
+
+  <!-- arrows down to mechanisms -->
+  <line x1="255" y1="258" x2="255" y2="296" stroke="#A45A1C" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+  <line x1="705" y1="258" x2="705" y2="296" stroke="#28756D" stroke-width="1.6" marker-end="url(#arrowTeal)"/>
+
+  <!-- Causality mechanism -->
+  <rect x="90" y="300" width="330" height="118" rx="10" fill="#FFFFFF" stroke="#A45A1C" stroke-width="2"/>
+  <rect x="90" y="300" width="330" height="30" rx="10" fill="#A45A1C"/>
+  <text x="255" y="320" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">CAUSALITY = transport what you cause</text>
+  <text x="255" y="352" text-anchor="middle" font-size="12.5" fill="#252A2E">s<tspan font-size="9.5" dy="3">endo</tspan><tspan dy="-3">&#8203;</tspan> is action-integrable by definition:</text>
+  <text x="255" y="372" text-anchor="middle" font-size="12.5" font-style="italic" fill="#252A2E">s<tspan font-size="9.5" dy="3">endo,t</tspan><tspan dy="-3">&#8203;</tspan> = f (s&#8320;, a&#8321;&#8230;a&#8348;)</text>
+  <text x="255" y="398" text-anchor="middle" font-size="12" fill="#626E76">&#8658; the legal integrator (o&#8320; + actions + t) computes it</text>
+
+  <!-- Memory mechanism -->
+  <rect x="540" y="300" width="330" height="118" rx="10" fill="#FFFFFF" stroke="#4B780A" stroke-width="2"/>
+  <rect x="540" y="300" width="330" height="30" rx="10" fill="#4B780A"/>
+  <text x="705" y="320" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">MEMORY = remember what you saw</text>
+  <text x="705" y="352" text-anchor="middle" font-size="12.5" fill="#252A2E">belief over &#958; carried from transient evidence</text>
+  <text x="705" y="372" text-anchor="middle" font-size="12.5" font-style="italic" fill="#252A2E">&#958; &#8800; f (o&#8320;, a&#8321;&#8230;a&#8348;, t)&#160; by definition</text>
+  <text x="705" y="398" text-anchor="middle" font-size="12" fill="#626E76">&#8658; only &#958; can require visual memory &#8212; the falsifiable part</text>
+
+  <!-- verdict banner -->
+  <rect x="90" y="446" width="380" height="112" rx="10" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.2"/>
+  <text x="112" y="474" font-size="13" font-weight="bold" fill="#A45A1C">&#10007;&#160; V18 (falsified)</text>
+  <text x="112" y="496" font-size="12" fill="#252A2E">DMC + random actions &#8658; &#958; &#8776; &#8709;</text>
+  <text x="112" y="514" font-size="12" fill="#252A2E">integrator is Bayes-optimal (won 25/25, &#8722;38%)</text>
+  <text x="112" y="532" font-size="12" fill="#252A2E">&#8658; memory was untestable on those tasks</text>
+
+  <rect x="490" y="446" width="380" height="112" rx="10" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.2"/>
+  <text x="512" y="474" font-size="13" font-weight="bold" fill="#4B780A">&#10003;&#160; V19</text>
+  <text x="512" y="496" font-size="12" fill="#252A2E">tasks with certified nontrivial &#958; (two-level certificates)</text>
+  <text x="512" y="514" font-size="12" fill="#252A2E">integrator becomes a floor, not a winner</text>
+  <text x="512" y="532" font-size="12" fill="#252A2E">&#8658; memory becomes falsifiable &#8212; and worth building</text>
+</svg>

@@ -42,6 +42,8 @@ s_exo_{t+1}  ~ P(· | s_exo_t)              — exogenous: evolves regardless of
 o_t = q(s_endo_t, s_exo_t)                 — pixels emit both
 ```
 
+![The kernel: transport what you cause — remember what you saw](figures/fig_v19_kernel.svg)
+
 Two definitions fall out, and they are the kernel:
 
 - **Causality (the actionable kind) = transport of the endogenous state by actions.** Executed actions are *known interventions* (Schölkopf et al. 2021; CITRIS arXiv:2202.03169; mechanism sparsity arXiv:2107.10098); the endogenous latent is what multi-step inverse dynamics + forward consistency identifies (AC-State arXiv:2207.08229; ACDF arXiv:2403.11940). With near-deterministic endogenous dynamics this component is **action-integrable from the initial state by definition** — which is why the legal integrator is unbeatable on controllable-only tasks. V18's result is the empirical shadow of the ExoRL theorem.
@@ -76,6 +78,8 @@ read:      z̃_t = z_t + W_o m_t                     (residual, zero-init)
 imagine:   during planning rollouts there are no observations: predict-only,
            correction skipped, σ grows by q (open-loop mode, used inside CEM)
 ```
+
+![V19 carrier: one Latent Kalman Cell — predict, correct, read](figures/fig_v19_lkc.svg)
 
 with `r_t` an observation-variance head on the encoder. Precedents: Ac-RKN (CoRL 2020, arXiv:2010.10201 — this cell on real robots, with a factorized-block covariance we deliberately simplify to diagonal), Kalman layers as parallelizable SSM replacements (TMLR 2025, arXiv:2409.16824), R2I modernizing Dreamer's predict–correct (ICLR 2024 oral, arXiv:2403.04253). Representability note: with a near-unit mode and correction off, the open-loop cell computes `m_t = A^t m_0 + Σ A^{t−k} B a_k` — **the legal integrator is contained as a limit**, so the V10 lesson (norm-preserving transport cannot express affine accumulation) is answered by construction.
 
@@ -147,6 +151,8 @@ Not in the frozen candidates: learned timescales, multi-state hierarchies/router
 Every row is reportable. Either outcome of every row is publishable — including the first validated persistent-state JEPA world model (none exists in the peer-reviewed record as of July 2026) or a falsification that closes the question for this model class.
 
 ## 6. Phasing
+
+![V19 study flow: phases and the three-tier gate structure](figures/fig_v19_flow.svg)
 
 - **P1a — build tasks + construction-level certificates** (simulator ground truth only; no training). Includes the two development-only instances.
 - **P0 — host preflight** on the built tasks (exact SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry). ~2 GPU-weeks.
