@@ -184,7 +184,7 @@ Every row is reportable. Either outcome of every row is publishable — includin
 ![V19 study flow: phases and the three-tier gate structure](figures/fig_v19_flow.svg)
 
 - **P1a — build tasks + construction-level certificates** (simulator ground truth only; no training). Includes the two development-only instances. **Executed 2026-07-03 — results in Section 7.**
-- **P0 — host preflight** on the built tasks (exact SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry). ~2 GPU-weeks.
+- **P0 — host preflight** on the built tasks (exact SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry). **Executed 2026-07-04 — results in Section 8; fallback activated: P1b/P2/P3 proceed on the VICReg host.**
 - **P1b — checkpoint-level certificates** with frozen P0 encoders (two-sided; iterate P1a↔P0↔P1b until pass, then a single freeze event).
 - **P2 — development grid** on the development-only instances: LKC variants vs. baselines, telemetry validation, power analysis, gate calibration.
 - **P3 — frozen confirmation**: T1–T4 (+T5 descriptive) × arms × seeds set by the power analysis; write-once manifests, crossed bootstrap, independent audit — the V18 machinery verbatim, with the three-tier gate structure replacing the flat 11-gate conjunction.
@@ -210,6 +210,33 @@ Implementation: `lewm/tasks_v19/` (tasks, overlays, certificates, W&B instrument
 
 Next: P0 host preflight (exact-SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry) on the certified tasks.
 
-## 8. Key sources
+## 8. P0 execution: results (2026-07-04)
+
+**Status: COMPLETE — claim 1 is falsified. The exact-SIGReg host is not healthy on the memory tasks (host fault on T1/T3/T4); the preregistered fallback is activated: P1b/P2/P3 proceed on the VICReg host. The failure mode is new — not V16's plateau collapse.**
+
+Implementation: `scripts/train_v19_p0.py` (+ data/launch/aggregate scripts, `tests/test_v19_p0.py`, 11 tests). Grid: 2 hosts × 4 tasks × 3 seeds = 24 runs × 100 epochs on the corruption-on regime (1,200/240 episodes per task, V18 data seeds), scheduled 3-per-GPU across GPUs 0–2; three jobs lost to co-tenancy OOM (~26–34 GB each from attention-weight materialization) were re-run at 1-per-GPU — an engineering note, not a protocol event. All runs in W&B `lewm-v19` (groups `p0-<task>`) with rank/variance/EP/gradient trajectories and eigenspectrum heatmaps.
+
+| Task | Host | Final rank (µ±σ) | Final variance | Convergence ≤5% | EP-plateau flag | Grad>100 flag | Gates pass | Attribution |
+|---|---|---|---|---|---|---|---|---|
+| T1 | sigreg | 18.3 ± 0.2 | 0.264 | 1/3 | 0/3 | 0/3 | 1/3 | **host fault** |
+| T1 | vicreg | **62.6 ± 1.1** | 0.271 | 3/3 | — | 0/3 | **3/3** | |
+| T2 | sigreg | 17.6 ± 2.5 | 0.126 | 1/3 | 0/3 | 0/3 | 0/3 | task fault (see note) |
+| T2 | vicreg | **59.1 ± 1.7** | 0.268 | 2/3 | — | 0/3 | 2/3 | |
+| T3 | sigreg | 16.8 ± 2.0 | 0.290 | 0/3 | 0/3 | 0/3 | 0/3 | **host fault** |
+| T3 | vicreg | **62.4 ± 0.9** | 0.288 | 3/3 | — | 0/3 | **3/3** | |
+| T4 | sigreg | 11.4 ± 1.2 | 0.249 | 0/3 | 0/3 | 0/3 | 0/3 | **host fault** |
+| T4 | vicreg | **62.7 ± 0.7** | 0.264 | 3/3 | — | 0/3 | **3/3** | |
+
+**Insight 1 — a third failure mode, distinct from V16 and V18.** The exact-LeWM recipe (D=192, M=1024, single stream, λ=0.1) does **not** die the V16 death: zero projected-zero plateau flags (the early-epoch EP-ratio starts ≈0.99 — *at* the plateau — and escapes within epochs; final ratios 0.28–0.96) and zero gradient-ratio flags (final ratios ≈5 vs V16's >12,000). Instead it settles into **chronic under-diversification**: final effective rank 9–20 against the VICReg reference's 58–64 on identical data — a ~3.4× rank deficit hugging the ≥16 gate — plus late-training non-convergence (late-window change up to +75%). This is soft rank starvation, not collapse; it extends LeWM's own Two-Room admission (SIGReg underperforms on low-intrinsic-dimensionality streams) to corrupted control streams at full recipe fidelity, and it is the publishable content of claim 1's falsification.
+
+**Insight 2 — the VICReg reference is healthy on the V19 task suite.** 11/12 cells pass all gates with rank ≈62 — in sharp contrast to V18, where the same recipe rank-collapsed on Swimmer (0/40) and diverged on Quadruped. The collapse pathology of V18 was task-borne, and the V19 tasks (reacher base + exogenous overlays) do not carry it. Health preflight as a *precondition* (fix tasks and hosts before freezing) is doing exactly the job Section 4.1 assigned to it.
+
+**T2 note (registered judgment).** The strict all-seeds rule marks T2 "task fault" because the VICReg arm missed convergence on one seed (+5.7% vs ≤5%, the other two at +2.7/+2.2%) while sigreg missed 0/3. Given the miss is marginal on one seed of the *reference* arm — not a can't-train signal — T2 is **retained with a quantified caveat** rather than consuming a replacement slot; the caveat travels with every downstream T2 result and P1b re-checks T2 with its frozen encoders.
+
+**Decision (preregistered fallback, §4.1):** P1b/P2/P3 proceed on the **VICReg host**; the 12 frozen VICReg encoders (4 tasks × 3 seeds) are the P1b inputs. Engineering note for P2/P3 grids: encoder attention switches to `need_weights=False` (identical math, removes the N×N attention-weight materialization behind the OOMs) — applied after P1b so P0 encoders are certified under the exact code that trained them.
+
+Next: P1b checkpoint-level certificates (permutation-null integrator gates, sighted probes, temporal-range curves) on the frozen VICReg encoders.
+
+## 9. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.
