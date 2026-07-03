@@ -279,6 +279,28 @@ The truncation curves are now the textbook signature of certified memory demand:
 
 Next: P2 development grid (t1dev + t3dev × 6 arms × 3 seeds) → power analysis → P3.
 
-## 11. Key sources
+## 11. P2 execution: development grid and power analysis (2026-07-04)
+
+**Status: COMPLETE — 36/36 cells (6 arms × t1dev/t3dev × 3 seeds, VICReg host). Three findings: correction clears the V12–V15 bar for the first time in program history; the calibrated gain (LKC-NLL) is worth +7–9 points over the pure cell; and hand recurrence still leads — Tier-1 is heading toward an honest falsification at P3. Power analysis: 5 seeds for ≥80% power at the registered +5% effect.**
+
+Engineering disclosure: the first launch attempt lost 29 jobs to two interacting launcher bugs — a lazy cache-generation race (nine first-wave jobs writing the same bank files; the fail-closed digest guards correctly killed every reader) and a crash-respawn transient (slots refilled before dying processes released GPU memory). Fixed by serial cache pre-generation and a 30 s crash cooldown; the re-run completed 16 remaining cells with zero crashes. All cells in W&B `lewm-v19` (groups `p2-<task>`) with per-step `k/σ/r` telemetry figures.
+
+| Arm (t1dev / t3dev) | ξ-probe accuracy | vs envelope (pooled wins) |
+|---|---|---|
+| **Ac-GRU** | **0.494 ± 0.033 / 0.544 ± 0.035** | (envelope member) |
+| **LKC-NLL** | 0.459 ± 0.048 / 0.514 ± 0.035 | −0.033 (0/6) |
+| Ac-SSM | 0.410 ± 0.044 / 0.451 ± 0.036 | (envelope member) |
+| LKC-pure | 0.366 ± 0.024 / 0.448 ± 0.036 | −0.113 (0/6) |
+| No carrier | 0.339 / 0.328 | −0.186 (0/6) |
+| LKC k≡0 | 0.295 ± 0.028 / 0.293 ± 0.020 | −0.226 (0/6) |
+| Integrator floor | 0.29–0.36 across cells (chance 0.333) | — |
+
+**Insight 6 — correction is finally useful, and calibration is why.** For the first time in five generations of attempts (V12–V15 all lost to their own `nocorrect`), the correction branch wins decisively: LKC-pure beats k≡0 by +7/+16 points, and the k≡0 arm sits *at the no-carrier floor* — on certified-memory tasks, pure action-transport carries nothing about ξ (as Section 3 predicts: ξ is exogenous, actions cannot transport it; the belief must come from corrections). The single admitted likelihood term is worth another +7–9 points (LKC-NLL vs LKC-pure) — the calibration question was worth registering as its own candidate, and the k_t telemetry now shows the NLL cell closing its gain under the training corruptions while the pure cell's learned trust stays flatter.
+
+**Insight 7 — hand recurrence leads the canonical cell.** Ac-GRU tops both dev tasks (0.49/0.54); LKC-NLL comes within 3 points (0/6 cell wins); LKC-pure trails by 11. The gap looks structural: the GRU learns a full nonlinear state update where the LKC is constrained to a fixed linear spectrum with a diagonal gain — exactly the minimality bet the proposal registered. On dev evidence, claims-ladder row 3 (Tier-1: **LKC-pure** vs envelope, pooled CI > 0) is heading toward falsification; the registered clause reads "envelope wins → hand recurrence suffices for this class; report and stop," and P3 will confirm or refute it on the frozen set with 5 seeds. LKC-NLL's near-parity plus its interpretable telemetry is the honest residual value either way.
+
+**P3 sizing (registered):** 5 seeds per cell (power 1.00 at +5%, 0.78 at n=3); full 11-arm deck × T1/T3/T4 = 165 cells.
+
+## 12. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.
