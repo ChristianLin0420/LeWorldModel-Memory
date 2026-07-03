@@ -92,13 +92,24 @@ with `r_t` an observation-variance head on the encoder. Precedents: Ac-RKN (CoRL
 
 Telemetry (fixes the V18 blind spot): per-step `k_t, σ_t, r_t`, innovation norms, exported for every evaluation episode.
 
-### 4.3 Arms (all separately trained)
+### 4.3 Arms: references, candidates, interventions, floor (all separately trained)
 
-1. No carrier (exact host).
-2. **Action-conditioned GRU** and **action-conditioned diagonal SSM** — recurrent references receive `[z_t; a_{t-1}]`, removing V18's baseline asymmetry. Parameter-matched by the V18 rule.
-3. LKC-pure and LKC-NLL (candidates).
-4. LKC interventions, each testing one knob: **`k_t ≡ 0` (no-correction — the control that killed V12–V15 and must be beaten before any correction claim)**; `B = 0` (no action transport); `k_t ≡ k̄` (fixed gain); `r_t ≡ r̄` (fixed trust); `A` learned, initialized at the fixed spectrum (re-admits the learned-timescale question); `A` two-scalar (exp(−1/2), exp(−1/8) tiled — tests whether the wide fixed spectrum actually beats V5/V9's coarse-decay winner).
-5. Legal integrator — computed per checkpoint, reported as a **descriptive floor**, never a confirmatory conjunct (Section 4.5).
+| Group | Arm | Definition | Question it isolates |
+|---|---|---|---|
+| Reference | **No carrier** | exact host, finite window `H` only | is any episode state useful? |
+| Reference | **Ac-GRU** | parameter-matched GRU on `[z_t; a_{t−1}]` | does generic action-conditioned recurrence suffice? |
+| Reference | **Ac-SSM** | parameter-matched diagonal SSM on `[z_t; a_{t−1}]` | does linear action-conditioned recurrence suffice? |
+| Candidate | **LKC-pure** | full cell (4.2), host loss only | the candidate; `r_t` honestly a learned trust signal |
+| Candidate | **LKC-NLL** | + unit-weight innovation likelihood | does a calibrated gain earn its keep? |
+| Intervention | **`k ≡ 0` (no correction)** | predict-only carrier | the V12–V15 bar: is correction finally useful? |
+| Intervention | **`B = 0` (no action transport)** | observations-only carrier | is transport causal? (endogenous coordinate / T5) |
+| Intervention | **`k ≡ k̄` (fixed gain)** | constant correction strength | is gain *adaptivity* needed? |
+| Intervention | **`r ≡ r̄` (fixed trust)** | input-independent observation trust | is *input-dependent* trust needed? |
+| Intervention | **`A` learned** (init at fixed spectrum) | free diagonal dynamics | retests the learned-timescale falsification in a memory regime |
+| Intervention | **`A` two-scalar** (exp(−1/2), exp(−1/8) tiled) | V5/V9's coarse-decay winner | does the wide fixed spectrum beat two coarse decays? |
+| Floor | **Legal integrator** | ridge on `[E_θ(o_0), actions, t]` per checkpoint | descriptive floor — never a confirmatory conjunct (4.5) |
+
+Notes: references receive actions *internally* (`[z_t; a_{t−1}]`), removing V18's baseline asymmetry; all carriers are parameter-matched by the V18 rule; the Tier-1 reference is the per-cell better of Ac-GRU/Ac-SSM (the action-conditioned recurrent envelope); each intervention deletes or pins exactly one knob of the ledger in 4.2, so every hand choice has its own test.
 
 ### 4.4 Tasks: memory demand certified, twice
 
@@ -110,7 +121,25 @@ Five confirmation tasks + two development-only instances (fresh layouts/cue sets
 - Exogenous elements are visual-only (no contact path to the agent), and swaps/events are teleported simulator state with frame-identical animation across branches.
 - Every stream on which any ξ endpoint or gate is computed uses either IID random actions or an open-loop script drawn independently of ξ; per-stream integrator certificates are registered. Confirmatory contrasts are never computed on ξ-conditioned policy streams.
 
-Tasks: **T1 transient-cue reacher** (Passive-Visual-Match-on-DMC; arXiv:1810.06721, 2307.03864); **T2 occlusion swap**, shell-game convention with identical objects and Bernoulli teleport-swap behind a fixed-duration occluder (RoboMME Permanence arXiv:2603.04639; MIKASA arXiv:2502.10550); **T3 exogenous drifter** with a dynamics-irrelevant, appearance-transient flashed property on Distracting-Control infrastructure (arXiv:2101.02722, 2110.08847); **T4 moving target behind freeze** with **stochastic (OU-perturbed) exogenous motion** — deterministic motion would be integrator-computable — where the pass criterion is proximity to the *posterior-mean* advanced position relative to the process-noise floor (WRBench arXiv:2606.20545; CATER arXiv:1910.04744); **T5 legacy DMC anchor** (Acrobot or Manipulator), **descriptive-only**, excluded from all pooled confirmatory endpoints — it quantifies how conclusions change when memory is not required.
+**The confirmation suite.** Each task supplies V18-scale training data (~1,200 train / 240 val pixel episodes with actions); the world model never sees rewards.
+
+| Task | Base / infrastructure | Exogenous factor ξ | Why the integrator is at chance on ξ | Role | Precedent |
+|---|---|---|---|---|---|
+| **T1 Transient-cue reacher** | DMC reacher/finger | goal identity flashed for K steps after t=0, then hidden | cue drawn independently of actions, onset, and duration; identical rendering afterward; delay ≫ H is the difficulty knob | confirmatory | Passive Visual Match arXiv:1810.06721; arXiv:2307.03864; bsuite `memory_length` |
+| **T2 Occlusion swap (shell game)** | ManiSkill3 via MIKASA-Robo infrastructure | Bernoulli teleport-swap of identical objects behind an occluder | swap mechanically decoupled from the agent; frame-identical animation on both branches | confirmatory | MIKASA ShellGame arXiv:2502.10550; RoboMME Permanence arXiv:2603.04639 |
+| **T3 Exogenous drifter** | DMC + Distracting-Control infrastructure | dynamics-irrelevant property the drifter flashed once | property independent of the drifter's trajectory, initial pose, and appearance; drifter visual-only (no contact path) | confirmatory | arXiv:2101.02722; EX-BMDP arXiv:2110.08847 |
+| **T4 Moving target behind freeze** | DMC tracking variant | target state at reappearance under **stochastic (OU-perturbed) motion** | deterministic motion would be computable from (frame 0, t); stochasticity forces belief-carrying; scored against the *posterior-mean* advanced position | confirmatory | WRBench arXiv:2606.20545; CATER arXiv:1910.04744 |
+| **T5 Legacy anchor** | Acrobot or Manipulator (V18 task) | none — deliberately | it cannot be: quantifies the memory-free null regime V18 characterized | **descriptive only**, excluded from pooled endpoints | V18 itself |
+
+**External benchmarks and their roles** — adopted where they serve the estimand, deferred where they measure something else:
+
+| Benchmark | Role in V19 | Phase | Rationale |
+|---|---|---|---|
+| **MIKASA-Robo** (arXiv:2502.10550) | T2 is built on its ManiSkill3 stack; a subset (RememberColor, ShellGameTouch, InterceptGrab) runs as an external-validity arm | P1a (infra); post-P3 (validity) | robotics-aligned, GPU-parallel, published reference point for the community |
+| **POPGym Arcade** (arXiv:2503.01450) | methodology import only: MDP/POMDP twin → probe-level memory demand (sighted R² − integrator R²) | P1b certificates | its tasks are policy-level RL; the twin *method* is exactly right |
+| **bsuite `memory_length`** (arXiv:1908.03568) | delay-scaling knob inside T1 → memory-horizon curves per carrier | P2/P3 | turns cue-to-decision delay into a difficulty axis |
+| **Memory Gym / Memory Maze** (arXiv:2309.17207, 2210.13383) | deferred to a post-V19 scale-up | future | discrete-action / policy-oriented (Memory Gym) or partially action-integrable self-localization (Memory Maze) — wrong regime for a continuous-control world-model probe study |
+| **Plain DMC + random actions** | T5 anchor only | P3, descriptive | memory-free by theorem (Section 3) — the regime where V18 already showed no carrier can beat the integrator |
 
 **Certification, two-level (fixes the phase circularity):**
 - **Construction-level (P1a, encoder-free):** probe ξ from simulator ground truth `[true initial state, action sequence, time]` — must be ≈ chance; information-theoretic, runs before any training.
