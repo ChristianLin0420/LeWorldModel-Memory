@@ -28,7 +28,8 @@ SCRIPT_ALPHA_RANGE = (0.5, 1.5)
 SCRIPT_OMEGA_RANGE = (0.05, 0.3)
 
 
-def collect_base(num_episodes: int, length: int, seed: int, stream: str
+def collect_base(num_episodes: int, length: int, seed: int, stream: str,
+                 action_override: np.ndarray | None = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Roll the reacher under an xi-independent action stream and render.
 
@@ -40,6 +41,15 @@ def collect_base(num_episodes: int, length: int, seed: int, stream: str
             xi branches share the base scene exactly.
         stream: 'iid' (per-step bounded tanh-Gaussian, the V18 convention) or
             'script' (per-episode smooth open-loop sinusoid).
+        action_override: optional float (E, L-1, A) actions executed verbatim
+            (clipped to the action spec) instead of sampling from ``stream``.
+            Episode initial states are unchanged because dm_control draws its
+            reset randomness from ``task_kwargs['random']``, which is
+            independent of the action rng — this is the entry point for
+            action-swap counterfactual branches that must share the base
+            scene and every exogenous draw with the factual branch
+            (scripts/counterfactual_v19.py).  ``None`` (the default) leaves
+            the historical sampling path byte-identical.
 
     Returns:
         frames uint8 (E, L, 64, 64, 3), actions float32 (E, L-1, 2),
@@ -47,6 +57,14 @@ def collect_base(num_episodes: int, length: int, seed: int, stream: str
     """
     if stream not in STREAMS:
         raise ValueError(f"stream must be one of {STREAMS}, got {stream!r}")
+    if action_override is not None:
+        action_override = np.asarray(action_override, dtype=np.float32)
+        expected = (num_episodes, length - 1, ACTION_DIM)
+        if action_override.shape != expected:
+            raise ValueError(f"action_override must have shape {expected}, "
+                             f"got {action_override.shape}")
+        if not np.isfinite(action_override).all():
+            raise ValueError("action_override must be finite")
     os.environ.setdefault("MUJOCO_GL", "egl")
     from dm_control import suite
 
@@ -72,7 +90,7 @@ def collect_base(num_episodes: int, length: int, seed: int, stream: str
                               ).astype(np.float32)
 
     for episode in range(num_episodes):
-        if stream == "script":
+        if stream == "script" and action_override is None:
             alpha = rng.uniform(*SCRIPT_ALPHA_RANGE, size=ACTION_DIM)
             omega = rng.uniform(*SCRIPT_OMEGA_RANGE, size=ACTION_DIM)
             phi = rng.uniform(0.0, 2.0 * np.pi, size=ACTION_DIM)
@@ -80,11 +98,16 @@ def collect_base(num_episodes: int, length: int, seed: int, stream: str
         frames[episode, 0] = env.physics.render(IMG_SIZE, IMG_SIZE, camera_id=CAMERA_ID)
         endo_state[episode, 0] = read_state()
         for t in range(length - 1):
-            if stream == "iid":
+            if action_override is not None:
+                action = np.clip(action_override[episode, t], low, high)
+            elif stream == "iid":
                 squashed = np.tanh(rng.standard_normal(ACTION_DIM))
+                action = np.clip(center + half_range * squashed.astype(np.float32),
+                                 low, high)
             else:
                 squashed = np.tanh(alpha * np.sin(omega * t + phi))
-            action = np.clip(center + half_range * squashed.astype(np.float32), low, high)
+                action = np.clip(center + half_range * squashed.astype(np.float32),
+                                 low, high)
             timestep = env.step(action)
             if timestep.last():
                 # L=64 is far below the reacher time limit; a mid-episode reset
