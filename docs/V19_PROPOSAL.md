@@ -128,7 +128,7 @@ Five confirmation tasks + two development-only instances (fresh layouts/cue sets
 | **T1 Transient-cue reacher** | DMC reacher/finger | goal identity flashed for K steps after t=0, then hidden | cue drawn independently of actions, onset, and duration; identical rendering afterward; delay ≫ H is the difficulty knob | confirmatory | Passive Visual Match arXiv:1810.06721; arXiv:2307.03864; bsuite `memory_length` |
 | **T2 Occlusion swap (shell game)** | ManiSkill3 via MIKASA-Robo infrastructure | Bernoulli teleport-swap of identical objects behind an occluder | swap mechanically decoupled from the agent; frame-identical animation on both branches | confirmatory | MIKASA ShellGame arXiv:2502.10550; RoboMME Permanence arXiv:2603.04639 |
 | **T3 Exogenous drifter** | DMC + Distracting-Control infrastructure | dynamics-irrelevant property the drifter flashed once | property independent of the drifter's trajectory, initial pose, and appearance; drifter visual-only (no contact path) | confirmatory | arXiv:2101.02722; EX-BMDP arXiv:2110.08847 |
-| **T4 Moving target behind freeze** | DMC tracking variant | target state at reappearance under **stochastic (OU-perturbed) motion** | deterministic motion would be computable from (frame 0, t); stochasticity forces belief-carrying; scored against the *posterior-mean* advanced position | confirmatory | WRBench arXiv:2606.20545; CATER arXiv:1910.04744 |
+| **T4 Moving target behind freeze** | DMC tracking variant | target state at reappearance under **stochastic (OU-perturbed) motion**, with an exogenous mid-episode respawn at t ~ U[12,20] (P1a amendment 1, Section 7) | deterministic motion would be computable from (frame 0, t); stochasticity forces belief-carrying; the respawn severs the initial-state channel; scored against the *posterior-mean* advanced position | confirmatory | WRBench arXiv:2606.20545; CATER arXiv:1910.04744 |
 | **T5 Legacy anchor** | Acrobot or Manipulator (V18 task) | none — deliberately | it cannot be: quantifies the memory-free null regime V18 characterized | **descriptive only**, excluded from pooled endpoints | V18 itself |
 
 **External benchmarks and their roles** — adopted where they serve the estimand, deferred where they measure something else:
@@ -183,12 +183,33 @@ Every row is reportable. Either outcome of every row is publishable — includin
 
 ![V19 study flow: phases and the three-tier gate structure](figures/fig_v19_flow.svg)
 
-- **P1a — build tasks + construction-level certificates** (simulator ground truth only; no training). Includes the two development-only instances.
+- **P1a — build tasks + construction-level certificates** (simulator ground truth only; no training). Includes the two development-only instances. **Executed 2026-07-03 — results in Section 7.**
 - **P0 — host preflight** on the built tasks (exact SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry). ~2 GPU-weeks.
 - **P1b — checkpoint-level certificates** with frozen P0 encoders (two-sided; iterate P1a↔P0↔P1b until pass, then a single freeze event).
 - **P2 — development grid** on the development-only instances: LKC variants vs. baselines, telemetry validation, power analysis, gate calibration.
 - **P3 — frozen confirmation**: T1–T4 (+T5 descriptive) × arms × seeds set by the power analysis; write-once manifests, crossed bootstrap, independent audit — the V18 machinery verbatim, with the three-tier gate structure replacing the flat 11-gate conjunction.
 
-## 7. Key sources
+## 7. P1a execution: results (2026-07-03)
+
+**Status: COMPLETE — 4/4 confirmation tasks certified on 3/3 seeds; one dev-instance clause flagged as a verified finite-sample false positive; one registered task amendment.**
+
+Implementation: `lewm/tasks_v19/` (tasks, overlays, certificates, W&B instrumentation), `scripts/run_v19_p1a.py`, `scripts/launch_v19_p1a.py`, `scripts/aggregate_v19_p1a.py`, `tests/test_v19_tasks.py` (22 tests: byte-exact determinism including MuJoCo rendering, paired post-cue pixel-diff exactly 0, cue-timing ⊥ ξ, swap-pattern ⊥ ξ₀, T4 ground truth advancing under frozen frames). Grid: 6 tasks × 3 seeds = 18 runs, 6-way parallel on GPUs 0–2, 0 crashes; probes at 512 train / 256 eval episodes per stream (IID + open-loop script), all logged to W&B project `lewm-v19` (group `p1a-<task>`) with certificate tables, analytical figures, and annotated rollout videos.
+
+| Task | Integrator probe (gate ≤ chance+0.05) | Post-cue probe (gate ≤ chance+0.05) | Cue probe (gate ≥ 0.90) | Identical rendering (gate = 0) | T4 memory demand (gate ≥ 0.30) | Seeds pass |
+|---|---|---|---|---|---|---|
+| T1 (chance 0.250) | 0.262 ± 0.012 | 0.255 ± 0.011 | 0.999 ± 0.001 | 0 exact, 3/3 | — | **3/3** |
+| T2 (chance 0.333) | 0.327 ± 0.018 | 0.317 ± 0.044 | 1.000 ± 0.000 | 0 exact, 3/3 | — | **3/3** |
+| T3 (chance 0.250) | 0.265 ± 0.024 | 0.229 ± 0.014 | 0.948 ± 0.016 | 0 exact, 3/3 | — | **3/3** |
+| T4 (continuous, R²) | −0.032 ± 0.012 | — | — | n/a (by design) | **0.553 ± 0.033** | **3/3** |
+| T1dev (chance 0.333) | 0.332 ± 0.029 | 0.346 ± 0.034 | 1.000 ± 0.000 | 0 exact, 3/3 | — | 2/3 * |
+| T2dev (chance 0.333) | 0.324 ± 0.022 | 0.316 ± 0.019 | 1.000 ± 0.000 | 0 exact, 3/3 | — | **3/3** |
+
+**Amendment 1 (T4 respawn) — the iterate-before-freeze loop working as registered.** As first implemented, T4 failed its own integrator gate: measured R² ≈ 0.15 (pre-implementation simulation 0.151 ± 0.013) because the OU target does not mix by gap end, so the initial target state retains ξ information. Fix: an exogenous, visible respawn of the target at t ~ U[12,20] (always before the earliest gap onset 24), drawn independently of everything else — this severs the s₀ channel *by construction*. Post-amendment: integrator R² = −0.032 ± 0.012 (chance) while posterior-mean predictability and certified memory demand (0.553) are preserved. Recorded here as the task's first of at most two permitted revisions.
+
+**\* T1dev seed 2 — verified false positive, not a leak.** The single failing clause across all 18 runs is T1dev/s2's iid post-cue probe: 0.406 vs threshold 0.383. The same seed's identical-rendering check is exactly 0 — post-cue frames are pixel-identical across ξ branches — so the probe provably carries zero ξ information, and a ~2.5σ exceedance is expected once among the ~60 chance-level clauses in the grid. A higher-n diagnostic (same probe path, n_eval = 1024) reads 0.337 ≈ chance. Protocol improvement registered for P1b: replace the fixed +0.05 margins with shuffled-label permutation-null quantiles, which price this false-alarm rate explicitly.
+
+Next: P0 host preflight (exact-SIGReg vs. VICReg reference, corruption-on arms, collapse-signature telemetry) on the certified tasks.
+
+## 8. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.
