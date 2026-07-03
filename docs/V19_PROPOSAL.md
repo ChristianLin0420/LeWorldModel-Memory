@@ -237,6 +237,23 @@ Implementation: `scripts/train_v19_p0.py` (+ data/launch/aggregate scripts, `tes
 
 Next: P1b checkpoint-level certificates (permutation-null integrator gates, sighted probes, temporal-range curves) on the frozen VICReg encoders.
 
-## 9. Key sources
+## 9. P1b execution: results (2026-07-04) — the certificate catches encoder blindness
+
+**Status: FAIL (0/12 two-sided certificates) — and this is the most informative result of the program so far. The integrator side passes (11/12: the frozen encoders admit no action shortcut to ξ), but the sighted side fails everywhere: the trained VICReg encoders do not encode the exogenous cue at all. The two-sided certificate did exactly what it was designed to do — block a vacuous memory study before P2/P3 spent compute on it.**
+
+| Task/host | Integrator ≤ permutation null (3 seeds) | Sighted probe vs gate | Memory demand | Two-sided |
+|---|---|---|---|---|
+| T1/vicreg | 0.25/0.23/0.24 ≤ null (3/3) | 0.29, 0.54, 0.52 vs ≥0.75 (0/3) | 0.21 ± 0.12 | **FAIL** |
+| T2/vicreg | 0.31/0.32/0.30 ≤ null (3/3) | 0.33, 0.31, 0.31 vs ≥0.75 (0/3) | 0.01 ± 0.01 | **FAIL** |
+| T3/vicreg | 0.23/0.22/0.27 ≤ null (3/3) | 0.25, 0.27, 0.24 vs ≥0.75 (0/3) | 0.01 ± 0.04 | **FAIL** |
+| T4/vicreg | 2/3 | R² −15.3, −9.2, −13.1 (0/3) | −12.2 ± 2.6 | **FAIL** |
+
+**Diagnostics (localizing the failure).** (i) Cue-time probes: even restricted to the exact cue frames, linear *and* MLP probes on the embeddings read chance (T1: 0.24/0.25; T3: 0.24/0.26; chance 0.25) — encoder blindness, not a probe artifact. (ii) Same-frame probe on T4: the target's position is undecodable from the embedding of the very frame in which it is visible (R² = −0.26) — the encoder drops the *persistent, visible, stochastic* object entirely, while P1a certified the same information trivially decodable from raw pixels (0.95–1.0).
+
+**Insight 3 — JEPA hosts delete exogenous evidence; memory fails upstream of any carrier.** Two mechanisms, both structural: (a) *self-consistency blindness* — the same encoder produces inputs and targets, so any feature can be jointly ignored at zero prediction cost, and VICReg's variance/covariance terms are satisfied by the abundant controllable (arm) features; (b) *noise suppression* — encoding a stochastic exogenous factor raises next-latent prediction error, so the objective actively prefers to discard it (the implicit, harmful version of what Denoised MDPs do deliberately). Consequence: **the V18 question was doubly untestable — the tasks didn't require memory, and even on tasks that do, the host representation deletes the evidence a carrier would need to remember.** Any future "memory in JEPA world models" claim must first pass a sighted-probe certificate on the trained encoder; we know of no prior work that checks this.
+
+**Registered response — Amendment 2 (cue salience), within the P1a↔P0↔P1b loop.** The task parameter that certificates now must set is *salience*: exogenous elements enlarged (drifter 6×6→12×12, T4 target r=3→6 with halo, T2 cups/ball enlarged) and cue windows augmented with a frame-border tint (ξ-colored for T1/T3; fixed-color for T2), so the exogenous factor carries non-negligible pixel variance. All leakage proofs are preserved (post-cue frames remain byte-identical across ξ). The loop re-runs: P1a certificates → P0 preflight on amended tasks (both hosts, with the `need_weights=False` memory fix applied uniformly) → P1b. If the sighted certificate still fails at high salience, the program's honest terminal result for this cohort is the encoder-blindness finding itself, reported under claims-ladder row 2's fail-closed clause.
+
+## 10. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.
