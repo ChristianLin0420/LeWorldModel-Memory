@@ -10,6 +10,15 @@ Every task follows the same leakage-proofing recipe (V19_PROPOSAL.md 4.4):
 - Cue onset/duration are drawn from the nuisance stream, never from xi.
 - Overlays are visual-only (no contact path into the physics), live in the
   top rows and corners, and post-cue rendering is xi-independent.
+
+Amendment 2 (cue salience, V19_PROPOSAL.md section 9): P1b showed the trained
+VICReg encoders carry zero cue information while raw pixels decode it at
+0.95+, so the exogenous elements are enlarged and the cue windows augmented
+with a frame-border tint (xi-colored for T1/T3; fixed-color for T2) so the
+exogenous factor carries non-negligible pixel variance.  Every leakage proof
+is preserved: borders exist only during the cue window, so post-cue frames
+remain byte-identical across xi.  Amendment-1 values are noted next to each
+changed parameter; ``describe()`` reports ``amendment: 2``.
 """
 
 from __future__ import annotations
@@ -21,8 +30,9 @@ import numpy as np
 
 from lewm.tasks_v19.base import ACTION_DIM, IMG_SIZE, EpisodeBatch, V19Task
 from lewm.tasks_v19.dmc_base import DOMAIN, TASK, collect_base
-from lewm.tasks_v19.overlays import (CUE_COLORS, GRAY, OUProcess2D, draw_disc,
-                                     draw_rect, draw_ring)
+from lewm.tasks_v19.overlays import (CUE_COLORS, GRAY, OUProcess2D,
+                                     draw_border, draw_disc, draw_rect,
+                                     draw_ring)
 
 TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev")
 
@@ -86,6 +96,7 @@ class _OverlayTask(V19Task):
     def describe(self) -> dict:
         return {
             **dataclasses.asdict(self),
+            "amendment": 2,
             "xi_kind": self.xi_kind,
             "n_classes": self.n_classes,
             "length": self.length,
@@ -114,8 +125,9 @@ class TransientCueTask(_OverlayTask):
     """T1/T1dev: candidate markers drawn always; marker xi flashes once.
 
     The gray marker rings are rendered on *every* frame identically so that
-    the only xi-dependent pixels are the colored fill inside marker xi during
-    [cue_on, cue_off) — post-cue frames are xi-independent by construction.
+    the only xi-dependent pixels are the colored fill inside marker xi and the
+    CUE_COLORS[xi] frame border during [cue_on, cue_off) — post-cue frames are
+    xi-independent by construction (the border exists only during the cue).
     """
 
     name: str
@@ -125,8 +137,12 @@ class TransientCueTask(_OverlayTask):
     duration_range: tuple[int, int]     # inclusive bounds for cue length
     cue_shape: str                      # 'disc' | 'square'
     xi_kind: str = "cat"
-    marker_radius: int = 4
-    cue_half: int = 3                   # cue disc radius / square half-size
+    marker_radius: int = 6              # amendment 1: 4
+    # Cue disc radius / square half-size, scaled with the marker so the fill
+    # still exactly tiles the ring interior (cue_half = marker_radius - 1).
+    cue_half: int = 5                   # amendment 1: 3
+    # Amendment 2: xi-colored frame border drawn during the cue window ONLY.
+    cue_border_px: int = 3
 
     event_keys = ("cue_on", "cue_off")
 
@@ -154,6 +170,7 @@ class TransientCueTask(_OverlayTask):
                 for cx, cy in self.markers:
                     draw_ring(frame, cx, cy, self.marker_radius, GRAY)
                 if cue_on <= t < cue_off:
+                    draw_border(frame, self.cue_border_px, CUE_COLORS[xi])
                     cx, cy = self.markers[xi]
                     if self.cue_shape == "disc":
                         draw_disc(frame, cx, cy, self.cue_half, CUE_COLORS[xi])
@@ -177,12 +194,25 @@ class ShellGameTask(_OverlayTask):
     exactly uniform on A3 after two swaps, so even the true initial ball slot
     (part of the initial exogenous state fed to the integrator probe) predicts
     the final slot at chance.
+
+    Amendment 2 adds a FIXED-color frame border during the cue phase only —
+    identical across xi0, so it flags "the cue is happening" without carrying
+    any slot information — and enlarges cups and ball.  Overlap check for the
+    enlarged cups (documented, t2 geometry slot_x=(12,32,52), width 12): cups
+    at rest span [6,18)/[26,38)/[46,58) with 8 px gaps; the two cups being
+    exchanged stay >= 13 px apart at the sampled frames of the long (0,2)
+    swap; exchanging cups on the *adjacent* pairs necessarily cross mid-swap
+    (linear exchange along a line — already true in amendment 1), and a (0,2)
+    mover transiently overlaps the stationary middle cup by <= 6 px.  Both
+    overlaps are pure functions of the nuisance swap pattern with a fixed
+    entity drawing order, hence xi-independent; no slot adjustment can remove
+    them in a 64 px frame (it would need half-spacing >= 3x cup width).
     """
 
     name: str
     slot_x: tuple[int, int, int]
     swap_times: tuple[int, ...]
-    cup_size: tuple[int, int]           # (width, height)
+    cup_size: tuple[int, int]           # (width, height); amendment 1: t2 (8,10), t2dev (7,9)
     n_classes: int = 3
     xi_kind: str = "cat"
     cue_window: tuple[int, int] = (4, 8)   # [on, off)
@@ -191,7 +221,11 @@ class ShellGameTask(_OverlayTask):
     strip_height: int = 12
     cup_y: int = 3
     ball_y: int = 15
-    ball_radius: int = 2
+    ball_radius: int = 4                    # amendment 1: 2
+    # Amendment 2: fixed-color border during the cue phase ONLY (never
+    # xi-colored — the ball/lift carry the slot; the border only adds salience).
+    cue_border_px: int = 3
+    cue_border_color: tuple[int, int, int] = (200, 200, 200)
     table_color: tuple[int, int, int] = (70, 55, 40)
     cup_color: tuple[int, int, int] = (150, 150, 150)
     ball_color: tuple[int, int, int] = CUE_COLORS[0]
@@ -267,6 +301,9 @@ class ShellGameTask(_OverlayTask):
                 in_cue = self.cue_window[0] <= t < self.cue_window[1]
                 draw_rect(frame, 0, 0, IMG_SIZE, self.strip_height, self.table_color)
                 if in_cue:
+                    # Fixed color: identical across xi0 (salience only); drawn
+                    # before ball/cups so it never occludes the actual cue.
+                    draw_border(frame, self.cue_border_px, self.cue_border_color)
                     draw_disc(frame, self.slot_x[ball_slot0], self.ball_y,
                               self.ball_radius, self.ball_color)
                 for entity in range(3):
@@ -286,9 +323,10 @@ class DrifterTask(_OverlayTask):
     """T3: autonomously drifting sprite whose color flashes xi once.
 
     The drifter trajectory comes from the nuisance rng and is shared verbatim
-    across paired xi branches; xi only recolors the sprite during the flash
-    window, so post-flash frames are byte-identical across xi by construction
-    (the sprite keeps moving, but identically in both branches).
+    across paired xi branches; xi only recolors the sprite (and, amendment 2,
+    tints the frame border) during the flash window, so post-flash frames are
+    byte-identical across xi by construction (the sprite keeps moving, but
+    identically in both branches).
     """
 
     name: str = "t3"
@@ -296,7 +334,9 @@ class DrifterTask(_OverlayTask):
     xi_kind: str = "cat"
     onset_range: tuple[int, int] = (6, 14)
     duration_range: tuple[int, int] = (4, 6)
-    sprite_size: int = 6
+    sprite_size: int = 12               # amendment 1: 6
+    # Amendment 2: border in CUE_COLORS[xi] during the flash window ONLY.
+    cue_border_px: int = 3
     ou: OUProcess2D = OUProcess2D(theta=0.12, sigma=0.9,
                                   x_bounds=(34.0, 58.0), y_bounds=(4.0, 22.0))
 
@@ -328,6 +368,9 @@ class DrifterTask(_OverlayTask):
                 px, py = script["pos"][episode, t]
                 flashing = cue_on <= t < cue_off
                 color = CUE_COLORS[xi] if flashing else GRAY
+                if flashing:
+                    draw_border(frames[episode, t], self.cue_border_px,
+                                CUE_COLORS[xi])
                 x0 = int(round(float(px))) - half
                 y0 = int(round(float(py))) - half
                 draw_rect(frames[episode, t], x0, y0, x0 + self.sprite_size,
@@ -364,8 +407,10 @@ class FreezeTrackTask(_OverlayTask):
     # strictly before the gap (max onset 20 < min gap 24) — severs the s0
     # channel by construction while leaving pre-gap predictability intact.
     respawn_range: tuple[int, int] = (12, 20)    # inclusive bounds for t_r
-    target_radius: int = 3
+    target_radius: int = 6                       # amendment 1: 3
     target_color: tuple[int, int, int] = CUE_COLORS[0]
+    # Amendment 2: 1 px white halo ring drawn whenever the target is drawn.
+    halo_color: tuple[int, int, int] = (255, 255, 255)
     ou: OUProcess2D = OUProcess2D(theta=0.15, sigma=0.55,
                                   x_bounds=(6.0, 58.0), y_bounds=(6.0, 58.0))
 
@@ -414,9 +459,11 @@ class FreezeTrackTask(_OverlayTask):
         for episode in range(num_episodes):
             for t in range(length):
                 px, py = script["pos"][episode, t]
-                draw_disc(frames[episode, t], int(round(float(px))),
-                          int(round(float(py))), self.target_radius,
+                cx, cy = int(round(float(px))), int(round(float(py)))
+                draw_disc(frames[episode, t], cx, cy, self.target_radius,
                           self.target_color)
+                draw_ring(frames[episode, t], cx, cy, self.target_radius + 1,
+                          self.halo_color, thickness=1)
             exo_state[episode, :, 0:2] = script["pos"][episode]
             exo_state[episode, :, 2:4] = script["vel"][episode]
             # Freeze corruption: observations repeat frame b-1 while the
@@ -458,12 +505,17 @@ def _build_registry() -> dict[str, V19Task]:
             name="t1dev", n_classes=3,
             markers=((9, 9), (54, 9), (32, 54)),
             onset_range=(8, 16), duration_range=(5, 5), cue_shape="square"),
+        # Amendment-2 cup sizes: t2 (8,10)->(12,14), t2dev (7,9)->(11,13).
+        # Slot spacing re-checked for the wider cups (see ShellGameTask
+        # docstring): resting spans stay disjoint and in-frame at the original
+        # slot_x, and the (0,2)-swap movers still clear each other at every
+        # sampled frame, so no slot adjustment is needed.
         "t2": ShellGameTask(
             name="t2", slot_x=(12, 32, 52), swap_times=(12, 20, 28, 36),
-            cup_size=(8, 10)),
+            cup_size=(12, 14)),
         "t2dev": ShellGameTask(
             name="t2dev", slot_x=(14, 32, 50), swap_times=(10, 16, 22, 28, 34, 40),
-            cup_size=(7, 9)),
+            cup_size=(11, 13)),
         "t3": DrifterTask(),
         "t4": FreezeTrackTask(),
     }

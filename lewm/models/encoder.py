@@ -166,7 +166,10 @@ class TransformerBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.attn(self.norm1(x), self.norm1(x), self.norm1(x))[0]
+        normed = self.norm1(x)
+        # need_weights=False: identical math, but skips materializing the
+        # (B*heads, N, N) attention-weight tensor (V19 P0 OOM engineering note).
+        x = x + self.attn(normed, normed, normed, need_weights=False)[0]
         x = x + self.mlp(self.norm2(x))
         return x
 
@@ -238,7 +241,10 @@ class AdaLNTransformerBlock(nn.Module):
     ) -> torch.Tensor:
         # Self-attention with residual
         normed = self.norm1(x)
-        attn_out = self.attn(normed, normed, normed, attn_mask=attn_mask)[0]
+        # need_weights=False: identical math, but skips materializing the
+        # (B*heads, N, N) attention-weight tensor (V19 P0 OOM engineering note).
+        attn_out = self.attn(normed, normed, normed, attn_mask=attn_mask,
+                             need_weights=False)[0]
         x = x + attn_out
 
         # AdaLN + MLP with residual

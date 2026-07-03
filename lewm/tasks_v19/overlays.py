@@ -30,6 +30,22 @@ def draw_rect(frame: np.ndarray, x0: int, y0: int, x1: int, y1: int,
         frame[y0:y1, x0:x1] = np.asarray(color, dtype=np.uint8)
 
 
+def draw_border(frame: np.ndarray, thickness: int,
+                color: tuple[int, int, int]) -> None:
+    """Fill a ``thickness``-pixel band along all four frame edges in place.
+
+    Amendment 2 (cue salience) helper: tinting the frame border during the cue
+    window gives the exogenous cue a large, position-independent pixel
+    footprint without touching the scene interior.
+    """
+    height, width = frame.shape[:2]
+    thickness = int(thickness)
+    draw_rect(frame, 0, 0, width, thickness, color)                 # top
+    draw_rect(frame, 0, height - thickness, width, height, color)   # bottom
+    draw_rect(frame, 0, 0, thickness, height, color)                 # left
+    draw_rect(frame, width - thickness, 0, width, height, color)     # right
+
+
 def _disc_distance2(frame: np.ndarray, cx: int, cy: int, r: int
                     ) -> tuple[np.ndarray, np.ndarray]:
     """Squared distance grid over the clipped bounding box around (cx, cy)."""
