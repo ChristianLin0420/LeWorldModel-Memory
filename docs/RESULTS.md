@@ -1,5 +1,12 @@
 # Validation Results — Two-Timescale Memory for JEPA World Models
 
+> **Historical result only.** This page reports the original single-seed,
+> 30-epoch fixed-EMA study and is not the current ICLR evidence. The completed
+> frozen LeWM+V8 V18 study covers 200/200 cells and returns
+> **`CONFIRMATION_FAILED`**; see the [analysis-rendered manuscript](ICLR.md),
+> [write-once decision](../paper/review_artifact/confirmation_analysis.json),
+> and [full independent audit](V18_FINAL_AUDIT.json).
+
 *Single-seed validation run (seed 0), 30 epochs/cell, fixed horizons τ_fast=3, τ_slow=25, 4 GPUs.*
 *wandb: project `lewm-memory`. Figures in `outputs/mem/`. Regenerate: `scripts/run_all.sh` → `scripts/analyze_results.py`.*
 

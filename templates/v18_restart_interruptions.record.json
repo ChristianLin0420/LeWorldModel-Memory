@@ -1,0 +1,89 @@
+{
+  "interruptions": [
+    {
+      "sequence": 1,
+      "observation": {
+        "complete_valid_cells": 136,
+        "absent_cells": 64,
+        "partial_or_invalid_core_cells": 0,
+        "interrupted_trainers": 4
+      },
+      "resume": {
+        "validated_existing_cells": 136,
+        "policy": "complete_cell_only"
+      },
+      "interrupted_attempts": [
+        {
+          "task": "acrobot.swingup",
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "last_logged_epoch": 62,
+          "interrupted_log": "dmc_acrobot_swingup-vicreg_ssm-s18005.log",
+          "interrupted_log_sha256": "dfe369fac5d9c40a7a8e561d7ed94bc0ca4f8d4f22459d911e6fb46e01e7198e",
+          "restart_log": "dmc_acrobot_swingup-vicreg_ssm-s18005.attempt2.log",
+          "restart_log_sha256": "de69a7091d8aae9eb268ef154e23c50dc675c9ffc2834063a9819d7e385bfd46",
+          "restart_terminal_epoch": 100
+        },
+        {
+          "task": "manipulator.bring_ball",
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "last_logged_epoch": 31,
+          "interrupted_log": "dmc_manipulator_bring_ball-vicreg_ssm-s18005.log",
+          "interrupted_log_sha256": "3492682adbf9d3f75e4cdf2df9c8e3ccb56ddea65212b9408bd5c89b17cc722e",
+          "restart_log": "dmc_manipulator_bring_ball-vicreg_ssm-s18005.attempt2.log",
+          "restart_log_sha256": "2c516e0b6f8cea92b9de93ff5ef18a20fb913c41ff9c4094f9bd6c24bf199956",
+          "restart_terminal_epoch": 100
+        },
+        {
+          "task": "quadruped.run",
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "last_logged_epoch": 9,
+          "interrupted_log": "dmc_quadruped_run-vicreg_ssm-s18005.log",
+          "interrupted_log_sha256": "6a72339d3e8e81fe9a60c82a641602440dbece11559c4229a03b731f4f1971ed",
+          "restart_log": "dmc_quadruped_run-vicreg_ssm-s18005.attempt2.log",
+          "restart_log_sha256": "6f005ea3ae5157a958deefa02c9a727d1885d9fcf6e6c540dcd09b95062b507b",
+          "restart_terminal_epoch": 100
+        },
+        {
+          "task": "swimmer.swimmer15",
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "last_logged_epoch": 62,
+          "interrupted_log": "dmc_swimmer_swimmer15-vicreg_ssm-s18005.log",
+          "interrupted_log_sha256": "4029c6a1b1be00bf03742dd624993b247c1d9f328a39bbbdc67456e01fd1cc9f",
+          "restart_log": "dmc_swimmer_swimmer15-vicreg_ssm-s18005.attempt2.log",
+          "restart_log_sha256": "5e081524231378c5e9c2d75887f2abb6a41670bf4aa03b09da1f5530a49e3147",
+          "restart_terminal_epoch": 100
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "observation": {
+        "complete_valid_cells": 180,
+        "absent_cells": 20,
+        "partial_or_invalid_core_cells": 0,
+        "interrupted_trainers": 1
+      },
+      "resume": {
+        "validated_existing_cells": 180,
+        "policy": "complete_cell_only"
+      },
+      "interrupted_attempts": [
+        {
+          "task": "stacker.stack_4",
+          "design": "vicreg_hacssmv8_static",
+          "seed": 18003,
+          "last_logged_epoch": 37,
+          "interrupted_log": "dmc_stacker_stack_4-vicreg_hacssmv8_static-s18003.log",
+          "interrupted_log_sha256": "e74f6ba0dcb1e07514005008f8a02e0a707de99f0b812d61875a79de5f435050",
+          "restart_log": "dmc_stacker_stack_4-vicreg_hacssmv8_static-s18003.attempt2.log",
+          "restart_log_sha256": "63b9ee95f0ebe656b2bccaa1048cc11c5f0440e9ebb4d1962265acf890ebcb76",
+          "restart_terminal_epoch": 100
+        }
+      ]
+    }
+  ]
+}

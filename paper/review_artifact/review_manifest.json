@@ -1,0 +1,45 @@
+{
+  "builder_sha256": "33b62cd59be8b9bc1fa33b3177dc7e6d696d103210f99bf2a849d5e80f30668a",
+  "canonical_commands_sha256": "408051d027c55ae54d260ccf029483ff2a2a16adcb68367a18f46e5d15c6f8ac",
+  "cells": 200,
+  "common_validator_sha256": "785a335a381c7d112aa62c59b95fe56bc181747110b8ff7e7772b9e0e2f0d56b",
+  "contrasts": 33,
+  "files": {
+    "README.md": "bcff94b14838134bc7060bd9d7c2b2f482e384801f40647499970cd5e74259ce",
+    "confirmation_analysis.json": "f471076e63aa8f9b0c4e4f666459b3abf58cbc71d934ea147937195f72e04c58",
+    "confirmation_attempts.redacted.json": "638d054fb4ac740cb3078706e92f751d991b16f5d48d353dd1b6cd0ec3adacf7",
+    "confirmation_cells.csv": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+    "confirmation_contrasts.csv": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+    "confirmation_protocol.redacted.json": "23c0efcb5f8e535b164841079e0aca51b0c4ac9e5e3ee221ac1ae7558eb75de5",
+    "confirmation_runs.redacted.json": "695903ee9a63a36b330ba8f0c45b57944c8d2cb6134b75aaa96ec6a65f8d911f",
+    "confirmation_summary.redacted.json": "0c41fa3faf39bcc1a167f2c0e4bd9853592f61feb859626625c045e7a8ed3284",
+    "frozen_protocol.md": "103b0f891343a159e13e3581293f34d14a574adce31384e85f29150ecfec41f3",
+    "remote_receipts.redacted.json": "b30bb17efe0ab7aac2a501a54e65985875a811fbe1b63be6323a6d5b3a135338",
+    "restart_audit.v2.json": "602031c3317ed250663252f163bdd41cfddd63c44440dbb36bf59daad21e06a9"
+  },
+  "private_repository_review_safe": false,
+  "redactions": [
+    "absolute local paths",
+    "private repository-root prefixes",
+    "restart-audit generator path",
+    "W&B entity, project, run IDs, and URLs",
+    "Git branch and commit identities",
+    "private-path-derived command hashes replaced by canonical public-command hashes"
+  ],
+  "restart_interruptions": 2,
+  "restart_schema_version": 2,
+  "schema_version": 2,
+  "scientific_label": "CONFIRMATION_FAILED",
+  "scope": "anonymous_v18_review_result_bundle",
+  "source_protocol_document_sha256": "103b0f891343a159e13e3581293f34d14a574adce31384e85f29150ecfec41f3",
+  "source_restart_audit_sha256": "ec1638fc4a2c5d05a89875dfdb41ecb14d319a30155457a5341ec020869f3388",
+  "source_result_hashes": {
+    "confirmation_analysis.json": "f471076e63aa8f9b0c4e4f666459b3abf58cbc71d934ea147937195f72e04c58",
+    "confirmation_attempts.json": "ade7e32191e994b575668d95045b9e28ab5f14ed6500edbfadbcf3c0801b2c11",
+    "confirmation_cells.csv": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+    "confirmation_contrasts.csv": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+    "confirmation_protocol.json": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2",
+    "confirmation_runs.json": "1fe76aba1c01626b0f0aeca61764f8a71e1426afd3b93c006cf7e73e961efa88",
+    "confirmation_summary.json": "0c41fa3faf39bcc1a167f2c0e4bd9853592f61feb859626625c045e7a8ed3284"
+  }
+}

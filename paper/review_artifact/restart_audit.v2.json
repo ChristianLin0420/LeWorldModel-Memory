@@ -1,0 +1,708 @@
+{
+  "artifact_binding": {
+    "artifact_bytes_hashed_without_parsing_scientific_content": true,
+    "artifact_manifest_bound_by_analysis": true,
+    "artifact_manifest_sha256": "1e3bbcee667a98a6147a1ba9e7678b35d153ce8984d8dcd1200a571038939feb",
+    "checked_cells": 200,
+    "checked_core_artifact_bytes": 1944658156,
+    "checked_core_artifacts": 800,
+    "final_resume_executed_cells": 20,
+    "final_resume_validated_existing_cells": 180,
+    "finished_local_wandb_receipts": 200,
+    "unique_local_wandb_run_ids": 200
+  },
+  "assertions": [
+    "All five interrupted cells lacked core artifacts and were restarted from epoch one.",
+    "The five original W&B runs are crashed and the five replacement runs are finished.",
+    "The parent-only SIGSTOP/SIGCONT event did not signal or interrupt the active trainer.",
+    "The final frozen grid is COMPLETE 200/200 and bound to the write-once analysis bundle."
+  ],
+  "attempt_lineages": [
+    {
+      "canonical_command_sha256": "0b084bb784967760aeb51d7f9cbbc83588f870031f8a532c190afc5f0aa73570",
+      "cell": {
+        "design": "vicreg_ssm",
+        "seed": 18005,
+        "task": "acrobot.swingup"
+      },
+      "interrupted_attempt": {
+        "core_artifacts_present_at_interruption": false,
+        "first_logged_epoch": 1,
+        "interrupted_directory_contained_only_wandb_work_state": true,
+        "last_logged_epoch": 62,
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": false,
+        "planned_epochs": 100,
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-01T23:31:10Z",
+          "heartbeat_at": "2026-07-01T23:36:41Z",
+          "history_lines": 60,
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "scratch_manifest": [
+            "files/output.log",
+            "files/requirements.txt",
+            "files/wandb-metadata.json",
+            "logs/debug-internal.log",
+            "logs/debug.log",
+            "run-WITHHELD_WANDB_RUN_ID.wandb"
+          ],
+          "scratch_run_file": {
+            "mtime_utc": "2026-07-01T23:36:26.118655228Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:acrobot.swingup-vicreg_ssm-s18005/wandb/run-20260702_073109-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "68a6088808c2cf7d7b01e4a2bc839e0df59ee37fa515fe32baac9eacd5b61884",
+            "size_bytes": 163840
+          },
+          "state": "crashed"
+        }
+      },
+      "replacement_attempt": {
+        "artifact_sha256": {
+          "eval_rollout.npz": "77179b94f096f31f6028302d5f39339b980b508db58e7118c22402525bf36637",
+          "metrics.json": "92d5134b5a2a0606343e51ab3901df5acd3ce3b6822576c3c5ee1c833442ef34",
+          "model.pt": "7dc63e83f71459b14bc4441910e15d1fb636c512ade8d38c4e962110c92b02f6",
+          "wandb_run.json": "c1201ef9f68432c133b443a25281cdebcd6cc3b0e008cde50e8c921c19a89ef6"
+        },
+        "first_logged_epoch": 1,
+        "last_logged_epoch": 100,
+        "ledger_completed_at": "2026-07-02T01:16:14.188151+00:00",
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": true,
+        "planned_epochs": 100,
+        "restart_policy": "restart_from_epoch_one",
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T01:06:31Z",
+          "heartbeat_at": "2026-07-02T01:16:12Z",
+          "history_lines": 100,
+          "run_file": {
+            "mtime_utc": "2026-07-02T01:16:12.567116215Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:acrobot.swingup-vicreg_ssm-s18005/wandb/run-20260702_090630-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "1e36299eba69dbb274cfe135b60cab7f57128a6fa62f4d466faf5a17f0fbd4dd",
+            "size_bytes": 329520
+          },
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "state": "finished"
+        }
+      }
+    },
+    {
+      "canonical_command_sha256": "3f7312e5a436a31ac182f228d1dee5bbd4855d1e88bb510aa9d6214d2b3a2f80",
+      "cell": {
+        "design": "vicreg_ssm",
+        "seed": 18005,
+        "task": "manipulator.bring_ball"
+      },
+      "interrupted_attempt": {
+        "core_artifacts_present_at_interruption": false,
+        "first_logged_epoch": 1,
+        "interrupted_directory_contained_only_wandb_work_state": true,
+        "last_logged_epoch": 31,
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": false,
+        "planned_epochs": 100,
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-01T23:33:58Z",
+          "heartbeat_at": "2026-07-01T23:36:44Z",
+          "history_lines": 29,
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "scratch_manifest": [
+            "files/output.log",
+            "files/requirements.txt",
+            "files/wandb-metadata.json",
+            "logs/debug-internal.log",
+            "logs/debug.log",
+            "run-WITHHELD_WANDB_RUN_ID.wandb"
+          ],
+          "scratch_run_file": {
+            "mtime_utc": "2026-07-01T23:35:59.508598939Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:manipulator.bring_ball-vicreg_ssm-s18005/wandb/run-20260702_073358-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "af9d26661a0cf1c733b91bfe8de8227c473b7fba3cc65b718d6cd208ea0255ed",
+            "size_bytes": 65536
+          },
+          "state": "crashed"
+        }
+      },
+      "replacement_attempt": {
+        "artifact_sha256": {
+          "eval_rollout.npz": "c8903960e07ac845ccb24de2735e3cce87fe11e34f419d09424f1895d4433ed7",
+          "metrics.json": "11f6638f4f325645f7b57fef5c912065e16aec69dbc9f6482e36096aaca0fbfb",
+          "model.pt": "7d951df9624dae59241dcb4814a87b00c5eed3911459aea11b56e2c3f7318e3a",
+          "wandb_run.json": "98f0a90d2e4419c98847eda3d1a6d4eef5941877d718936717e391bf150690a9"
+        },
+        "first_logged_epoch": 1,
+        "last_logged_epoch": 100,
+        "ledger_completed_at": "2026-07-02T01:16:14.566177+00:00",
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": true,
+        "planned_epochs": 100,
+        "restart_policy": "restart_from_epoch_one",
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T01:06:33Z",
+          "heartbeat_at": "2026-07-02T01:16:12Z",
+          "history_lines": 100,
+          "run_file": {
+            "mtime_utc": "2026-07-02T01:16:12.807155222Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:manipulator.bring_ball-vicreg_ssm-s18005/wandb/run-20260702_090632-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "4db95f9255031c3756d0eb9fbda1bd9f2b96cccf0789170006213c412361a99d",
+            "size_bytes": 330077
+          },
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "state": "finished"
+        }
+      }
+    },
+    {
+      "canonical_command_sha256": "3755b1df890dd8b34420ec09e06b2cebc0705107572e17b353240bb72a526919",
+      "cell": {
+        "design": "vicreg_ssm",
+        "seed": 18005,
+        "task": "quadruped.run"
+      },
+      "interrupted_attempt": {
+        "core_artifacts_present_at_interruption": false,
+        "first_logged_epoch": 1,
+        "interrupted_directory_contained_only_wandb_work_state": true,
+        "last_logged_epoch": 9,
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": false,
+        "planned_epochs": 100,
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-01T23:35:56Z",
+          "heartbeat_at": "2026-07-01T23:36:42Z",
+          "history_lines": 7,
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "scratch_manifest": [
+            "files/output.log",
+            "files/requirements.txt",
+            "files/wandb-metadata.json",
+            "logs/debug-internal.log",
+            "logs/debug.log",
+            "run-WITHHELD_WANDB_RUN_ID.wandb"
+          ],
+          "scratch_run_file": {
+            "mtime_utc": "2026-07-01T23:35:56.414592334Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:quadruped.run-vicreg_ssm-s18005/wandb/run-20260702_073556-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "ab8879c80aaf6146cf198cc2fc3178d1fa598c892078b6d7ef2bcfdb231f1f8d",
+            "size_bytes": 7
+          },
+          "state": "crashed"
+        }
+      },
+      "replacement_attempt": {
+        "artifact_sha256": {
+          "eval_rollout.npz": "0def0c11ff360b75489fcb447bb2d0a50344ee222e98cfbb331939408871d527",
+          "metrics.json": "198ffdfde0afbef232c5eb4a6fd5485a6763e4a37dd2757c78e4bd86378d215d",
+          "model.pt": "aca0efda6f4d9ac5c18d03cd189145de3f57efac005f66a5663f88d51b6734e0",
+          "wandb_run.json": "5c24e64996e2b7e0687152e9b603fb2baf125afdb6e6e327592363c18f7e7f7f"
+        },
+        "first_logged_epoch": 1,
+        "last_logged_epoch": 100,
+        "ledger_completed_at": "2026-07-02T01:16:21.477129+00:00",
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": true,
+        "planned_epochs": 100,
+        "restart_policy": "restart_from_epoch_one",
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T01:06:45Z",
+          "heartbeat_at": "2026-07-02T01:16:19Z",
+          "history_lines": 100,
+          "run_file": {
+            "mtime_utc": "2026-07-02T01:16:19.853458404Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:quadruped.run-vicreg_ssm-s18005/wandb/run-20260702_090644-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "22681cac82484a988aa6258326d5bf19634d71dac3959de8aa295738945fe52f",
+            "size_bytes": 326741
+          },
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "state": "finished"
+        }
+      }
+    },
+    {
+      "canonical_command_sha256": "439d69a8e3132ae9aeacfbee0b61be8f3058533f87d06a5f1541f74ec8d9485d",
+      "cell": {
+        "design": "vicreg_ssm",
+        "seed": 18005,
+        "task": "swimmer.swimmer15"
+      },
+      "interrupted_attempt": {
+        "core_artifacts_present_at_interruption": false,
+        "first_logged_epoch": 1,
+        "interrupted_directory_contained_only_wandb_work_state": true,
+        "last_logged_epoch": 62,
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": false,
+        "planned_epochs": 100,
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-01T23:31:11Z",
+          "heartbeat_at": "2026-07-01T23:36:42Z",
+          "history_lines": 60,
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "scratch_manifest": [
+            "files/output.log",
+            "files/requirements.txt",
+            "files/wandb-metadata.json",
+            "logs/debug-internal.log",
+            "logs/debug.log",
+            "run-WITHHELD_WANDB_RUN_ID.wandb"
+          ],
+          "scratch_run_file": {
+            "mtime_utc": "2026-07-01T23:36:27.273657651Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:swimmer.swimmer15-vicreg_ssm-s18005/wandb/run-20260702_073110-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "c0523df33b0b7ba3ba344089d78bb2202b9a42dc981cd07ed8ea5f724befb819",
+            "size_bytes": 163840
+          },
+          "state": "crashed"
+        }
+      },
+      "replacement_attempt": {
+        "artifact_sha256": {
+          "eval_rollout.npz": "a8153128c65d1916d94147feed7d7447cc02a786cdd7cb469bdbe01948dc4d33",
+          "metrics.json": "040af12c2e7f8b2adbcba23b8943581e8c6e40cc573860cb96d1e777d5e4ca24",
+          "model.pt": "66c6c1ba58d09855c9a94c7be2e174e35cbdecd2ac89537864744535016f9f5b",
+          "wandb_run.json": "acbd0099bd9817327f1deedd05161a6cceee9356792204319dd3b0c53df2e38a"
+        },
+        "first_logged_epoch": 1,
+        "last_logged_epoch": 100,
+        "ledger_completed_at": "2026-07-02T01:16:11.615656+00:00",
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": true,
+        "planned_epochs": 100,
+        "restart_policy": "restart_from_epoch_one",
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T01:06:35Z",
+          "heartbeat_at": "2026-07-02T01:16:09Z",
+          "history_lines": 100,
+          "run_file": {
+            "mtime_utc": "2026-07-02T01:16:10.054465930Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:swimmer.swimmer15-vicreg_ssm-s18005/wandb/run-20260702_090634-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "439dbd7559df2f980216a7fda8e712014db3b10c6e6cf2e91997073c7aa7d061",
+            "size_bytes": 327598
+          },
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "state": "finished"
+        }
+      }
+    },
+    {
+      "canonical_command_sha256": "efbe2543582dff6c74e9c26328ce8a40259a725d81ac5352c91274f3da0af371",
+      "cell": {
+        "design": "vicreg_hacssmv8_static",
+        "seed": 18003,
+        "task": "stacker.stack_4"
+      },
+      "interrupted_attempt": {
+        "core_artifacts_present_at_interruption": false,
+        "first_logged_epoch": 1,
+        "interrupted_directory_contained_only_wandb_work_state": true,
+        "last_logged_epoch": 37,
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": false,
+        "planned_epochs": 100,
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T05:49:11Z",
+          "heartbeat_at": "2026-07-02T05:52:56Z",
+          "history_lines": 34,
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "scratch_manifest": [
+            "files/output.log",
+            "files/requirements.txt",
+            "files/wandb-metadata.json",
+            "logs/debug-internal.log",
+            "logs/debug.log",
+            "run-WITHHELD_WANDB_RUN_ID.wandb"
+          ],
+          "scratch_run_file": {
+            "mtime_utc": "2026-07-02T05:52:57.774994399Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:stacker.stack_4-vicreg_hacssmv8_static-s18003/wandb/run-20260702_134910-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "08cc7b344f8fe1ab544374e030230f1011a0659ef2dc7a1e23004e631baa6765",
+            "size_bytes": 131072
+          },
+          "state": "crashed"
+        }
+      },
+      "replacement_attempt": {
+        "artifact_sha256": {
+          "eval_rollout.npz": "3196bc8498e1c85b6568e07fa18a51b295ab7fe1a00208dfdb15ab3f28880888",
+          "metrics.json": "94eacf99b8ddd039355a0bfecfb96de0e3790248226ea5093fd479782f980c26",
+          "model.pt": "cf8b4905803bdb350247821a90770969d3a31bf3ea8f47e45895bf897bdf745f",
+          "wandb_run.json": "5c676dfe1e6579a83a6c9808aea35c60c35c83b8d1dc9d4a509611447308c17f"
+        },
+        "first_logged_epoch": 1,
+        "last_logged_epoch": 100,
+        "ledger_completed_at": "2026-07-02T15:29:31.280515+00:00",
+        "log": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "normal_wandb_finish_marker_present": true,
+        "planned_epochs": 100,
+        "restart_policy": "restart_from_epoch_one",
+        "traceback_marker_present": false,
+        "wandb": {
+          "created_at": "2026-07-02T15:05:46Z",
+          "heartbeat_at": "2026-07-02T15:23:05Z",
+          "history_lines": 100,
+          "run_file": {
+            "mtime_utc": "2026-07-02T15:23:06.151219692Z",
+            "path": "outputs/lewm_v8_v18_confirmation/lewm-dmc:stacker.stack_4-vicreg_hacssmv8_static-s18003/wandb/run-20260702_230545-WITHHELD_WANDB_RUN_ID/run-WITHHELD_WANDB_RUN_ID.wandb",
+            "sha256": "590e35c24536dedd6171b45e1361c0de68e418d9d49cf1815dd09a6f49135fdb",
+            "size_bytes": 510313
+          },
+          "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+          "state": "finished"
+        }
+      }
+    }
+  ],
+  "bound_receipts": {
+    "analysis": {
+      "mtime_utc": "2026-07-02T18:54:13.351865910Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_analysis.json",
+      "sha256": "f471076e63aa8f9b0c4e4f666459b3abf58cbc71d934ea147937195f72e04c58",
+      "size_bytes": 75966
+    },
+    "attempts": {
+      "mtime_utc": "2026-07-02T18:53:47.615181408Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_attempts.json",
+      "sha256": "ade7e32191e994b575668d95045b9e28ab5f14ed6500edbfadbcf3c0801b2c11",
+      "size_bytes": 220299
+    },
+    "cells_csv": {
+      "mtime_utc": "2026-07-02T18:54:13.349163213Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_cells.csv",
+      "sha256": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+      "size_bytes": 39769
+    },
+    "contrasts_csv": {
+      "mtime_utc": "2026-07-02T18:54:13.349417324Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_contrasts.csv",
+      "sha256": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+      "size_bytes": 5169
+    },
+    "protocol": {
+      "mtime_utc": "2026-07-01T17:09:03.586963451Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_protocol.json",
+      "sha256": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2",
+      "size_bytes": 383570
+    },
+    "runs": {
+      "mtime_utc": "2026-07-02T18:53:47.602982275Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_runs.json",
+      "sha256": "1fe76aba1c01626b0f0aeca61764f8a71e1426afd3b93c006cf7e73e961efa88",
+      "size_bytes": 195713
+    },
+    "summary": {
+      "mtime_utc": "2026-07-02T18:53:48.095280734Z",
+      "path": "outputs/lewm_v8_v18_confirmation/confirmation_summary.json",
+      "sha256": "0c41fa3faf39bcc1a167f2c0e4bd9853592f61feb859626625c045e7a8ed3284",
+      "size_bytes": 300
+    }
+  },
+  "final_study_snapshot": {
+    "absent_cells": 0,
+    "analysis_complete": true,
+    "completed_valid_cells": 200,
+    "failed_or_invalid_cells": 0,
+    "finished_local_wandb_receipts": 200,
+    "planned_cells": 200,
+    "status": "COMPLETE",
+    "terminal_attempt_ledger_rows": 200
+  },
+  "generated_at": "2026-07-02T18:57:01.740399+00:00",
+  "generator": {
+    "path": "$AUDIT_GENERATOR",
+    "sha256": "d0aa8a52bc91d9b9e9702d06905a9db9c3fea879471544ec2a351e15787e0844"
+  },
+  "non_restart_events": [
+    {
+      "cell": {
+        "design": "vicreg_hacssmv8_static",
+        "seed": 18003,
+        "task": "stacker.stack_4"
+      },
+      "cell_count_effect": 0,
+      "classification": "runner_parent_pause_only",
+      "event": "runner_parent_resource_pause",
+      "evidence_class": "operator_transcript",
+      "gpu_competitor_released_at": "2026-07-02T15:29:08Z",
+      "parent_committed_completed_child_at": "2026-07-02T15:29:31.280515+00:00",
+      "parent_pid": 3171896,
+      "restart_required": false,
+      "sigcont_at_approximately": "2026-07-02T15:29:29Z",
+      "sigstop_at_approximately": "2026-07-02T15:19:13Z",
+      "stopped_state_observed_at": "2026-07-02T15:19:55Z",
+      "trainer_continued": true,
+      "trainer_exited_cleanly_at": "2026-07-02T15:23:16Z",
+      "trainer_interrupted": false,
+      "trainer_pid": 3173946,
+      "trainer_signaled": false
+    }
+  ],
+  "protocol": {
+    "canonical_commands_sha256": "408051d027c55ae54d260ccf029483ff2a2a16adcb68367a18f46e5d15c6f8ac",
+    "created_at": "2026-07-01T17:09:03.079392+00:00",
+    "epochs_per_cell": 100,
+    "path": "outputs/lewm_v8_v18_confirmation/confirmation_protocol.json",
+    "planned_cells": 200,
+    "resume_policy": "complete_cell_only",
+    "sha256": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2"
+  },
+  "remote_wandb_terminal_observation": {
+    "entity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "observed_from": "2026-07-02T18:56:57.537729+00:00",
+    "observed_through": "2026-07-02T18:57:01.720091+00:00",
+    "project": "anonymous-review-project",
+    "runs": [
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "acrobot.swingup"
+        },
+        "created_at": "2026-07-01T23:31:10Z",
+        "heartbeat_at": "2026-07-01T23:36:41Z",
+        "history_lines": 60,
+        "phase": "interrupted",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "crashed",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "acrobot.swingup"
+        },
+        "created_at": "2026-07-02T01:06:31Z",
+        "heartbeat_at": "2026-07-02T01:16:12Z",
+        "history_lines": 100,
+        "phase": "replacement",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "finished",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "manipulator.bring_ball"
+        },
+        "created_at": "2026-07-01T23:33:58Z",
+        "heartbeat_at": "2026-07-01T23:36:44Z",
+        "history_lines": 29,
+        "phase": "interrupted",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "crashed",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "manipulator.bring_ball"
+        },
+        "created_at": "2026-07-02T01:06:33Z",
+        "heartbeat_at": "2026-07-02T01:16:12Z",
+        "history_lines": 100,
+        "phase": "replacement",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "finished",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "quadruped.run"
+        },
+        "created_at": "2026-07-01T23:35:56Z",
+        "heartbeat_at": "2026-07-01T23:36:42Z",
+        "history_lines": 7,
+        "phase": "interrupted",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "crashed",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "quadruped.run"
+        },
+        "created_at": "2026-07-02T01:06:45Z",
+        "heartbeat_at": "2026-07-02T01:16:19Z",
+        "history_lines": 100,
+        "phase": "replacement",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "finished",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "swimmer.swimmer15"
+        },
+        "created_at": "2026-07-01T23:31:11Z",
+        "heartbeat_at": "2026-07-01T23:36:42Z",
+        "history_lines": 60,
+        "phase": "interrupted",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "crashed",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_ssm",
+          "seed": 18005,
+          "task": "swimmer.swimmer15"
+        },
+        "created_at": "2026-07-02T01:06:35Z",
+        "heartbeat_at": "2026-07-02T01:16:09Z",
+        "history_lines": 100,
+        "phase": "replacement",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "finished",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_hacssmv8_static",
+          "seed": 18003,
+          "task": "stacker.stack_4"
+        },
+        "created_at": "2026-07-02T05:49:11Z",
+        "heartbeat_at": "2026-07-02T05:52:56Z",
+        "history_lines": 34,
+        "phase": "interrupted",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "crashed",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      },
+      {
+        "cell": {
+          "design": "vicreg_hacssmv8_static",
+          "seed": 18003,
+          "task": "stacker.stack_4"
+        },
+        "created_at": "2026-07-02T15:05:46Z",
+        "heartbeat_at": "2026-07-02T15:23:05Z",
+        "history_lines": 100,
+        "phase": "replacement",
+        "run_id": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+        "state": "finished",
+        "url": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW"
+      }
+    ]
+  },
+  "resume_events": [
+    {
+      "command": "scripts/run_lewm_v8_v18.py --resume",
+      "post_replacement_counts": {
+        "absent": 60,
+        "valid_complete": 140
+      },
+      "pre_resume_counts": {
+        "absent": 64,
+        "interrupted_wandb_scratch_cells": 4,
+        "partial_or_invalid_core": 0,
+        "planned": 200,
+        "valid_complete": 136
+      },
+      "replacement_cell_count": 4,
+      "resume_index": 1,
+      "resume_policy": "complete_cell_only"
+    },
+    {
+      "command": "scripts/run_lewm_v8_v18.py --resume",
+      "lock_observation": {
+        "created_at": "2026-07-02T15:05:16.222019+00:00",
+        "evidence_class": "operator_transcript",
+        "pid": 3171896,
+        "sha256": "68eee1e8e357b0696c24a54f5b3fb80dd2f8de834417a11d2af26f13687aabbf"
+      },
+      "post_replacement_counts": {
+        "absent": 19,
+        "valid_complete": 181
+      },
+      "pre_resume_counts": {
+        "absent": 20,
+        "interrupted_wandb_scratch_cells": 1,
+        "partial_or_invalid_core": 0,
+        "planned": 200,
+        "valid_complete": 180
+      },
+      "replacement_cell_count": 1,
+      "resume_index": 2,
+      "resume_policy": "complete_cell_only",
+      "runner_started_at": "2026-07-02T15:04:57Z"
+    }
+  ],
+  "runner_receipts": {
+    "caveat": "Both runner-facing text receipts are zero-byte files; terminal claims are therefore bound to ledgers, cell logs, artifacts, and W&B.",
+    "first_resume_wrapper_log": {
+      "mtime_utc": "2026-07-02T01:05:32.940320674Z",
+      "path": "logs/lewm_v8_v18_confirmation/resume_driver.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    "original_runner_log": {
+      "mtime_utc": "2026-07-01T17:08:17.755361875Z",
+      "path": "logs/lewm_v8_v18_confirmation_runner.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    }
+  },
+  "schema_version": 2,
+  "scope": {
+    "excluded": [
+      "scientific_metric_values",
+      "scientific_metric_interpretation"
+    ],
+    "included": [
+      "runner_interruptions",
+      "complete_cell_restarts",
+      "wandb_terminal_state",
+      "artifact_provenance",
+      "final_runner_and_analysis_receipts"
+    ]
+  },
+  "study": "lewm-v8-v18-confirmation",
+  "supersedes": {
+    "path": ".paper-draft/v18_restart_audit.json",
+    "reason": "schema-v1 records only the first four-process interruption and omits the later stacker-static lineage and parent-only pause classification",
+    "sha256": "f3797fe1069775529b98f37dea82a9e0124069d8d53a93776500af424e0918ce"
+  },
+  "terminal_preconditions": {
+    "analysis": {
+      "artifact_integrity_passed": true,
+      "cells_csv_sha256": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+      "completed_valid_cells": 200,
+      "contrasts_csv_sha256": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+      "expected_cells": 200,
+      "input_artifact_manifest_sha256": "1e3bbcee667a98a6147a1ba9e7678b35d153ce8984d8dcd1200a571038939feb",
+      "input_protocol_sha256": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2",
+      "status": "COMPLETE"
+    },
+    "runner_lock_absent": true,
+    "runner_trainer_analyzer_processes_active": 0,
+    "summary": {
+      "completed_cells": 200,
+      "expected_cells": 200,
+      "failed_or_invalid_cells": 0,
+      "finished_at": "2026-07-02T18:53:48.094661+00:00",
+      "resume": true,
+      "status": "COMPLETE"
+    }
+  },
+  "time_basis": {
+    "canonical": "UTC",
+    "display_timezone": "Asia/Taipei",
+    "operator_transcript_times_are_approximate_where_marked": true
+  }
+}

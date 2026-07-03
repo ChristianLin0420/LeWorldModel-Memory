@@ -1,0 +1,25 @@
+{
+  "common_validator_sha256": "785a335a381c7d112aa62c59b95fe56bc181747110b8ff7e7772b9e0e2f0d56b",
+  "outputs": {
+    "LEARNABLE_MEMORY.v18.patch.md": "54381093ff13958c69f087fc1ccdf9f540acee3c9e3743a808c3f93dcf27fd38",
+    "README.md": "88b34da49f867c8db2d480800c11d17cf13ab842219263ce9f1de07b8a755ece"
+  },
+  "pdf_check_sha256": "62f64b7d68fdd92fc93dafa2666c2b87dd9b6bf54cd8141fb69256e89067fe5e",
+  "renderer_sha256": "fba24fb601decd7e588ce431c8322f3c512815c6d1dfbdec6d84e75ec3ea696e",
+  "schema_version": 1,
+  "scientific_label": "CONFIRMATION_FAILED",
+  "scope": "v18_deterministic_release_docs",
+  "source_result_hashes": {
+    "confirmation_analysis.json": "f471076e63aa8f9b0c4e4f666459b3abf58cbc71d934ea147937195f72e04c58",
+    "confirmation_attempts.json": "ade7e32191e994b575668d95045b9e28ab5f14ed6500edbfadbcf3c0801b2c11",
+    "confirmation_cells.csv": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+    "confirmation_contrasts.csv": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+    "confirmation_protocol.json": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2",
+    "confirmation_runs.json": "1fe76aba1c01626b0f0aeca61764f8a71e1426afd3b93c006cf7e73e961efa88",
+    "confirmation_summary.json": "0c41fa3faf39bcc1a167f2c0e4bd9853592f61feb859626625c045e7a8ed3284"
+  },
+  "templates": {
+    "LEARNABLE_MEMORY.v18.patch.template.md": "a8c6041fb4b99037be91f80da21f0a40069fd7c003b115492eea7526c38cbf75",
+    "README.template.md": "8b28c3661d4778b9b7713c3752c0f7b823d5a5f24558d3bb8fdad84009ba15c8"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "completed_cells": 200,
+  "expected_cells": 200,
+  "failed_or_invalid_cells": 0,
+  "failures": [],
+  "finished_at": "2026-07-02T18:53:48.094661+00:00",
+  "resume": true,
+  "schema_version": 1,
+  "scope": "lewm_v8_v18_unopened_task_confirmation",
+  "status": "COMPLETE",
+  "wandb_enabled": true
+}

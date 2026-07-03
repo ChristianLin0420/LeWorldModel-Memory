@@ -1,17 +1,23 @@
 # Learnable memory for LeWorldModel: V1–V18 architecture and evidence record
 
-*Design and experiment record. Branch: `learnable-memory`. V1–V11 live in
+*Design and experiment record. V1–V11 live in
 `lewm/models/memory.py`; SIRO-v12, CF-HIRO-v13, CF-EBO-v14, and CVPF-v15 use
-their isolated model modules and the common LeWM host. Status as of 2026-07-02:
-V1–V9 are complete with their recorded negative pilot/final labels; V10-J has
-no official launch; V11's excluded screen is negative; V12–V14 are complete
-`SCREEN_NO_GO` studies; and V15 remains `INCOMPLETE_OR_INVALID / FAIL_CLOSED`.
-V16 completed 144/144 opened-cache host-objective cells and found Sub-JEPA
-collapse; V17 completed 72/72 cells with label
-`ADAPTIVE_COLLAPSE_REPAIR_FAILED`. V18 is source-frozen as a new 200-cell,
-five-task raw-pixel confirmation of unchanged compact V8 inside a true sliding
-three-token stabilized LeWM-derived host. No V18 performance result is recorded
-at this source freeze (§7.18–§7.20).*
+their isolated model modules and the common LeWM host. Status as of
+2026-07-03: V1–V9 are complete with their recorded negative
+pilot/final labels; V10-J has no official launch; V11's excluded screen is
+negative; V12–V14 are complete `SCREEN_NO_GO` studies; and V15 remains
+`INCOMPLETE_OR_INVALID / FAIL_CLOSED`. V16 completed 144/144 opened-cache
+host-objective cells and found Sub-JEPA collapse; V17 completed 72/72 cells
+with label `ADAPTIVE_COLLAPSE_REPAIR_FAILED`. V18 completed
+200/200 artifact-valid cells on five previously
+unopened raw-pixel tasks and the write-once analyzer returned
+`CONFIRMATION_FAILED`; `official_confirmation_result` is
+`false` (§7.18–§7.20). V18 tests unchanged
+compact V8 inside a causally normalized, active-clean-target, VICReg-trained
+LeWM-derived host with a true sliding three-token predictor. It is not a test
+of the exact original SIGReg LeWorldModel objective and contains no executed
+return, success, control, or planning evaluation. Review-safe result receipts
+and the anonymous paper are linked in §7.20 and §10.*
 
 ## 1. Motivation — what our study tells us to do next
 
@@ -26,7 +32,22 @@ The naive reading is "memory should be fixed." But this repository's ungated fix
 
 **Original hypothesis (SMT):** keep the decays **fixed** (the reliable prior) and move **all** learnability to *input-conditioned gating* — a learned **write gate** (what to store) and a learned **read router** (which horizon to use, per step). Learning *selection over* a fixed timescale basis should have a better-conditioned gradient than learning the decay itself.
 
-**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). V8 cleanly removes those special objectives and confirms durable action/joint-read mechanisms but not its compact/shared-action novelty (§7.10). V9's evidence and action paths are active, yet fixed poles and one bank beat its intended learned hierarchy (§7.11). V10–V14 then repair the host and observer mechanics without producing a competitive positive method (§7.12–§7.16). V15 finally shows three narrower facts: normalized mode strength and cross-fold weighting are necessary for numerical safety; gradients through the suffix identification envelope materially change representation learning; and the observation correction is active but harmful. Those facts do not rescue the method. The frozen screen is artifact-incomplete, all four `norho` cells fail numerically, full loses `nocorrect` 4/4, KDIO 4/4, and its legal integrator 4/4, representation rank fails on two tasks, the deployed action mechanism misses its gate, and convergence fails. V15 is therefore `INCOMPLETE_OR_INVALID / FAIL_CLOSED / NO_100E_LAUNCH`, not performance evidence or an ICLR-ready method (§7.17).
+**Empirical verdict.** SMT-v2 does not support the selection hypothesis: its gates are almost static and can be replaced by calibration means without hurting the saved models (§5). L0 routing finds either a dense model or a quality-destroying closed/static subset, and the strongest OC-SMT result uses all 28 banks (§9). SMT-v3 fixes the erasing write rule and learns a causally important black-sentinel gate (§7.5). HACSM-v4 then fixes action blindness: swapping only memory-path blackout actions raises first-post MSE by 12.46%, and V4 beats V3 by 12.49% across paired cells (§7.6). V5's learned channel spectrum and boundary auxiliary regress (§7.7); V6's dense consistency adds only .39% and loses to static correction (§7.8); V7's recovery objective adds only .30% and loses its shared-action/no-recovery controls (§7.9). The adaptive V8 predecessor cleanly removes those special objectives and reports action/joint-read effects, but not its compact/shared-action novelty (§7.10). V9's evidence and action paths are active, yet fixed poles and one bank beat its intended learned hierarchy (§7.11). V10–V14 then repair the host and observer mechanics without producing a competitive positive method (§7.12–§7.16). V15 finally shows three narrower facts: normalized mode strength and cross-fold weighting are necessary for numerical safety; gradients through the suffix identification envelope materially change representation learning; and the observation correction is active but harmful. Those facts do not rescue the method. The frozen screen is artifact-incomplete, all four `norho` cells fail numerically, full loses `nocorrect` 4/4, KDIO 4/4, and its legal integrator 4/4, representation rank fails on two tasks, the deployed action mechanism misses its gate, and convergence fails. V15 is therefore `INCOMPLETE_OR_INVALID / FAIL_CLOSED / NO_100E_LAUNCH`, not performance evidence or an ICLR-ready method (§7.17).
+
+V16 and V17 then isolate the host objective rather than rescuing a memory
+method: V16 collapses, while V17 repairs rank and variance but fails its frozen
+convergence/effect decision. V18 is the first new-task, true-`H=3`,
+artifact-complete confirmation of unchanged compact V8 in this sequence. Its
+write-once result is `CONFIRMATION_FAILED` over
+200/200 valid cells: SAS-PC changes held-out
+prior-state NMSE by -2.10% versus the per-cell better GRU/SSM reference
+(95% CI [-13.35%, +9.11%]; 11/25 cell and 2/5 task wins) and by
++12.44% versus no persistent carrier. The registered conjunction fails, so SAS-PC/V8 is not confirmed as a generally superior persistent carrier; favorable individual contrasts cannot rescue the frozen decision. This result
+concerns persistent information transport and exact action-transport/joint-read
+interventions inside a stabilized VICReg LeWM-derived host. It neither shows
+that published LeWM lacks temporal causality or all memory nor establishes
+improvement to exact SIGReg LeWM, causal discovery, executed return, or
+planning (§7.20).
 
 ## 2. The architecture
 
@@ -3051,17 +3072,19 @@ new memory method or confirmation cohort. The exact objective, gradient
 composition, controls, and result boundary are in `docs/V17_AUTOVISREG.md` and
 `outputs/autovisreg_v17_development/development_analysis.json`.
 
-### 7.20 LeWM+V8-v18: frozen unopened-task confirmation (`SOURCE_FROZEN`)
+### 7.20 LeWM+V8-v18: complete unopened-task confirmation (`CONFIRMATION_FAILED`)
 
 V18 is the first prospective test in this sequence that combines unchanged
-compact V8 with a true sliding three-token LeWM predictor on new raw-pixel DMC
-tasks. It asks whether an explicit persistent action-conditioned state extends
-a healthy finite-context host under partial observability. The motivating claim
-is deliberately narrower than “LeWM lacks memory or causality”: published LeWM
-is causal and action-conditioned, but it has no explicit persistent belief state
-beyond its configured finite observation history.
+compact SAS-PC/V8 with a true sliding three-token LeWM predictor on new
+raw-pixel DMC tasks. The question is deliberately narrower than “LeWM lacks
+memory or causality.” Published LeWorldModel is action-conditioned and
+temporally causal over a configured finite observation history (`H=3` for
+PushT and OGBench-Cube and `H=1` for TwoRoom). It does not include an explicit
+persistent recurrent/belief state that survives after evidence leaves that
+window. V18 asks whether the added carrier transports useful out-of-window
+information under partial observability.
 
-The frozen grid is:
+The frozen grid remained:
 
 ```text
 tasks:    acrobot.swingup, manipulator.bring_ball, quadruped.run,
@@ -3073,28 +3096,73 @@ budget:   100 epochs
 total:    5 tasks x 8 designs x 5 seeds = 200 cells
 ```
 
-Every design uses the same end-to-end RGB encoder, true aligned `H=3`
-latent/action windows, active synchronized clean target, and unit-weight VICReg
-variance/covariance stabilization. V8 has no teacher, reward/state target,
-memory-specific loss, selected coefficient, or task-specific setting. GRU and
-SSM are recurrent baselines; static/dynamic form a conservative endpoint
-envelope; no-action and single-read are exact mechanism interventions. Native
-task observations and physics states remain evaluation-only.
+Every arm uses the same end-to-end RGB encoder, aligned `H=3` latent/action
+windows, active synchronized clean target, and VICReg variance/covariance
+stabilization. V8 receives no teacher, reward/state target, hidden-clean
+update, memory-specific loss, selectable coefficient, or task-specific
+setting. `vicreg_none` retains the finite LeWM context but has no persistent
+carrier; GRU and diagonal SSM are separately trained recurrent references;
+static/dynamic form a conservative endpoint envelope; and no-action and
+single-read are exact, separately trained mechanism interventions. Native task
+observations and physics state are evaluation-only.
 
-The primary gate is held-out pre-observation task-state NMSE. A positive result
-requires 200/200 valid cells; healthy, converged representations in every arm;
-V8 superiority over per-cell GRU/SSM and no-memory references; superiority over
-its own legal initial-state/action integrator; a positive deep-gap interval;
-causal no-action and joint-read contrasts; and noninferiority to the per-cell
-static/dynamic endpoint envelope. The exact thresholds, seeds, scheduling,
-claim boundary, and commands are frozen in `docs/V18_LEWM_V8_CONFIRMATION.md`.
+The write-once analyzer validated **200/200** cells
+and returned:
 
-V18 uses LeWM's encoder/predictor architecture under the empirically stable
-VICReg host. It therefore can validate an architectural integration claim, but
-cannot be described as improving the exact original SIGReg-based LeWorldModel
-method. It also does not measure executed return or planning. At this record's
-source freeze no V18 performance cell has been opened; results must later be
-appended without changing this prospective contract.
+| receipt | analyzer value |
+|---|---|
+| status | `COMPLETE` |
+| scientific label | **`CONFIRMATION_FAILED`** |
+| official confirmation result | `false` |
+| artifact integrity | `PASS` |
+| primary endpoint | held-out pre-observation task-state NMSE |
+
+| registered comparison or validity guard | observed effect / receipt | 95% CI | cell wins | task wins | gate |
+|---|---:|---:|---:|---:|---:|
+| SAS-PC vs per-cell better GRU/SSM | -2.10% | [-13.35%, +9.11%] | 11/25 | 2/5 | **FAIL** |
+| SAS-PC vs no persistent carrier | +12.44% | [+3.65%, +22.43%] | 24/25 | 5/5 | **PASS** |
+| SAS-PC vs legal initial-frame/action integrator | -38.12% | [-61.38%, -20.58%] | 0/25 | 0/5 | **FAIL** |
+| deep-gap persistence vs primary-selected GRU/SSM | -1.74% | [-12.95%, +9.46%] | 11/25 | 2/5 | **FAIL** |
+| recurrent action-transport intervention | +9.48% | [+2.88%, +16.09%] | 23/25 | 5/5 | **PASS** |
+| joint two-state-read intervention | -5.39% | [-13.12%, +0.67%] | 6/25 | 1/5 | **FAIL** |
+| learned shrinkage vs per-cell endpoint envelope | -1.89% | [-4.88%, +0.37%] | 6/25 | 0/5 | **FAIL** |
+| clean-prior guard vs primary-selected GRU/SSM | +11.73% | [+5.82%, +17.70%] | 25/25 | 5/5 | **PASS** |
+| representation health | min variance 0.0228; min rank 2.02 | — | variance 200/200; rank 144/200 | — | **FAIL** |
+| convergence | max absolute late change +132.09% | — | 126/200 converged | — | **FAIL** |
+
+**Registered decision.** The registered conjunction fails, so SAS-PC/V8 is not confirmed as a generally superior persistent carrier; favorable individual contrasts cannot rescue the frozen decision. The decision is the frozen
+conjunction of integrity, recurrent/no-carrier/integrator comparisons,
+deep-gap persistence, action-transport and joint-read interventions,
+endpoint-envelope noninferiority, clean-state quality, representation health,
+and convergence. A favorable subset does not override a failed clause, and no
+threshold, task, seed, or architecture is changed after opening the cohort.
+
+The intervention language is deliberately local. The no-action comparison
+tests recurrent action transport in this implementation; the single-read
+comparison tests access to both recurrent states. Neither identifies
+environment-level causal structure, discovers causal variables, or establishes
+causal representation learning.
+
+V18 uses LeWM's encoder/predictor architecture under a causally normalized,
+active-clean-target **VICReg host**. It can therefore support or falsify a
+persistent-state integration claim within that shared host, but it cannot be
+described as improving the exact original SIGReg-based LeWorldModel method or
+preserving LeWM's original two-term objective. No policy is executed, so V18
+also supplies no return, success, control, or planning evidence.
+
+The final public record is provenance-bound across the
+[frozen protocol](V18_LEWM_V8_CONFIRMATION.md),
+[write-once analysis](../paper/review_artifact/confirmation_analysis.json),
+[200-cell table](../paper/review_artifact/confirmation_cells.csv),
+[registered contrasts](../paper/review_artifact/confirmation_contrasts.csv),
+[redacted execution receipts](../paper/review_artifact/confirmation_runs.redacted.json),
+and [review manifest](../paper/review_artifact/review_manifest.json). The
+[analysis-rendered manuscript](ICLR.md),
+[manuscript manifest](ICLR.manifest.json), and
+[anonymous PDF](../paper/main.pdf) report the same scientific label and hashes.
+The review bundle excludes private checkpoints, rollout arrays, raw histories,
+and identity-bearing remote metadata; their aggregate identity remains bound
+by the public receipts.
 
 ## 8. Toward learned effective read cardinality under a fixed ceiling
 
@@ -3220,9 +3288,54 @@ Validation MSE and usage are only weakly aligned, reinforcing that cue usage—n
 2. **Replicate sparse points only after a matched-quality candidate appears.** The one-seed `λ0∈{0.0004,0.0005,0.0006}` bracket shows a quality cliff and does not justify a full four-task sweep.
 3. **Treat the dense lead as architecture search.** A fair follow-up must separate shared vs per-bank readouts and match parameters/initial residual scale; it should not be labeled learned selectivity.
 
-## 10. ICLR submission audit and recommendation (2026-06-30)
+## 10. ICLR submission record
 
-### Decision: do not submit the current manuscript to the ICLR main track as written
+### 10.1 Current V18 submission status (`CONFIRMATION_FAILED`)
+
+The current anonymous manuscript,
+[*Finite Context Is Not Persistent State: A Frozen Falsification Study in a
+LeWorldModel-Derived JEPA*](ICLR.md), is a new V18 paper rather than a revision
+of the pre-V18 two-timescale manuscript audited below. It reports the complete
+frozen five-task, eight-design, five-seed study and is bound to
+`CONFIRMATION_FAILED` by the
+[manuscript manifest](ICLR.manifest.json),
+[review-artifact manifest](../paper/review_artifact/review_manifest.json), and
+[write-once decision](../paper/review_artifact/confirmation_analysis.json).
+The [anonymous PDF](../paper/main.pdf) contains 14 pages,
+with 9 pages of main text under the public ICLR 2026 style
+used for the current format check; the ICLR 2027 package and final author guide
+must still be substituted and rechecked when officially available. Rebuild and
+template-version details are in the [paper README](../paper/README.md).
+
+**Current framing.** The submission is a complete frozen falsification: SAS-PC/V8 is not confirmed as a generally superior persistent carrier, and favorable subsets do not override the failed conjunction. The strongest permissible
+claim is confined to persistent prior-state information transport and named
+component interventions in a stabilized VICReg-trained LeWM-derived host on
+the frozen corruption cohort. Published LeWM remains correctly described as
+action-conditioned, temporally causal, and finite-context; the study does not
+test exact SIGReg LeWM. It contains no executed policy, return, success, or
+planning evaluation and makes no causal-discovery, causal-representation,
+learned-timescale, semantic-hierarchy, or calibrated-uncertainty claim.
+
+Release status: **FORMAT_CHECK_COMPLETE_UNDER_OFFICIAL_ICLR_2026_STYLE; SUBMISSION_BLOCKED_PENDING_OFFICIAL_ICLR_2027_TEMPLATE_AND_FINAL_AUTHOR_GUIDE**. This status requires an internally
+consistent 200-cell review bundle, no unresolved result placeholders, matching
+analysis/manuscript/figure hashes, no identity leak, a clean PDF build, no
+undefined citations or serious overfull boxes, and compliance with the final
+ICLR 2027 format and submission rules. Scientific completion alone does not
+waive those release checks.
+
+### 10.2 Historical pre-V18 audit and recommendation (2026-06-30)
+
+Everything from the historical decision below through the end of §10 audits
+the former 17-page two-timescale-memory manuscript and evidence only through
+V15. It predates the V16/V17 host audits, the frozen V18 cohort, the current
+analysis-rendered manuscript, and the review-safe result bundle. Its criticisms
+remain part of the research record, but phrases such as “the current PDF,” “do
+not submit the current manuscript,” and “a confirmation successor is still
+required” refer to that superseded pre-V18 manuscript. They must not be read as
+descriptions of the V18 paper above.
+
+### 10.3 Historical decision: do not submit the pre-V18 manuscript to the ICLR main track as written
+
 
 There is a worthwhile controlled finding here, but the current `paper/main.pdf` overstates what the implementation and experiments establish. The positive core is:
 
@@ -3245,7 +3358,7 @@ There is a worthwhile controlled finding here, but the current `paper/main.pdf` 
 
 That is a coherent **diagnostic study**. It is not the broad “learnable selective memory for world models, robotics, and closed-loop control” paper implied by the present title, abstract, and result language. V8 is itself an adaptive response selected on the same development tasks, V9 is selected after opening V8, V10-J is an adaptive host repair whose ORBIT comparisons remain unrun, V11 is an adaptively designed successor stopped by its mandatory development screen, and completed-negative V12–V14 are further adaptive successors evaluated on the already opened four-task caches. V15 is another post-hoc successor motivated by those opened results; its attempted screen failed closed and is not confirmation evidence (§7.10–§7.17).
 
-### Blocking scientific issues
+### 10.4 Historical blocking scientific issues
 
 1. **The reported “closed-loop control” is not closed loop.** `scripts/eval_planning.py` always gathers context by issuing the same rightward action, imagines a fixed all-right action sequence, trains a logistic classifier on the final imagined latent, and scores whether that classifier recovers the cue. It never executes the classifier's chosen arm action, observes a resulting transition, or measures environment reward/success. This is an offline imagined-latent cue-classification experiment. Table 9, Figure 8, and the abstract must be relabeled, or replaced with an agent that actually chooses and executes actions in the environment. The abstract also says “Across 5 seeds” for counterfactual-swap/control claims whose Tables 7 and 9 use three seeds.
 2. **The original robot/OGBench headline is invalid and partly stale.** The action-prototype bug is fixed (§7.1), but those checkpoints still use incomparable private encoder coordinates, target black-frame latents during the blackout, and measure influence only at the last frame. The paper's Cheetah row still reports the superseded `.240/.201` none/`multi` values and claims improvement; the corrected consistent-prototype held-out evaluation is `.122/.155`, so `multi` is worse. DeepMind Control Suite tasks are MuJoCo simulations—not “four real robots” or hardware ([Tassa et al., 2018](https://arxiv.org/abs/1801.00690)). The fixed-DINO replacement is valid in one common coordinate system, but it measures prototype-randomized next-feature prediction, not manipulation/control success.
@@ -3255,7 +3368,7 @@ That is a coherent **diagnostic study**. It is not the broad “learnable select
 6. **The broad learned-selectivity/hierarchy thesis is still unsupported, despite real action mechanisms.** V3 and every V4 correction level separate one conspicuous black token. V4–V9 establish real action paths, but V4's slow state, V5's learned spectrum, V6/V7's self-supervised objectives, V7's level-specific action/recovery terms, and V8's compaction/shrinkage claims fail. V9 adds the cleanest direct contradiction: learned poles are robustly worse than fixed poles, two banks are worse than one slow bank, and donor resistance interventions are sub-.5%. This supports a black-sentinel predict/correct diagnostic—not a generally superior content-selective, uncertainty-calibrated, or automatically sized hierarchy.
 7. **Baselines and task outcomes are below the main-track bar for the broad claim.** Current learned GRU/SSM/retrieval comparisons use one matched training budget rather than competitive per-baseline tuning. POPGym/Memory-Maze results emphasize next-latent MSE or influence under random policies rather than standard task returns. Raw MSE from separately trained encoders should not be compared as if it shared a scale. A convincing world-model/control paper needs standard POMDP returns or success, tuned recurrent/SSM/Transformer memory baselines, and parameter/compute-matched fixed-bank ablations.
 
-### Novelty and positioning risk
+### 10.5 Historical novelty and positioning risk
 
 The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special case; RetNet already combines fixed multi-scale decays with input-dependent Q/K/V content selection. SMT-v2's gates are empirically static, V3 mainly recovers freezing under explicit missingness, and V4–V9 are compact predict/correct recurrent filters. V8's compact no-auxiliary filter is effective but does not win its direct controls; completed V9 overlaps established adaptive filtering/Kalman and selective-state-space ideas and then loses its learned-pole/two-bank controls. V10's exact action-conditioned rotations are more structurally distinctive, but unitary RNNs, Homomorphism Autoencoders, seq-JEPA, and FloWM already cover norm preservation, learned group actions, sequential JEPA aggregation, and structured partially observed dynamics. V11's potentially useful combination is narrower: learned amplitude times a Stiefel action direction inside an exactly invertible kick–drift prior, ordered clean-OAS correction, and detached same-source executed/deranged displacement ranking beside a live suffix loss. Orthogonal parameterizations, reversible mechanics priors, robust/Kalman filtering, and contrastive ranking each exist separately. Its completed screen supplies no performance-based novelty claim. V12's composition collapses algebraically and is negative. V13 likewise composes Ho–Kalman/ERA, DMDc, PSRs, OAS, and Kalman machinery; its screen rejects the resulting observer. V14 adds established observability-Gramian, cross-fold shrinkage, clipping, and radial-influence ingredients, and its completed screen is negative. Implemented V15 is again a composition: finite PLS future modes, pooled-baseline cross-fold calibration, projected shifts, and a differentiable minibatch envelope. PSRs, CCA/subspace identification, innovations filtering, covariance shrinkage, cross-validation, and differentiable matrix layers remain strong prior art. A novelty claim still requires a precise theorem or formulation plus positive unopened-task evidence. A future comparison would have to include:
 
@@ -3265,11 +3378,11 @@ The fixed EMA bank is intentionally a simple diagonal state-space/RetNet special
 
 These papers do not make the fixed-EMA diagnostic unpublishable, but they remove the broad novelty claim that JEPA/world-model work lacks sequential memory. The differentiator must be the controlled **availability vs usage vs intervention** methodology and the negative evidence about when learnable gates fail—not the existence of memory itself.
 
-### Manuscript readiness
+### 10.6 Historical manuscript readiness
 
 The current PDF is 17 pages total and carries roughly 14 pages of main material before the references. The latest public [ICLR 2026 Author Guide](https://iclr.cc/Conferences/2026/AuthorGuide) allowed at most nine submission pages of main text; the ICLR 2027 guide is not yet public, so its exact rule must be rechecked rather than assumed. Independently of the final 2027 limit, this draft needs a major focus reduction. The title says **Two-Timescale Memory**, while the strongest reported design is the fixed six-bank model and the strongest OC-SMT cell uses 28 banks. The abstract also globalizes results drawn from different 2-, 3-, and 5-seed studies and includes the unsupported closed-loop and robotic-tracking claims.
 
-### A defensible submission path
+### 10.7 Historical defensible submission path
 
 If targeting ICLR, reframe the work around a title such as **“When Does a JEPA World Model Use Memory? Fixed Exponential Banks and Causal Diagnostics.”** Then require all of the following before submission:
 
@@ -3280,6 +3393,10 @@ If targeting ICLR, reframe the work around a title such as **“When Does a JEPA
 5. Rewrite every table around a predeclared outcome with exact seed counts and confidence intervals; never average raw PCA MSE across environments or compare private latent scales. Move engineering sweeps and secondary phases to the appendix.
 6. Remove or relabel the old robot and closed-loop figures, reconcile the title with the actual K-bank method, add the missing related work, and cut the main story to the applicable ICLR page limit.
 7. Treat V7–V15 strictly according to scope. V7–V9 have immutable negative labels. V10-J is an adaptive representation-validity audit with a `NO LAUNCH` decision; V11b is an excluded adaptive `SCREEN_NO_GO`, not a pilot, and its official grid is `OFFICIAL_NO_LAUNCH` at 0/240 and 0/400. V12 is complete excluded adaptive development at 28/28 and `SCREEN_NO_GO / NO_100E_LAUNCH`; V12b is a zero-optimizer-step train-only `STOP` audit, not a new model result. V13 is complete excluded adaptive development at 36/36 and `SCREEN_NO_GO / NO_100E_LAUNCH`; its continuation is 0/72. V14 is complete excluded adaptive development at 40/40 and `SCREEN_NO_GO / NO_100E_LAUNCH`; its continuation is 0/96. V15 is `INCOMPLETE_OR_INVALID / FAIL_CLOSED`, canonical 44/52 and current non-promoting 47/52; its continuation is 0/156. A confirmation successor must use new tasks/trajectories, freeze the host before opening them, and add separately frozen executed-return evaluation plus tuned recurrent/SSM/Transformer baselines.
+
+**Historical recommendation for the superseded pre-V18 manuscript.** The
+following recommendation was recorded before V18 and is retained without
+retroactively treating V18 as executed-return evidence:
 
 **Recommendation.** The V3–V9 prospective studies all return negative pilot/final labels. V10-J fixes one host-collapse problem but fails its prerequisite state-quality/convergence audit. V11b and V12–V14 are complete and negative; the correct closeouts remain V11 `SCREEN_NO_GO / OFFICIAL_NO_LAUNCH` and V12–V14 `SCREEN_NO_GO / NO_100E_LAUNCH`. V14's 40-cell evidence is valuable diagnostic falsification: bounded radial correction passes its safety receipts, yet `norisk` and `nocorrect` beat full, action reliability is zero, representation/runtime reconstruction/convergence fail, and KDIO plus the legal integrator remain much stronger. V15 does not change that assessment: its artifact-incomplete screen fails closed, its available full cells lose `nocorrect`, KDIO, and the legal integrator 4/4, and the nonfinite controls expose a missing numerical bound. Do **not** submit the current version to the ICLR main track or describe V10–V15 as positive memory results. Retain the narrower workshop/diagnostic framing unless a separately frozen successor on new tasks clears representation, convergence, matched baselines, mechanism controls, executed-return evaluation, and a defensible novelty analysis before any official launch.
 

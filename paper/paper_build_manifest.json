@@ -1,0 +1,25 @@
+{
+  "builder_sha256": "7ab95752d8ccd700b03c58e8bf0f49830ca28a4e480989e27e82b3b8efe7368a",
+  "figures": {
+    "fig_v18_architecture.pdf": "eb2ca849dee4ab5a65b3041ef4f3ca4a427a15267c0e3f1dc7d3ddccc20419c5",
+    "fig_v18_evidence.pdf": "c7d5e58bb1468c2239ec04b8d2bbe20af174a495285c4faf6a39dadbbe16e64e",
+    "fig_v18_secondary.pdf": "95aa53c46447d994c7fe63bfaf326c3be83e6f72d1df339bfd7d4fcf77a317ee",
+    "fig_v18_task_design.pdf": "66f8adb87b83cdea311b60042a595a88cb171e57f2ed15bff8e6f068ca64c583"
+  },
+  "fragments": {
+    "abstract.tex": "d4f26a4110f67055be7e7d57855bf79d13803407fc303324ccb6ccfa98d44996",
+    "appendix.tex": "5cd20618a605e8bc48270a78dbac655bdf9e228671db114d0e821849d4b5407b",
+    "body.tex": "2eea5aa36704f4fe857d6aa3ae362e383676d850d56de2cb2eb2c1bd4412541e",
+    "refs.tex": "c4acfd7961647ae26cbb14fd09397f969a5a3ef857487b16cf44a4267b6c2ef8"
+  },
+  "llm_usage_statement_present": true,
+  "main_tex_sha256": "d4674ba4139ad4ed644a02df48eb8195e12100b2841cde8709679e0afd155cc2",
+  "manuscript_manifest_sha256": "653af6503ee2bfa406597996632cecae6ec03dc2fe06e32a88dd4554f7b9bbcc",
+  "manuscript_sha256": "942318cb25acd2eefbe20b31be0410bd302e0fd58397c0c19c51f8ea740319e7",
+  "pandoc_version": "pandoc 3.10",
+  "review_manifest_sha256": "e40deed980843e93a2d8d1eb13c46e01c4463bcc90bbfe346b04375c0596f92f",
+  "schema_version": 1,
+  "scope": "v18_paper_fragments",
+  "source_figure_manifest_sha256": "7128efbfe36c4c419ff36d21884a5940a0a95e4c378c30bfeab08f1e7e35f7d4",
+  "style_sha256": "a4852f68e080d6c5245057ca2039100b409e31727898aa93c03d78ddb84374a3"
+}

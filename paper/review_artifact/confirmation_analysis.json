@@ -1,0 +1,2566 @@
+{
+  "artifact_integrity_errors": [],
+  "artifact_integrity_passed": true,
+  "cells_csv_sha256": "71144b471acbf88ae1f67c91615299effc7f6f53cc97d578e0b9da3cf8021c23",
+  "claim_boundary": "V18 licenses only a persistent causal-memory claim for the stabilized VICReg LeWM host on the frozen partial-observation cohort. It licenses no executed-return, planning, original-SIGReg, learned-timescale, semantic-hierarchy, or calibrated-uncertainty claim.",
+  "completed_valid_cells": 200,
+  "contrasts": {
+    "vicreg_hacssmv8_vs_checkpoint_integrator:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": -0.2190873130950689,
+        "ci90_low": -0.5683681506750645,
+        "ci95_high": -0.20577974884512637,
+        "ci95_low": -0.6138252741654882,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.4723232926451714,
+          -0.294691705880155,
+          -0.38018307486443975,
+          -0.4876573577540047,
+          -0.23890425717899655
+        ],
+        [
+          -0.16276580005796812,
+          -0.15416687931898454,
+          -0.1584264350525547,
+          -0.196086890688462,
+          -0.16566309740248963
+        ],
+        [
+          -0.6694923950756994,
+          -0.5899758461480243,
+          -0.5126228845728386,
+          -0.8655383943752311,
+          -1.2309697974561213
+        ],
+        [
+          -0.14024262633224055,
+          -0.1523238809984841,
+          -0.1526969998390277,
+          -0.19938409944615387,
+          -0.15060970918732972
+        ],
+        [
+          -0.5005783401374673,
+          -0.3893659693204616,
+          -0.38733336321654216,
+          -0.3641433572209957,
+          -0.5150143784842256
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.38124643330616287,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 0,
+      "pairs": 25,
+      "reference": "checkpoint_matched_initial_frame_action_integrator",
+      "reference_mean": 0.6558799979554543,
+      "selected_reference_counts": {
+        "checkpoint_matched_initial_frame_action_integrator": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.3744575235327426,
+        "manipulator.bring_ball": -0.16738033066158542,
+        "quadruped.run": -0.7740469216831491,
+        "stacker.stack_4": -0.15906590358994901,
+        "swimmer.swimmer15": -0.4313572028089523
+      },
+      "task_mean_wins": 0
+    },
+    "vicreg_hacssmv8_vs_endpoint_envelope:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 1.1003508598132906e-05,
+        "ci90_low": -0.042203535310701916,
+        "ci95_high": 0.003720651651003284,
+        "ci95_low": -0.04878177060535283,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.05232741193050585,
+          -0.014166104296098402,
+          -0.045011179856474126,
+          -0.13390202535624413,
+          -0.013941572654650824
+        ],
+        [
+          -0.004966640520593885,
+          -0.004596366686445486,
+          -0.007603780696504476,
+          -0.011354728480738806,
+          0.00741028757761728
+        ],
+        [
+          -0.014634049296459934,
+          -0.006471228418577695,
+          0.04352852967570277,
+          -0.11616191309844869,
+          0.01994988474226888
+        ],
+        [
+          -0.01137439388308751,
+          -0.0089577926167817,
+          -0.0052827757343194654,
+          -0.010045200483014799,
+          -0.014717650451445491
+        ],
+        [
+          -0.06522786107967705,
+          0.012275412625466792,
+          0.03675495630035262,
+          0.03392424881086537,
+          -0.08517586071170659
+        ]
+      ],
+      "direction": "lower_is_better",
+      "envelope_members": [
+        "vicreg_hacssmv8_dynamic",
+        "vicreg_hacssmv8_static"
+      ],
+      "envelope_policy": "per_task_seed_lower_error",
+      "mean_paired_relative_reduction": -0.018883008660780045,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 6,
+      "pairs": 25,
+      "reference": "per_cell_better_of_static_dynamic",
+      "reference_mean": 0.8758693663978488,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_dynamic": 18,
+        "vicreg_hacssmv8_static": 7
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.052316365029106825,
+        "manipulator.bring_ball": -0.004222650411125008,
+        "quadruped.run": -0.01312185564819301,
+        "stacker.stack_4": -0.010066684071459962,
+        "swimmer.swimmer15": -0.013179618039330382
+      },
+      "task_mean_wins": 0
+    },
+    "vicreg_hacssmv8_vs_recurrent_envelope:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.16917706203873717,
+        "ci90_low": 0.06807098027081195,
+        "ci95_high": 0.17700910497757222,
+        "ci95_low": 0.05822020966909112,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          0.10844146554104162,
+          0.07205893492803939,
+          0.09864292133199873,
+          0.08765536898133476,
+          0.11888664633948398
+        ],
+        [
+          0.03624672454825451,
+          0.05501158440190527,
+          0.04920424952310679,
+          0.055170405153387725,
+          0.04971402248163029
+        ],
+        [
+          0.1838651649986626,
+          0.16796544570222857,
+          0.19965696040096687,
+          0.22438994946559598,
+          0.2379048977938006
+        ],
+        [
+          0.0445956000936789,
+          0.04636157109749351,
+          0.048310600718165536,
+          0.03880049537709563,
+          0.056345387214036355
+        ],
+        [
+          0.19392043083546265,
+          0.18496242501900853,
+          0.20176468027126968,
+          0.20406907176739997,
+          0.16894903349105447
+        ]
+      ],
+      "direction": "lower_is_better",
+      "envelope_members": [
+        "vicreg_gru",
+        "vicreg_ssm"
+      ],
+      "envelope_policy": "per_task_seed_identity_selected_once",
+      "mean_paired_relative_reduction": 0.11731576149904412,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 25,
+      "pairs": 25,
+      "reference": "per_cell_better_of_gru_ssm",
+      "reference_mean": 0.8432548633737948,
+      "selected_reference_counts": {
+        "vicreg_gru": 10,
+        "vicreg_ssm": 15
+      },
+      "selection_metric": "heldout_prior_state_nmse",
+      "task_effects": {
+        "acrobot.swingup": 0.09766983256287798,
+        "manipulator.bring_ball": 0.049079118132863656,
+        "quadruped.run": 0.20278388838735434,
+        "stacker.stack_4": 0.04691276631928467,
+        "swimmer.swimmer15": 0.19076605085141346
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_recurrent_envelope:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.07704768714633686,
+        "ci90_low": -0.11145600992860304,
+        "ci95_high": 0.09457528421255562,
+        "ci95_low": -0.12948550037681586,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          -0.33612303288825807,
+          -0.15573858029424203,
+          -0.20466065771645015,
+          -0.2318315699835718,
+          -0.10400831852626646
+        ],
+        [
+          -0.00689741144802766,
+          0.015255397377756046,
+          0.0024384424102433626,
+          -0.001208280720420261,
+          0.03419183999924915
+        ],
+        [
+          0.038880829431998075,
+          0.08450008236040485,
+          0.11946983830899009,
+          -0.08249674279125908,
+          -0.2861680875981597
+        ],
+        [
+          -0.03676110686122901,
+          -0.03547265394674383,
+          -0.020087982496817824,
+          -0.06694035699565253,
+          -0.0202688274948652
+        ],
+        [
+          0.11490998736052221,
+          0.21056549481265388,
+          0.1981895270729405,
+          0.19549834148427883,
+          0.14062032284176426
+        ]
+      ],
+      "direction": "lower_is_better",
+      "envelope_members": [
+        "vicreg_gru",
+        "vicreg_ssm"
+      ],
+      "envelope_policy": "per_task_seed_identity_selected_once",
+      "mean_paired_relative_reduction": -0.017365740252046492,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 11,
+      "pairs": 25,
+      "reference": "per_cell_better_of_gru_ssm",
+      "reference_mean": 0.8906807243555412,
+      "selected_reference_counts": {
+        "vicreg_gru": 10,
+        "vicreg_ssm": 15
+      },
+      "selection_metric": "heldout_prior_state_nmse",
+      "task_effects": {
+        "acrobot.swingup": -0.2066875656536007,
+        "manipulator.bring_ball": 0.008900678352088591,
+        "quadruped.run": -0.025270596151884796,
+        "stacker.stack_4": -0.035900519248498054,
+        "swimmer.swimmer15": 0.17216330032580301
+      },
+      "task_mean_wins": 2
+    },
+    "vicreg_hacssmv8_vs_recurrent_envelope:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.07356409602668369,
+        "ci90_low": -0.11552328418617072,
+        "ci95_high": 0.09112891486821782,
+        "ci95_low": -0.13350325880523348,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.3349819445945554,
+          -0.1597948242507762,
+          -0.20492602426745782,
+          -0.23281611187192697,
+          -0.1178395677276481
+        ],
+        [
+          -0.00804424209455782,
+          0.013933099594804939,
+          0.0008163971513977139,
+          -0.004627043419668544,
+          0.03142463641465269
+        ],
+        [
+          0.03423707166481529,
+          0.08280851207528823,
+          0.11624156311329732,
+          -0.08727001705510411,
+          -0.29666258884460983
+        ],
+        [
+          -0.039592021620318475,
+          -0.03985295053688734,
+          -0.02323368697076017,
+          -0.07067820484477857,
+          -0.024406093651497707
+        ],
+        [
+          0.10719572873605339,
+          0.20885317738036596,
+          0.19807876978606298,
+          0.19255643331401226,
+          0.1337661683187284
+        ]
+      ],
+      "direction": "lower_is_better",
+      "envelope_members": [
+        "vicreg_gru",
+        "vicreg_ssm"
+      ],
+      "envelope_policy": "per_task_seed_identity_selected_once",
+      "mean_paired_relative_reduction": -0.02099255056804272,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 11,
+      "pairs": 25,
+      "reference": "per_cell_better_of_gru_ssm",
+      "reference_mean": 0.8933251228877559,
+      "selected_reference_counts": {
+        "vicreg_gru": 10,
+        "vicreg_ssm": 15
+      },
+      "selection_metric": "heldout_prior_state_nmse",
+      "task_effects": {
+        "acrobot.swingup": -0.21039827997336644,
+        "manipulator.bring_ball": 0.006830398185226169,
+        "quadruped.run": -0.03022813726143496,
+        "stacker.stack_4": -0.0395615585063964,
+        "swimmer.swimmer15": 0.16834645312483124
+      },
+      "task_mean_wins": 2
+    },
+    "vicreg_hacssmv8_vs_vicreg_gru:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.22549760203917685,
+        "ci90_low": 0.08020827114567666,
+        "ci95_high": 0.23669956061332087,
+        "ci95_low": 0.07634326217158917,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          0.2692599569608105,
+          0.3339322980598822,
+          0.2490663769828606,
+          0.31307436276802014,
+          0.27093991926872624
+        ],
+        [
+          0.040910560802582326,
+          0.050720871957578885,
+          0.05165881887011532,
+          0.055170405153387725,
+          0.04971402248163029
+        ],
+        [
+          0.1838651649986626,
+          0.16796544570222857,
+          0.19965696040096687,
+          0.22438994946559598,
+          0.2379048977938006
+        ],
+        [
+          0.043146926106232615,
+          0.04977243394071669,
+          0.05188413807018624,
+          0.038461202731270225,
+          0.05550507837977102
+        ],
+        [
+          0.19392043083546265,
+          0.18496242501900853,
+          0.19547584100424026,
+          0.1975740336193296,
+          0.16894903349105447
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.15511526219456484,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 25,
+      "pairs": 25,
+      "reference": "vicreg_gru",
+      "reference_mean": 0.8623178782894426,
+      "selected_reference_counts": {
+        "vicreg_gru": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.2876912577773689,
+        "manipulator.bring_ball": 0.049631377708527206,
+        "quadruped.run": 0.20278388838735434,
+        "stacker.stack_4": 0.04779495754070675,
+        "swimmer.swimmer15": 0.1881713827887074
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_gru:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.14816908021440653,
+        "ci90_low": -0.00666272224582325,
+        "ci95_high": 0.16558526278053112,
+        "ci95_low": -0.021664369268060365,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          0.04100046760450028,
+          0.28996352380433876,
+          0.09830012044515857,
+          0.2181213695620479,
+          0.20426397105782573
+        ],
+        [
+          0.019406144551404443,
+          0.04368438488773504,
+          0.015515250324857312,
+          -0.001208280720420261,
+          0.03419183999924915
+        ],
+        [
+          0.038880829431998075,
+          0.08450008236040485,
+          0.11946983830899009,
+          -0.08249674279125908,
+          -0.2861680875981597
+        ],
+        [
+          -0.006717542500576838,
+          -0.021211091161026333,
+          0.0025795205079719935,
+          -0.03898118142133642,
+          -0.005735187076984235
+        ],
+        [
+          0.11490998736052221,
+          0.21056549481265388,
+          0.25762973319764154,
+          0.24886290308108652,
+          0.14062032284176426
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.06959790683481551,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 18,
+      "pairs": 25,
+      "reference": "vicreg_gru",
+      "reference_mean": 0.9461610640434511,
+      "selected_reference_counts": {
+        "vicreg_gru": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.17465112875874486,
+        "manipulator.bring_ball": 0.02241315776794807,
+        "quadruped.run": -0.025270596151884796,
+        "stacker.stack_4": -0.014040415742204843,
+        "swimmer.swimmer15": 0.19624919993671736
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_gru:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.14289876034015073,
+        "ci90_low": -0.011322138396106409,
+        "ci95_high": 0.1597889669576241,
+        "ci95_low": -0.02691097553735776,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          0.03811976697823771,
+          0.28020011980527326,
+          0.0874796621511585,
+          0.20881690322544144,
+          0.19527999864453696
+        ],
+        [
+          0.017249612991962218,
+          0.04062452373740018,
+          0.01125085493820287,
+          -0.004627043419668544,
+          0.03142463641465269
+        ],
+        [
+          0.03423707166481529,
+          0.08280851207528823,
+          0.11624156311329732,
+          -0.08727001705510411,
+          -0.29666258884460983
+        ],
+        [
+          -0.010018885987039365,
+          -0.02644807592622577,
+          -0.0009538596701432379,
+          -0.04359752067864707,
+          -0.010498528664299537
+        ],
+        [
+          0.10719572873605339,
+          0.20885317738036596,
+          0.2556882048134799,
+          0.24542969313341614,
+          0.1337661683187284
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.06458358711506292,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 17,
+      "pairs": 25,
+      "reference": "vicreg_gru",
+      "reference_mean": 0.9484119669934234,
+      "selected_reference_counts": {
+        "vicreg_gru": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.1661272890710983,
+        "manipulator.bring_ball": 0.019277592313091778,
+        "quadruped.run": -0.03022813726143496,
+        "stacker.stack_4": -0.018336913340439246,
+        "swimmer.swimmer15": 0.19200039791960904
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_gru:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.13708312712750315,
+        "ci90_low": -0.09794879071362743,
+        "ci95_high": 0.1584924930710154,
+        "ci95_low": -0.1407101083347422,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.10690912675606613,
+          0.03555504685999434,
+          0.09376458713211054,
+          -0.01666316809415412,
+          0.06977564445254555
+        ],
+        [
+          0.18641774520175813,
+          0.11478658823693387,
+          0.0456021509742599,
+          0.0897776765363701,
+          0.1571855832346589
+        ],
+        [
+          -0.31358410101324546,
+          0.17892249895706863,
+          0.07925938432589819,
+          0.033133164530228555,
+          0.38709289550720977
+        ],
+        [
+          0.05616337125596628,
+          0.07387850889926328,
+          0.10128106113840933,
+          0.009320244470982049,
+          0.07944681212549178
+        ],
+        [
+          0.10419714909281778,
+          -0.4491639554538425,
+          0.37922850827880783,
+          -0.8261081376819314,
+          0.2590360523485208
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.04140857752288753,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 21,
+      "pairs": 25,
+      "reference": "vicreg_gru",
+      "reference_mean": 0.04322763859232267,
+      "selected_reference_counts": {
+        "vicreg_gru": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.059378582123418996,
+        "manipulator.bring_ball": 0.11968135378043726,
+        "quadruped.run": 0.09402364797731308,
+        "stacker.stack_4": 0.0653482541624203,
+        "swimmer.swimmer15": -0.011464515728157485
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_dynamic:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.013130554162168916,
+        "ci90_low": -0.0031241933448335735,
+        "ci95_high": 0.014452653116426316,
+        "ci95_low": -0.005341185356223576,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          -0.006399530886341189,
+          -0.017740784078270556,
+          0.0033789519475357346,
+          0.04032160046687577,
+          -0.02183143997722093
+        ],
+        [
+          0.011165740658251166,
+          0.014344341540592234,
+          0.015993779443348493,
+          0.016632400900878173,
+          0.017446795795103328
+        ],
+        [
+          0.011086407193765822,
+          -0.024079957970591818,
+          0.01984097934330349,
+          0.014094734951516433,
+          -0.012250058731703931
+        ],
+        [
+          0.01029919581061565,
+          0.006869758591080359,
+          0.0029516370616124938,
+          0.006555174361704075,
+          0.008540821186345748
+        ],
+        [
+          0.019290753235758754,
+          -0.0018573964307713907,
+          0.007060162893904022,
+          0.015615686531673346,
+          -0.007581189095236072
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.005989942589749169,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 18,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_dynamic",
+      "reference_mean": 0.7428675840986781,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_dynamic": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.0002736169541194169,
+        "manipulator.bring_ball": 0.015109160384062213,
+        "quadruped.run": 0.0019111581180635987,
+        "stacker.stack_4": 0.00704240033300469,
+        "swimmer.swimmer15": 0.006494166317851445
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_dynamic:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.013479495739179526,
+        "ci90_low": -0.034999970611087367,
+        "ci95_high": 0.019435625514492714,
+        "ci95_low": -0.04154491608757099,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          -0.0527130299773579,
+          -0.012015508249354977,
+          -0.003510942141289069,
+          -0.13244348837068515,
+          -0.01274080073189272
+        ],
+        [
+          0.004545354628448686,
+          -0.0004621402276915007,
+          -0.0053511850632926026,
+          0.000356980691170393,
+          0.009021456960456555
+        ],
+        [
+          0.024047831200073366,
+          -0.010599222671772377,
+          0.06703365336638047,
+          -0.11636216328329833,
+          0.1012095505245557
+        ],
+        [
+          -0.009939931755325322,
+          -0.007714659773120732,
+          -0.004707033600824579,
+          -0.008163948225846382,
+          -0.012990945256276061
+        ],
+        [
+          -0.0612963950643228,
+          0.009523394398023875,
+          0.03239475910779675,
+          0.033237095893712355,
+          -0.08208128191101116
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.010068903981309742,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 9,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_dynamic",
+      "reference_mean": 0.8795903846157879,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_dynamic": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.042636062405683156,
+        "manipulator.bring_ball": 0.001635915688374687,
+        "quadruped.run": 0.020850754792676493,
+        "stacker.stack_4": -0.00869128644101038,
+        "swimmer.swimmer15": -0.013393757997727126
+      },
+      "task_mean_wins": 2
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_dynamic:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.012993264548517009,
+        "ci90_low": -0.03613670413320163,
+        "ci95_high": 0.018881916099354093,
+        "ci95_low": -0.042698571869792055,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.05232741193050585,
+          -0.014166104296098402,
+          -0.004598106338409531,
+          -0.13390202535624413,
+          -0.013941572654650824
+        ],
+        [
+          0.0028268877664547995,
+          -0.0027595089782205323,
+          -0.007603780696504476,
+          -0.002240437461365753,
+          0.00741028757761728
+        ],
+        [
+          0.022006226879281193,
+          -0.006471228418577695,
+          0.06885593227893935,
+          -0.11616191309844869,
+          0.0975912639252564
+        ],
+        [
+          -0.01137439388308751,
+          -0.0089577926167817,
+          -0.0052827757343194654,
+          -0.010045200483014799,
+          -0.014717650451445491
+        ],
+        [
+          -0.06522786107967705,
+          0.012275412625466792,
+          0.03675495630035262,
+          0.03392424881086537,
+          -0.08517586071170659
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.010932336320992988,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 8,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_dynamic",
+      "reference_mean": 0.8849254336991837,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_dynamic": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.04366842162566755,
+        "manipulator.bring_ball": -0.00046085148819036343,
+        "quadruped.run": 0.020531622083124684,
+        "stacker.stack_4": -0.010066684071459962,
+        "swimmer.swimmer15": -0.013179618039330382
+      },
+      "task_mean_wins": 1
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_dynamic:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.005147073203135871,
+        "ci90_low": -0.28720267215977463,
+        "ci95_high": 0.022747057600087314,
+        "ci95_low": -0.36572041829146856,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.005217712952215504,
+          -0.03241743012517042,
+          -0.03630049962990313,
+          0.052722970169247645,
+          -0.04883680441284747
+        ],
+        [
+          -0.071963897482689,
+          -0.036680660571902536,
+          -0.0329865919812129,
+          -0.03631488409926639,
+          -0.06560859300757431
+        ],
+        [
+          -0.06881782013753956,
+          -0.07792913821369625,
+          -0.017896462232515887,
+          -0.04656057430755701,
+          0.0259080478048314
+        ],
+        [
+          -0.007997529885536179,
+          -0.036118454338163616,
+          -0.0364771637963026,
+          -0.05455297534651795,
+          -0.030125452914268346
+        ],
+        [
+          -0.28868489496016153,
+          -1.6233529495502015,
+          0.21747844568729285,
+          0.2562700612072456,
+          -0.14082479656794844
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.08931401342960568,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 5,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_dynamic",
+      "reference_mean": 0.038475112004205586,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_dynamic": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.011827836864301803,
+        "manipulator.bring_ball": -0.04789465733635964,
+        "quadruped.run": -0.04716655683701071,
+        "stacker.stack_4": -0.03241526621386467,
+        "swimmer.swimmer15": -0.33148755496224735
+      },
+      "task_mean_wins": 0
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_noaction:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.1689273358053538,
+        "ci90_low": 0.02758746953350867,
+        "ci95_high": 0.17463564096732084,
+        "ci95_low": 0.0155954537297835,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          -0.0066980306380627,
+          -0.04612858792665675,
+          -0.01299184459578034,
+          0.020111373767699517,
+          -0.055726719442631606
+        ],
+        [
+          0.0407203806976147,
+          0.04831144617621504,
+          0.04660823943014295,
+          0.04707978975770659,
+          0.050783121029393405
+        ],
+        [
+          0.1891348660402863,
+          0.17128531239320874,
+          0.20510461875777133,
+          0.23021393812075894,
+          0.24016835151153723
+        ],
+        [
+          0.04114945439560512,
+          0.03761831699758503,
+          0.034320735893908765,
+          0.03975425043183537,
+          0.04217298570174098
+        ],
+        [
+          0.20592952409160747,
+          0.2008707726105508,
+          0.20882727582505464,
+          0.21230676231765075,
+          0.18044061069899536
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.0948546777617495,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 21,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_noaction",
+      "reference_mean": 0.8369313905197636,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_noaction": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.019630393814489625,
+        "manipulator.bring_ball": 0.04669349902449198,
+        "quadruped.run": 0.2072070897174846,
+        "stacker.stack_4": 0.03900372632133822,
+        "swimmer.swimmer15": 0.20168220899223552
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_noaction:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.15209326404002227,
+        "ci90_low": 0.03952856731600107,
+        "ci95_high": 0.16308043836893135,
+        "ci95_low": 0.02874068966960345,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          0.3319937360263153,
+          3.1640080753066704e-05,
+          -0.007711401005797329,
+          -0.1325015687031432,
+          0.016957718292083677
+        ],
+        [
+          0.05761791144124099,
+          0.04979036325754327,
+          0.045249903405973256,
+          0.08213880685938633,
+          0.08697667509404965
+        ],
+        [
+          0.12551577614593618,
+          0.12833859866635633,
+          0.208132005314635,
+          0.2898295384469795,
+          0.024969172292707356
+        ],
+        [
+          0.028022201288707183,
+          0.036341248670482974,
+          0.0239565013004284,
+          0.03997727267875665,
+          0.018431148213236905
+        ],
+        [
+          0.15319395955659168,
+          0.17306995624889782,
+          0.2016847658407373,
+          0.2108150661568473,
+          0.2014796856702387
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.09577202724959777,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 23,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_noaction",
+      "reference_mean": 0.9943039703044666,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_noaction": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.0789023645352344,
+        "manipulator.bring_ball": 0.06474415617802459,
+        "quadruped.run": 0.16034139960891203,
+        "stacker.stack_4": 0.02951416974901031,
+        "swimmer.swimmer15": 0.18824036320737528
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_noaction:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.15023744510797754,
+        "ci90_low": 0.039382602148505724,
+        "ci95_high": 0.16094906933291486,
+        "ci95_low": 0.02884555938941943,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          0.32842859592307205,
+          0.00014560045641348647,
+          -0.007755424048390855,
+          -0.13037526902832558,
+          0.016144948487890793
+        ],
+        [
+          0.058662645427538504,
+          0.04959226743376709,
+          0.044172846490173424,
+          0.08359060061168647,
+          0.08846527141741994
+        ],
+        [
+          0.12289008405334959,
+          0.12839196938925154,
+          0.20835316176275875,
+          0.2885024381852516,
+          0.02296697172842998
+        ],
+        [
+          0.028086108783038393,
+          0.03549241770179361,
+          0.023732435754053833,
+          0.03916402178608467,
+          0.01738602442418881
+        ],
+        [
+          0.1494389844348276,
+          0.17009737954084087,
+          0.19961873034630692,
+          0.20927358096643556,
+          0.19638210019716057
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.09483393968900071,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 23,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_noaction",
+      "reference_mean": 0.9997901419643653,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_noaction": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.07720380930523904,
+        "manipulator.bring_ball": 0.06532521365469214,
+        "quadruped.run": 0.15908196339484604,
+        "stacker.stack_4": 0.028941061214664575,
+        "swimmer.swimmer15": 0.1851022633950439
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_noaction:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.12261643136652892,
+        "ci90_low": -0.0558404577297851,
+        "ci95_high": 0.15029371043660544,
+        "ci95_low": -0.08012501360611371,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          -0.003340078718656356,
+          0.00215004170625355,
+          -0.0048832097212839235,
+          0.05526248763635962,
+          -0.014197249890680325
+        ],
+        [
+          0.052363244643015096,
+          0.006151638249907311,
+          0.017917300724290954,
+          0.021139942949987316,
+          -0.002121975436682702
+        ],
+        [
+          -0.18314280260775362,
+          -0.01796128465241017,
+          -0.07835186788538848,
+          -0.43403569229683453,
+          0.36422784149108683
+        ],
+        [
+          0.016014935088520352,
+          2.5058267305558327e-06,
+          -0.0005380767248995074,
+          -0.007704300849061972,
+          -0.0061492220588199266
+        ],
+        [
+          0.10400978242857724,
+          -0.11595351236454003,
+          0.6868271321356417,
+          0.09369485249845566,
+          0.06390267489768058
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.024611404282779806,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 13,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_noaction",
+      "reference_mean": 0.03997255991492421,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_noaction": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.007381830760531082,
+        "manipulator.bring_ball": 0.018532416144019643,
+        "quadruped.run": -0.049932557318706126,
+        "stacker.stack_4": 0.0005615601969267232,
+        "swimmer.swimmer15": 0.16467236382676234
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_single:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.03220618169312542,
+        "ci90_low": -0.03716329640009374,
+        "ci95_high": 0.03551630503365616,
+        "ci95_low": -0.044058485718059565,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          -0.07240881517615565,
+          -0.09165568415351619,
+          -0.06216181527539576,
+          -0.08370492908885256,
+          -0.10036770380576379
+        ],
+        [
+          0.02540016771786601,
+          0.0303843439314082,
+          0.024854612120830108,
+          0.036213695425831124,
+          0.03215453854376864
+        ],
+        [
+          -0.05663234151971133,
+          -0.015790857272409073,
+          0.014713078780767117,
+          -0.013912482842410636,
+          -0.015412125564512547
+        ],
+        [
+          0.034802041615639316,
+          0.024493934903792026,
+          0.022707794300375422,
+          0.0254062450325281,
+          0.02275475842136884
+        ],
+        [
+          0.053658393671200594,
+          0.03345160375855827,
+          0.05425362936214817,
+          0.0559695643719499,
+          0.027447329900916344
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.00026475908640882605,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 16,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_single",
+      "reference_mean": 0.7473535848470039,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_single": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.08150960686566984,
+        "manipulator.bring_ball": 0.02980234912289016,
+        "quadruped.run": -0.01706396839676746,
+        "stacker.stack_4": 0.02604533191134513,
+        "swimmer.swimmer15": 0.04495847212778464
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_single:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 7.095271222596989e-05,
+        "ci90_low": -0.12477345748910386,
+        "ci95_high": 0.006403014040401874,
+        "ci95_low": -0.14048624361716766,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          -0.10243426803642347,
+          -0.17774149333458786,
+          -0.2047633303907097,
+          -0.3305278352962175,
+          -0.19558850213846332
+        ],
+        [
+          -0.0037045803557572755,
+          -0.006735452381944595,
+          -0.014324039733352932,
+          -0.002665927895496073,
+          -0.005250062711057461
+        ],
+        [
+          -0.1486024225023897,
+          -0.0485317804531039,
+          -0.011420346741529164,
+          0.022658700977210417,
+          -0.22879954949405498
+        ],
+        [
+          -0.016869525635807625,
+          -0.023028057166111476,
+          -0.018618434785360027,
+          -0.042404293004152445,
+          -0.03639194471528922
+        ],
+        [
+          0.013444515570378688,
+          0.017461373096037014,
+          0.032047940999835836,
+          0.058952992812046946,
+          0.02635502913961864
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.05789925176706725,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 6,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_single",
+      "reference_mean": 0.847160945991201,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_single": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.19775346729924076,
+        "manipulator.bring_ball": -0.006508060616741669,
+        "quadruped.run": -0.08268455287492298,
+        "stacker.stack_4": -0.027502188732106064,
+        "swimmer.swimmer15": 0.029497945626682093
+      },
+      "task_mean_wins": 1
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_single:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.0006811419173472835,
+        "ci90_low": -0.11641613688068803,
+        "ci95_high": 0.006724822226958173,
+        "ci95_low": -0.13123659029394588,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.0850189298496406,
+          -0.16984264044116185,
+          -0.1928089062884628,
+          -0.3074525349610368,
+          -0.18644582888868438
+        ],
+        [
+          -0.0038585299166237715,
+          -0.00686084792328095,
+          -0.014821735972955724,
+          -0.0019856130047951575,
+          -0.004462837017355857
+        ],
+        [
+          -0.14474011910145734,
+          -0.04602780966028809,
+          -0.01023125244195716,
+          0.03313615317322628,
+          -0.21570750036380676
+        ],
+        [
+          -0.01727100732483427,
+          -0.022995686524327454,
+          -0.017540035729690696,
+          -0.04169775064677806,
+          -0.03705839214067721
+        ],
+        [
+          0.010694153013096973,
+          0.01793864205260006,
+          0.032027121063593574,
+          0.05978409379600865,
+          0.026001544808775298
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.05388985001162056,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 6,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_single",
+      "reference_mean": 0.8552653052591704,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_single": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.1837997498028114,
+        "manipulator.bring_ball": -0.006365679558806481,
+        "quadruped.run": -0.07617268465553485,
+        "stacker.stack_4": -0.027355727281012647,
+        "swimmer.swimmer15": 0.02910664939777028
+      },
+      "task_mean_wins": 1
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_single:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.22975932738969157,
+        "ci90_low": -0.15860362880403456,
+        "ci95_high": 0.26668581179470874,
+        "ci95_low": -0.23233753362999449,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.03974051655724873,
+          0.053096531621978124,
+          0.012184731725926275,
+          0.08499584937270488,
+          0.0598870442817682
+        ],
+        [
+          0.10316444707153584,
+          0.0412695534686536,
+          0.045898938207050634,
+          0.07433639833667247,
+          0.05015353180338893
+        ],
+        [
+          -0.27415745912838946,
+          0.14426106218567983,
+          0.26572182077924633,
+          -0.20653865932278243,
+          0.39928913730884696
+        ],
+        [
+          0.021414111007676394,
+          0.040580217412292376,
+          0.04092874890918497,
+          0.0384376383083957,
+          0.0262331074795901
+        ],
+        [
+          0.5904060378060507,
+          -1.8772178109687239,
+          0.6015352380204398,
+          0.7105721566728805,
+          0.046390295380025794
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.045303327371893645,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 22,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_single",
+      "reference_mean": 0.04222588456018518,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_single": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.05028437663114588,
+        "manipulator.bring_ball": 0.06215735483754822,
+        "quadruped.run": 0.1136509832347248,
+        "stacker.stack_4": 0.03336189726650067,
+        "swimmer.swimmer15": 0.3107775337464383
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_static:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.006192103100763163,
+        "ci90_low": -0.01771642125243044,
+        "ci95_high": 0.007815029835970565,
+        "ci95_low": -0.021273992113470405,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          -0.042320033653636235,
+          -0.005995560641179547,
+          -0.02526788691720225,
+          0.012051930177807882,
+          -0.06984936692941865
+        ],
+        [
+          0.0015052364616956319,
+          0.002192885732979205,
+          0.002365243759350139,
+          0.0038071444708176333,
+          0.010279319830214512
+        ],
+        [
+          -0.018616851780261057,
+          0.018537825629160388,
+          0.02602021642222441,
+          0.0030010893321504497,
+          0.007459038088671804
+        ],
+        [
+          0.010573860588757516,
+          0.0034089969970674434,
+          0.0041858726045583185,
+          0.00338991651726947,
+          0.002963167238263895
+        ],
+        [
+          -0.010254177318697889,
+          -0.010898901999833205,
+          0.026608142745068748,
+          -0.03683391486609195,
+          -0.027821262359746732
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.004380322794800403,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 16,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_static",
+      "reference_mean": 0.736910995334159,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_static": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.0259947223625051,
+        "manipulator.bring_ball": 0.004030918577386857,
+        "quadruped.run": 0.007537178290248857,
+        "stacker.stack_4": 0.004907776657665766,
+        "swimmer.swimmer15": -0.011450606082713016
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_static:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.07449646498119358,
+        "ci90_low": 0.002300162768890158,
+        "ci95_high": 0.08738637356707864,
+        "ci95_low": -0.001212197684424081,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          0.23376114074846063,
+          0.011926222617328116,
+          -0.04821519099452748,
+          -0.004495630567459761,
+          0.028404364511532814
+        ],
+        [
+          -0.004285381003600437,
+          -0.005679283299374204,
+          -0.003378012222956239,
+          -0.01096333845166444,
+          0.014953537822331024
+        ],
+        [
+          -0.012980021039473927,
+          0.0267992817858093,
+          0.044307349077809914,
+          0.0718837196418584,
+          0.02141193865980486
+        ],
+        [
+          -0.003383382537480057,
+          0.0063413991813676,
+          0.002431481252066611,
+          0.01172841097263654,
+          -0.010400608528811093
+        ],
+        [
+          -0.04529722552820294,
+          0.13122477590320072,
+          0.06700217632147941,
+          0.3087385823334568,
+          -0.030935917117706428
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.03203601558151543,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 14,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_static",
+      "reference_mean": 0.9171551456294526,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_static": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.06016583367813436,
+        "manipulator.bring_ball": -0.0018334753530074247,
+        "quadruped.run": 0.031278924926446273,
+        "stacker.stack_4": 0.001502019151083232,
+        "swimmer.swimmer15": 0.10150576249644198
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_static:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.07540302638092507,
+        "ci90_low": 0.0022446543605985944,
+        "ci95_high": 0.08823133539983992,
+        "ci95_low": -0.0011795405176297253,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          0.23336917004089947,
+          0.012090836734062612,
+          -0.045011179856474126,
+          -0.00046686331751245565,
+          0.0322907171861012
+        ],
+        [
+          -0.004966640520593885,
+          -0.004596366686445486,
+          -0.003770826349299902,
+          -0.011354728480738806,
+          0.01597614517825422
+        ],
+        [
+          -0.014634049296459934,
+          0.029436623197718226,
+          0.04352852967570277,
+          0.07111708251421409,
+          0.01994988474226888
+        ],
+        [
+          -0.003978571482495349,
+          0.006430477351509193,
+          0.002663658062924827,
+          0.012146872856400353,
+          -0.010505155784757702
+        ],
+        [
+          -0.05167815217183388,
+          0.13222082074661773,
+          0.06764161583803835,
+          0.3146488360537528,
+          -0.036091201257763474
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.032258301398963594,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 14,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_static",
+      "reference_mean": 0.9239691278297005,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_static": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.061772599144612646,
+        "manipulator.bring_ball": -0.001704361204053224,
+        "quadruped.run": 0.03077578105524261,
+        "stacker.stack_4": 0.0015224804496272461,
+        "swimmer.swimmer15": 0.10173062257543483
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_hacssmv8_static:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.27696142361181425,
+        "ci90_low": 0.005123279804268157,
+        "ci95_high": 0.31967600458557005,
+        "ci95_low": -0.012615188836684395,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.051575270178068795,
+          0.053897857639515906,
+          0.05944646349065747,
+          0.12632767010692583,
+          0.08659126973354667
+        ],
+        [
+          0.10850071122450937,
+          0.07255204992172856,
+          0.04813119394227873,
+          0.06409164060762391,
+          0.08096867304603124
+        ],
+        [
+          -0.16598514328807037,
+          0.12057089505233855,
+          -0.14791727508348318,
+          -0.22701492962620343,
+          0.19567160033479958
+        ],
+        [
+          0.032834166232474836,
+          0.01765913681115618,
+          0.07485945575763785,
+          0.048338902093606056,
+          0.048147774171246924
+        ],
+        [
+          0.049689693595355196,
+          0.012318288123336907,
+          0.7662474972762424,
+          0.7539644580604234,
+          0.5843516676767643
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.11663275948314049,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 22,
+      "pairs": 25,
+      "reference": "vicreg_hacssmv8_static",
+      "reference_mean": 0.042554020345211024,
+      "selected_reference_counts": {
+        "vicreg_hacssmv8_static": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.07649722129090551,
+        "manipulator.bring_ball": 0.07438775288842131,
+        "quadruped.run": -0.02015579794449145,
+        "stacker.stack_4": 0.04470681797201661,
+        "swimmer.swimmer15": 0.48139482035891357
+      },
+      "task_mean_wins": 4
+    },
+    "vicreg_hacssmv8_vs_vicreg_none:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.1836014714642581,
+        "ci90_low": 0.07758216120120746,
+        "ci95_high": 0.18995132770722933,
+        "ci95_low": 0.07289738098283766,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          0.19646873181492142,
+          0.2185344053254528,
+          0.17676351087030837,
+          0.1887886341266086,
+          0.21314202999682585
+        ],
+        [
+          0.042470153948673824,
+          0.045573599711873025,
+          0.046590978399208,
+          0.04863657568850409,
+          0.04449635065435382
+        ],
+        [
+          0.17694449059058537,
+          0.16799757513250055,
+          0.19913118645003236,
+          0.21388219959719154,
+          0.22125317625762023
+        ],
+        [
+          0.050481170186519174,
+          0.05479290978714982,
+          0.055350431331244024,
+          0.0454891659840157,
+          0.06102320155946591
+        ],
+        [
+          0.16817101573853763,
+          0.16192960996800732,
+          0.17503429457226719,
+          0.17548987797205604,
+          0.1423426244401338
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.13163111600416225,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 25,
+      "pairs": 25,
+      "reference": "vicreg_none",
+      "reference_mean": 0.8447780333567345,
+      "selected_reference_counts": {
+        "vicreg_none": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.1987739917119086,
+        "manipulator.bring_ball": 0.04554828739983079,
+        "quadruped.run": 0.19573682856911465,
+        "stacker.stack_4": 0.053454336745228495,
+        "swimmer.swimmer15": 0.1646082623060292
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_none:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.21303894406126767,
+        "ci90_low": 0.053433342854165254,
+        "ci95_high": 0.23080006795858854,
+        "ci95_low": 0.041006118527394025,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          0.11054021776606951,
+          0.32685424141861985,
+          0.19931264839193247,
+          0.17919973991381877,
+          0.23332914958116976
+        ],
+        [
+          0.03542679251734133,
+          0.09724189926613325,
+          0.07480135422033839,
+          0.048952593847652826,
+          0.04386044289444704
+        ],
+        [
+          0.0684081901417075,
+          0.11212593794154353,
+          0.1667022519395395,
+          0.2546744759740723,
+          -0.2117872386042904
+        ],
+        [
+          0.03626404260003708,
+          0.03404022133053952,
+          0.05009672602064413,
+          0.02544886244225575,
+          0.034609185154011485
+        ],
+        [
+          0.16014048412218568,
+          0.37619123086153367,
+          0.37925703483793294,
+          0.18518380924910835,
+          0.2298198764153031
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.13002776680974587,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 24,
+      "pairs": 25,
+      "reference": "vicreg_none",
+      "reference_mean": 1.021326245430407,
+      "selected_reference_counts": {
+        "vicreg_none": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.21129953571981597,
+        "manipulator.bring_ball": 0.06051043004365825,
+        "quadruped.run": 0.09004544296447362,
+        "stacker.stack_4": 0.03605571484329509,
+        "swimmer.swimmer15": 0.27658296011387445
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_none:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.20701369058942753,
+        "ci90_low": 0.048883942404409714,
+        "ci95_high": 0.22434908268504017,
+        "ci95_low": 0.03652827811691962,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          0.10031322161810706,
+          0.3153876964465954,
+          0.18688794929668037,
+          0.16474115085666854,
+          0.2199885462381095
+        ],
+        [
+          0.03309285314828402,
+          0.09436737304951541,
+          0.07195157084988037,
+          0.04464960518658892,
+          0.04099990213410629
+        ],
+        [
+          0.06433080853894994,
+          0.11095499631756259,
+          0.16401302964311532,
+          0.25168442480443975,
+          -0.22085986757214315
+        ],
+        [
+          0.03266335653530975,
+          0.02968494105183028,
+          0.047115674221040106,
+          0.019846102855025045,
+          0.030522255207084313
+        ],
+        [
+          0.15299288705237093,
+          0.3735911126439572,
+          0.37570401240428786,
+          0.18138067153016746,
+          0.2231297626566905
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.12436536146856896,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 24,
+      "pairs": 25,
+      "reference": "vicreg_none",
+      "reference_mean": 1.0226928598157021,
+      "selected_reference_counts": {
+        "vicreg_none": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.1989265261815738,
+        "manipulator.bring_ball": 0.0574634254925144,
+        "quadruped.run": 0.08610780560046459,
+        "stacker.stack_4": 0.0319236613851745,
+        "swimmer.swimmer15": 0.271882854281695
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_none:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.4092364668258257,
+        "ci90_low": 0.15385861451093652,
+        "ci95_high": 0.44798498703631034,
+        "ci95_low": 0.13411961544791282,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.2957001737265537,
+          0.30008592892022606,
+          0.26395640975243934,
+          0.24660614009223863,
+          0.3125172515891691
+        ],
+        [
+          0.413485868226927,
+          0.2643288338776146,
+          0.2506729947895802,
+          0.3157076201320499,
+          0.31038389014286166
+        ],
+        [
+          -0.012601939882557157,
+          0.14545368948699713,
+          0.14623327623414925,
+          -0.08000664867557132,
+          0.2365766303706946
+        ],
+        [
+          0.15003873237718005,
+          0.14967126136621167,
+          0.17684339078845343,
+          0.0805213119055701,
+          0.127035889740531
+        ],
+        [
+          0.5508867870142451,
+          -0.08616096965560714,
+          0.91576729391373,
+          0.7282881191853158,
+          0.44847693718493614
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.26601875490415755,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 22,
+      "pairs": 25,
+      "reference": "vicreg_none",
+      "reference_mean": 0.05245259406417608,
+      "selected_reference_counts": {
+        "vicreg_none": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.2844875628335003,
+        "manipulator.bring_ball": 0.3125888383859171,
+        "quadruped.run": 0.09839300231597407,
+        "stacker.stack_4": 0.1383602491914284,
+        "swimmer.swimmer15": 0.6171207114975985
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_ssm:clean_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.17159059264442106,
+        "ci90_low": 0.06894943077242915,
+        "ci95_high": 0.17916554741450028,
+        "ci95_low": 0.0593552107025328,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.737631730220912,
+      "cell_effects": [
+        [
+          0.10844146554104162,
+          0.07205893492803939,
+          0.09864292133199873,
+          0.08765536898133476,
+          0.11888664633948398
+        ],
+        [
+          0.03624672454825451,
+          0.05501158440190527,
+          0.04920424952310679,
+          0.06412161980500322,
+          0.05377285571882933
+        ],
+        [
+          0.18616820166404605,
+          0.16815599421472935,
+          0.20362123639506344,
+          0.22857140179018026,
+          0.23694993094542427
+        ],
+        [
+          0.0445956000936789,
+          0.04636157109749351,
+          0.048310600718165536,
+          0.03880049537709563,
+          0.056345387214036355
+        ],
+        [
+          0.20036671279742452,
+          0.19309828801882864,
+          0.20176468027126968,
+          0.20406907176739997,
+          0.17352035309576583
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.11898967586318399,
+      "metric": "clean_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 25,
+      "pairs": 25,
+      "reference": "vicreg_ssm",
+      "reference_mean": 0.8452363500873098,
+      "selected_reference_counts": {
+        "vicreg_ssm": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.09766983256287798,
+        "manipulator.bring_ball": 0.05170715950606295,
+        "quadruped.run": 0.20472405388776127,
+        "stacker.stack_4": 0.04691276631928467,
+        "swimmer.swimmer15": 0.19456789012362566
+      },
+      "task_mean_wins": 5
+    },
+    "vicreg_hacssmv8_vs_vicreg_ssm:deep_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.09566489907993986,
+        "ci90_low": -0.09831567270901845,
+        "ci95_high": 0.11238908020199322,
+        "ci95_low": -0.11755313145523515,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8830765938412827,
+      "cell_effects": [
+        [
+          -0.33612303288825807,
+          -0.15573858029424203,
+          -0.20466065771645015,
+          -0.2318315699835718,
+          -0.10400831852626646
+        ],
+        [
+          -0.00689741144802766,
+          0.015255397377756046,
+          0.0024384424102433626,
+          0.0021279107878536723,
+          0.03411058416937142
+        ],
+        [
+          0.06735137786543188,
+          0.09045043915202138,
+          0.13726022043512476,
+          0.19868029597919493,
+          -0.24052499332457253
+        ],
+        [
+          -0.03676110686122901,
+          -0.03547265394674383,
+          -0.020087982496817824,
+          -0.06694035699565253,
+          -0.0202688274948652
+        ],
+        [
+          0.1307782925559259,
+          0.2119339256461962,
+          0.1981895270729405,
+          0.19549834148427883,
+          0.15030263626144774
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.000997524031156416,
+      "metric": "deep_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 13,
+      "pairs": 25,
+      "reference": "vicreg_ssm",
+      "reference_mean": 0.9112141739390522,
+      "selected_reference_counts": {
+        "vicreg_ssm": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.2066875656536007,
+        "manipulator.bring_ball": 0.009551446680357659,
+        "quadruped.run": 0.058664340788530785,
+        "stacker.stack_4": -0.035900519248498054,
+        "swimmer.swimmer15": 0.17730378389973916
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_ssm:heldout_prior_state_nmse": {
+      "bootstrap": {
+        "ci90_high": 0.09486079765626561,
+        "ci90_low": -0.10141697787753376,
+        "ci95_high": 0.11213156823523435,
+        "ci95_low": -0.12064818510696047,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.8893680146585862,
+      "cell_effects": [
+        [
+          -0.3349819445945554,
+          -0.1597948242507762,
+          -0.20492602426745782,
+          -0.23281611187192697,
+          -0.1178395677276481
+        ],
+        [
+          -0.00804424209455782,
+          0.013933099594804939,
+          0.0008163971513977139,
+          0.0004540582701966273,
+          0.035058442588433804
+        ],
+        [
+          0.06441130999909393,
+          0.08934322949760086,
+          0.13480417490031618,
+          0.21990707498123463,
+          -0.24697866402448515
+        ],
+        [
+          -0.039592021620318475,
+          -0.03985295053688734,
+          -0.02323368697076017,
+          -0.07067820484477857,
+          -0.024406093651497707
+        ],
+        [
+          0.12493944675380197,
+          0.2128386177544218,
+          0.19807876978606298,
+          0.19255643331401226,
+          0.14676307317861387
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": -0.002769608347426329,
+      "metric": "heldout_prior_state_nmse",
+      "paired_ties": 0,
+      "paired_wins": 13,
+      "pairs": 25,
+      "reference": "vicreg_ssm",
+      "reference_mean": 0.9164831287186047,
+      "selected_reference_counts": {
+        "vicreg_ssm": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": -0.21039827997336644,
+        "manipulator.bring_ball": 0.008607700878077764,
+        "quadruped.run": 0.06259161747204267,
+        "stacker.stack_4": -0.0395615585063964,
+        "swimmer.swimmer15": 0.17502644264210526
+      },
+      "task_mean_wins": 3
+    },
+    "vicreg_hacssmv8_vs_vicreg_ssm:val_predictive_loss": {
+      "bootstrap": {
+        "ci90_high": 0.3574879151277812,
+        "ci90_low": 0.10949853005268277,
+        "ci95_high": 0.38700169224218145,
+        "ci95_low": 0.09034927508712563,
+        "draws": 100000,
+        "seed": 18018
+      },
+      "candidate": "vicreg_hacssmv8",
+      "candidate_mean": 0.03977519763214514,
+      "cell_effects": [
+        [
+          0.19502960155784183,
+          0.13638759839686188,
+          0.12770043006490775,
+          0.07804760989607822,
+          0.11914016856843376
+        ],
+        [
+          0.24952469826426912,
+          0.2288779387344163,
+          0.13226479771763983,
+          0.1268981811901433,
+          0.22284591239642756
+        ],
+        [
+          -0.22777349968443916,
+          0.30193667887501385,
+          0.1315513413212224,
+          -0.04973388771738316,
+          0.45076554406090225
+        ],
+        [
+          0.13504487757355035,
+          0.1202888182352693,
+          0.15868220619416679,
+          0.12199553199829974,
+          0.12399756395664004
+        ],
+        [
+          0.5497769997150026,
+          -0.28223698191810914,
+          0.8349041561344657,
+          0.6907600217499756,
+          0.5589727991111212
+        ]
+      ],
+      "direction": "lower_is_better",
+      "mean_paired_relative_reduction": 0.2094259642557087,
+      "metric": "val_predictive_loss",
+      "paired_ties": 0,
+      "paired_wins": 22,
+      "pairs": 25,
+      "reference": "vicreg_ssm",
+      "reference_mean": 0.047342651016389334,
+      "selected_reference_counts": {
+        "vicreg_ssm": 25
+      },
+      "task_effects": {
+        "acrobot.swingup": 0.1314634160629461,
+        "manipulator.bring_ball": 0.19451560353597014,
+        "quadruped.run": 0.16981738736266777,
+        "stacker.stack_4": 0.13231048862498904,
+        "swimmer.swimmer15": 0.5276874078637354
+      },
+      "task_mean_wins": 5
+    }
+  },
+  "contrasts_csv_sha256": "78b804c3acfc433c4276a8b6dbab999486573a55d7c005581cff91206f800d92",
+  "convergence": {
+    "observed": {
+      "cells": 200,
+      "maximum_absolute_relative_change": 1.3209212540914046,
+      "passing_cells": 126
+    },
+    "passed": false,
+    "thresholds": {
+      "maximum_every_cell_absolute_relative_change": 0.05
+    }
+  },
+  "expected_cells": 200,
+  "frozen_grid": {
+    "cells": 200,
+    "design_ids": [
+      "vicreg_none",
+      "vicreg_gru",
+      "vicreg_ssm",
+      "vicreg_hacssmv8",
+      "vicreg_hacssmv8_static",
+      "vicreg_hacssmv8_dynamic",
+      "vicreg_hacssmv8_noaction",
+      "vicreg_hacssmv8_single"
+    ],
+    "designs": 8,
+    "epochs": 100,
+    "seed_ids": [
+      18001,
+      18002,
+      18003,
+      18004,
+      18005
+    ],
+    "seeds": 5,
+    "task_ids": [
+      "acrobot.swingup",
+      "manipulator.bring_ball",
+      "quadruped.run",
+      "stacker.stack_4",
+      "swimmer.swimmer15"
+    ],
+    "tasks": 5
+  },
+  "gate_receipts": {
+    "action_causality": {
+      "observed": {
+        "ci95_low": 0.02884555938941943,
+        "mean_paired_relative_reduction": 0.09483393968900071,
+        "paired_wins": 23,
+        "task_mean_wins": 5
+      },
+      "passed": true,
+      "thresholds": {
+        "minimum_mean_paired_relative_reduction": 0.05,
+        "minimum_paired_wins": 18,
+        "minimum_task_mean_wins": 4,
+        "require_ci95_low_strictly_positive": true
+      }
+    },
+    "clean_prior_guard_vs_per_cell_better_gru_ssm": {
+      "observed": {
+        "ci95_high_reduction": 0.17700910497757222,
+        "ci95_low_reduction": 0.05822020966909112,
+        "mean_paired_relative_degradation": -0.11731576149904412,
+        "mean_paired_relative_reduction": 0.11731576149904412
+      },
+      "passed": true,
+      "thresholds": {
+        "maximum_mean_paired_relative_degradation": 0.03
+      }
+    },
+    "convergence": {
+      "observed": {
+        "cells": 200,
+        "maximum_absolute_relative_change": 1.3209212540914046,
+        "passing_cells": 126
+      },
+      "passed": false,
+      "thresholds": {
+        "maximum_every_cell_absolute_relative_change": 0.05
+      }
+    },
+    "deep_vs_per_cell_better_gru_ssm": {
+      "observed": {
+        "ci95_low": -0.12948550037681586,
+        "mean_paired_relative_reduction": -0.017365740252046492,
+        "task_mean_wins": 2
+      },
+      "passed": false,
+      "thresholds": {
+        "minimum_task_mean_wins": 3,
+        "require_ci95_low_strictly_positive": true
+      }
+    },
+    "healthy_representation": {
+      "observed": {
+        "cells": 200,
+        "minimum_channel_variance": 0.02281166347637133,
+        "minimum_effective_rank": 2.019839660611841,
+        "rank_passing_cells": 144,
+        "variance_passing_cells": 200
+      },
+      "passed": false,
+      "thresholds": {
+        "minimum_every_cell_channel_variance": 0.0001,
+        "minimum_every_cell_effective_rank": 16.0
+      }
+    },
+    "joint_state_use": {
+      "observed": {
+        "ci95_low": -0.13123659029394588,
+        "mean_paired_relative_reduction": -0.05388985001162056,
+        "paired_wins": 6,
+        "task_mean_wins": 1
+      },
+      "passed": false,
+      "thresholds": {
+        "minimum_mean_paired_relative_reduction": 0.03,
+        "minimum_paired_wins": 18,
+        "minimum_task_mean_wins": 4,
+        "require_ci95_low_strictly_positive": true
+      }
+    },
+    "learned_v8_vs_static_dynamic_envelope_noninferiority": {
+      "observed": {
+        "ci95_low": -0.04878177060535283,
+        "mean_paired_relative_reduction": -0.018883008660780045
+      },
+      "passed": false,
+      "thresholds": {
+        "interpretation": "learned V8 noninferior within one percent",
+        "minimum_ci95_low": -0.01,
+        "minimum_mean_paired_relative_reduction": -0.01
+      }
+    },
+    "v8_vs_checkpoint_integrator": {
+      "observed": {
+        "ci95_low": -0.6138252741654882,
+        "mean_paired_relative_reduction": -0.38124643330616287,
+        "paired_wins": 0,
+        "task_mean_wins": 0
+      },
+      "passed": false,
+      "thresholds": {
+        "minimum_mean_paired_relative_reduction": 0.03,
+        "minimum_paired_wins": 18,
+        "minimum_task_mean_wins": 4,
+        "require_ci95_low_strictly_positive": false
+      }
+    },
+    "v8_vs_none": {
+      "observed": {
+        "ci95_low": 0.03652827811691962,
+        "mean_paired_relative_reduction": 0.12436536146856896,
+        "paired_wins": 24,
+        "task_mean_wins": 5
+      },
+      "passed": true,
+      "thresholds": {
+        "minimum_mean_paired_relative_reduction": 0.05,
+        "minimum_paired_wins": 20,
+        "minimum_task_mean_wins": 4,
+        "require_ci95_low_strictly_positive": false
+      }
+    },
+    "v8_vs_per_cell_better_gru_ssm": {
+      "observed": {
+        "ci95_low": -0.13350325880523348,
+        "mean_paired_relative_reduction": -0.02099255056804272,
+        "paired_wins": 11,
+        "task_mean_wins": 2
+      },
+      "passed": false,
+      "thresholds": {
+        "minimum_mean_paired_relative_reduction": 0.03,
+        "minimum_paired_wins": 18,
+        "minimum_task_mean_wins": 4,
+        "require_ci95_low_strictly_positive": true
+      }
+    }
+  },
+  "gates": {
+    "action_causality": true,
+    "clean_prior_guard_vs_per_cell_better_gru_ssm": true,
+    "convergence": false,
+    "deep_vs_per_cell_better_gru_ssm": false,
+    "healthy_representation": false,
+    "integrity": true,
+    "joint_state_use": false,
+    "learned_v8_vs_static_dynamic_envelope_noninferiority": false,
+    "v8_vs_checkpoint_integrator": false,
+    "v8_vs_none": true,
+    "v8_vs_per_cell_better_gru_ssm": false
+  },
+  "input_artifact_manifest_sha256": "1e3bbcee667a98a6147a1ba9e7678b35d153ce8984d8dcd1200a571038939feb",
+  "input_protocol_sha256": "357cbe12969268020c1a3b96d14542760ebce0ce600fceb6193aaa3c87fe74b2",
+  "integrator_guard": {
+    "bootstrap": {
+      "ci90_high": -0.2190873130950689,
+      "ci90_low": -0.5683681506750645,
+      "ci95_high": -0.20577974884512637,
+      "ci95_low": -0.6138252741654882,
+      "draws": 100000,
+      "seed": 18018
+    },
+    "candidate": "vicreg_hacssmv8",
+    "candidate_mean": 0.8893680146585862,
+    "cell_effects": [
+      [
+        -0.4723232926451714,
+        -0.294691705880155,
+        -0.38018307486443975,
+        -0.4876573577540047,
+        -0.23890425717899655
+      ],
+      [
+        -0.16276580005796812,
+        -0.15416687931898454,
+        -0.1584264350525547,
+        -0.196086890688462,
+        -0.16566309740248963
+      ],
+      [
+        -0.6694923950756994,
+        -0.5899758461480243,
+        -0.5126228845728386,
+        -0.8655383943752311,
+        -1.2309697974561213
+      ],
+      [
+        -0.14024262633224055,
+        -0.1523238809984841,
+        -0.1526969998390277,
+        -0.19938409944615387,
+        -0.15060970918732972
+      ],
+      [
+        -0.5005783401374673,
+        -0.3893659693204616,
+        -0.38733336321654216,
+        -0.3641433572209957,
+        -0.5150143784842256
+      ]
+    ],
+    "direction": "lower_is_better",
+    "mean_paired_relative_reduction": -0.38124643330616287,
+    "metric": "heldout_prior_state_nmse",
+    "paired_ties": 0,
+    "paired_wins": 0,
+    "pairs": 25,
+    "reference": "checkpoint_matched_initial_frame_action_integrator",
+    "reference_mean": 0.6558799979554543,
+    "selected_reference_counts": {
+      "checkpoint_matched_initial_frame_action_integrator": 25
+    },
+    "task_effects": {
+      "acrobot.swingup": -0.3744575235327426,
+      "manipulator.bring_ball": -0.16738033066158542,
+      "quadruped.run": -0.7740469216831491,
+      "stacker.stack_4": -0.15906590358994901,
+      "swimmer.swimmer15": -0.4313572028089523
+    },
+    "task_mean_wins": 0
+  },
+  "official_confirmation_result": false,
+  "primary_metric": "heldout_prior_state_nmse",
+  "protocol_contract_errors": [],
+  "representation": {
+    "observed": {
+      "cells": 200,
+      "minimum_channel_variance": 0.02281166347637133,
+      "minimum_effective_rank": 2.019839660611841,
+      "rank_passing_cells": 144,
+      "variance_passing_cells": 200
+    },
+    "passed": false,
+    "thresholds": {
+      "minimum_every_cell_channel_variance": 0.0001,
+      "minimum_every_cell_effective_rank": 16.0
+    }
+  },
+  "schema_version": 2,
+  "scientific_label": "CONFIRMATION_FAILED",
+  "scope": "lewm_v8_v18_unopened_task_confirmation",
+  "status": "COMPLETE"
+}

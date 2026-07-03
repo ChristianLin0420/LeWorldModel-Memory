@@ -1,38 +1,24 @@
-Joint-Embedding Predictive Architectures (JEPAs) have become a leading
-recipe for latent world models: an encoder maps each observation to a
-representation and a predictor forecasts future representations. Yet
-these models are \emph{memoryless} in time --- the encoder
-sees one frame at a time and the predictor attends only over a short
-fixed window --- so they cannot represent how information at
-different temporal distances shapes the dynamics of the latent space. We
-introduce a minimal, mathematically transparent remedy: a
-\textbf{two-timescale exponential memory} that augments the predictor
-with a \emph{fast} (short-term) and a \emph{slow} (long-term)
-exponential-moving-average (EMA) bank over the latent stream, injected
-through zero-initialized projections so training begins exactly at the
-memoryless baseline. The mechanism is the simplest diagonal linear
-state-space model; it adds two interpretable scalars whose closed-form
-effective horizon is \(\tau=-1/\ln(1-\alpha)\), and it keeps the host model's
-two-term loss intact. On a controlled suite of partially-observable,
-memory-stressing environments built on the recent LeWorldModel, we show
-that (i) the memory horizon must \emph{match} the task's cue-to-decision
-gap --- a short bank bridges short gaps and only the long bank
-bridges long ones; (ii) the matched timescale carries information to the
-\emph{decision}, lifting cue-decodability from the model's own
-prediction from chance to \(0.84\) on long-horizon tasks; and (iii)
-memory extends the usable horizon far beyond the predictor's window,
-degrading gracefully where the memoryless baseline cliffs. A
-fully-observable control confirms the gains are memory-specific. Across
-5 seeds we further show the matched timescale \textbf{causally} drives
-both the prediction (a counterfactual memory-swap flips the prediction
-to an injected cue) and \textbf{downstream closed-loop control}
-(test-time memory ablation collapses success to chance); a fixed
-\textbf{log-spaced multi-bank} captures the full range of horizons
-\emph{without tuning} and outperforms a learned GRU and a long-context
-predictor. We argue that an explicit, controllable multi-timescale
-memory --- rather than the hierarchy/sub-goal direction the
-field currently favors --- is a foundational primitive for
-studying memory in JEPA latent dynamics, and we contribute a reusable
-\emph{availability-vs-usage} measurement protocol.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+Pixel joint-embedding predictors can be temporally causal and still
+forget: evidence disappears the moment it leaves a finite context
+window. We test whether an explicit persistent state repairs this in a
+LeWorldModel (LeWM)-derived pixel JEPA. The candidate, a compact
+Shared-Action Shrinkage Predict--Correct (SAS-PC) module, adds two
+action-conditioned predict--correct states to a true sliding
+\(H=3\) predictor; it receives no simulator state, reward,
+corruption label, or memory-specific objective. Before opening the
+cohort we froze five DeepMind Control tasks, eight separately trained
+designs, five seeds, 100 epochs, four held-out corruption families, and
+eleven conjunctive gates. The 200-cell confirmation \textbf{fails}.
+SAS-PC changes held-out prior-state error (positive favors SAS-PC) by
+\textbf{+12.44\%} versus no carrier, \textbf{-2.10\%} versus the
+per-cell better GRU/SSM (95\% crossed-bootstrap CI \textbf{{[}-13.35\%,
++9.11\%{]}}), and \textbf{-38.12\%} versus a causally legal
+initial-frame/action integrator. Its action-transport intervention
+passes at \textbf{+9.48\%}, while the joint-read contrast is
+\textbf{-5.39\%}. Swimmer and Acrobot take opposite signs in all five
+seeds against the recurrent envelope, every integrator comparison is
+unfavorable, and representation-rank and convergence guards fail. The
+favorable no-carrier and action-transport contrasts therefore cannot be
+promoted to confirmed class or mechanism claims. Finite context is not
+persistent state, but that architectural fact is not itself a
+performance result.

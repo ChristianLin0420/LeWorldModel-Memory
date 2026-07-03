@@ -1,411 +1,542 @@
-# Two-Timescale Memory for Joint-Embedding Predictive World Models
-
-*Manuscript draft, ICLR 2027 format. Companion code: this repository. Literature review: [`RESEARCH_BRIEF.md`](RESEARCH_BRIEF.md); method details: [`PROPOSAL.md`](PROPOSAL.md); raw results: [`RESULTS.md`](RESULTS.md).*
-
----
+# Finite Context Is Not Persistent State: A Frozen Falsification Study in a LeWorldModel-Derived JEPA
 
 ## Abstract
 
-Joint-Embedding Predictive Architectures (JEPAs) have become a leading recipe for latent world models: an encoder maps each observation to a representation and a predictor forecasts future representations. Yet these models are *memoryless* in time — the encoder sees one frame at a time and the predictor attends only over a short fixed window — so they cannot represent how information at different temporal distances shapes the dynamics of the latent space. We introduce a minimal, mathematically transparent remedy: a **two-timescale exponential memory** that augments the predictor with a *fast* (short-term) and a *slow* (long-term) exponential-moving-average (EMA) bank over the latent stream, injected through zero-initialized projections so training begins exactly at the memoryless baseline. The mechanism is the simplest diagonal linear state-space model; it adds two interpretable scalars whose closed-form effective horizon is $\tau=-1/\ln(1-\alpha)$, and it keeps the host model's two-term loss intact. On a controlled suite of partially-observable, memory-stressing environments built on the recent LeWorldModel, we show that (i) the memory horizon must *match* the task's cue-to-decision gap — a short bank bridges short gaps and only the long bank bridges long ones; (ii) the matched timescale carries information to the *decision*, lifting cue-decodability from the model's own prediction from chance to $0.84$ on long-horizon tasks; and (iii) memory extends the usable horizon far beyond the predictor's window, degrading gracefully where the memoryless baseline cliffs. A fully-observable control confirms the gains are memory-specific. Across 5 seeds we further show the matched timescale **causally** drives both the prediction (a counterfactual memory-swap flips the prediction to an injected cue) and **downstream closed-loop control** (test-time memory ablation collapses success to chance); a fixed **log-spaced multi-bank** captures the full range of horizons *without tuning* and outperforms a learned GRU and a long-context predictor. We argue that an explicit, controllable multi-timescale memory — rather than the hierarchy/sub-goal direction the field currently favors — is a foundational primitive for studying memory in JEPA latent dynamics, and we contribute a reusable *availability-vs-usage* measurement protocol.
-
----
+Pixel joint-embedding predictors can be temporally causal and still forget: evidence disappears the moment it leaves a finite context window. We test whether an explicit persistent state repairs this in a LeWorldModel (LeWM)-derived pixel JEPA. The candidate, a compact Shared-Action Shrinkage Predict--Correct (SAS-PC) module, adds two action-conditioned predict--correct states to a true sliding $H=3$ predictor; it receives no simulator state, reward, corruption label, or memory-specific objective. Before opening the cohort we froze five DeepMind Control tasks, eight separately trained designs, five seeds, 100 epochs, four held-out corruption families, and eleven conjunctive gates. The 200-cell confirmation **fails**. SAS-PC changes held-out prior-state error (positive favors SAS-PC) by **+12.44%** versus no carrier, **-2.10%** versus the per-cell better GRU/SSM (95% crossed-bootstrap CI **[-13.35%, +9.11%]**), and **-38.12%** versus a causally legal initial-frame/action integrator. Its action-transport intervention passes at **+9.48%**, while the joint-read contrast is **-5.39%**. Swimmer and Acrobot take opposite signs in all five seeds against the recurrent envelope, every integrator comparison is unfavorable, and representation-rank and convergence guards fail. The favorable no-carrier and action-transport contrasts therefore cannot be promoted to confirmed class or mechanism claims. Finite context is not persistent state, but that architectural fact is not itself a performance result.
 
 ## 1. Introduction
 
-Latent world models predict the future in a learned representation space rather than in pixels, and JEPAs are the dominant self-supervised instantiation: I-JEPA, V-JEPA 2, DINO-WM, and most recently **LeWorldModel (LeWM)**, which trains stably end-to-end from pixels with only a next-embedding prediction loss plus an isotropic-Gaussian regularizer (SIGReg). These models excel at *per-frame* representation, but their handling of *time* is impoverished: the encoder is applied frame-by-frame and the predictor attends over a short fixed history window of $h$ frames. Consequently, any information whose decision-relevance is separated from its appearance by more than $h$ steps is simply unavailable at decision time. Every model in this family reports compounding error over long horizons as its dominant failure mode, and the community's response has been *hierarchy and sub-goals* — not memory. LeWM's own paper, for instance, names hierarchical world modeling, not memory, as future work.
+Joint-Embedding Predictive Architectures (JEPAs) learn dynamics by forecasting representations rather than reconstructing pixels. Recent systems add action conditioning, short video context, and latent-space planning \citep{ref1,ref2,ref3,ref4}, but their temporal states are not interchangeable, and three regimes are worth separating. A frame-local encoder carries no temporal state at all. A causal predictor over the latest $H$ latent/action tokens has *finite-context* memory: it can integrate evidence inside the window, but whatever leaves the window is unrecoverable. An episode state $m_t=F(m_{t-1},z_t,a_{t-1})$ can, in principle, *persist* evidence indefinitely. None of these properties implies causal representation learning \citep{ref5}.
 
-We take the orthogonal view that **explicit, controllable memory** is the missing primitive, and that the right first step is the *simplest* one that is also analyzable. We add to the predictor a two-timescale exponential memory: two leaky integrators over the latent stream with very different time constants. This is the scalar, fixed-decay special case of the structured state-space models (S4/Mamba) and multi-scale decay attention (RetNet) that dominate long-range sequence modeling, and it is the algorithmic core of Complementary Learning Systems theory (fast hippocampal vs. slow neocortical memory). Its decay kernel is a closed-form exponential whose horizon is a single interpretable number, making the memory a *plottable object* rather than a black box.
+Published LeWM is action-conditioned and causally masked, with configured history $H=3$ for PushT and OGBench-Cube and $H=1$ for TwoRoom \citep{ref1}; it is therefore neither memoryless nor non-causal. The narrower question this paper asks is whether an explicit state surviving beyond $H$ transports *useful* information under partial observability. Because any recurrent module beats a windowed baseline whenever old evidence has value, a candidate carrier must also survive ordinary recurrent baselines, a causally legal initial-frame/action summary, exact component interventions, and representation and convergence health checks.
 
-**Contributions.**
-1. **A minimal primitive.** A two-timescale EMA memory for JEPA predictors: two scalars + two zero-initialized projections, preserving the host's two-term loss (§3).
-2. **A measurement protocol.** We separate *availability* (is the cue still linearly present in a representation stream over time?) from *usage* (does the model's prediction at the decision encode the cue?), plus a memory-ablation *influence* functional (§4.3).
-3. **Controlled evidence + causality.** On four memory-stressing environments plus a Markovian control: the horizon must match the cue-to-decision gap (quantified law, §5.12); the matched timescale **causally** drives both the prediction (counterfactual swap, §5.7) and downstream closed-loop control (§5.10); memory degrades gracefully where the finite window cliffs (§5.3).
-4. **Mechanism comparison.** A fixed **log-spaced K-bank** is best overall *without tuning*, a learned GRU underperforms it, and a long-context window only helps once it spans the whole gap — isolating the *controllable exponential structure* as the contribution (§5.11), plus transfer to a standard benchmark (§5.6) and PO variants of the paper's own tasks (§5.9).
-5. **Honest scope.** We report where the picture is clean and where it is not (raw MSE is decoupled; learned scalar decay does not self-tune; `both` can lose to a single matched τ on noisy data) (§5.4, §6).
+We integrate compact Shared-Action Shrinkage Predict--Correct (SAS-PC) memory into a causally normalized, VICReg-style \citep{ref17} LeWM-derived pixel host. All eight designs share the encoder, the $H=3$ predictor, data, targets, optimization, and evaluation; only the persistent carrier or a named intervention changes. Because the objective replaces LeWM's SIGReg recipe \citep{ref16}, this is an architecture study, **not** evidence that SAS-PC improves original LeWM.
 
-## 2. Related Work
+The result is deliberately sharper than "memory helps." Favorable finite-window and action-transport contrasts coexist with unfavorable stronger references, unsupported hierarchy contrasts, and failed validity guards; task, seed, corruption, and phase decompositions show why these statements must remain separate. Our contributions are: (i) an explicit within-grid integration separating finite context from persistent state, with the carrier's update equations and design rationale in full; (ii) a frozen $5$-task $\times$ $8$-design $\times$ $5$-seed confirmation with recurrent, integrator, intervention, health, and convergence controls; and (iii) a complete, task- and seed-resolved falsification identifying exactly which registered contrasts pass and which fail.
 
-**JEPA latent world models.** I-JEPA (Assran et al., 2023), V-JEPA 2 (Assran et al., 2025), DINO-WM (Zhou et al., 2024), and LeWorldModel (Maes et al., 2026), the last building on LeJEPA's SIGReg objective (Balestriero & LeCun, 2025). All use either no temporal predictor, a fixed history window, or a single recurrent state; none use a controllable multi-timescale memory. The recognized long-horizon failure mode has motivated *hierarchical* remedies (FF-JEPA, HWM) rather than memory.
+## 2. Related Work and Claim Scope
 
-**Memory in model-based RL.** DreamerV3's RSSM (Hafner et al., 2023) carries a single fixed-size recurrent state; S4WM (Deng et al., 2023) and R2I (Samsami et al., 2024) replace it with structured state-space models for long-range memory; Hieros (Mattes et al., 2023) stacks S5 at multiple timescales. The closest prior work is **MTS3** (Shaj et al., NeurIPS 2023), which learns two SSMs at fast (per-step) and slow (coarse-step) *sampling rates*. We differ on three axes: (i) ours is a self-supervised **JEPA**, not a probabilistic generative RSSM; (ii) our timescales are **memory-decay horizons** ($\tau=1/\alpha$), not coarse sampling rates / dynamics abstractions; and (iii) ours is deliberately a *minimal, analyzable primitive* (two scalars, zero-init) rather than a full hierarchical model.
+Finite-context JEPAs include DINO-WM, seq-JEPA, and LeWM \citep{ref1,ref2,ref3}; a Transformer over a configured block need not preserve evidence after the block is discarded. Persistent state is well established in PlaNet/Dreamer recurrent state-space models (RSSMs), recurrent and S4 world-model comparisons, and long-horizon memory studies \citep{ref6,ref7,ref8,ref9,ref10}. Multi-timescale state and predict--correct filtering predate SAS-PC in MTS3 and recurrent Kalman networks, and ELMUR and Flow Equivariant World Models provide other structured memories \citep{ref11,ref12,ref13,ref14,ref15}. We therefore claim neither the first recurrent world model nor any novelty for recurrence, filtering, action conditioning, or multiple timescales in isolation.
 
-**Memory math.** HiPPO (Gu et al., 2020), S4 (Gu et al., 2022), and RetNet (Sun et al., 2023, with per-head multi-scale decay $\gamma_h$) frame memory as an exponential/structured convolution kernel; our banks are the scalar fixed-$\alpha$ case. **Memory benchmarks.** POPGym (Morad et al., 2023) and POPGym Arcade (2025), Memory Maze, and Memory Gym isolate memory under partial observability; we build minimal analogues for controlled probing and discuss standard-benchmark evaluation as the key next step (§6).
+Our claims form a strict ladder. The information-flow graph (Figure \ref{fig:fig-v18-architecture}) establishes an **architectural** distinction between finite context and persistent state. Absence of future inputs establishes **temporal causality**, not causal representation. A registered performance contrast tests **state utility**; a separately retrained component control tests an implemented **mechanism**. None identifies environment causal structure; we evaluate the first four levels and use "causal" only for temporal information flow or an explicit model intervention. The full claim boundary is registered in Appendix G.
 
-## 3. Method
+## 3. Architecture: A Persistent Carrier Inside a Finite-Context Host
 
-### 3.1 Background: the memoryless JEPA world model
+Every design uses a per-frame Vision Transformer (ViT) encoder $E_\theta$ ($64\times64$ RGB, $8\times8$ patches, $D=128$, six layers, four heads), an action-conditioned causal Transformer predictor $P_\phi$ (four layers, eight heads), and the true sliding window of the latest $H=3$ latent/action tokens (Figure \ref{fig:fig-v18-architecture}). Two synchronized views share encoder weights: corrupted frames produce the recurrent input $z_t^c=E_\theta(o_t^c)$, while clean frames produce active, non-stop-gradient targets $z_t^\star=E_\theta(o_t)$ with dropout disabled. Per-frame feature normalization prevents future-frame or cross-example leakage; target statistics couple samples only through the loss. For valid aligned windows $\mathcal W$, the host objective is
 
-The encoder $E_\theta$ maps each frame to a latent $z_t=E_\theta(o_t)\in\mathbb{R}^D$, regularized toward an isotropic Gaussian by SIGReg. The predictor $P_\phi$ takes a window of the last $h$ latents and the actions and predicts the next latent; the training loss is
+$$
+\mathcal L=\mathbb E_{(i,t)\in\mathcal W}\!\left[\tfrac1D\big\|P_\phi(\tilde z^c_{i,t-2:t},a_{i,t-2:t})-z^\star_{i,t+1}\big\|_2^2\right]+\mathcal L_{\mathrm{var}}(Z^\star)+\mathcal L_{\mathrm{cov}}(Z^\star),
+\label{eq:host}
+$$
 
-$$\mathcal{L} = \underbrace{\lVert \hat z_{t+1}-z_{t+1}\rVert^2}_{\text{prediction}} + \lambda\,\mathrm{SIGReg}(Z). \tag{1}$$
+with unit-weight VICReg-style variance and covariance terms applied *only to active clean targets* (exact forms in Appendix A). Regularizing targets rather than predictions stabilizes the joint-embedding fixed point without giving the memory path an auxiliary teacher: there is no memory-specific loss, no hidden-clean update, and no state, reward, or corruption-label input anywhere in the model. This VICReg-style objective differs from original SIGReg LeWM \citep{ref1,ref16,ref17}; Section 2 scopes every claim accordingly.
 
-With no state beyond the $h$-frame window, information older than $h$ steps is lost.
+![LeWM-derived host and SAS-PC architecture](figures/fig_v18_architecture.png)
+*SAS-PC adds an episode-persistent path while the host predictor retains a finite $H=3$ window. Corrupted and clean streams share the encoder, but only corrupted latents update memory. Green nodes are the SAS-PC predict--correct path; teal denotes clean targets and losses. Solid edges are model or training flow; the dashed strip at the bottom is the pre-correction tap that exists only for frozen post-training evaluation.*
 
-### 3.2 Two-timescale exponential memory
+### 3.1 The carrier: predict, correct, read
 
-We maintain two EMA banks over the latent stream, indexed by $c\in\{\text{fast},\text{slow}\}$:
+SAS-PC maintains two full-width states $m_t^k\in\mathbb R^D$, $k\in\{f,m\}$, with fixed structural timescales $\tau=(2,8)$ and rates $\beta_k=1-e^{-1/\tau_k}$. Each step factors into three stages.
 
-$$m^{(c)}_t = (1-\alpha_c)\,m^{(c)}_{t-1} + \alpha_c\,z_t. \tag{2}$$
+**Predict: shared action transport.** A single bias-free map $W_a$ splits the last action into a multiplicative channel gate and an additive drive, $(d_{t-1},v_{t-1})=W_a\,a_{t-1}$, and extrapolates both states:
 
-Unrolling (2) reveals a causal convolution of the past with an **exponential memory kernel**,
+$$
+p_t^k=m_{t-1}^k+\beta_k\tanh\!\big(v_{t-1}+d_{t-1}\odot\mathrm{LN}(m_{t-1}^k)\big).
+\label{eq:predict}
+$$
 
-$$m^{(c)}_t=\alpha_c\sum_{k\ge0}(1-\alpha_c)^k z_{t-k},\qquad K_c(k)=\alpha_c(1-\alpha_c)^k, \tag{3}$$
+Equation \ref{eq:predict} advances each state as a bounded-drive integrator: $\beta_k$ is the discrete-time update rate of a process with time constant $\tau_k$, so the fast state ($\tau_f=2$) tracks within-window transients while the medium state ($\tau_m=8$) spans the 6--12-step training gaps and reaches toward the held-out 16--24-step freezes. The rates are fixed scalars by design: with learned rates, the rate, gate, and shrinkage parameters become mutually non-identifiable, and learned per-channel rate spectra underperformed two fixed scalars during development on disjoint tasks. The $\tanh$ bounds the per-step action displacement so blind rollouts cannot diverge, and $d_{t-1}\odot\mathrm{LN}(m_{t-1}^k)$ makes transport state-dependent rather than a constant drift; both levels share one physical $W_a$ because level-specific heads lost to a shared-action control in the same disjoint-task development. During a corruption gap this term supplies the only forward dynamics acting on the belief (correction still fires, but on a corrupted latent); it is exactly the component the no-action arm deletes, elevating action transport from a design choice to a registered, testable mechanism.
 
-whose **effective horizon** (time constant) is closed-form:
+**Correct: shrinkage-gated innovation.** The current corrupted latent is projected once, $x_t=W_xz_t^c$, and each prior is corrected by its innovation $x_t-p_t^k$:
 
-$$\tau_c = \frac{-1}{\ln(1-\alpha_c)}\approx\frac1{\alpha_c},\qquad \alpha_c = 1-e^{-1/\tau_c}. \tag{4}$$
+$$
+\begin{aligned}
+q_t^k&=\sigma\!\big(b_k+[\,w_z^\top\mathrm{LN}(z_t^c)+w_e^\top\mathrm{LN}(x_t-p_t^k)\,]/\sqrt D\big),\\
+g_t^k&=(1-\rho_k)\,\sigma(b_k)+\rho_k\,q_t^k,\qquad
+m_t^k=p_t^k+\beta_k\,g_t^k\,(x_t-p_t^k),\qquad \rho_k=\sigma(c_k).
+\end{aligned}
+\label{eq:correct}
+$$
 
-A *fast* bank (large $\alpha$, small $\tau$) is working memory; a *slow* bank (small $\alpha$, large $\tau$) is long-term memory. Equation (2) is exactly a diagonal linear state-space model — the simplest member of the S4/Mamba family — and the two-bank split is the computational form of Complementary Learning Systems.
+The gate $g_t^k$ plays the role of a Kalman gain \citep{ref12}, but with two deliberate restrictions. First, the correction is *rate-scaled*: multiplying by $\beta_k$ caps each level's observation intake at its structural timescale, a shrinkage that prevents a slow state from being overwritten by one noisy frame. Second, $g_t^k$ is a convex mixture of a constant "static expert" $\sigma(b_k)$, which trusts observations by a fixed amount, and an input-conditioned "dynamic expert" $q_t^k$, which reads the latent and the innovation. The learned scalar $\rho_k$ selects a point on this segment; $\rho_k\to0$ recovers purely static correction and $\rho_k\to1$ purely dynamic correction, which are exactly the frozen static and dynamic endpoint arms. Development on disjoint tasks showed static winning on some tasks and dynamic on others, so SAS-PC learns the interpolation instead of committing globally; whether the learned point beats the per-cell better endpoint is the shrinkage gate of Table \ref{tbl:gate-receipts}. The mixture also encodes a falsifiable prediction about corruption type: when observations are merely *absent* (freezes), correction is cheap and transport dominates, but when the incoming latent is itself *corrupted* (noise, checkerboard), an input-conditioned gate must learn to close; Section 5's corruption decomposition tests this.
 
-### 3.3 Zero-init injection and the four ablations
+**Read: routed residual with a null initialization.** A single time-independent softmax combines the corrected states, and a residual returns the result to the predictor stream:
 
-The banks are injected additively into the only thing the predictor sees:
+$$
+\tilde z_t^c=z_t^c+W_o\,\mathrm{RMSNorm}\big(\pi_fm_t^f+\pi_mm_t^m\big),\qquad \pi=\mathrm{softmax}(\ell).
+\label{eq:read}
+$$
 
-$$\tilde z_t = z_t + \mathbb 1[\text{short}]\,W_f\,m^{(\text{fast})}_t + \mathbb 1[\text{long}]\,W_s\,m^{(\text{slow})}_t, \tag{5}$$
+The route is deliberately not a per-token router: any dynamic-memory claim must then live in action evolution or correction timing, where the interventions can test it, rather than in a confounded learned horizon selector. RMSNorm anchors the read scale so state magnitude cannot act as a shortcut, and the residual form leaves the predictor interface unchanged, making the no-carrier host an exact ablation. Initialization is identity/zero ($W_x=I$, $W_o=W_a=0$, uniform route, $\rho_k=\tfrac12$): at step zero the fused model *is* the no-carrier host, so every memory effect is learned and all paired arms start from the same prediction path; both states warm-start from $W_xz_0^c$. The module carries $2D$ persistent floats and $2D^2+2AD+2D+6$ trainable parameters --- 33,286--36,614 across task action dimensions, versus 35,048 for the width-matched GRU; recurrent carriers differ by at most 5.29% and total models by at most 0.09%.
 
-with $W_f,W_s$ **zero-initialized**, so training starts *identical* to the memoryless baseline and recruits memory only as it lowers (1). The indicator flags yield the four designs we compare: `none` (vanilla LeWM), `short`, `long`, `both`.
+### 3.2 Matched carriers and exact interventions
 
-### 3.4 Memory is the only long-range channel
+Because every stage of Equations \ref{eq:predict}--\ref{eq:read} is a separable design decision, each frozen arm deletes or pins exactly one of them (Table \ref{tbl:arms}). The GRU (gated recurrent unit) and diagonal state-space model (SSM) carriers read visual latents only, while the shared predictor remains action-conditioned for all arms; the no-action arm therefore isolates *internal* action transport within the candidate family rather than action information in general. All arms are separately trained from scratch; none is a post hoc modification of a shared checkpoint.
 
-We keep the predictor strictly short-context by training it with a **sliding window of length $h$** over a longer chunk $L\gg h$: each window predicts only its next latent. Because no window exceeds $h$ frames, information traveling further than $h$ steps can pass *only* through the EMA banks. This isolates the memory's contribution. The mechanism adds two scalars and two $D\times D$ matrices ($\approx 2D^2$ params, $\sim$1.5% of the model) and an $O(LD)$ scan; it keeps loss (1) unchanged.
+\begin{table}[!b]
+\centering
+\caption{The eight frozen arms as equation-level interventions. Every arm retrains the full model; only the named component changes. Parameter receipts are in Appendix A.}
+\label{tbl:arms}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Arm}} & \textcolor{NVIDIADark}{\textbf{Change relative to Eqs.~(\ref{eq:predict})--(\ref{eq:read})}} & \textcolor{NVIDIADark}{\textbf{Question it isolates}} \\
+\midrule
+No carrier & carrier deleted ($\tilde z_t^c=z_t^c$) & is any episode state useful? \\
+GRU & carrier $\to$ parameter-matched GRU on $z_t^c$ & does generic recurrence suffice? \\
+Diag.\ SSM & carrier $\to$ learned diagonal SSM on $z_t^c$ & does linear recurrence suffice? \\
+\colorbox{NVIDIAPale}{\strut SAS-PC} & none (full candidate) & the candidate \\
+No action & $W_a\equiv0$ in Eq.~(\ref{eq:predict}) & internal action transport \\
+Single read & $\pi=(0,1)$ pinned in Eq.~(\ref{eq:read}) & value of the two-state read \\
+Static & $\rho_f=\rho_m=0$ in Eq.~(\ref{eq:correct}) & input-independent correction \\
+Dynamic & $\rho_f=\rho_m=1$ in Eq.~(\ref{eq:correct}) & fully input-conditioned correction \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-## 4. Experimental Setup
+## 4. Frozen Evaluation
 
-### 4.1 Environments
+### 4.1 Cohort, corruptions, and grid
 
-Each environment contains a **cue-determined event**: something appearing later is decided by a cue shown earlier and is *not* recoverable from the current frame or action — so a memoryless model cannot predict it. An independent random-walk agent dot provides genuine action-conditioned dynamics orthogonal to the memory channel. We vary the cue→decision gap $\Delta$:
+The unopened cohort contains Acrobot Swingup, Manipulator Bring Ball, Quadruped Run, Stacker Stack-4, and Swimmer-15 from DeepMind Control \citep{ref18} (hereafter Acrobot, Manipulator, Quadruped, Stacker, Swimmer). Each task supplies 1,200 training and 240 validation episodes of length 48 with disjoint random-action trajectories; native task state is never a training input. Training corrupts a 6--12-step interval by mean replacement or spatial cutout. Evaluation uses four *unseen* corruption families: frozen frame (freeze), Gaussian noise, checkerboard replacement, and 16--24-step long freezes. We froze $5$ tasks $\times$ $8$ designs $\times$ $5$ optimizer seeds $=200$ cells, each trained with AdamW (learning rate $3{\times}10^{-4}$, weight decay $10^{-5}$, batch 64) for exactly 100 epochs --- no early stopping, best-checkpoint selection, task or seed exclusion, rescue sweep, or architecture revision; exact optimization, parameter, and hash receipts are in Appendix A.
 
-| env | memory kind | gap $\Delta$ | what must be remembered |
-|---|---|---|---|
-| **T-Maze** | long | $\approx21$ | which arm the early cue selected |
-| **Distractor** | long + interference | $\approx23$ | the *first* cue, despite random flashes |
-| **Recall** | mixed | $\approx15$ | a 3-symbol colour sequence (replayed) |
-| **Occlusion** | short | $\approx5$ | the target's lane while briefly hidden |
-| **TwoRoom** | Markovian control | $0$ | nothing (memory must *not* help) |
+### 4.2 Prior-state endpoint and conservative references
 
-### 4.2 Models and training
+After training, ridge probes ($\lambda=10^{-3}$) map each model coordinate to the native task observation; labels appear only in this frozen evaluation layer. The primary coordinate is the **prior before the current observation** --- the $H=3$ predictor prior for no carrier, the previous hidden read for GRU, the transition prior for SSM, and the action-transported routed prior for SAS-PC --- because a pre-correction prior is the only coordinate that measures information *transported through* missing observations rather than read off the current frame. Per-coordinate normalized mean-squared error (NMSE) standardizes each target dimension by its clean-training standard deviation, and the headline averages deep-gap plus first-post samples within each held-out corruption, then averages the four corruptions. For candidate error $c_{ts}$ and reference error $r_{ts}$ on task $t$ and seed $s$,
 
-Encoder ViT (patch 8, 64×64 RGB), $D{=}128$, predictor window $h{=}3$; fixed horizons $\tau_{\text{fast}}{=}3,\ \tau_{\text{slow}}{=}25$ unless stated. 30 epochs, 5000 episodes/epoch, AdamW, bf16. Each cell is run for **3 seeds**; we report mean$\pm$std. The vanilla LeWM baseline is `none` (memoryless, short-context) under the *identical* pipeline, for a controlled comparison. Logged to wandb project `lewm-memory-4ens`.
-
-### 4.3 Metrics
-
-- **Availability** $A_s(t)$: accuracy of a linear probe decoding the cue from stream $s\in\{z,m^{\text{fast}},m^{\text{slow}}\}$ at time $t$. Measures where information *lives*.
-- **Usage**: accuracy of a probe — trained and tested on the model's *predicted* reveal-latent — decoding the cue. Measures whether the *decision* encodes it. (Training the probe on encoder latents but testing on predictions is a distribution-shifted artifact that reads at chance for all designs; the matched probe is the correct measure.)
-- **Influence** $\mathcal I_c=\lVert f(\tilde z)-f(\tilde z\mid W_c{\leftarrow}0)\rVert_2$: movement of the predicted latent when bank $c$ is ablated.
-- **Prediction MSE**: next-latent validation error (reported, but see §5.4).
-
-## 5. Results
-
-**Results at a glance — vanilla LeWM vs two-timescale memory on the four memory environments** (`lewm-memory-4ens`, 5 seeds). Decision-usage = cue decodable from the model's prediction (chance 0.50, except Recall 0.33); "best-mem" = best memory design.
-
-| env | gap $\Delta$ | none (vanilla) | best fixed-τ (long/both) | best overall = **multi (K-bank)** |
-|---|---:|---:|---:|---:|
-| T-Maze | 21 | 0.50 | 0.85 | **0.99** |
-| Distractor | 23 | 0.55 | 0.88 | **0.99** |
-| Recall | 15 | 0.37 | 0.45 | **0.47** |
-| Occlusion | 5 | 0.51 | 0.59 | **0.81** |
-| TwoRoom (control) | 0 | 0.48 (MSE) | — | 0.48 (no advantage) |
-
-Memory improves the decision on every memory-stressing environment and gives **no** advantage on the Markovian control; the winning timescale matches the task's gap $\Delta$ (§5.12), and a fixed log-spaced multi-bank is best overall without tuning (§5.11). The per-metric breakdown and analysis follow; causal evidence is in §5.7 (prediction) and §5.10 (control).
-
-### 5.1 The memory horizon must match the gap (availability)
-
-Figure 1 is the central result. In **T-Maze** (long gap), the memoryless encoder $z$ falls to chance the instant the cue leaves the frame, the *fast* bank holds it briefly and then decays along its exponential kernel — reaching chance *before* the decision — while only the *slow* bank retains the cue across the full 21-step gap. In **Occlusion** (short gap), the *fast* bank alone bridges the brief occlusion where $z$ collapses. Short memory suffices for short gaps; long memory is necessary for long gaps.
-
-![Figure 1: short-vs-long dissociation](figures/fig_dissociation.png)
-*Figure 1. Cue-decoding accuracy over time (mean$\pm$std, 3 seeds), design `both`. Left: T-Maze (long). Right: Occlusion (short). Dotted = chance; black/green dashed = cue-off / decision.*
-
-Table 1 reports availability at the decision step:
-
-**Table 1 — Availability at the decision (design `both`, 3 seeds).** Cue decodable from each stream.
-
-| env | gap $\Delta$ | $z$ (memoryless) | $m^{\text{fast}}$ ($\tau{=}3$) | $m^{\text{slow}}$ ($\tau{=}25$) |
-|---|---:|---:|---:|---:|
-| Occlusion | 5 | 0.46 | **0.90** | 0.99 |
-| Recall | 15 | 0.33 | 0.33 | **0.55** |
-| T-Maze | 21 | 0.53 | 0.49 | **1.00** |
-| Distractor | 23 | 0.54 | 0.52 | **1.00** |
-
-### 5.2 The matched timescale drives the decision (usage)
-
-**Table 2 — Usage: cue decodable from the model's prediction (matched probe, 5 seeds, mean$\pm$std).** Higher is better; chance in last column.
-
-| env | gap $\Delta$ | none (vanilla) | short | long | both | chance |
-|---|---:|---:|---:|---:|---:|---:|
-| T-Maze | 21 | 0.50 ±.02 | 0.50 ±.03 | **0.85 ±.09** | 0.84 ±.07 | 0.50 |
-| Distractor | 23 | 0.55 ±.03 | 0.54 ±.03 | **0.88 ±.09** | 0.85 ±.07 | 0.50 |
-| Recall | 15 | 0.37 ±.03 | 0.39 ±.05 | 0.45 ±.07 | **0.45 ±.04** | 0.33 |
-| Occlusion | 5 | 0.51 ±.04 | 0.54 ±.05 | **0.59 ±.04** | 0.57 ±.06 | 0.50 |
-
-On the long-horizon tasks the `long`/`both` designs lift decision-usage well above the vanilla baseline and chance with low variance; `none`/`short` stay at chance (Figure 2).
-
-![Figure 2: usage across envs](figures/fig_usage_bar.png)
-*Figure 2. Cue decodable from the model's prediction across envs and designs (3 seeds, mean$\pm$std; dotted = chance).*
-
-### 5.3 Memory extends the usable horizon; the finite window cliffs
-
-Sweeping the cue→decision gap $\Delta$ on T-Maze (Table 3, Figure 3) shows the vanilla baseline flat at chance for every $\Delta$ beyond its 3-frame window, while the memory model holds high usage and **degrades gracefully**, approaching chance only as $\Delta\to\tau_{\text{slow}}$.
-
-**Table 3 — T-Maze gap sweep: usage vs. gap $\Delta$ (window $h{=}3$, $\tau_{\text{slow}}{=}25$; 3 seeds, mean).**
-
-| $\Delta$ | 3 | 9 | 15 | 21 | 27 | 33 | 39 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| vanilla (none) | 0.55 | 0.55 | 0.44 | 0.53 | 0.44 | 0.48 | 0.45 |
-| memory (both) | **0.98** | **0.94** | **0.88** | **0.87** | **0.83** | **0.77** | **0.64** |
-
-![Figure 3: gap sweep](figures/exp4_gap_sweep.png)
-*Figure 3. Memory vs. finite-window baseline as the gap grows. Left: usage. Right: MSE (noisy; see §5.4).*
-
-Sweeping the slow-bank horizon $\tau_{\text{slow}}$ at fixed gap $\Delta{=}21$ (Table 4) confirms the duration is the operative knob: a too-short slow bank ($\tau{=}3$) cannot hold the cue at all (availability at chance), and once $\tau_{\text{slow}}\gtrsim\Delta$ the decision recovers it.
-
-**Table 4 — T-Maze $\tau_{\text{slow}}$ sweep ($\Delta{=}21$, design `both`; 3 seeds, mean).**
-
-| $\tau_{\text{slow}}$ | 3 | 6 | 12 | 21 | 30 | 45 |
-|---|---:|---:|---:|---:|---:|---:|
-| availability ($m^{\text{slow}}$) | 0.47 | 0.99 | 1.00 | 1.00 | 1.00 | 1.00 |
-| usage | 0.50 | 0.54 | 0.66 | 0.89 | 0.78 | 0.94 |
-
-### 5.4 What does *not* hold up: raw MSE and learned decay
-
-**Prediction MSE is a decoupled instrument.** Memory lowers MSE on some envs (Occlusion `none` $0.46\!\to\!$ `both` $0.25\pm.03$) but is noisy elsewhere and even *raises* it where stochastic distractors dominate the loss; in the $\tau_{\text{slow}}$ sweep, $\tau{=}3$ has the *lowest* MSE yet chance usage. The cue is a small sub-space of the global latent, so MSE does not track memory quality — the probes do.
-
-**Table 5 — Validation next-latent MSE (3 seeds, mean$\pm$std). Lower is better.**
-
-| env | none | short | long | both |
-|---|---:|---:|---:|---:|
-| T-Maze | 0.76 ±.44 | 0.47 ±.17 | 0.62 ±.53 | 0.55 ±.32 |
-| Occlusion | 0.46 ±.18 | 0.54 ±.36 | 0.39 ±.12 | **0.25 ±.03** |
-| Recall | 0.76 ±.46 | **0.33 ±.11** | 0.56 ±.37 | 0.73 ±.49 |
-| Distractor | **0.39 ±.12** | 0.41 ±.16 | 0.57 ±.19 | 0.52 ±.21 |
-| TwoRoom (control) | **0.48** | — | — | 0.48 |
-
-**Learned decay does not self-tune.** Making $\alpha$ learnable leaves the horizons near their initialization for every environment — across 3 seeds the learned $\tau_{\text{slow}}$ is $23.9\text{–}24.4$ regardless of the task gap (5 / 15 / 21 / 23), with std $\le0.4$ — i.e., it does *not* track the gap; the gradient signal on a scalar decay is weak. The practical lever is therefore *choosing* timescales, which is precisely why two banks spanning a *range* of horizons is the right design.
-
-### 5.5 Control
-
-On the fully-observable **TwoRoom**, `none` and `both` are indistinguishable on the held-out set (Table 5), confirming the gains above are memory-specific rather than added capacity.
-
-### 5.6 Standard benchmark: POPGym Arcade (5 tasks × 5 seeds)
-
-We evaluate on **five** memory-centric POMDPs from **POPGym Arcade** [Morad et al.] — CountRecall, AutoEncode, BattleShip, MineSweeper, Navigator — pixel observations, discrete actions (one-hot). These have no clean cue label, so we report next-latent val MSE and memory-ablation influence (**5 seeds**; `lewm-memory-popgym`), comparing vanilla `none` to the fixed K-bank `multi` (our best design, §5.11).
-
-**Table 6 — POPGym Arcade: next-latent val MSE (lower=better) and K-bank influence (5 seeds, mean).**
-
-| task | none (vanilla) | multi (K-bank) | reduction | $\mathcal I_{\text{slow}}$ |
-|---|---:|---:|---:|---:|
-| CountRecall | 1.08 | **0.51** | −53% | 10.0 |
-| BattleShip | 0.80 | **0.26** | −68% | 12.5 |
-| Navigator | 0.61 | **0.48** | −21% | 14.6 |
-| AutoEncode | 0.65 | **0.55** | −15% | 5.9 |
-| MineSweeper | 0.020 | 0.019 | −2% | 0.2 |
-
-![Figure 4: POPGym Arcade (5 tasks)](figures/fig_popgym_broad.png)
-*Figure 4. POPGym Arcade, 5 tasks × 5 seeds: vanilla LeWM vs the fixed K-bank memory (next-latent val MSE).*
-
-The K-bank memory reduces prediction error on the four memory-demanding tasks (**−15% to −68%**) with large memory influence ($\mathcal I\approx6\text{–}15$), and leaves the near-trivial MineSweeper (val ≈0.02; almost nothing to predict, $\mathcal I\approx0$) unchanged — memory helps where it is needed and is inert where it is not. So the primitive transfers to a standard benchmark at the ≥5-task×5-seed bar.
-
-### 5.7 Counterfactual memory swap: the memory *causally* drives the prediction
-
-Probes show information is decodable, but not that the predictor *uses* it. We therefore intervene: for each episode *i* we predict the reveal-latent using *i*'s current frames and actions but **another episode *j*'s memory banks** (with cue[*j*]≠cue[*i*]), and apply a matched probe.
-
-**Table 7 — Counterfactual memory swap (design `both`, 3 seeds, mean$\pm$std).** Does the prediction follow the *injected* memory or the *current* frame?
-
-| env | own memory → cue (control) | **swapped memory → swapped cue** | swapped → current-frame cue | chance |
-|---|---:|---:|---:|---:|
-| T-Maze | 0.85 | **0.83** | 0.17 | 0.50 |
-| Distractor | 0.87 | **0.79** | 0.21 | 0.50 |
-| Recall | 0.41 | 0.40 | 0.25 | 0.33 |
-| Occlusion | 0.58 | 0.58 | 0.43 | 0.50 |
-
-![Figure 5: counterfactual swap](figures/fig_causal_swap.png)
-*Figure 5. Swapping the memory bank between episodes with different cues. On long-gap tasks the prediction tracks the **injected** cue (follow-memory ≈ follow-self), while the current-frame cue collapses to ~chance.*
-
-On the long-gap tasks, swapping the memory bank **flips the prediction to the injected cue** (follow-memory ≈ the own-memory control) while reading the current frame collapses to ~chance — direct causal evidence that the EMA banks control the prediction, not merely carry decodable information. This is the decisive test that probe decodability alone cannot provide.
-
-### 5.8 Mechanistic attribution: which frames each step reads
-
-To open the box further we attribute each step's next-latent prediction (i) to its memory banks and (ii) to source frames. **Per-step bank influence** $I_c(t)=\lVert \hat y_t-\hat y_t(\text{ablate }c)\rVert$ reveals the dissociation at the mechanism level: on **T-Maze (long gap)** the *slow* bank dominates the prediction at *every* step ($I_{\text{slow}}\approx2.15>I_{\text{fast}}\approx1.8$), whereas on **Occlusion (short gap)** the *fast* bank dominates ($I_{\text{fast}}\approx2.18>I_{\text{slow}}\approx2.07$). **Frame attribution** $\lVert\partial\hat y_{\text{rev}}/\partial z_s\rVert$ at the decision step is dominated by the recent $h$-frame window (the direct path), but the *slow* exponential kernel is the only pathway that reaches the early cue frames — and the decision shows a real attribution bump there — confirming that the long-horizon decision reads the early cue *through the slow bank*.
-
-![Figure 6: attribution T-Maze](figures/fig_attribution_tmaze.png)
-![Figure 7: attribution Occlusion](figures/fig_attribution_occlusion.png)
-*Figures 6–7. Memory-attribution timeline. (A) episode frames; (B) per-step fast vs slow bank influence on the next prediction; (C) gradient attribution of the decision over source frames, with the fast/slow kernels overlaid and cue frames shaded. T-Maze: slow bank dominates and reaches the cue; Occlusion: fast bank dominates.*
-
-### 5.9 Partially-observable variants of the paper's own tasks
-
-To test the effect on the *paper's task semantics* (not just our toy suite), we build PO variants of LeWorldModel's four benchmark envs — Two-Room, Reacher, Push-T, OGBench-Cube — as lightweight pixel proxies where the goal is shown briefly then hidden (so it must be remembered; `lewm-memory-paperpo`, 3 seeds, 4-class cue, chance 0.25).
-
-**Table 8 — Paper-task PO variants: usage (cue decodable from the prediction, 3 seeds, mean$\pm$std).**
-
-| env (paper task) | gap $\Delta$ | none (vanilla) | short | long | both | chance |
-|---|---:|---:|---:|---:|---:|---:|
-| Two-Room-PO | 19 | 0.23 ±.05 | 0.25 ±.01 | **0.40 ±.03** | 0.38 ±.05 | 0.25 |
-| Push-T-PO | 17 | 0.31 ±.04 | 0.32 ±.02 | **0.48 ±.06** | **0.48 ±.04** | 0.25 |
-| OGBench-Cube-PO | 15 | 0.26 ±.00 | 0.31 ±.02 | **0.42 ±.03** | 0.38 ±.04 | 0.25 |
-| Reacher-PO | 13 | 0.24 ±.02 | 0.26 ±.02 | **0.38 ±.01** | 0.36 ±.05 | 0.25 |
-
-Across all four, `long`/`both` lift decision-usage above chance while `none`/`short` stay at chance; availability (design `both`) is `z`≈0.25, `m^{fast}`≈0.25 (gaps 13–19 exceed $\tau_{\text{fast}}{=}3$), `m^{slow}`=1.00 — only the slow bank carries the goal cue. So the short/long dissociation holds on PO versions of the paper's *own* tasks, not only our custom suite. *Caveat:* these are lightweight pixel proxies (not the original MuJoCo/pymunk/OGBench simulators), and with continuous joint-angle actions for Reacher; the effect is moderate (4-class) but consistent.
-
-### 5.10 Downstream closed-loop control
-
-Finally we close the loop: an interactive memory T-Maze where the agent must *navigate* to the arm indicated by a cue shown briefly and then hidden (`lewm/envs/control_envs.py`). The agent gathers a short context by moving toward the junction, the world model **imagines the goal** by rolling its latent forward to the reveal step (memory-aware rollout), and a linear read-out of that imagined latent picks the arm. Success = committing to the cued arm.
-
-**Table 9 — Closed-loop T-Maze control success (3 seeds, mean$\pm$std).**
-
-| design | success | memory ablated at test | chance |
-|---|---:|---:|---:|
-| none (vanilla) | 0.48 ±.00 | 0.48 ±.00 | 0.50 |
-| short | **1.00 ±.00** | 0.48 ±.00 | 0.50 |
-| long | **1.00 ±.00** | 0.49 ±.02 | 0.50 |
-| both | **1.00 ±.00** | 0.51 ±.02 | 0.50 |
-
-![Figure 8: closed-loop control](figures/fig_E7_planning.png)
-*Figure 8. Closed-loop control. Memory designs reach the cued arm reliably (1.00) while vanilla LeWM is at chance; ablating the memory **at test time** collapses every memory design to chance.*
-
-Memory **causally enables the downstream decision**: with memory the agent reaches the correct arm every time, vanilla LeWM cannot, and removing the memory at test time breaks it (→ chance). This is the decisive control-level analogue of §5.7. *Honest note:* `short` also succeeds at this cue→decision gap because the linear read-out exploits even residual fast-bank signal (the availability-vs-readout effect of §5.4); the clean causal contrast here is memory-vs-none and the test-time ablation, not short-vs-long.
-
-### 5.11 Is two-timescale EMA the right primitive? (baselines)
-
-We compare the fixed-EMA designs against three *learned* memories — a **log-spaced fixed K-bank** (`multi`, $\tau\in\{2,4,8,16,32,64\}$, no tuning), a **learned GRU**, a **learned diagonal-SSM / RetNet-lite** (`ssm`, per-channel learned decay), and an **episodic-retrieval** bank (`retrieval`, causal attention over stored latents) — and a **long-context predictor** (window $h$). Usage (cue from prediction):
-
-**Table 10 — Memory-mechanism comparison (usage; fixed-EMA 5 seeds, learned 3 seeds, mean$\pm$std).**
-
-| env | none | long | both | **multi (fixed)** | gru | ssm | retrieval |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| T-Maze | 0.50 ±.02 | 0.85 ±.09 | 0.84 ±.07 | **0.99 ±.01** | 0.54 ±.05 | 0.58 ±.07 | 0.72 ±.16 |
-| Distractor | 0.55 ±.03 | 0.88 ±.09 | 0.85 ±.07 | **0.99 ±.01** | 0.59 ±.02 | 0.56 ±.04 | 0.68 ±.12 |
-| Recall | 0.37 ±.03 | 0.45 ±.07 | 0.45 ±.04 | **0.47 ±.01** | 0.45 ±.02 | 0.46 ±.03 | 0.52 ±.01 |
-| Occlusion | 0.51 ±.04 | 0.59 ±.04 | 0.57 ±.06 | **0.81 ±.06** | 0.68 ±.18 | 0.58 ±.04 | 0.61 ±.05 |
-
-**Long-context predictor (T-Maze, design `none`, window $h$; vs EMA at $h{=}3$):** $h{=}9{:}\,0.46$, $h{=}18{:}\,0.50$, $h{=}21{:}\,0.50$, $h{=}24{:}\,\mathbf{1.00}$ — vs EMA `both` $0.84$ / `multi` $0.99$ at $h{=}3$.
-
-Three takeaways. **(i) The fixed log-spaced K-bank is the best design everywhere, with *no* per-task $\tau$ tuning** — fixing the "learned $\alpha$ doesn't self-tune" weakness (§5.4): *spanning* horizons beats picking one. **(ii) Every *learned* memory — GRU, diagonal-SSM/RetNet-lite, and episodic retrieval — underperforms the fixed EMA on long-gap tasks** (T-Maze: gru 0.54, ssm 0.58, retrieval 0.72, all ≪ multi 0.99). So it is *not* merely "memory helps"; the **fixed exponential structure is the right inductive bias** (no long-range credit assignment needed) in this low-data/short-training regime. *(Caveat: tuned, longer-trained SSMs could close the gap; reported under matched budget/training.)* **(iii) Enlarging the predictor window does not help until it spans the whole gap** ($h{\le}21$ stay at chance; $h{=}24$ reaches the cue → 1.00, at $O(\Delta)$ context cost) — whereas the EMA reaches 0.84–0.99 with $h{=}3$ and $O(1)$ memory. (h=18/24 single-seed; trend clear.)
-
-### 5.12 The horizon law, quantified
-
-Sweeping gap $\Delta$ × horizon $\tau$ (design `long`, T-Maze) makes the rule precise: **usage is high iff $\tau \gtrsim \Delta$.**
-
-**Table 11 — usage($\Delta$, $\tau$).**
-
-| $\Delta$ \ $\tau$ | 4 | 16 | 64 |
-|---|---:|---:|---:|
-| 3 | 0.92 | 1.00 | 0.98 |
-| 9 | 0.78 | 0.96 | 0.98 |
-| 21 | 0.50 | 0.89 | 0.89 |
-| 39 | 0.44 | 0.58 | 0.96 |
-
-![Figure 9: horizon law](figures/exp_E4_horizon_law.png)
-![Figure 10: single-tau sweep](figures/exp_E3_singletau.png)
-*Figures 9–10. (9) usage($\Delta,\tau$): the usable region is $\tau\gtrsim\Delta$, matching the exponential kernel $e^{-\Delta/\tau}$. (10) single-bank sweep at $\Delta{\approx}21$: availability saturates by $\tau{=}8$ but **usage keeps rising to $\tau{=}64$** — quantitative confirmation that linear availability is necessary but not sufficient (§5.4).*
-
-### 5.13 Frozen-backbone: a drop-on for a pretrained JEPA encoder
-
-To show the primitive is *backbone-agnostic*, we pretrain a vanilla (memoryless) LeWM encoder, **freeze** it, and train only the memory + predictor on top (`--freeze-encoder`; 4 envs × 3 seeds; `lewm-memory-frozen`).
-
-**Table 12 — Usage with a frozen vanilla encoder (3 seeds, mean).**
-
-| env | none | both | multi |
-|---|---:|---:|---:|
-| T-Maze | 0.49 | 0.67 | **0.84** |
-| Distractor | 0.53 | 0.61 | **0.86** |
-| Recall | 0.37 | 0.41 | **0.46** |
-| Occlusion | 0.48 | 0.52 | **0.65** |
-
-![Figure 11: frozen backbone](figures/fig_frozen.png)
-*Figure 11. With the encoder frozen, memory (esp. `multi`) still recovers the decision well above chance.*
-
-Even with the encoder frozen, memory recovers the decision well above the memoryless baseline (T-Maze 0.49→0.84, Distractor 0.53→0.86) — the primitive is an add-on to a pretrained JEPA backbone, not a LeWM-specific end-to-end trick.
-
-**A genuinely external pretrained backbone (DINO-WM-style).** The frozen encoder above is still a *vanilla LeWM* encoder. To rule out any LeWM-specific coupling, we repeat the study with a truly external backbone: a **frozen pretrained DINOv2 ViT-S** (21.6 M parameters, `vit_small_patch14_dinov2`, distilled on ImageNet, *never trained on these tasks* — the DINO-WM recipe). We interpolate the 64×64 frames to 224, apply ImageNet normalisation, and train only a small projector + the memory + the predictor; the backbone stays in `eval()` throughout. We use the matched usage probe (does the predictor's decision-point output carry the cue?) and, as a control, the **instantaneous frozen latent** $z$ at the decision frame (4 envs × {none, multi} × 2 seeds; `lewm-memory-dino`).
-
-**Table 12b — Frozen pretrained DINOv2 ViT-S backbone: cue usage at the decision (2 seeds, mean).**
-
-| env | frozen latent $z$ | none (pred.) | multi (K-bank) | chance |
-|---|---:|---:|---:|---:|
-| T-Maze (Δ=21) | 0.57 | 0.53 | **0.86** | 0.50 |
-| Distractor (Δ=23) | 0.50 | 0.52 | **0.65** | 0.50 |
-| Occlusion (Δ=5) | 0.45 | 0.55 | 0.61 | 0.50 |
-| Recall (Δ=15, 3-way) | 0.37 | 0.38 | 0.36 | 0.33 |
-
-![Figure 12: frozen DINOv2 backbone](figures/fig_dino.png)
-*Figure 12. Frozen pretrained DINOv2 ViT-S. The instantaneous frozen latent $z$ sits at chance on every task — the per-frame features of a generic ImageNet backbone do **not** encode the temporally distant cue. The K-bank memory recovers it on the long-gap tasks (T-Maze 0.53→0.86, Distractor 0.52→0.65).*
-
-Two things stand out. First, the **frozen latent $z$ is at chance everywhere** (T-Maze 0.57, Distractor 0.50, Occlusion 0.45, Recall 0.37 ≈ chance): a generic pretrained backbone's per-frame features carry no information about a cue that left the frame 15–23 steps earlier — exactly as expected, and the cleanest possible statement of *why* memory is needed. Second, the **K-bank memory recovers that information** on the long-horizon tasks (T-Maze 0.53→**0.86**, Distractor 0.52→**0.65**) while leaving the short-gap Occlusion modestly improved and the 3-way Recall at chance (consistent with §5.6: a near-trivial-MSE task where memory is injected, §5.14, but not decodable from this protocol). The memory primitive therefore plugs directly onto a frozen, externally-pretrained DINO-WM-style backbone and supplies precisely the long-range channel that backbone lacks — no end-to-end LeWM training required.
-
-### 5.14 3D benchmark: Memory-Maze
-
-We run the real 3D first-person **Memory-Maze 9×9** (MuJoCo, 64×64 RGB, 6 discrete actions; `lewm-memory-mmaze`, {none, multi} × 3 seeds, random-policy trajectories).
-
-**Table 13 — Memory-Maze 9×9 (3 seeds, mean).**
-
-| design | val next-latent MSE | $\mathcal I_{\text{slow}}$ (memory influence) |
-|---|---:|---:|
-| none (vanilla) | 0.021 | 0.00 |
-| multi (K-bank) | 0.020 | **0.79** |
-
-*Honest finding (a null on this metric).* The K-bank memory is demonstrably **injected and used** (influence 0.79 vs 0 for vanilla), but next-latent prediction here is **near-trivial under a random policy** — val MSE ≈ 0.02, because consecutive ego-centric frames barely change — so the prediction metric does not discriminate memory (the same pattern as the near-trivial MineSweeper, §5.6). The memory-relevant signal in Memory-Maze (recalling target colours/locations across the maze) is exercised by a *goal-directed policy and reward*, not by random-policy next-frame prediction. So the offline self-supervised protocol confirms the primitive **runs and is used at 3D scale**, but the discriminating test there is closed-loop/policy-driven (as in §5.10) — the clearest remaining 3D next step.
-
-### 5.15 Real robotic simulator: DeepMind Control (dm_control)
-
-The PO variants of §5.9 are lightweight pixel proxies. Here we use a **genuine robotic simulator** — the DeepMind Control Suite (MuJoCo) — on four real robots: the **Reacher** arm (the very robot the LeWorldModel paper benchmarks), **Ball-in-Cup**, the **Finger** spinner, and the **Cheetah**. Continuous action spaces are handled by fixing $K{=}6$ random *action prototypes* (so the discrete one-hot pipeline is reused unchanged); we collect 64×64 pixel trajectories under a random policy and train vanilla `none` vs. the K-bank `multi` (`lewm-memory-robotic`, {none, multi} × 3 seeds, MSE + memory-ablation influence). To create a *memory demand* on these otherwise fully-observable robots, we add an **occluded (POMDP) variant** (`.occ`): a contiguous window of frames in the middle of each episode is blanked to black while the robot keeps moving under known actions — so predicting the post-occlusion frames requires *remembering* the pre-occlusion state across the blackout (the real-sim analogue of our Occlusion env, §5.1).
-
-**Table 14 — Occluded real robots (POMDP): memory bridges the blackout (3 seeds, mean±std). Lower MSE better.**
-
-| robot | none (vanilla) | multi (K-bank) | reduction | $\mathcal I_{\text{slow}}$ |
-|---|---:|---:|---:|---:|
-| Reacher | 0.328 ±.002 | **0.175 ±.001** | **−46%** | 8.1 |
-| Ball-in-Cup | 0.331 ±.004 | **0.173 ±.003** | **−48%** | 7.0 |
-| Finger-spin | 0.333 ±.004 | **0.175 ±.001** | **−47%** | 7.7 |
-| Cheetah | 0.240 ±.073 | **0.201 ±.035** | **−16%** | 8.4 |
-
-![Figure 13: real robotic simulator](figures/fig_robotic.png)
-*Figure 13. dm_control robots. Left: under a mid-episode occlusion, the K-bank memory cuts next-latent error on all four real robots. Right: memory influence is large under occlusion (≈7–8) but small under full observability (≈1–3) — the model recruits memory exactly in proportion to how much is hidden.*
-
-**Table 15 — Full-observability control (Markovian): memory is not a free lunch (3 seeds, mean±std).**
-
-| robot | none (vanilla) | multi (K-bank) | change | $\mathcal I_{\text{slow}}$ |
-|---|---:|---:|---:|---:|
-| Reacher | **0.71 ±.23** | 1.01 ±.12 | +42% | 1.5 |
-| Ball-in-Cup | **0.50 ±.36** | 0.60 ±.44 | +20% | 2.2 |
-| Finger-spin | 0.42 ±.59 | **0.008 ±.001** | −98% | 1.3 |
-| Cheetah | **0.22 ±.05** | 0.32 ±.07 | +46% | 5.5 |
-
-**Watching the model through the blackout.** Because a JEPA model predicts in latent space and has no pixel decoder, we train a small *visualization-only* decoder (latent→64×64 RGB) on each model's own frozen encoder and render its one-step predictions back to pixels (`scripts/rollout_video.py`; videos logged to `lewm-memory-robotic-viz`). Figure 14 shows a frame *during* the blackout: the model input is black, yet the K-bank model still reconstructs the robot in roughly the right pose while the memoryless model cannot. Since a global pooled latent decodes only coarse pose (sharp for the Cheetah's body, blurry for the Reacher's thin arm), we also report the decode-independent quantity — predicted-latent error vs. the *true* (un-occluded) robot over time (Figure 15): the memoryless error spikes to ~3× its pre-occlusion baseline across the blackout and immediately after, while the memory model stays near 1× throughout, i.e. it *tracks the robot it can no longer see*.
-
-![Figure 14: decoded rollout through the blackout (Cheetah)](figures/fig_robotic_rollout.png)
-*Figure 14. Cheetah, a frame during the blackout. Columns: true robot | model input (occluded) | memoryless prediction | memory (K-bank) prediction, decoded to pixels. The memory model reconstructs a pose tracking the true robot from a black input.*
-
-![Figure 15: prediction error through the blackout (Reacher)](figures/fig_robotic_errcurve.png)
-*Figure 15. Reacher, predicted-latent error vs. the true robot over time (normalized to the pre-occlusion baseline; shaded = blackout). Memoryless error spikes ~3× during/after the occlusion; the K-bank memory stays ~1×.*
-
-Three honest takeaways. **(i) On real robot dynamics under occlusion, memory robustly helps** — a −16% to −48% MSE reduction on *all four* robots with low variance and large influence ($\mathcal I\approx7\text{–}8$): the K-bank carries the pre-occlusion state across the blackout and, with the known actions, reconstructs the post-occlusion frames a memoryless window cannot. **(ii) Memory recruitment tracks partial observability** — influence is ≈7–8 when frames are hidden but only ≈1–3 when they are not (Figure 13, right), a clean mechanism-level signal that the model uses memory *in proportion to need*. **(iii) Memory is not a free lunch on Markovian inputs** — with full observability it is mostly inert or *slightly hurts* (3/4 robots, +20–46% MSE, high variance), the honest flip-side of §5.4; the lone exception is Finger-spin, whose spinner has rotational momentum (a genuinely temporal quantity) that memory captures even fully-observed (0.42→0.008). *Caveat:* absolute MSE is not comparable across the occluded and full modes (the blanked frames are trivially predictable and lower the occluded average); the valid contrast is `none` vs `multi` *within* each mode, on identical frames. This is the strongest discriminating memory result on a real robotic simulator in the paper — and, unlike Memory-Maze (§5.14), it does not require a goal-directed policy.
-
-### 5.16 OGBench-Cube: robot-arm manipulation (the DINO-WM / LeWM benchmark)
-
-dm_control covers locomotion and reaching; we also test **manipulation** on the actual benchmark the reference world models use — **OGBench**'s `cube-single` robot-arm cube-manipulation task (5-DoF continuous control, third-person 64×64 pixels). We apply the *identical* protocol as §5.15 (action-prototype discretisation; full-obs vs a mid-episode `.occ` blackout; {none, multi} × 3 seeds; `lewm-memory-ogbench`).
-
-**Table 16 — OGBench-Cube manipulation (3 seeds, mean±std). Lower MSE better.**
-
-| observation mode | none (vanilla) | multi (K-bank) | change | $\mathcal I_{\text{slow}}$ |
-|---|---:|---:|---:|---:|
-| full-obs (Markovian) | **0.026 ±.004** | 0.031 ±.001 | +16% | 0.7 |
-| occluded (POMDP) | 0.329 ±.005 | **0.177 ±.001** | **−46%** | 8.1 |
-
-The result reproduces §5.15 on a *manipulation* robot exactly: under occlusion the K-bank memory cuts next-latent error **−46%** with large influence (8.1), and on the fully-observable Markovian task it is inert/slightly worse (+16%, influence 0.7) — memory recruited only when the arm and cube are hidden. We log the decoded rollout to `lewm-memory-ogbench-viz` (true scene | black input | memoryless | memory): the cube/gripper decode only coarsely from the pooled latent, but the predicted-vs-true error confirms the memory model tracks the manipulation through the blackout while the memoryless one diverges. This is the same memory effect on the recognised manipulation benchmark, not just on our controlled suite.
+$$
+\delta_{ts}=\frac{r_{ts}-c_{ts}}{\max(|r_{ts}|,10^{-12})},
+\label{eq:effect}
+$$
+
+with **positive favoring SAS-PC** and tasks and seeds weighted equally. Two references are deliberately conservative. The *recurrent envelope* selects the lower of separately trained GRU/SSM per task--seed cell on the primary metric and reuses that fixed identity for deep and clean checks, so the candidate faces the stronger baseline in every cell. The *legal integrator* (Appendix E) fits the same ridge target from the candidate's own initial-frame embedding, recent and cumulative executed actions, and normalized time; it never reads a later frame, and it exists to expose how much of the endpoint a causally legal shortcut can already explain. Confidence intervals (CIs) use 100,000 crossed bootstrap draws resampling the task and seed axes independently, which preserves both generalization axes; an iid bootstrap over 25 cells would estimate a different quantity.
+
+### 4.3 The conjunctive confirmation rule
+
+Confirmation was registered as a *conjunction* of eleven gates spanning integrity, the recurrent/no-carrier/integrator comparisons, deep-gap persistence, the component interventions of Table \ref{tbl:arms}, a clean-prior guard, representation health (per-cell channel variance and effective rank), and late-training convergence. All thresholds, the metric, the aggregation, and the analysis code were frozen before any cohort result existed; any single miss fixes the immutable label `CONFIRMATION_FAILED`. The gates are enumerated with their frozen requirements and observed receipts in Table \ref{tbl:gate-receipts}.
+
+## 5. Results: The Frozen Conjunction Fails
+
+The write-once analysis validates **200/200** cells, all 100-epoch histories, rollouts, remote receipts, and source/cache/command hashes. Four gates pass and seven fail; the official label is **`CONFIRMATION_FAILED`**. Table \ref{tbl:gate-receipts} gives every gate receipt, and Figure \ref{fig:fig-v18-evidence} places every registered effect on one sign convention.
+
+\begin{table}[!t]
+\centering
+\caption{Frozen confirmation gates and observed receipts. Decisions use unrounded values.}
+\label{tbl:gate-receipts}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}l >{\raggedright\arraybackslash}p{0.285\linewidth} >{\raggedright\arraybackslash}p{0.405\linewidth} l@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Gate}} & \textcolor{NVIDIADark}{\textbf{Registered requirement}} & \textcolor{NVIDIADark}{\textbf{Observed}} & \textcolor{NVIDIADark}{\textbf{Verdict}} \\
+\midrule
+Integrity & 200/200 valid cells & 200/200 & \textbf{\textcolor{NVIDIADark}{PASS}} \\
+Recurrent envelope & $\geq$3\%; CI$>$0; $\geq$18/25; $\geq$4/5 & -2.10\%; [-13.35\%, +9.11\%]; 11/25; 2/5 & \textbf{\textcolor{FailAmber}{FAIL}} \\
+No carrier & $\geq$5\%; $\geq$20/25; $\geq$4/5 & +12.44\%; 24/25; 5/5 & \textbf{\textcolor{NVIDIADark}{PASS}} \\
+Integrator & $\geq$3\%; $\geq$18/25; $\geq$4/5 & -38.12\%; 0/25; 0/5 & \textbf{\textcolor{FailAmber}{FAIL}} \\
+Deep gap & CI$>$0; $\geq$3/5 & -1.74\%; [-12.95\%, +9.46\%]; 2/5 & \textbf{\textcolor{FailAmber}{FAIL}} \\
+Action transport & $\geq$5\%; CI$>$0; $\geq$18/25; $\geq$4/5 & +9.48\%; [+2.88\%, +16.09\%]; 23/25; 5/5 & \textbf{\textcolor{NVIDIADark}{PASS}} \\
+Joint read & $\geq$3\%; CI$>$0; $\geq$18/25; $\geq$4/5 & -5.39\%; [-13.12\%, +0.67\%]; 6/25; 1/5 & \textbf{\textcolor{FailAmber}{FAIL}} \\
+Shrinkage & mean and CI$\geq$-1\% & -1.89\%; [-4.88\%, +0.37\%] & \textbf{\textcolor{FailAmber}{FAIL}} \\
+Clean guard & degradation$\leq$3\% & effect +11.73\% & \textbf{\textcolor{NVIDIADark}{PASS}} \\
+Representation & var$\geq10^{-4}$; rank$\geq$16; 200/200 & var 0.0228 (200/200); rank 2.02 (144/200) & \textbf{\textcolor{FailAmber}{FAIL}} \\
+Convergence & $|$late change$|\leq$5\%; 200/200 & max +132.09\%; 126/200 & \textbf{\textcolor{FailAmber}{FAIL}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+![Registered V18 effect estimates](figures/fig_v18_evidence.png)
+*Registered effects on one sign convention. Green points are SAS-PC estimates, gray bars are crossed task-by-seed 95% intervals, and the right columns report estimates, cell/task wins, and gate verdicts. Positive favors SAS-PC; zero is an effect reference, not every row's decision boundary. Table \ref{tbl:gate-receipts} gives the distinct frozen criteria; decisions use unrounded values.*
+
+### 5.1 The no-carrier contrast is favorable; stronger references are not
+
+The no-carrier effect is broad (**+12.44%**, 24/25 cells, 5/5 tasks): within this grid, episode state descriptively beats the finite window. It is not a validated class or method-ranking result, because the stronger references reverse it. The per-cell recurrent envelope yields **-2.10%** (GRU selected 10 times, SSM 15), and the legal integrator is better in **25/25 cells and 5/5 tasks** --- pooled prior-state NMSE 0.889 for SAS-PC against 0.656 for the integrator. Even the integrator's smallest task-level advantage corresponds to a SAS-PC effect of **-15.91%**, the largest **-77.40%**. The integrator is a diagnostic rather than a deployable world model, but the miss is neither marginal nor task-specific.
+
+The recurrent comparison is structured rather than uniformly noisy (Figure \ref{fig:fig-v18-secondary}a). Acrobot is **-21.04%** with 0/5 seed wins while Swimmer is **+16.83%** with 5/5; Quadruped's task effect is only **-3.02%**, yet its cells range from **-29.67%** to **+11.62%**. The near-zero aggregate therefore combines stable task reversals with one genuinely seed-sensitive task; it is not evidence of task-invariant equivalence. Table \ref{tbl:task-nmse} reports the underlying per-task errors.
+
+\begin{table}[!t]
+\centering
+\caption{Held-out prior-state NMSE by task. Mean $\pm$ SD over five seeds; lower is better. Green identifies the candidate header; bold denotes the lowest mean across the four designs.}
+\label{tbl:task-nmse}
+\small
+\setlength{\tabcolsep}{4.2pt}
+\begin{tabular}{@{}l r@{\,\(\pm\)\,}l r@{\,\(\pm\)\,}l r@{\,\(\pm\)\,}l r@{\,\(\pm\)\,}l@{}}
+\toprule
+& \multicolumn{8}{c}{\textcolor{NVIDIADark}{\textbf{Trained design}}} \\
+\cmidrule(lr){2-9}
+\textbf{Task} & \multicolumn{2}{c}{\textbf{No carrier}} & \multicolumn{2}{c}{\textbf{GRU}} & \multicolumn{2}{c}{\textbf{Diag. SSM}} & \multicolumn{2}{c}{\colorbox{NVIDIAPale}{\strut\textcolor{NVIDIADark}{\textbf{SAS-PC}}}} \\
+\midrule
+Acrobot & 0.713 & 0.027 & 0.685 & 0.053 & \bfseries 0.472 & \bfseries 0.019 & 0.572 & 0.047 \\
+Manipulator & 1.017 & 0.025 & 0.978 & 0.007 & 0.967 & 0.016 & \bfseries 0.959 & \bfseries 0.012 \\
+Quadruped & 1.200 & 0.195 & \bfseries 1.064 & \bfseries 0.004 & 1.170 & 0.177 & 1.097 & 0.179 \\
+Stacker & 0.961 & 0.014 & 0.913 & 0.008 & \bfseries 0.895 & \bfseries 0.008 & 0.930 & 0.020 \\
+Swimmer-15 & 1.222 & 0.158 & 1.101 & 0.042 & 1.079 & 0.024 & \bfseries 0.890 & \bfseries 0.045 \\
+\bottomrule
+\end{tabular}
+\vspace{1pt}
+\begin{minipage}{0.98\linewidth}\footnotesize\textit{Note.} NMSE is standardized within task and is not pooled across tasks.\end{minipage}
+\end{table}
+
+Clean-state quality also fails to transfer to the corrupted endpoint. Against the same fixed recurrent identities, SAS-PC gains **+11.73%** (95% CI [+5.82%, +17.70%]; 25/25 cells) on the clean prior but **-2.10%** on the registered corrupted prior. Uniform clean decodability does not establish robust missing-observation transport.
+
+The aggregate further hides a corruption reversal (Figure \ref{fig:fig-v18-secondary}b). Freeze is **+10.10%** (25/25 cells, 5/5 tasks) and long freeze **+10.10%** (23/25, 5/5), whereas Gaussian noise is **-20.95%** (6/25, 1/5) and checkerboard **-2.98%** (9/25, 1/5). The complete carrier's advantage is descriptively confined to replacement-style temporal freezes rather than generic corruption robustness --- the pattern Equation \ref{eq:correct} makes testable.
+
+![Task, corruption, and phase heterogeneity](figures/fig_v18_secondary.png)
+*Where the aggregate changes sign. (a) Seed cells and task-mean effects against the primary-selected recurrent identity. (b) Corruption-specific and (c) equal-condition phase effects with descriptive crossed 95% intervals; the timeline glyph defines the phases. Positive favors SAS-PC. The post phase excludes the first reappearing observation; deep gap is nested within whole gap. Panels (b, c) are unadjusted, define no new gate, and cannot change `CONFIRMATION_FAILED`.*
+
+The phase profile sharpens the interpretation (Figure \ref{fig:fig-v18-secondary}c). Deep-gap (**-1.74%**, 11/25) and first-post (**-4.42%**, 10/25) effects are unfavorable, but the later post-gap effect is **+8.27%** (95% CI [+4.75%, +12.86%]; 23/25 cells, 5/5 tasks). Descriptively, the candidate looks most useful during recovery after observations resume --- not at the deepest missing-observation or first-reappearance points where a persistent-transport story would predict an advantage.
+
+### 5.2 Action transport passes its contrast; hierarchy contrasts do not
+
+Removing recurrent action features (the no-action arm) worsens all five task means and 23/25 cell effects, giving **+9.48%** (95% CI [+2.88%, +16.09%]) and passing its registered contrast; its descriptive effect stays positive under every corruption, from **+5.30%** to **+10.48%**. The complete carrier's recurrent-baseline reversal is therefore narrower than the contribution of action transport itself: the mechanism of Equation \ref{eq:predict} meets its registered bar within this grid even where the full design does not.
+
+The hierarchy evidence points the other way. Joint access to both states yields **-5.39%** (95% CI [-13.12%, +0.67%]) with only 6/25 wins; it is near neutral on freeze (**+0.50%**) and long freeze (**+1.65%**) but unfavorable on Gaussian (**-12.57%**) and checkerboard (**-8.00%**). Learned shrinkage loses every task mean to the per-cell better fixed-$\rho$ endpoint (**-1.89%**; dynamic selected 18 of 25 cells, static 7), so the interior point of Equation \ref{eq:correct} was not vindicated either. Consistently, the simpler single-read control has the best within-block rank profile of all eight designs --- mean rank **2.20** (first in 10/25, top-three in 20/25) versus **3.80** for full SAS-PC (3/25; 10/25; Figure \ref{fig:fig-v18-task-design}, Appendix C). These ranks are descriptive, but they reinforce rather than rescue the failed component contrasts.
+
+The optimizer-seed axis makes the same separation. Equal-task effects are positive at all five seeds for no carrier and action transport, but at only 2/5 seeds for the recurrent envelope and 0/5 for joint read. This consistency check is not a gate; it shows the favorable class and action patterns are less seed-dependent than the SAS-PC-specific and hierarchy comparisons.
+
+### 5.3 Validity failures concentrate by task and span arms
+
+Variance passes 200/200 cells, but effective rank passes only **144/200** and convergence **126/200**. The strongest favorable recurrent task, Swimmer (**+16.83%**, 5/5 wins), has 0/40 joint guard passes; the strongest unfavorable task, Acrobot (**-21.04%**, 0/5), has 40/40 (Table \ref{tbl:validity-by-task}). Yet joint-pass counts are nearly identical across designs --- 14/25 to 15/25, with SAS-PC at 15/25 --- so the health problem is task-structured rather than specific to one arm (Figure \ref{fig:fig-v18-task-design}). We do not filter to the 118 jointly passing cells: that would redefine the frozen estimand after seeing outcomes.
+
+\begin{table}[H]
+\centering
+\caption{Representation-rank and convergence receipts by task. Counts aggregate eight designs $\times$ five seeds.}
+\label{tbl:validity-by-task}
+\small
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Task}} & \textcolor{NVIDIADark}{\textbf{Rank $\geq 16$}} & \textcolor{NVIDIADark}{\textbf{Change $\leq 5\%$}} & \textcolor{NVIDIADark}{\textbf{Both guards}} \\
+\midrule
+Acrobot & 40/40 & 40/40 & 40/40 \\
+Manipulator & 40/40 & 39/40 & 39/40 \\
+Quadruped & 24/40 & 5/40 & 4/40 \\
+Stacker & 40/40 & 35/40 & 35/40 \\
+Swimmer-15 & 0/40 & 7/40 & 0/40 \\
+\midrule\textbf{Overall} & \textbf{144/200} & \textbf{126/200} & \textbf{118/200} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These diagnostics leave an artifact-complete falsification but block promotion of the within-grid rankings to claims about a generally superior healthy, converged system. Appendix B reports all registered contrasts in full; Appendix C gives all eight raw designs, exact ranks, and condition/phase receipts; Appendix D gives arm-level health and convergence counts.
 
 ## 6. Discussion and Limitations
 
-The robust claims live on the *decision* axis: a memory bank helps exactly when its horizon $\tau\gtrsim$ the cue-to-decision gap $\Delta$ (§5.12), the matched timescale **causally** drives both the prediction (§5.7) and downstream control (§5.10), and a fixed log-spaced K-bank captures the whole range without tuning (§5.11). What we have now addressed relative to an earlier draft: **causal** evidence (counterfactual swap §5.7, closed-loop ablation §5.10); **downstream planning** (§5.10); **baselines** — GRU, K-bank, and long-context (§5.11); **5 seeds** on the headline matrix; a **standard benchmark** (POPGym Arcade §5.6) and **paper-task PO variants** (§5.9); and **scale/realism** — a frozen pretrained DINOv2 (DINO-WM) backbone, a 3D Memory-Maze, a **real robotic simulator (dm_control)** where memory cuts post-occlusion error 16–48% on four robots, and **OGBench-Cube manipulation** (the DINO-WM/LeWM benchmark), −46% under occlusion (§5.13–5.16).
+**A class benefit is not a carrier benefit.** A causal $H=3$ predictor has no episode state, so the favorable no-carrier contrast is compatible with older evidence being useful. The stronger recurrent envelope asks a different question: does *this* shared-action predict--correct carrier use that opportunity better than ordinary learned recurrence? Its negative estimate prevents that promotion. The distinction matters because a finite-window baseline can make any recurrent module look like evidence for its own internal design; only the registered comparators can establish that SAS-PC is the right implementation.
 
-We now also compare against learned SSM/RetNet-lite, episodic-retrieval, GRU, and long-context baselines (§5.11), report a 5-task×5-seed standard benchmark (§5.6), a frozen-backbone study on both a vanilla LeWM encoder and a **frozen pretrained DINOv2 ViT-S** (the DINO-WM backbone; §5.13), and a real **3D Memory-Maze** at 64×64 (§5.14). We remain conservative about: **(i) Raw MSE is a decoupled instrument** and is not used for headline claims (§5.4). **(ii) Our learned baselines are under matched compute/training** — a *tuned*, longer-trained S4/Mamba could narrow the gap to the fixed K-bank (which would itself be a clean "fixed-structure is a strong, cheap prior" result). **(iii) Scale & realism** — the frozen-backbone study now includes a true externally-pretrained DINOv2 (§5.13), and on **real robotic simulators** — dm_control (four robots, −16–48%) and **OGBench-Cube manipulation** (−46%) — memory cuts post-occlusion next-latent error with influence tracking partial observability (§5.15–5.16). The 3D Memory-Maze confirms the primitive *runs and is used* at 3D scale (influence 0.79) but does not discriminate on random-policy MSE (§5.14); a **V-JEPA 2** video-scale backbone and a *goal-conditioned, closed-loop* 3D/robotic demonstration remain the priority. **(iv)** a few sweep points (gap/long-context) are 1–3-seed; the headline matrices are 5-seed.
+**The integrator changes how the endpoint should be read.** Under random-action control trajectories, an initial visual embedding plus executed actions and time retains substantial information about native state. Losing all 25 integrator comparisons does not mean later images are useless; it means the chosen prior-state endpoint admits a strong causally legal shortcut, and SAS-PC does not extract more decodable state than that summary. Future memory benchmarks should report both a recurrent visual baseline and an initial-frame/action integrator; beating only the finite-window host leaves the central ambiguity unresolved.
+
+**Predict--correct behavior is corruption-dependent.** Freezes preserve the last visual value while removing new evidence; Gaussian and checkerboard corrupt the current input itself. The sign reversal is consistent with the hypothesis embedded in Equation \ref{eq:correct}: action prediction helps when observations are absent, while correction can hurt when the incoming latent is unreliable and the learned gate fails to close. The phase profile sharpens this --- the favorable descriptive effect appears after observations resume, resembling improved recovery more than superior blind propagation. It remains a hypothesis because condition and phase intervals are unadjusted and the exporter did not retain per-step gate trajectories.
+
+**Clean decodability is not persistent transport.** SAS-PC improves every clean-prior cell against the fixed recurrent identities while losing the corresponding corrupted-prior contrast. A clean objective can strengthen latent statistics or ordinary one-step prediction without preserving the right information through missing observations. Memory studies should therefore report clean prior, blind-gap prior, first-reappearance correction, and later recovery separately; a single clean linear-probe gain cannot stand in for memory robustness.
+
+**The two-state hierarchy is not supported.** Action transport is the only component intervention meeting its registered bar, and its effect spans all four corruptions. In contrast, the single-read control has the best rank profile, the joint-read contrast is unfavorable, and learned interior shrinkage loses to the endpoint envelope. The data support neither a necessary fast/medium decomposition nor learned horizon discovery: here the extra routed read behaves as complexity without demonstrated benefit, though multiple state variables may still help in other regimes.
+
+**Validity is part of the estimand, not a cleanup step.** Swimmer supplies the strongest favorable recurrent effect while failing the rank guard in every arm; Acrobot supplies the strongest unfavorable effect while passing everywhere. Because joint-pass counts are nearly constant across designs, the pathology is not a convenient excuse for one candidate's loss --- it is a task-level warning about what the whole grid measures. Filtering to healthy cells would answer a different question, so the negative label retains all 200 cells.
+
+**Design implication for a new cohort.** The next study should combine an exact-SIGReg LeWM host with representation stabilization, an action-conditioned *single-state* predict--correct baseline, internally action-conditioned GRU/SSM comparators, and the same legal integrator; it should retain per-step correction gates and route weights, preregister deep-gap versus recovery-phase predictions, and evaluate executed control or planning in addition to state probes. Those changes test the narrow hypotheses exposed here --- action transport and recovery --- instead of rerunning the rejected broad claim.
+
+Limitations remain substantial. The host uses VICReg-style clean-target regularization rather than original SIGReg LeWM; corruptions and random actions emphasize state estimation, not return. GRU matching is approximate, and the comparison does not exhaust RSSM, S4/Mamba, retrieval, or long-context baselines. SAS-PC was selected adaptively on other tasks. The exporter retained only final shrinkage coefficients and action-feature norms; **per-step gate vectors and route weights were not retained**, so no trajectory-level claim is possible. Any replay is post hoc and cannot alter the frozen result; all proposed extensions require a genuinely new cohort.
 
 ## 7. Conclusion
 
-A two-timescale exponential memory is a minimal, analyzable way to give JEPA world models a controllable sense of time. Across controlled memory-stressing tasks it produces a clean short-vs-long dissociation: the horizon must match the gap, the matched timescale carries information to the decision, and memory extends the usable horizon far beyond a finite window while a Markovian control is unaffected. Framed as a *primitive plus a measurement protocol* rather than a performance play, it is a foundation on which richer (selective, episodic, hierarchical) memories for latent world models can be built and, crucially, *visualized*.
+Finite context and persistent state are different architectural properties, but a favorable no-carrier contrast is insufficient to validate a recurrent design. Across 200 frozen cells, the no-carrier and action-transport contrasts favor SAS-PC; the stronger recurrent and integrator references do not; the hierarchy contrasts are unsupported; and the validity guards fail. The complete negative result is more informative than a baseline win: it falsifies the broad method claim on this cohort while isolating action transport --- the one mechanism that survived its own intervention --- as the hypothesis a new, valid cohort should test.
 
 ## Reproducibility Statement
 
-All results are produced by the companion code in this repository. The method is fully specified in §3 (Eqs. 2–5); the memory module is `lewm/models/memory.py` and the augmented predictor is `lewm/models/memory_model.py`. Each experiment is a self-contained launch script: the four-environment headline matrix (`scripts/run_4ens.sh`, 5 seeds, project `lewm-memory-4ens`), the reviewer-response sweeps E2–E7 (`scripts/run_reviewer_exps.sh`), the mechanism baselines GRU/SSM/retrieval/long-context (`scripts/run_abc.sh`, §5.11), POPGym Arcade (`scripts/run_popgym.sh`, 5 tasks × 5 seeds, `lewm-memory-popgym`, §5.6), paper-task PO variants (`scripts/run_paperpo.sh`, `lewm-memory-paperpo`, §5.9), the scale studies — frozen vanilla and frozen DINOv2 backbones plus 3D Memory-Maze (`scripts/run_scale2.sh`, `lewm-memory-{frozen,dino,mmaze}`, §5.13–5.14), the real robotic simulator runs (`scripts/run_robotic.sh`, dm_control via `lewm/envs/dmc_collect.py`, `lewm-memory-robotic`, §5.15), and OGBench-Cube manipulation (`scripts/run_ogbench.sh`, `lewm/envs/ogbench_collect.py`, `lewm-memory-ogbench`, §5.16). Rollout videos that decode each model's predictions back to pixels are produced by `scripts/rollout_video.py` (`lewm-memory-{robotic,ogbench}-viz`). Every metric in the tables is **recomputed from saved checkpoints** by `scripts/analyze_runs.py` under a single consistent definition (matched usage probe, learned τ, ablation influence), so the numbers are robust to per-run code drift. Seeds are fixed (data seeds train=0 / val=7777; model seeds as listed per table); horizons, window $h$, optimizer, and precision are in §4.2. The availability/usage/influence protocol is `lewm/eval/memory_probe.py`. *Not yet included* (production steps, not science): conversion to the ICLR LaTeX template with anonymization, a full per-experiment hyperparameter appendix, and the V-JEPA 2 video-scale / goal-conditioned 3D runs flagged in §6.
+\begingroup\small
+The anonymous supplement contains the frozen protocol and source, all 200 cell rows, 33 registered contrasts, task/seed effect matrices, figures, and deterministic verification tools. Hash-bound private artifacts additionally retain checkpoints, histories, held-out rollouts, and remote receipts. Two process-level interruptions were audited before final analysis. The first occurred with 136 valid cells and required four complete-cell restarts; the second occurred with 180 valid cells and required one. The schema-v2 audit verifies interrupted and replacement logs, local and remote W&B terminal states, replacement artifact hashes, terminal runner quiescence, and the final attempts, runs, summary, CSV, and analysis bytes; all five replacements reached epoch 100. Appendix F itemizes the audited interruptions. Full identities are redacted for review; the curated archive can be verified without the private repository.
+\endgroup
 
 ## References
 
-Assran et al. *I-JEPA.* CVPR 2023 (arXiv:2301.08243). · Assran et al. *V-JEPA 2.* 2025 (arXiv:2506.09985). · Zhou et al. *DINO-WM.* 2024 (arXiv:2411.04983). · Maes, Le Lidec, Scieur, LeCun, Balestriero. *LeWorldModel.* 2026 (arXiv:2603.19312). · Balestriero & LeCun. *LeJEPA.* 2025 (arXiv:2511.08544). · Shaj et al. *Multi Time Scale World Models.* NeurIPS 2023 (arXiv:2310.18534). · Hafner et al. *DreamerV3.* 2023 (arXiv:2301.04104). · Deng et al. *S4WM.* 2023 (arXiv:2307.02064). · Samsami et al. *R2I.* 2024 (arXiv:2403.04253). · Mattes et al. *Hieros.* 2023 (arXiv:2310.05167). · Gu et al. *HiPPO.* NeurIPS 2020 (arXiv:2008.07669). · Gu et al. *S4.* 2022 (arXiv:2111.00396). · Sun et al. *RetNet.* 2023 (arXiv:2307.08621). · Morad et al. *POPGym.* ICLR 2023 (arXiv:2303.01859). · McClelland, McNaughton, O'Reilly. *Complementary Learning Systems.* Psych. Review 1995.
+Maes, Le Lidec, Scieur, LeCun, Balestriero. *LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels.* 2026 (arXiv:2603.19312). · Ghaemi, Muller, Bakhtiari. *seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models.* NeurIPS 2025. · Zhou, Pan, LeCun, Pinto. *DINO-WM: World Models on Pre-trained Visual Features Enable Zero-Shot Planning.* ICML 2025. · Assran et al. *V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning.* 2025 (arXiv:2506.09985). · Schölkopf et al. *Toward Causal Representation Learning.* Proceedings of the IEEE, 2021. · Hafner et al. *Learning Latent Dynamics for Planning from Pixels.* ICML 2019. · Hafner et al. *Dream to Control: Learning Behaviors by Latent Imagination.* ICLR 2020. · Hafner et al. *Mastering Diverse Control Tasks through World Models.* Nature, 2025. · Deng, Park, Ahn. *Facing Off World Model Backbones: RNNs, Transformers, and S4.* NeurIPS 2023. · Samsami et al. *Mastering Memory Tasks with World Models.* ICLR 2024. · Shaj et al. *Multi Time Scale World Models.* NeurIPS 2023. · Becker et al. *Recurrent Kalman Networks: Factorized Inference in High-Dimensional Deep Feature Spaces.* ICML 2019. · Shaj et al. *Action-Conditional Recurrent Kalman Networks for Forward and Inverse Dynamics Learning.* CoRL 2020, PMLR 155, 2021. · Cherepanov, Kovalev, Panov. *ELMUR: External Layer Memory with Update/Rewrite for Long-Horizon RL Problems.* ICLR 2026. · Lillemark et al. *Flow Equivariant World Models: Structured Memory for Dynamic Environments.* ICML 2026 (arXiv:2601.01075). · Balestriero, LeCun. *LeJEPA: Provable and Scalable Self-Supervised Learning Without the Heuristics.* 2025 (arXiv:2511.08544). · Bardes, Ponce, LeCun. *VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning.* ICLR 2022. · Tassa et al. *DeepMind Control Suite.* 2018 (arXiv:1801.00690).
+
+## Appendix A. Exact protocol and analysis
+
+### A.1 Objective terms, initialization, and parameter matching
+
+The variance and covariance terms of Equation \ref{eq:host} act on the matrix $\bar Z^\star$ of batch-and-time-centered active clean targets with $N$ rows:
+
+$$
+\mathcal L_{\mathrm{var}}(Z^\star)=\frac1D\sum_{d=1}^{D}\max\!\big(0,\,1-\sqrt{\mathrm{Var}(z^\star_{\cdot d})+\varepsilon}\big),\qquad
+\mathcal L_{\mathrm{cov}}(Z^\star)=\frac1D\sum_{d\ne d'}C_{dd'}^2,\quad C=\frac{\bar Z^{\star\top}\bar Z^\star}{N-1}.
+\label{eq:vicreg}
+$$
+
+All three loss terms have unit weight; there is no selectable regularizer coefficient. Clean-frame activations, simulator state, rewards, and corruption labels or masks never enter the recurrent update; there is no memory teacher and no memory-specific loss. SAS-PC initialization is $W_x=I$, $W_o=W_a=0$, $b_f=b_m=2$, $c_f=c_m=0$, uniform route. The GRU width is fixed once by minimizing $|4Dh+3h^2+6h-(2D^2+16D)|$ over hidden sizes $h\le D$, never re-selected per task.
+
+### A.2 Immutable identities
+
+The frozen execution identities are:
+
+\begin{table}[H]
+\centering
+\caption{Frozen execution and artifact identities.}
+\label{tbl:artifact-identities}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Identity}} & \textcolor{NVIDIADark}{\textbf{Frozen value or SHA-256 prefix}} \\
+\midrule
+clean worktree at freeze & \texttt{True} \\
+protocol SHA-256 & \texttt{357cbe1296926802\ldots} \\
+canonical public command-list SHA-256 & \texttt{408051d027c55ae5\ldots} \\
+cache-manifest SHA-256 & \texttt{81e3efc64b822741\ldots} \\
+cache-sidecar SHA-256 & \texttt{dbc2db0700c30a3e\ldots} \\
+artifact-manifest SHA-256 & \texttt{1e3bbcee667a98a6\ldots} \\
+cell CSV SHA-256 & \texttt{71144b471acbf88a\ldots} \\
+contrast CSV SHA-256 & \texttt{78b804c3acfc433c\ldots} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The four-GPU queue was fixed as GPU 0: Acrobot then Stacker; GPU 1: Manipulator; GPU 2: Quadruped; GPU 3: Swimmer. Every task used optimizer seeds 18001--18005. The protocol stores all 200 expanded commands and per-source SHA-256 values; the final analyzer revalidates them before writing results.
+
+### A.3 Metric phases
+
+For target time $t$ and corruption interval $[b,e)$, `gap` is $b\le t<e$, `deep` is $b+H\le t<e$, `first_post` is $t=e$, and `post` is $e<t\le e+H$. The primary held-out metric selects deep and first-post samples. This selection, the four-corruption average, and all probe splits were frozen before launch.
+
+### A.4 Crossed bootstrap
+
+Let $\Delta\in\mathbb R^{5\times5}$ contain task-by-seed paired effects. Each draw samples five task indices and five seed indices independently with replacement, takes their Cartesian $5\times5$ submatrix, and averages all entries. We use 100,000 PCG64 draws with seed 18018 and linear 2.5/97.5 percentiles, preserving the two crossed generalization axes.
+
+### A.5 Comparator identity
+
+For each task--seed cell, the recurrent identity is the lower primary held-out prior NMSE of GRU and SSM; exact ties select GRU. The same identity supplies deep and clean references; selecting a new best model separately for those metrics is prohibited. Static/dynamic identity is selected per cell only for the endpoint noninferiority contrast.
+
+### A.6 Frozen arms and parameter receipts
+
+The eight arms of Table \ref{tbl:arms} are separately trained; GRU/SSM update from visual latents only, although the shared predictor remains action-conditioned. SAS-PC has 33,286--36,614 carrier parameters across action dimensions; the fixed GRU width gives 35,048. Recurrent carrier sizes differ by at most 5.29% and total models by at most 0.09%.
+
+## Appendix B. Registered contrasts in full
+
+All eight registered primary contrasts with crossed 95% and 90% intervals and pooled absolute errors:
+
+\begin{table}[H]
+\centering
+\caption{Registered held-out primary contrasts with 95\% and 90\% crossed bootstrap intervals and pooled candidate/reference NMSE. Deep gap and clean prior use the deep and clean prior-state NMSE against the recurrent envelope; action transport and joint read compare against the no-action and single-read controls; the endpoint envelope is the shrinkage gate of Table \ref{tbl:gate-receipts}.}
+\label{tbl:contrast-full}
+\footnotesize
+\setlength{\tabcolsep}{3.4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Contrast}} & \textcolor{NVIDIADark}{\textbf{Effect}} & \textcolor{NVIDIADark}{\textbf{95\% CI}} & \textcolor{NVIDIADark}{\textbf{90\% CI}} & \textcolor{NVIDIADark}{\textbf{cells}} & \textcolor{NVIDIADark}{\textbf{tasks}} & \textcolor{NVIDIADark}{\textbf{cand./ref. NMSE}} \\
+\midrule
+Recurrent envelope & -2.10\% & [-13.35\%, +9.11\%] & [-11.55\%, +7.36\%] & 11/25 & 2/5 & 0.889/0.893 \\
+No carrier & +12.44\% & [+3.65\%, +22.43\%] & [+4.89\%, +20.70\%] & 24/25 & 5/5 & 0.889/1.023 \\
+Legal integrator & -38.12\% & [-61.38\%, -20.58\%] & [-56.84\%, -21.91\%] & 0/25 & 0/5 & 0.889/0.656 \\
+Deep gap & -1.74\% & [-12.95\%, +9.46\%] & [-11.15\%, +7.70\%] & 11/25 & 2/5 & 0.883/0.891 \\
+Clean prior & +11.73\% & [+5.82\%, +17.70\%] & [+6.81\%, +16.92\%] & 25/25 & 5/5 & 0.738/0.843 \\
+Action transport & +9.48\% & [+2.88\%, +16.09\%] & [+3.94\%, +15.02\%] & 23/25 & 5/5 & 0.889/1.000 \\
+Joint read & -5.39\% & [-13.12\%, +0.67\%] & [-11.64\%, +0.07\%] & 6/25 & 1/5 & 0.889/0.855 \\
+Endpoint envelope & -1.89\% & [-4.88\%, +0.37\%] & [-4.22\%, +0.00\%] & 6/25 & 0/5 & 0.889/0.876 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The table is generated directly from `confirmation_analysis.json`; decisions use full precision, so rounding here cannot change a gate. All 200 auditable cell rows, the 33 registered contrast rows, the $5\times5$ cell-effect matrices, and selected identities are supplied in `confirmation_cells.csv`, `confirmation_contrasts.csv`, and `confirmation_analysis.json`.
+
+## Appendix C. Full results
+
+Table \ref{tbl:task-nmse} and Table \ref{tbl:component-controls} jointly report all eight trained designs. Values are held-out prior-state NMSE as mean $\pm$ standard deviation over five optimizer seeds; lower is better.
+
+\begin{table}[H]
+\centering
+\caption{Held-out prior-state NMSE for SAS-PC component and endpoint controls by task (mean $\pm$ SD over five seeds; lower is better).}
+\label{tbl:component-controls}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Task}} & \textcolor{NVIDIADark}{\textbf{No action}} & \textcolor{NVIDIADark}{\textbf{Single read}} & \textcolor{NVIDIADark}{\textbf{Static}} & \textcolor{NVIDIADark}{\textbf{Dynamic}} \\
+\midrule
+Acrobot & 0.619 $\pm$ 0.174 & 0.483 $\pm$ 0.054 & 0.609 $\pm$ 0.118 & 0.548 $\pm$ 0.037 \\
+Manipulator & 1.026 $\pm$ 0.030 & 0.953 $\pm$ 0.013 & 0.957 $\pm$ 0.011 & 0.958 $\pm$ 0.011 \\
+Quadruped & 1.304 $\pm$ 0.214 & 1.019 $\pm$ 0.137 & 1.131 $\pm$ 0.188 & 1.120 $\pm$ 0.231 \\
+Stacker & 0.958 $\pm$ 0.027 & 0.905 $\pm$ 0.013 & 0.932 $\pm$ 0.026 & 0.921 $\pm$ 0.020 \\
+Swimmer-15 & 1.092 $\pm$ 0.050 & 0.916 $\pm$ 0.038 & 0.991 $\pm$ 0.142 & 0.878 $\pm$ 0.010 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Clean prior-state NMSE by task (mean $\pm$ SD over five seeds; lower is better). Bold denotes the lowest mean per task.}
+\label{tbl:clean-task-nmse}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Task}} & \textcolor{NVIDIADark}{\textbf{No carrier}} & \textcolor{NVIDIADark}{\textbf{GRU}} & \textcolor{NVIDIADark}{\textbf{Diag. SSM}} & \textcolor{NVIDIADark}{\textbf{SAS-PC}} \\
+\midrule
+Acrobot & 0.410 $\pm$ 0.016 & 0.462 $\pm$ 0.014 & 0.364 $\pm$ 0.020 & \textbf{0.329 $\pm$ 0.014} \\
+Manipulator & 0.921 $\pm$ 0.005 & 0.925 $\pm$ 0.002 & 0.927 $\pm$ 0.005 & \textbf{0.879 $\pm$ 0.006} \\
+Quadruped & 1.045 $\pm$ 0.009 & 1.054 $\pm$ 0.002 & 1.057 $\pm$ 0.003 & \textbf{0.841 $\pm$ 0.029} \\
+Stacker & 0.868 $\pm$ 0.006 & 0.863 $\pm$ 0.007 & 0.862 $\pm$ 0.006 & \textbf{0.821 $\pm$ 0.003} \\
+Swimmer-15 & 0.980 $\pm$ 0.002 & 1.008 $\pm$ 0.001 & 1.016 $\pm$ 0.001 & \textbf{0.818 $\pm$ 0.012} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+![Within-block design-rank distributions and validity structure](figures/fig_v18_task_design.png)
+*(a) Within-task, within-seed rank distributions for all eight designs; light points are the 25 task--seed ranks, bars span the interquartile range, ticks mark medians, diamonds mark mean rank, and rank 1 is the lowest NMSE within a block. SAS-PC is highlighted only to locate the candidate; ranks are descriptive, pool no raw NMSE across tasks, and define no superiority test. (b) Joint validity-guard passes per task and design (of five seeds), showing that guard failures are task-structured rather than design-specific.*
+
+Exact rank summaries are:
+
+\begin{table}[H]
+\centering
+\caption{Descriptive within-task, within-seed rank summaries corresponding to Figure \ref{fig:fig-v18-task-design}.}
+\label{tbl:design-ranks}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Design}} & \textcolor{NVIDIADark}{\textbf{Mean rank}} & \textcolor{NVIDIADark}{\textbf{Median}} & \textcolor{NVIDIADark}{\textbf{First}} & \textcolor{NVIDIADark}{\textbf{Top-3}} \\
+\midrule
+Single read & 2.20 & 2 & 10/25 & 20/25 \\
+Dynamic & 3.12 & 3 & 3/25 & 18/25 \\
+Diag. SSM & 3.72 & 5 & 7/25 & 12/25 \\
+SAS-PC & 3.80 & 4 & 3/25 & 10/25 \\
+Static & 4.24 & 4 & 1/25 & 9/25 \\
+GRU & 4.96 & 5 & 1/25 & 5/25 \\
+No action & 6.84 & 7 & 0/25 & 0/25 \\
+No carrier & 7.12 & 7 & 0/25 & 1/25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The frozen recurrent-envelope identity counts by task are:
+
+\begin{table}[H]
+\centering
+\caption{Recurrent-envelope identities selected on the primary metric and reused for deep, clean, task, and corruption slices.}
+\label{tbl:recurrent-identities}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Task}} & \textcolor{NVIDIADark}{\textbf{GRU selected}} & \textcolor{NVIDIADark}{\textbf{SSM selected}} \\
+\midrule
+Acrobot & 0/5 & 5/5 \\
+Manipulator & 2/5 & 3/5 \\
+Quadruped & 5/5 & 0/5 \\
+Stacker & 0/5 & 5/5 \\
+Swimmer-15 & 3/5 & 2/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Condition-specific component effects and equal-condition phase slices provide secondary context for Figure \ref{fig:fig-v18-secondary}:
+
+\begin{table}[H]
+\centering
+\caption{Descriptive corruption-specific component effects. Positive values favor full SAS-PC; no multiplicity correction or decision gate is defined.}
+\label{tbl:secondary-components}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Corruption}} & \textcolor{NVIDIADark}{\textbf{vs no carrier}} & \textcolor{NVIDIADark}{\textbf{action transport}} & \textcolor{NVIDIADark}{\textbf{joint read}} \\
+\midrule
+Freeze & +10.91\% & +9.79\% & +0.50\% \\
+Gaussian noise & +16.68\% & +10.48\% & -12.57\% \\
+Checkerboard & +5.70\% & +5.30\% & -8.00\% \\
+Long freeze & +10.11\% & +9.44\% & +1.65\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Descriptive phase effects against the primary-selected GRU/SSM identity, averaged equally across corruptions. Deep gap is nested within whole gap; intervals are unadjusted and define no decision gate.}
+\label{tbl:secondary-phases}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Phase}} & \textcolor{NVIDIADark}{\textbf{Effect [95\% CI]}} & \textcolor{NVIDIADark}{\textbf{Cell/task wins}} \\
+\midrule
+Whole gap & +1.58\% [-7.60\%, +11.20\%] & 13/25; 3/5 \\
+Deep gap & -1.74\% [-12.95\%, +9.46\%] & 11/25; 2/5 \\
+First post-gap & -4.42\% [-15.80\%, +7.04\%] & 10/25; 1/5 \\
+Post-gap & +8.27\% [+4.75\%, +12.86\%] & 23/25; 5/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Per-corruption and per-phase values remain in each cell's `metrics.json` and held-out rollout arrays. The paper does not pool raw task-state MSE across heterogeneous tasks.
+
+## Appendix D. Representation and convergence
+
+\begin{table}[H]
+\centering
+\caption{Representation-health receipts by design.}
+\label{tbl:representation-by-design}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Design}} & \textcolor{NVIDIADark}{\textbf{Min. variance}} & \textcolor{NVIDIADark}{\textbf{Min. rank}} & \textcolor{NVIDIADark}{\textbf{Variance pass}} & \textcolor{NVIDIADark}{\textbf{Rank pass}} \\
+\midrule
+No carrier & 0.0296 & 2.92 & 25/25 & 18/25 \\
+GRU & 0.0230 & 2.02 & 25/25 & 17/25 \\
+Diag. SSM & 0.0309 & 3.81 & 25/25 & 19/25 \\
+SAS-PC & 0.0228 & 2.02 & 25/25 & 18/25 \\
+No action & 0.0233 & 2.03 & 25/25 & 18/25 \\
+Single read & 0.0245 & 2.38 & 25/25 & 18/25 \\
+Static & 0.0349 & 4.62 & 25/25 & 18/25 \\
+Dynamic & 0.0233 & 2.02 & 25/25 & 18/25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Late-window convergence receipts by design.}
+\label{tbl:convergence-by-design}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Design}} & \textcolor{NVIDIADark}{\textbf{Largest late change}} & \textcolor{NVIDIADark}{\textbf{Convergence pass}} \\
+\midrule
+No carrier & +39.38\% & 15/25 \\
+GRU & +43.71\% & 15/25 \\
+Diag. SSM & +47.70\% & 16/25 \\
+SAS-PC & +90.25\% & 15/25 \\
+No action & +132.09\% & 17/25 \\
+Single read & +120.28\% & 15/25 \\
+Static & +36.58\% & 17/25 \\
+Dynamic & +47.34\% & 16/25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Representation health requires both thresholds to be met in every cell. Convergence is the absolute relative change between mean validation predictive loss over epochs 81--90 and 91--100. The gate requires every cell's late change to be at most 5%; no failing arm is removed.
+
+## Appendix E. Integrator guard
+
+For target $t$, the legal feature vector is $[E_\theta(o_0),a_{t-3:t-1},\sum_{j=0}^{t-1}a_j,t/(L-1)]$, with zero-padding before three actions exist. The candidate checkpoint supplies $E_\theta$; a ridge map is fit on clean training targets and evaluated only on deep and first-post held-out samples. The integrator receives no observation after the visible $o_0$.
+
+\begin{table}[H]
+\centering
+\caption{Legal initial-frame/action integrator guard by task. Positive paired reduction favors SAS-PC.}
+\label{tbl:integrator-guard}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textcolor{NVIDIADark}{\textbf{Task}} & \textcolor{NVIDIADark}{\textbf{SAS-PC prior NMSE}} & \textcolor{NVIDIADark}{\textbf{Integrator NMSE}} & \textcolor{NVIDIADark}{\textbf{Paired reduction}} & \textcolor{NVIDIADark}{\textbf{Seed wins}} \\
+\midrule
+Acrobot & 0.572 & 0.416 & -37.45\% & 0/5 \\
+Manipulator & 0.959 & 0.821 & -16.74\% & 0/5 \\
+Quadruped & 1.097 & 0.618 & -77.40\% & 0/5 \\
+Stacker & 0.930 & 0.802 & -15.91\% & 0/5 \\
+Swimmer-15 & 0.890 & 0.622 & -43.14\% & 0/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+## Appendix F. Adaptive provenance and restart
+
+SAS-PC was selected after V1--V7 development on different tasks. Its earlier adaptive V8 study completed 325 cells but had immutable label `PILOT_NO_GO_FINAL_DESCRIPTIVE`; it cannot rescue the present confirmation (V18). V9--V17 are likewise development/host audits, not confirmation. Interruption 1, `acrobot.swingup/vicreg_ssm/s18005`: last interrupted epoch 62; interrupted/replacement log hashes `dfe369fac5d9`/`de69a7091d8a`; replacement epochs 1--100. Interruption 1, `manipulator.bring_ball/vicreg_ssm/s18005`: last interrupted epoch 31; interrupted/replacement log hashes `3492682adbf9`/`2c516e0b6f8c`; replacement epochs 1--100. Interruption 1, `quadruped.run/vicreg_ssm/s18005`: last interrupted epoch 9; interrupted/replacement log hashes `6a72339d3e8e`/`6f005ea3ae51`; replacement epochs 1--100. Interruption 1, `swimmer.swimmer15/vicreg_ssm/s18005`: last interrupted epoch 62; interrupted/replacement log hashes `4029c6a1b1be`/`5e0815242313`; replacement epochs 1--100. Interruption 2, `stacker.stack_4/vicreg_hacssmv8_static/s18003`: last interrupted epoch 37; interrupted/replacement log hashes `e74f6ba0dcb1`/`63b9ee95f0eb`; replacement epochs 1--100. The runner's JSON attempts ledger records terminal subprocess returns, so process-killed attempts are supplied by this independently verified schema-v2 lineage receipt. The audit's separately classified parent-only pause did not signal the trainer and is not counted as an additional restart. The registered commands, seeds, source hashes, and stopping rule were unchanged.
+
+## Appendix G. Claim boundary
+
+The study can establish only a persistent-state or component-intervention result for a VICReg-trained LeWM-derived finite-context host on the frozen corruption cohort. It cannot establish improvement to original SIGReg LeWM, executed-return or planning gains, causal discovery, learned semantic hierarchy, calibrated uncertainty, learned horizon discovery, or robustness beyond these tasks and corruptions.
+
+## Appendix H. LLM Usage Statement
+
+OpenAI Codex assisted with code review, experiment monitoring, artifact auditing, deterministic result-to-manuscript tooling, and manuscript drafting/editing. The authors verified the executed code, artifacts, statistics, citations, and final claims and retain responsibility for the work.

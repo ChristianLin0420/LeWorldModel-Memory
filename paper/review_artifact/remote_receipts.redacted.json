@@ -1,0 +1,1802 @@
+[
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "604843c5c12dd444e3fab42f1274a736cbae840974f4851667e4baab5eb7d176",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "2573e32e8f03b8179122b591e19f68a951743f3595e8f83537170da84c3a4f52"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "8cbb2089769ea6d4ba84136bdba3a03bc20a9c11aa8d4d8b49d92a3c0a1be220",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "eb976db3f53d96d8ca3cbdd8c3cd975f42a8abe7f644ba1146ce20c476b271d4"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "c5681e4ed348135159d60e4570f7323fa93ebe25d1c8127c45d8391f14817e64",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "8118a0e5bfc1a8a9ab62e3a6419bccedff0ef23b46b343e39fa5b9e0341c5af0"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "c4de938c5262a4992d8c2ef32b89768bbf708f324a661456db4a7fdbebb47834",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "4681e340084cad9d103dd904d515117a1684a3418c58513e2668e5504f32a933"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "2d49b48a284c69ddd9b088462fcd3ba7c527222775284ac5a618ef86bc6c39fb",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "02d5e9da73e71e0e4beae6134f3c2cea8f654c0f9c3b22633a9e4abd3939eb4a"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "87b17670fae9c9d04ed13ae977e1772f4e1186afac98a406acd941c02b12b5c8",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "43aa68fd4745e605ae9cc247291d5a36f9c2b461972ec1d328967e7773e89c1f"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "65f5c392ea5f12275102afc87c8c8e51ec92c3f0fd0da5f75f94be30514464b7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "57264d1346092e4a4b7c9c24742c625a8f073012796145dda1d3e3ea48bb50d7"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "b62eb01e45293d0bfc794f43b1d38a50865549abaa191b52959e9023e0b630a2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "f9e11345108599837d98b36f2a5e243eea092d8dbffd56afd2839b4161faa9af"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "373a16bef301b7d297fbdfb32f192ca24b2097264a9075857235fc74e6c2cfd9",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "4280b7df6d9e380b70ae4d51dba748ee533b5e39bfb31fb41878348710ed701c"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "d1d7b2c737b43f092a259afc71b6b1ffceedbe990fb981f10b1edfc535297602",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "bebb4951dacac5f95f9dca7063f0eb5f7acc5589da62c247673d171f6e8e488e"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "f9d01f385d30778c368f1c541b762d8b25d328735259080af79fb352e694917e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "8e3e78f10d36c19ab1385eb003c0af4b6c9b8fb3a3d8460790a2208803ffdb1e"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "935c8c341526990dcb76f70028747367c178a67dbe67ff3940e32087b402d70c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "0949bb581059b64007131d197602a7e50a594658469701adc48cdea672c049d3"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "e23a65e8f30e7364d8056b6732bc32537141909bfc45a0b56427c7bdc2d4df6b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "f8be6a7e9a0aa1ececbf429f9a67bd58e622d8000c0b9401e50997b16ae988ea"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "928e997448b55ecf12bb08e433cc7c0bc7a9c91ac1c41e2b1dad5f7e48c5ceb0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "0a3f1955edc256a1787045cf8eb584ab439ec8792e9f5a70f2e0da525f683e16"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "55a56caf0a46d0698245d41bdcbc39d3eb70e289a33e67e8bf337421b036caa9",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "b22bfef13b14af915e1efe7a9c52ed3f0fe92e027341a40c11f2c6e6b64aeaac"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "b291ebba39119187c979dbd98ecf3f51669f02f4bec5fe4c4e4a95ff9d632bc7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "33a1f7a62076d7f0b88d733793a75214c64dd5325f5e67f31badd1817d07cf2d"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "43e5a67c52c7e6dea035312eb610ebe5dce83d791d4b216200a771cbb84decce",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "10585d79c5e4d5d56f5acc70bef13c7865e389610145d289ba94b380ffb91d1d"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "04b084f7ca68a3f7589aa818c239402378a041f44cffa46a03fc68f93ce93802",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "13f619d35d013575d5a71a3caf7f022bb9f10d26bc500bad79c570cfab2a0988"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "ea17f19629c7460a12dae8afdbc3ad2fef4e668f6accb68a73508d5ec753a8a7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "ba722ef0fca6c404ecb491d74065addb814623232e8ad02cf6bb5997fda94a86"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "37005d599b8ede197a0fe7598bc03cdefefb94d45073d04580fc3b684e445167",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "aecc52211ec8c14a4b9216a6c2362ebb6a5b8961ddee7b47a1169edc38a0369f"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "06f99901b5befc003591f0bf5b399fd6873afad18752609c1c4aad0e25d3b087",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "aec5e99119176e2b66d8db4a681f0c794a44586e53f10abc501ce11fedfbfe5b"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "d28b43c3311179496b0cc9ce362014a4c8890ef9571dfda9538814a561fd2448",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "1aa5b53811530b5caace8469ff9185edcdd59cfe9a601ddd65a26c565a0b9e89"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "e673079450b93eef76679384e808404c2d10551d3427fb6af3e802fba21b4e58",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "4b0afa99ce825c484222a934fb7bc7774f72f2615dfe76cdbb132b083741a53b"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "4897e733aaaf8367c5e315427757a6e521fc86cd5fb5319d09a46cf5af2c1965",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "bccfa08f479e13716033d76d7f0403e91b3d99c16dc9b883c3afcbb9fa75ec02"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "581bb663e1713ecc3ecb7e35bcc9488f4ed09be3dc7c8ab064d5e72a17d579b7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "ccd53fe5a9b7295b046058f742939af4d27dd5eb55fac2b19c4dacd0964835d0"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "17a71ff15322a6fa603d10654a13e28f909b9c32f72cac439e626fe722db54aa",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "b4c64b95d41051389ad97c9097730e5e8a393cd8d8b9df0fd33ef17144eec3ea"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "e3596a97c168719ea3148050477e6fc02dddff89d5dd8f8aa20e7624d850701f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "127eb8a88108b4149cc2604bb0c8ffbfe33e1089748dbeabc9f13cc1c09bc221"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "0badd4db59800eb4b1a24b40fb5f9e97d512bfaddde2156c7c2717962e0547d0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "b61838629ec9ab1b31e66f287a9c43a2699a3a4cf90e55a7c229a9ced310cf84"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "a45c357077c52ab10352480b1e67e6ce15b8a4e2e9c1b5ff53c4cf3c3456206e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "0f1c977339e85fd0f14894461099cc347c34dd33c9f142d369bc79eea7f788e9"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "6ef67addcd8d522af3d853b789516b41774d85ba8c70c15f346a0080bef7613a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "99b52ddb12134888fd9bdde516fb0bfa41668467953cb1a2679107474844d32a"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "611fd8cb2a60c34353131541d656129d2434045cd57e0cf0a1bdd38338ead082",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "da87d86d1207d5861ad4bffbb6982f083b28454e4e6409dc57210b83c0d505d9"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "1fe389051f105d9174ffd159575da9b59aef9a485476f29556ed74e49238a0ac",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "f4404f30ae75cc826e4e8548b2de0c564c0adbfb861a869cc0cfcdc70e565b7a"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "a60761f95892f819d512b9c4e625ab56c12f916f8e2e8e6b6a8b61c3c0df21da",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "722f98845bd6418faf54fb6dff08e8aabef413235ffcaf1f9bc231a26e7e13bc"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "ccc670aefb2f3ba029ba8ff81950f51afe71437b51f79bbfa49dc6732fd10e6c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "00eacc1d5d7b7427ee201802f4a867339e962509b76ea149deee2212ccc352b5"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "77179b94f096f31f6028302d5f39339b980b508db58e7118c22402525bf36637",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "c1201ef9f68432c133b443a25281cdebcd6cc3b0e008cde50e8c921c19a89ef6"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "e5ba9b7db0b2a808e11df7090d0a2dc1adcca902527578854b5d3de1598902dd",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "14d7578c45aa0c3e8ba64086a8d2a953ea09e065c6a55e30586847f9a3a853eb"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "507b3c1520ad1eb6624fc54f8c6f66eb4694a41cd1f306494bc3fa93c9d3a8fc",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "3bab955723231662006a4dcdd5d7bc3cc45e18674d0b7472620653c0fcf44310"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "690169e392f8257554e6d00ace1f57b536325fc2b7ecdc6e5b1508702375ad4c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "1150e0cd82c1452419f5655589894fd627d511d928b059425983ea48aaf24085"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "d2d414d91b236a87f6c8fdfdb286c63440ab259ad6680cceeecb605614c83f92",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "00030387eaee8fe0672e5f45d8d241ead6f30b432d04f1b343abbc8d335fef12"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "e600ba60e1116c34a7d5e330d1db9ee955e4bb206a36975e015adae2e326bcd7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "acrobot.swingup",
+    "unredacted_receipt_sha256": "678cb4eebac931cdc7a46c0046553f566990c7bcd9d3236f2c68ad48c1939184"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "e3aaf6c8bda52604cc4d059408008c4330c49d5686c1b5ca070f99ea34f0ffea",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "18e9b831893e61b6fe069d72a8241becb511981e61773ae12d20228dd77556fd"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "04d21c078c7062bf9c5ad8dfcdb1e288001d60cc889ff448475893f2774b6d59",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "c9cca318a0db13b2e02fdb683273446e9c04766f3e00390f833406a9a1680c29"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "b09d9af19e8e3917698a27c416730d936feaf1700641e5a35b9d3065184f9f2a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "22041a6647ddff39ee35276e8b9240b9ac8c55ceb37af2e1875e78b0e4fcc3f9"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "e7aa88e071833333ac77320ea6565e62216d2435ef2c348f785dcd87cc0a84c4",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "4860b9a599a8799bd9a44f224b1dc1c64625c8448bdb51278fd68ba0ca07a01e"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "753cc2c8216d738e68937426af3c20ad9a7b61c339189d1aba79f92268d25294",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "40c9f3244681a654b932853e5c4c176931139421ca1ea305e3666d5cdd8ef998"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "455e256609f654fcf72209f7bb4a3d3f5700b46ac9e1c570bf1cd208c0f5f07e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "8b0016abec27487cc9bc3b4b29e930479118387ddbaab6ed8cba17623f352940"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "e220b066e2f48bccb66c4289b65a7260a734f49324db169e76a455ca91f4d069",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "1c2640c47d032f2fc4237c437b291a6b95324d9398cb4ee69a8e6e7dfeb47193"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "87c78cda8894c556525e2a3ce846d6bc2a45cd9656898be66cbb962f675e051a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "4d7106754debcd80de2356eeb03119f0c35386d090e4bf791e9aa2cfe7268cba"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "b65ec72d28a213cbf2729c8fd979004988c8af73e2dc4840cd7bc053972a3f77",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "0fc9a60433b585553b8258c4d4b9aa217d17a8ae764137dca859a815f017ff2f"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "e26f013fae7fc7414694fe201555e2aab6f95720791678799cd942d899d415ca",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "998623b12d88cbd34119c5241ae29007799898fc9543ce6b40749a321e8cdc68"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "6cf6e8656830b35cdb85bf84a9a1fd0c2b9a9082e31872ba80cfe47f0eb549b0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "55a1fdb7ada2fb270856085577b5e585744d28d96c0eb9bb12e28c78dee16a47"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "fc0ed6be5e3723c986fc0c52b56ca2affc9a4fc0a5a79edd6d120a04258cdfe5",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "f10fa24f9e39dd20eb318c507d196cb22fa83963d2b261ccbbddd0e83712e6b7"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "9ae8d6911120f0eb0c934358615734faedfb7643c40ff0a074579da65f55bff1",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "2ce5dd2c379b5d9521d2dcf4cd965c7918c26bb34e28cc2ee090aa4245be64f6"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "95b7b9b271eee59bcb930cdb425e7eecbbeadcb636d0453ffab93de6ee2a9391",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "156c0e4aa78b8ad0e5d752f159bfe245ebee631a8b0c7d9a91351afcee6cd32a"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "e28c7982f312002b554d25f8ad0e53cdf7529064b55f0e5539a5c6059ffab023",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "ea8295f4ce78345b9631d0a618d626c7ded74d26889ec47bb7008c1355cc3303"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "08731c9779da1a6c0af23d6a5c95d897b629b1bdc220a41ed1e45d800aa0888d",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "9653084501ccc8e615cdcc1ba96547db1327298a8a82eaa476e957e212ce68f7"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "d039e2158cff1231a5ef91d607b906f37d5c87ba981c9a2164b3ce69821fe277",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "19ae75603396e7bbd2fddba6c1a7225aed00d6e3261828b9167b1481451d95a7"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "9f1c5da087b7a077d823a25642c5655d5082f8b87c5c16d1b4eb9a9ce8418b07",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "ff0d15fbc52c5a821f3c694a02266edd36984b8f7e1c11f4adf0e5e2c365d4ab"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "0aa88b034068cda50700882c2e7150bddec75ecf6d0a5bd0e45e3fcbf50d1481",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "8b54d6776806a2c631c386db3c4e951f79d2d43c5705f0f33e1a5ad00953ec4b"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "613f037b3fc9521688e6535404d88e6418d879d4f0f488d9ab388f89c1894316",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "06a9d8c8299e3a87861954ceac5e93a62c8b12e7b49bb51730f5a2b7048316c4"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "eae5def39496a156f3da0f3c41b957978cf5deee30f6eee36529b8fd8aa6fac1",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "f180b175c30c53a2dbaee81af7b9655eaae8a1985e0f4e0686074a2748618f6f"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "47c65fce5b22d57d78daa299eb4f822011324c9f36cd21b4084e4b94837b20dc",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "6f6c23c760ec8da7a634ac6c5954b51029f3656d94a7f7c118a6af650b900428"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "52b2f16a5063a2ab563e70ad5bf166df072cadf1e8b4ef94800966605ecfd055",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "b9c2e26d54c57c77501b380cb6388f11a605a6fe55c60a7114d606e44c0ab099"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "d6f9855678395db60ae39aac1c5904342c3ad427c1e3643ab8ff259e0da7191b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "a7fa14c8a09ef3fc6b608841455e1e7e8bf2cd02e34d10f99225ec920d72daa6"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "7110936964d9894dca4d6ef967428d2c139b3026c6b606bb915895e310c1393e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "0ab2db9c5de2f65f80bbb412262c4ce01efb9b688e313fb0ce57d81090841104"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "7b5ae0d6f58aa9b93aabe63bec69736b7c15b15b4968700c9e1996e2e243f26c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "85c890658d232f42bb60a8b16e56343f92eb695693ac11fe20bb2e944a14c941"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "3d97b885c582971b758578542dec5714e90e14b8a5f2d0a3b8c2c5db29b3160f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "a89eae4de52a9db00f893b179e80d289018b7364d5552c72dadb2fedba6f32cf"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "d27d2a46da74a5a129b44fcd4d83371f1f4a368183d7a24df97118e34e756d60",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "0e730cf3cd6c39f1724a954b02a9f2a64b117f41d68985f4cf3ed9ec013abc70"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "9113d0373a3a4b9e254f767c06d1705be54da710029b8bf68473fa694ea9d55d",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "ea0936fb91808c95e16941e779ebec4e8f23e1cb9bd8ad809a5cb85f2ef8c84d"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "019232c01764654ab945a5bd59d273ba04e7b4dd9096c4aed9edb511524519c6",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "8c02ceb4ba90c5ac81437a33e6fd013d345bb369b23b531e7a3da4c076df56b7"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "78070f3bc8f680a0bce06a6698ce8d93ff937a613fabd03741cfcc42f4a47728",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "b90c4b4bb945cfb69b44d72f1c470f330a69878af70ad3d5f738bd3277c577bb"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "17b42d2d19f0de13d51616c2f3593d002bab48ce0d7b99c132727b4df071d4a7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "cdcb8af08a1da2bcb298fcf0fdf4064da82a22351e986d9d3a7d4ed2a1b840d8"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "5996024293f351139a5cdecf4a450ce283660579d9e052c9d039680660204ac8",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "427fbc6d03db2cca2b53e0986f5faad5416832b54ee462ed244433f86a336591"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "eb0b52c61e307df4f691727ad20fdd707c75135d890bee8c3284f5509eb34f3a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "28b048b21c3bb34f52b4f3b424f54f571dc62ee16cfc2d401c69cd5c401c166a"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "c8903960e07ac845ccb24de2735e3cce87fe11e34f419d09424f1895d4433ed7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "98f0a90d2e4419c98847eda3d1a6d4eef5941877d718936717e391bf150690a9"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "034dd0e3407b8e06b8971fb4070d7aa9dfc0901b98133c0dee1076cc6e82eae5",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "9414a5e3bed7354f7b6b37cac6edabe12ffa54d52b7fed2767313009b197f2d4"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "df7ae008f3cde8b938b0487182c83b3b82da430e291030cf698f9cb231df4b22",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "a76ebb5d2301248f04da5ff157d99ae3765c49c7e15e9d0f62fd7a771262dcc9"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "51b0401b72692eb8f9154c3add7e1d8037d9449e53ba7e68ed9559eed6f77d21",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "35addfe7d18ca751810bf40a83e02a4874ddd57966a38bf07c2ffbabe99a21e4"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "2bf1b05fe6feea538a5ef094c65e72cf8e216f39895dbc807ba458aa947882b2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "90bbda0fe0c7901f40d34afa88d7ef9c5573e049769c8866e174fc14a1c9229d"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "4f758e7b1a8cc163a4b220e6eb1aacb331d8f7f00f5b69ae5434bf614f27d0d4",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "manipulator.bring_ball",
+    "unredacted_receipt_sha256": "d0b97fe26638240a3748cb292ceb784de175f802c0fb236c483a00c599c2acae"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "3e9a3b304c9fc2aaf790e02ff25081b24e16f887cdff01bbf6c8f160f065d975",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "aeb6acea536d8da027d6b2267e0cc11547d1b9b186cbafffdd0a0be66ddc47df"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "2aa031d231af7624c1590a5865679c81e1cadf0d23d014bc8a0addb57609729e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "aa481a780e991f4f9845ea7a28c8a1fea11e9dd3cd6b9fb500d7886f3028079c"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "5a816e948f97f79eee33c9fd9238a1536ca39622893788eb676650e97e707231",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "10e637dff51d5aaabc2dda6f2848857d091545d12964e7ee1d17e3d7fb8c3fad"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "12408058e3ccad44b843b9758438f133d86b2a2f753c08808d730070fc940ff5",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "0bfb5aea638bfa0405047743f83a17a0e8ee47a6f16bef4e796ec8a5365e6c3b"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "5f0d56e8470b4d303b63c407eae77b208a3ad8f2b041ea4e284ad777fc04805e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "8244608ec4f8b445b127e077f021d2bae191f57487184afc3e3beb7d3b01d941"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "fd030e432818d6844ae1db779884f5c94ee7dc91e8227456ac5d879e8d1fdce7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "bd9881f801ad9b9cfa017226d16a371a6c84336ac7643f8740391846876a2f4b"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "144b5e23fa263895d616a19c6ab8c20c2af822dd088aee39e8e7e936c0c04fb7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "ed13eeb47e883f143e3bc8855833bb8c1c542b89e63c12798ee23de088cf3279"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "ddccc9dfb8c485fd45eea630dec9d8a353832fe1241384a2a3a32e9e1e656874",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "462ea2e990207f3bcabed1044bd23fc28533354a0eb66e9506cc3e570b5d2ff9"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "4e400058f6cc76488def095601b2a758dd707f4d1e56bca3ffb464b5f2b4c1fc",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "40806cb200c2c214adba201a65c744ac0707786dd6e25ed9629f94ee4dacd31a"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "4da819f217250a65b537e7c8569980fb4f97d91a3e404bc416b95d95d99773b2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "537cecb31ae41faf42aab8242e7d160f2274246b8cdb776b965227aca416fed7"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "e1ff8162110e5ade4f857bc3647b8343b2e7f452e6b0c2de4734bcf4a4f9a60f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "604d2965eba6099fec06b5967528a696af9e33a5a2811dcf5c6e0f0bf115d038"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "113eebce95fb5602e3218ec8de8d0fcd5bc451f39abbe035bbe6180e2d364d34",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "d43435034846f0dbdb24ed36723deabd138e2d73453de01975df808f27fd595f"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "01bc527ca05acaaccba66c84332a1f374736620047d0280f79d5c8930364dea5",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "02cb401d449159a778f9d0e14952bb54f577fdf177d0ccd53fe2cc9b3a203633"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "ac98d02eab8381aa678ac0d5d2d6bfb28b16fcc13d611b01058a8af23935cd69",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "faf9f47bb5c63678e9a0dfc287d46eb35b467e2074f39e423ffca8aa8dca0390"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "83f47d9adf1542503c4496bd8d6f9d846daf2410ac0c9dce87bbaa5cecc3bddc",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "ece047c9581d8e367ea2b56e22b8f02de668c8973725e509aef0a41e534a97d3"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "63794163cd4c547d35e24b99656f0357017273b8ca02183bdc17a6b79c13740f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "a56f6dbc3c33edbf74e56e65a6061a0ce5a8de1115f274d3bf28d5101d0bd162"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "06a330b864b031355fdeaf3a52d47e8248f54c52b2934c71c97426427d9dbfb6",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "c8c3cf35d8e0be7c06fde652023c11a15b4326d3cb82319c107d9f8327e3a628"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "88efc325b634eaa3c51a5bcc491d5b0a074cfb523e8e0c60aa2bc875bef39f0b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "793c606b2ac970d0c3e654789882239a9d2e68eb39cba9ede18f15373d663f28"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "3e962e802414173123071c8da38f09cd2855d46b2755149cc6a32b3e7d9ab0aa",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "990d0bab5af9ce404aa1512d540eb7dcaabcf639fdc244a35c358c7e68c8bdbf"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "99f70e0775c2c02fdd966259900afc54d80658534b8f653fe9a23b844bea6c23",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "33a74d6bfac3def1fa7cf5d6a6cff2d19e215964daf046576f19b64c29ec65c7"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "ee48a229c6123ffc506ddab0ecc7aa2ab02000a0edf8ba5cd5769bfcbf8d7e16",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "098abea9a07afe8a7dd083d458d47cd7f42cf32e80f7ee7757f4e52596965545"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "0badaca3964560b5523a703840f6380cbf71cc968b0c7ff95b1eca381983db73",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "62966fd794b72a75527da6765079281c9c169614b7c35042e898cd31512e967c"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "9fee67dcf3843b9a8f970a9d1e41c8b82c6aeac524aae0f000f4713186be6283",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "011f64e7fc8af9610c0e6648fb748113a7a769d01cf5dc4314f431cf04663470"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "ce87ba3dfcbf8c5670497d81140a5a13217c9b5b41a4ccc4b80f39e9b190f638",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "a648ba4431e91d71812b3501979bcb5974b9139a41188d3b74527107fab9084d"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "bfad46c28a8aa252b6e83535aee0ebd4b4fc08181ff4100bd62b9dfaa00f2ee4",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "2060428dde108747446a7ef67dccc8786a5d28b613e8674cd28222d63e4b91e7"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "7388d396033085195238e0a29bc94039040c0969fbcf8f30ebf99cec658b0934",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "0dfae51a32de41d0224315c181b11f4e7a7b0e852c98572ac34b3e22f1c79d8a"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "4c5ef82d378eeb90cde3ca85186fe59838e6bb17cae9e235fa88722ebcac715c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "1ae1f831edfcd0ddcebd96a8f0b6751e69353284cb18168838a1ebfd61e32849"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "1e216ec569f539513fc041228c976fa8e89e274b3f1131059310b7c098205e69",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "3b98e2deaa8d74113dab5fee263d1af3b8225cfe336c9769284b387f716f1f58"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "e83f7c784ef9ce6b1bdb1b617c780ddb19cd003a5189e1800afc3319c7b94d2f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "772b7a5dd7b47ce28aac72efe0b320c9e7de374484ba616bcb742ca2b7fe6d81"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "134d75328e72cb77524bd981c7998c8169b103242b4a87bf87035b4c7fe4ad4f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "b5146f2236f7495a04b9d4aa6271cf13949113d7d38f94ac1f7e0c7fe945a726"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "2ac45947a4723e67c9d6c61dd033ef15b8ace57cb6c0e4ccd05c3fc3146b9140",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "ace6d5aff29b8c8d1477e7616fabf5e52ae7c1af6bfd83760864ace3ace519dc"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "23ee2f1700a35a44bb9a8ea1c3e98fdd6868010254bbbfc9a335ed1188223444",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "acbfb5143defcd52281a055e2ad4f508c446ccd98baf7d0b8940c2b623573ef0"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "c7c9518781c1c425f5442ff8cbb53b60c2c42d19631785cd6b3bc9094f18bffd",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "21e7d765bfd4909cf73c9edfa628e0962b4f78ec54d0c2cf861827cbbecedead"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "18fee6147476c73ed2488cceb869c82aef58d8edd915ed4b56786a1de30ac3d2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "5433af02dcbba43f9f2a9b8f57a372f81ded48b4167d4cee252c06af699cf182"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "0def0c11ff360b75489fcb447bb2d0a50344ee222e98cfbb331939408871d527",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "5c24e64996e2b7e0687152e9b603fb2baf125afdb6e6e327592363c18f7e7f7f"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "fdd8a7fd2a954148c1572ae00c330ede9d28b0db5c5ffe155dc615a6b45ceaae",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "cfbd155969cc12e0eda0d4f055ee3796b1bc463e8610f01b620b6808cc9db226"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "4d36fae631c033ac0233219f955a58b458c878478054e0e1ae2e5ec2885a1ba0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "0e73aa2c9e6fadd13d1d50b03591aec01f698a9eaa6c360de1c0ad274879e911"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "498a5ced660a6df36c6d70e6518e7447c4c14a8c4eb362ce9b3db77232be6121",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "7cb4903eb3caf1cadbb5ff8309111ce417cf9c21972326e371d88b1f3dac5fa7"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "150751c2d1e202b340d5fc9c434880bdb3f5a2eec4c09c98038cfcc60995337d",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "20b78d4086ea2c73e6b286909a079a8fbb411c302b8bc2b8e690aba748f033d2"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "f48756466a7f532d50acaa082c672a535b07e942fc66d7134fbb274fd91be688",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "quadruped.run",
+    "unredacted_receipt_sha256": "74dbca7a4bf6fa4f4b61c87049417b5c45749a9851c554254bae9c434585cff6"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "ae0f24d5d5b96a0e74e99a5d1bc0497822c33a8f21c4a12fab46348285a9b3ab",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "5ec3b4a3b51cfb89027ce616e1038990559b86b5ff911c6fe374400b26fd05f4"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "530b3d0c47e1b1a85e81d2babdf7121d04627fb48dbfe685da68e916dc4ca1e7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "b3d355618992c7290c58154c9c4746c629c4131b89cd477b72c900fa4d47b902"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "ee3e3724f0a2fd4672d3f74d2cef30d30ddaa4ad3e2bcf103337af02acb87ef6",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "b96c3e5b2c319237f01fd165e50331ceaf9676f579b0e70aa7cf81717f61076c"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "04cccd485522b17c2cae5f3d5ec9f0b733cee9d6e603577eabb614097446d4f2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "5d4c5e09f8458e777d4c39e4e38640ab15fc535a60e2e497cb4eea036a090344"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "4e1780c38f84496c1f7ac99991128ab0a29a61defed7bfceb5314e8eee4b97be",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "91f8bb8a83c1c39cf6426f57d5a142d19474ff2087a2a31d251e9307323f2091"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "17eba2c9ef5e6659a057f7acff6aacab28e8d745f744835c8267c7537f9d86bd",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "05125e37be7676032750b57764d8bf46fe0863aac351baeadf44fbad4131ac4b"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "1fcf469cf07c13c7b17ee1f5f72bd7f46bd0c0456730168e8137fd53e234bdaa",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "7413f24a7fdc9409dc96e963ce55385ab1094ee4e0e2e1259ba0d843f28e0dc4"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "79c1b50ec63d6785b1972f9facb4c627d7c15eb0d879cf38c057a9f088ba1e84",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "88213c7627d37be3cc65c0f08eff8bb2ffc214acae7c6ba5e1c8987cb858d0c7"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "a150079bbbee165816ad1ec232a78365d1eda43848bb39d31dfce74d01fefb83",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "551214ef10a0226ee68818402a555f4eea2ae010e7a2f23ddc7bec7b43418d8e"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "910273feb9f8da19cda8a159eb458f08c6d6afa2b6660a1ab16d85c8037b0314",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "2cf139c01bc5fcbdba37f5e0a42b37ffc31b6a8dcd5398e31b241e6a6067d1ab"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "7861fa5713e5284b14dd1ae79a8abb99e57380dd3b28d3a1e6c5d074f32a6d4b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "94c0402b7ecd1a9ba60dd5ff01bfa4b186a43163b1a073cbf7a0684ad62e7405"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "e05e4622b19058a81c2103330154aaac36d4ead76aa69b0d15f43f2eb10ab39b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "75ab7b0d0c7dd505042f3350842d3c846b2336f23b6d2324a34f0c126efe56b8"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "ef13a43aca0d49867b938903cbd64eed5492661f5c2301b024a0dc3d12d2705e",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "03927c13a8ebd2ed53e3313e542a7b633584c6352e141a4adc99884894621273"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "f9d3b79e5059276801fd25ab6987c3993e12f353558c520d01eed82c384e326b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "66652d4d85ba1b1cb4eccb74a6472c75bacee441881aee791f1db56890f35c10"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "45bd24c9fb6772f7d2f3c5b0ddf61bd4aae3613f2ec4000ac0910ed622a8545c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "ee286f285355ee916dabf8e9129ba155ba3d16b8bc23f50cabcb5768672b7c3b"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "f2023ac53af7e03508fcca6e413443b85bf3ca3b213c3fb5eb4d5ee238f80fdd",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "753b09da661bab060c7a115eb2e2442c898263abcb6dc4b3e0fa9e788667a323"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "f30c52249cac34178643045ad8bbec9f4d9a2ed07ff9c3f2412e55feec77ef53",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "1c41293afcfe03a10de9f5296ec424d82f1d10f404e15ce1e55b0dd36c4f1641"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "22029537376ff5ef293cb257ada85f6753ef6fab1a72c79bc47588cddbad03ca",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "bcb8900eeb3714abc9f971567490cb89267177d4b9e12a2e4c1290901ed083d3"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "8b2dda20420e6fa6dd0faf6b116193bf16d83037914a299f28c14a0949646c78",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "6b3898076ef601473fee6829064cdf25f3bbab0b93b9160f019953800650746e"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "cbd4cd929801c7ee4d1a6cf0e7d86df6a4d2cdc7a8fc901f16ab303d22145e1b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "47e76a63286c83392172d93f541f77e1db29c167cc9d8a76c831cf7a0e232e3e"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "3196bc8498e1c85b6568e07fa18a51b295ab7fe1a00208dfdb15ab3f28880888",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "5c676dfe1e6579a83a6c9808aea35c60c35c83b8d1dc9d4a509611447308c17f"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "22eb58bd8994338e796b6bed5c16163a269623992efdacf195e677711a4c79c1",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "e4ac17aad0cc6523592da95da0834c64ab0d3644b7345c02889a234b54ad042f"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "85e72878ab76653825fce4ce9693cba332b0429c172535d12918d029f7cd88e3",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "da3344fedf2b6ec050fba06c9559679195ad68bfc412609b18b5eab1fde1d33a"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "bcd8084323af36f8e61a95a90990e95b7e7687e908efd7c0ed8a3d31a04a359c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "15a585780267c279968c663db6714223fd9d8336fbe784ba281c8fe904f4fdf0"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "bd6a46d3f1cd3f4074d6f8dd3b5e89d174c123a4fdb998c774c5c3aa747d1963",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "d9ca366fe0ba3fcde00e7e3feebbde5055dcdcc6d633af6e0162041ed11ea6d8"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "fc48d1b08cbc9c76a439baea90753b872e6e9739885b8a8fc0e4cf652b12eb3a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "714b5cb30b45397f74967d0fd43c849420d6786ee5bdf600a036a9392d537d4a"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "99a94a9f4943d712b3627fb735900de0dccc7272dc0940306efc128d420a8fa7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "36a1c678b1fce9193f95d875a906913230971526f96e14fbaf502bbf74564aa1"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "451cf79e407cf572724b23dd4d9e8c42a7a09415b6bbe0b3a881940fe9e7ca8b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "d87f77389daab44c1e3f49cc1f1098e9a35ee44a5fbe0faabc1758d1d103aeb0"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "9e3297c720257cab12d7f14152faf4f2b8c411458544a294703481e19716abe0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "68e1b55d0236e25098f6a57e286197e2d3673d4f239b6db2e0e8ce5318438528"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "c7fa7d62af89953155c0420c46174948310fead82d810cdfe26383661eae0c47",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "5b18fc61471e201af9d2cbb94631586ae9b76b7b30d9601c60f98b65fc4f1337"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "051f91107119f870b23717c3aa854183c1428ffefc908f14365ccb4f6f136134",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "6a35a27d1118a3a154eccfeb7a499f115ba2456de167657c7dfe488c50375492"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "fa5ff04c0a69b1356e3efdc9f4877981b77de97f1fb09ed530f421c5fc621d53",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "d040954e0aee73b249272938369cd3f2442be98a66d984f20770b59c8e6cdfc9"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "05da34424c57df093256c67ca30c8a03245a999274376c3e485791ca16b37bed",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "66f575a7b0e81fd0e1dd375e7f80088760476d283172f064549cd61e4efd42ff"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "61989b1cf9de901fbee5c6e6bbf5bfed8d4be419b45fd0346bd9e4108dde3953",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "396ad4669a06ffd88926f950dc801aa4ad34ad83b090ad5f05a50bc54c125037"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "da8a2186200332c4395e14cdd193e3a976d152d30ebf88092c44ce6624d8da63",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "a2822c130b69236dd60756eb8e59f0c5aafbfb812a513e4333434a655d424060"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "8966f15221f533d1f13523bc6b5e3a44cc0f402ade05ccfc8df31852261e9c91",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "c2f89e91e4840bb7002d1fbd7eb2eec9a624d7a1485fb30daf733a2346b18234"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "9e4b14a0f6f90162b8cd4a64b30745a4ff7a3857870e4f209c071780dd7fd561",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "9ef5e93e6c3552d8bd5f2d9fbe46d86d387754ff5e8bad607f672993244b5ea3"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "40d49ef022548761b84f1a282b25e92731a7482280becad04e43fbb344570fe7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "bb9ad8ed549d36703de9b1f78970ca9bbb2f8bc8613dc8248a91983f3a089ad0"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "d20ef87f3817f649c6e7493526cfa4a1b23fa00215a51fbdc697990ac7b51148",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "6d95a4f1210a37a1fa9fca74cf7d5a772992fa3db37125353fc3060bb1e567c6"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "1f9e2c21d140e4e90d65313276317724a01dc3fab65cfd3f6a6e4117df6f678f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "stacker.stack_4",
+    "unredacted_receipt_sha256": "bc29460f05a9e85bd7e5c52385262a1946ccf2fb53eeeb176924ac3216382e4b"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "f2ac85bcee33d3b922b9a04963379388bcfd7b586923a352411f814848d84583",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "1391719f3532a3e7d27d60f5d1b5e1ff8aa8554b7bd2297436a9cd92f87f5e83"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "e7c725e6ba20fb319f62202cddc453e9b0760527d88a96243ea7f11913365f32",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "4c62ec3ab0d89230e6bc906a4cd980b3d271fcacdb1f2c1224cb0fbc28ab9abd"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "055c2694db206c35cf4c56164bd4eb3365f121989711be75be6f481d97c0e7a9",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "cbae00b5cee3268b345ba75b25da8cdca60c5c19d726bb6b2b7b014185daa1af"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "1f1ba74e7c429521adfed3ec7f8bda6ead49a46dfb7b307c2baecc940501b4fe",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "aa28be1341957911bd35bf731434f0eea722fe817b70d0c85c72053813157614"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "304483665c98d687a7fe71b3d3d51605f5490ceb2940330c1534e46470765c42",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "51ca64e2aa342fb8eec2a83c6e8b4b3ad0e282f583d72c549a98183a7c059786"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "e49f21ec0900ee620c23a629cef357e152a525b43af9ebf80543ee195875cbaa",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "4fe61b0d080a33fe830277e0ab0fcfbb40cdfa701d16c4d28bdabaf4a6473749"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "f022be802889f4fff52f5f0e48df98ee2362e1a6469db9caaee37982e1a8cb95",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "9fab0380f8ae68d377899245df48de81cbbbd8a27959c4b48d41fb366ff6aff7"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "5f5222262b5e2324bd41fc5b558eb3373df93ad6289c1463ac01a76eb998adc0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18001,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "40449d20cc92ef1c478d207df38c6f82b397e083062986da44a9346a4f6ddfc5"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "ecfb131b9af98b66220d071dd0467fe5c28ecf252917056c5d1c2e5f907aa6c8",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "4bb53575573768b4f01d4fe468ea76a67c8a237501a4007a6a8a1659bdefa910"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "ac592de421260a8cddb7173b76a9d84306f31afea7093f7ca11c4da939caddf0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "37e62919083f7005988d9ded19c54fb6885132ae533317bd8d9c4b3f639985a3"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "edb3f397739090c9b450f3a6b6e6622ba7d63fa00ffd3e99223ce31f4abbecd2",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "071da1517d29ef7f8ae2096598705aeebab46112ecb556e9da4bb72bd4d6f369"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "a6f3601fc34903c75638be84ff7cac156e1489b0d20f35ec853bc8a26a9e6a98",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "024ce6a4d5e8430350d05772d1de31b00e83d8d8777a3ee6c78f5acd8f56522c"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "7e2fdc13540d53cab7d818c926d89ad5c4461d83e56104af43c0ecc580ceeb76",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "0067a03356ca2e8a315e03020e09e35db2812ef5f94dd4e19e4177a8052af57e"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "41a74673254f7af5494df1597a3760972462a2e518fd70763f78c95536c87848",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "2bd744267806f60ec03a1d5f2fd7d17715cfd9985849aa68bfbbf8d0586fa208"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "ab95067cf20406019a0a7caafba3c5c4732b3d24097e50143c1c986aff2f9784",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "7b1a4e488166922c74e7a1eead4bb56dffca449e60324bb4fbba85fac3cd897c"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "060ec895a3f6e4e3e7791fd8356a637bf1f65c82c645d71616bb27a04bd68e9f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18002,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "a1e8cbf0d37d50816a4e4fcfb0e5245e52f11ea2a2c1b31382de19aeb8e700d9"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "f28b226e11379c39ff719bf9e46611526fe148036252df79ea0eb38b72719b2a",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "6e7299421a1df369733586235e2210d669c67aba0240784d61be8421253f3b70"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "79f862a4fa3b5a0a96fd80452fe617012837c10029c028c6df748f20e676be66",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "f1e0292ec8b3cbf6dae2a6aca21e6a5060a4286062dd70a4c6e4757aa770294f"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "af2f9d43b0fa2cb1b10b448fb67c672f7b28cf9104c8dedd0e3689185b10f18b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "f016258989302c70d6018ac5dde5d700358e4e67974063cbcbb4557950d60bd8"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "50f42ebfea120741f64ae5a4a4810cf6b48f1dd492c86d3fdeef6b184cb0c4b7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "82e80129a435595550c9fc450a62f1293cbd6545c418ee328fbd6277edc9f200"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "d96db6bfadb6bda13e5bec61d2ed1d9c9cb932b0771571c43dd70eb430753f7c",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "ec955e62d2732ee68798083dc962bd73b710155b87a99fc28ffeef7cd89c9a4b"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "8418cc147fa60a16db578496038e125c3e2ccc49a60a05a2b9ab8a38cac11ad0",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "be405262e833a90aaa672ff32ec36d5593c5ad8418a1b5a83c7a346905a162a5"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "f1c1a2a25c0d481162a4b0b73b426efd19b5accca114322404263ba0e8221bc7",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "f4522780aa317c44408312365f70af60cea174c0915b5ebfcca92a9a164bf10d"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "ea0327c2143fecd8aeedefcf5bdc62db3442eff4514e2bfee8dd549c1d7d53f3",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18003,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "f835c65e70c589db5ecc5a0407ab7c1ba8d120a67b099ee97b19f3ed75992761"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "c5d103932ebdcfec6163946d481c47321d03a0b5e9c165a9571586117003d8d1",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "acce47ff7854587c65d0212acf46852c42aa6b66dc963a47dfbfd324f2278fb7"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "ad0e3dd32e97ad23354da8861e47cd68122ae0d2217d2309668000c4298d8f2d",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "3dc628f843fe22ab3dcf2ac0409775ebd359e4ecf7e15345c7d74513f5ee94f5"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "d7e84d50ac99afecf5f13782ed16afdd6b6b817d8c147b965f09efc05bb482dd",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "80026518df324610f924d6e5d303f5d33154035293201a5195722157bcd59582"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "72295aa0415898e08c4a445fce6f00892f8d8b8dc83e3932cc70bcc06a939069",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "8297e69be345a66e26edbb0256da9a062cbed0ed1b68106e879925a1061f45f7"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "9ab21c3f35f747ce4e6786c8bde780008571b454ebf1d707d1ea8b2520711163",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "ba26546b80743bfb77e52c941379e099a467f43617e548db1e4a0b384f156cd5"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "0e4c27ffc473a4d63c576d65eedbf9bbeace4f2cf971c5145dc34132e78fbf80",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "0ef429a0e5c31f18fd66061bba3f5d47163a106d486ce610543cf5d07b7c0c9c"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "646b03c4afb7e07f91ea15c41a088ab50bd6d2a40148b95b1674c5d99a973c74",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "58d0895d6be7af7fda4a25de16899c6a55648287b138a70525b33d2539e53e93"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "07eeaeabaa1f4fc06ecabf90f74b7e4799341f25c62da8857a23cd2622d0d191",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18004,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "a56fa1fd42e327cd639cab2017eeb97064af1983b90d3541418c5b2ae568b243"
+  },
+  {
+    "design": "vicreg_none",
+    "eval_rollout_sha256": "6209b38058146deb5672c375fd3d536ae1285d85b16fa525dd94bdf42af7ca34",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "d503f88dd7d956c01a23ee5962cae11ee6dc8c3b4639444cbfbf359dceba7f9c"
+  },
+  {
+    "design": "vicreg_gru",
+    "eval_rollout_sha256": "00a47f67bca626aa6166fb5fd82884f74979e1b916732ca2645c35d8a9ee608f",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "b820b6894a403c153728535068a8dd9780beb42955d80d8aeafed37be5faf583"
+  },
+  {
+    "design": "vicreg_ssm",
+    "eval_rollout_sha256": "a8153128c65d1916d94147feed7d7447cc02a786cdd7cb469bdbe01948dc4d33",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "acbd0099bd9817327f1deedd05161a6cceee9356792204319dd3b0c53df2e38a"
+  },
+  {
+    "design": "vicreg_hacssmv8",
+    "eval_rollout_sha256": "e9e3262c6681fa86a2a49b2a66e6cd8311b3d22de89010c4a5b5851d5b0bf2aa",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "4eb751ad926db9539b3fd736c4fea89244bc02d90ce16fe9d15083f4987b1da8"
+  },
+  {
+    "design": "vicreg_hacssmv8_static",
+    "eval_rollout_sha256": "ed161d6812eac1d6f59b5957ef10ad3f35b04074b54585427c7cbf68cbcfd897",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "d8ce748c7f70a15331947cffe04d2047720e65806b9ec3ee16f977bb2836b73b"
+  },
+  {
+    "design": "vicreg_hacssmv8_dynamic",
+    "eval_rollout_sha256": "8d0e2a444024331ab8ab33cb80f669e8ea34eae47da306627869df17d0e81c6b",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "c13cac66a7e76d362d07d6e9eac9f4e054b2bc33ba9860bd8900ffda5fa44c37"
+  },
+  {
+    "design": "vicreg_hacssmv8_noaction",
+    "eval_rollout_sha256": "c707b7421dba9050d20ee2eff7bbd142d27a6970f9f5da8fb256db0c975c1138",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "3d65b9d7693862decb8415dac5302d93c048b6716730d684e7c1f30db788779f"
+  },
+  {
+    "design": "vicreg_hacssmv8_single",
+    "eval_rollout_sha256": "5be53350a6a7a34d4a366192d5843e7daf0097cf15af86ed26eccfc5c45de029",
+    "remote_identity": "WITHHELD_FOR_DOUBLE_BLIND_REVIEW",
+    "seed": 18005,
+    "state": "finished",
+    "task": "swimmer.swimmer15",
+    "unredacted_receipt_sha256": "2055be36dedb778d0adcc734915f852327ee42f2a405694ff59c8d61a7125574"
+  }
+]

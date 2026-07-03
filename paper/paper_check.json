@@ -1,0 +1,45 @@
+{
+  "aux_sha256": "792d57f2c090c750a0e30648450c9fa0256e3b1cb3971e270c10a86321372baa",
+  "bibliography_entries": 18,
+  "checker_sha256": "1f9a8452216105b5c5ebccbfb0bc73f431d2f3036b6035e8273345fd4ea50214",
+  "cited_keys": 18,
+  "llm_usage_statement_present": true,
+  "log_sha256": "2b9cdcd910fcae4bc5d4607aa49c418f77614b63fec4a131ec4cf42ab9de0778",
+  "main_figure_pages": {
+    "fig:fig-v18-architecture": 3,
+    "fig:fig-v18-evidence": 6,
+    "fig:fig-v18-secondary": 7
+  },
+  "main_pages": 9,
+  "manuscript_manifest_sha256": "653af6503ee2bfa406597996632cecae6ec03dc2fe06e32a88dd4554f7b9bbcc",
+  "manuscript_sha256": "942318cb25acd2eefbe20b31be0410bd302e0fd58397c0c19c51f8ea740319e7",
+  "max_main_pages": 9,
+  "maximum_allowed_overfull_pt": 2.0,
+  "maximum_overfull_pt": 0.0,
+  "official_style_sha256": "a4852f68e080d6c5245057ca2039100b409e31727898aa93c03d78ddb84374a3",
+  "overfull_boxes": 0,
+  "paper_build_manifest_sha256": "2a301497fe112cf8a2facd4d6ed4bc5431c982b9c9b8b3f613a9798d2c224d9e",
+  "pdf_metadata": {
+    "Author": "",
+    "Creator": "LaTeX with hyperref",
+    "Producer": "pdfTeX-1.40.29",
+    "Subject": "Anonymous ICLR submission",
+    "Title": "Finite Context Is Not Persistent State"
+  },
+  "pdf_sha256": "49d530eef3b478253d82bf649044267c705ef5d72d852105d365b38abb965595",
+  "restart_interruptions": 2,
+  "restart_schema_version": 2,
+  "review_manifest_sha256": "e40deed980843e93a2d8d1eb13c46e01c4463bcc90bbfe346b04375c0596f92f",
+  "schema_version": 1,
+  "scientific_label": "CONFIRMATION_FAILED",
+  "scope": "v18_final_paper_check",
+  "status": "PASS",
+  "style": "iclr2026_conference",
+  "style_sha256": "a4852f68e080d6c5245057ca2039100b409e31727898aa93c03d78ddb84374a3",
+  "tools": {
+    "latexmk": "Latexmk, John Collins, 9 March 2026. Version 4.88",
+    "pdfinfo": "pdfinfo version 24.02.0",
+    "pdftotext": "pdftotext version 24.02.0"
+  },
+  "total_pages": 15
+}

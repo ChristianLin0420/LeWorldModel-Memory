@@ -1,9 +1,10 @@
 \documentclass{article}
 
-\usepackage{iclr2027_conference}
+\usepackage{iclr2026_conference,times}
 
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}
@@ -14,10 +15,29 @@
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
+\hypersetup{
+  pdfauthor={},
+  pdftitle={Finite Context Is Not Persistent State},
+  pdfsubject={Anonymous ICLR submission}
+}
 
 \graphicspath{{figures/}}
 \emergencystretch=2em  % reduce overfull boxes from long \texttt filenames
-\sloppy
+
+% Restrained NVIDIA-inspired academic visual system.
+\definecolor{NVIDIAGreen}{HTML}{76B900}
+\definecolor{NVIDIADark}{HTML}{4B780A}
+\definecolor{NVIDIACharcoal}{HTML}{252A2E}
+\definecolor{NVIDIAPale}{HTML}{F1F7E8}
+\definecolor{NVIDIAHeader}{HTML}{E6F0D6}
+\definecolor{TableGray}{HTML}{F1F3F4}
+\definecolor{FailAmber}{HTML}{A45A1C}
+\renewcommand{\floatpagefraction}{0.9}% floats join text unless they nearly fill a page
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{5pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{5pt plus 2pt minus 2pt}
 
 % --- pandoc longtable / list helper macros (we use pandoc fragment output) ---
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -25,10 +45,17 @@
 % pandoc emits \def\LTcaptype{none} for caption-less longtables; satisfy caption pkg + hyperref
 \newcounter{none}
 \providecommand{\theHnone}{none.\arabic{none}}
-\setlength{\LTpre}{0.6em}\setlength{\LTpost}{0.6em}
-\captionsetup{font=small,labelfont=bf}
+\setlength{\LTpre}{0.35em}\setlength{\LTpost}{0.35em}
+\captionsetup{
+  font=footnotesize,
+  labelfont={bf,color=NVIDIAGreen},
+  textfont={color=NVIDIACharcoal},
+  skip=3pt
+}
 
-\title{Two-Timescale Memory for\\ Joint-Embedding Predictive World Models}
+\title{Finite Context Is Not Persistent State:\\
+A Frozen Falsification Study in a\\
+LeWorldModel-Derived JEPA}
 \author{Anonymous authors\\ Paper under double-blind review}
 
 \begin{document}
@@ -40,6 +67,12 @@
 
 \input{body.tex}
 
+% Machine-readable main-text page marker. References and appendices are excluded.
+\phantomsection\label{v18-main-end}
+\clearpage
+
 \input{refs.tex}
+
+\input{appendix.tex}
 
 \end{document}
