@@ -63,9 +63,24 @@ X2 = ROOT / "outputs" / "v21_x2"
 W3 = ROOT / "outputs" / "v20_w3"
 
 # ---------------------------------------------------------------- registered
+# AMENDMENT 1 (2026-07-05, after the wave-1 oracle failed its calibration
+# gate at 4-8%): the true-dynamics diagnostic (scripts/x2_feasibility_v21.py
+# + outputs/v21_x2/feasibility.json) adjudicated the failure — flat per-step
+# CEM cannot search a 46/78-dim action space (25-42% even with the real
+# simulator), while KNOT-parameterized CEM reaches 100% at every tolerance
+# rung with ~0.01 rad residuals.  Amended, before any arm comparison:
+# (i) knot-CEM (K=6 linear interpolation) for every planner identically;
+# (ii) plan earlier (t_p 40 -> 24, horizon 23 -> 39);
+# (iii) receding-horizon MPC — replan every 8 steps with re-observation
+# (frames re-rolled, overlays + the episode's registered corruption
+# re-applied so execution-branch observations match the training regime).
+# Wave-1 numbers are preserved in x2_results.json as the open-loop
+# descriptive reference.
 TASK_NAME = "t1"
-PLAN_TIME = 40                    # cue over by t=20 (max onset 14 + dur 6)
-HORIZON = 23                      # actions t_p..62 -> final frame 63
+PLAN_TIME = 24                    # cue over by t=22 (max cue_off 20 + 2)
+EPISODE_END = 63
+REPLAN_EVERY = 8                  # receding-horizon rounds: t = 24/32/40/48
+KNOTS = 6
 GOAL_ANGLES = ((2.356, 0.0), (0.785, 0.0), (-2.356, 0.0), (-0.785, 0.0))
 TOLERANCE_LADDER = (0.25, 0.35, 0.5)     # rad; wrist tolerance = 2x
 ORACLE_MIN_SUCCESS = 0.7
@@ -78,7 +93,7 @@ CEM_INIT_STD = 0.6
 DETUNE_FACTOR = 16.0
 SEEDS = (0, 1, 2)                 # W3 checkpoint seeds
 SELECTOR_C = 1.0
-REGISTRATION = X2 / "x2_registration.json"
+REGISTRATION = X2 / "x2_registration_v2.json"
 
 
 def _wrap(angle: np.ndarray) -> np.ndarray:
@@ -174,26 +189,86 @@ def rollout_final_latents(model, host: str, window_z: torch.Tensor,
     return torch.stack(tail, dim=1).mean(dim=1)
 
 
+def expand_knots(knots: torch.Tensor, horizon: int) -> torch.Tensor:
+    """(P, K, 2) knot plans -> (P, horizon, 2) by linear interpolation."""
+    positions = torch.linspace(0, KNOTS - 1, horizon, device=knots.device)
+    low = positions.floor().long()
+    high = (low + 1).clamp(max=KNOTS - 1)
+    weight = (positions - low).view(1, -1, 1)
+    return (knots[:, low] * (1 - weight)
+            + knots[:, high] * weight).clamp(-1.0, 1.0)
+
+
+def fit_pose_head(model, host: str, bank, calibration_idx: np.ndarray,
+                  device) -> Any:
+    """The registered planner cost head (V19 gate-6 build list): a post-hoc
+    ridge probe z -> (cos, sin) of each joint, trained on calibration-half
+    clean-timestep frames with simulator qpos targets.  No gradient touches
+    the host.  (Amendment 2: raw latent L2 distance to goal embeddings is
+    pose-blind on this host — Spearman(z-dist, angle-dist) ~ 0.0-0.12 — so
+    the cost head the registration named is now actually built.)"""
+    from sklearn.linear_model import Ridge
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    frames, targets = [], []
+    for episode in calibration_idx:
+        for t in (4, 22, 30, 38, 46, 60):
+            if (bank.events["corrupt_on"][episode] <= t
+                    < bank.events["corrupt_off"][episode]):
+                continue
+            frames.append(bank.frames[episode, t])
+            targets.append(bank.endo_state[episode, t, :2])
+    frames = np.stack(frames)
+    qpos = np.stack(targets)
+    tensor = p0_data_frames_to_tensor(frames).to(device)
+    chunks = []
+    with torch.no_grad():
+        for start in range(0, len(tensor), 256):
+            chunks.append(w1.p0.host_encode(
+                w1.encode_host(host), model,
+                tensor[start:start + 256].unsqueeze(0)).float()[0].cpu())
+    z = torch.cat(chunks).numpy()
+    y = np.stack([np.cos(qpos[:, 0]), np.sin(qpos[:, 0]),
+                  np.cos(qpos[:, 1]), np.sin(qpos[:, 1])], axis=1)
+    return make_pipeline(StandardScaler(), Ridge(alpha=1.0)).fit(z, y)
+
+
+def pose_cost(pose_head, finals: torch.Tensor, weights: np.ndarray
+              ) -> torch.Tensor:
+    """Belief-weighted angular cost of predicted final latents, (P,)."""
+    predicted = pose_head.predict(finals.cpu().numpy())
+    shoulder = np.arctan2(predicted[:, 1], predicted[:, 0])
+    wrist = np.arctan2(predicted[:, 3], predicted[:, 2])
+    costs = np.zeros(len(predicted))
+    for goal, weight in enumerate(weights):
+        if weight <= 0.0:
+            continue
+        target = GOAL_ANGLES[goal]
+        costs += weight * (np.abs(_wrap(shoulder - target[0]))
+                           + 0.25 * np.abs(_wrap(wrist - target[1])))
+    return torch.tensor(costs, dtype=torch.float32, device=finals.device)
+
+
 @torch.no_grad()
 def cem_plan(model, host: str, window_z: torch.Tensor, window_a: torch.Tensor,
-             goal_z: torch.Tensor, weights: np.ndarray, device,
+             pose_head, weights: np.ndarray, horizon: int, device,
              rng: np.random.Generator) -> np.ndarray:
-    """CEM over action sequences toward the weighted goal embeddings."""
-    weight_t = torch.tensor(weights, dtype=torch.float32, device=device)
-    mean = torch.zeros(HORIZON, 2, device=device)
-    std = torch.full((HORIZON, 2), CEM_INIT_STD, device=device)
+    """Knot-parameterized CEM against the pose cost head (amendments 1-2)."""
+    mean = torch.zeros(KNOTS, 2, device=device)
+    std = torch.full((KNOTS, 2), CEM_INIT_STD, device=device)
     for _ in range(CEM_ITERS):
         noise = torch.tensor(
-            rng.standard_normal((CEM_POPULATION, HORIZON, 2)),
+            rng.standard_normal((CEM_POPULATION, KNOTS, 2)),
             dtype=torch.float32, device=device)
-        plans = (mean + std * noise).clamp(-1.0, 1.0)
+        knots = (mean + std * noise).clamp(-1.0, 1.0)
+        plans = expand_knots(knots, horizon)
         finals = rollout_final_latents(model, host, window_z, window_a, plans)
-        distances = torch.cdist(finals, goal_z)                 # (P, 4)
-        costs = (distances.square() * weight_t).sum(dim=-1)
-        elite = plans[costs.argsort()[:CEM_ELITES]]
+        costs = pose_cost(pose_head, finals, weights)
+        elite = knots[costs.argsort()[:CEM_ELITES]]
         mean = elite.mean(dim=0)
         std = elite.std(dim=0).clamp_min(0.05)
-    return mean.clamp(-1.0, 1.0).cpu().numpy().astype(np.float32)
+    return expand_knots(mean.unsqueeze(0), horizon)[0].cpu().numpy(
+        ).astype(np.float32)
 
 
 # --------------------------------------------------------------------------
@@ -228,30 +303,73 @@ def goal_weight_matrix(kind: str, probabilities: np.ndarray | None,
     raise ValueError(kind)
 
 
+def _reobserve(frames: np.ndarray, bank) -> np.ndarray:
+    """Re-apply the observation process to re-rolled BASE frames: the task
+    overlays (marker rings + the — already past — cue window) and the
+    episode's registered corruption, so execution-branch observations match
+    the training regime.  Returns the observed uint8 frames."""
+    task = make_task(TASK_NAME)
+    frames = frames.copy()
+    script = {"xi": bank.xi, "cue_on": bank.events["cue_on"],
+              "cue_off": bank.events["cue_off"]}
+    task._render(frames, script)
+    for episode in range(frames.shape[0]):
+        frames[episode], _, _, _ = p0_data.corrupt_episode(
+            frames[episode], episode)
+    return frames
+
+
+@torch.no_grad()
+def _encode_context(model, host: str, observed: np.ndarray, t: int,
+                    device) -> torch.Tensor:
+    """(E, 3, D) embeddings of the observed frames [t-2 .. t]."""
+    segment = observed[:, t - 2:t + 1].astype(np.float32) / 255.0
+    tensor = torch.from_numpy(segment).permute(0, 1, 4, 2, 3).to(device)
+    chunks = []
+    for start in range(0, tensor.shape[0], 32):
+        chunks.append(w1.p0.host_encode(
+            w1.encode_host(host), model,
+            tensor[start:start + 32]).float())
+    return torch.cat(chunks)
+
+
 def plan_and_execute(model, host: str, z_bank: torch.Tensor,
-                     bank, goal_z: torch.Tensor, weights_fn, episodes,
+                     bank, pose_head, weights_fn, episodes,
                      base_seed: int, tolerance: float, device,
                      label: str) -> dict[str, Any]:
-    """Plan every episode in ``episodes``, execute one batched re-roll,
-    return the environment-defined success summary."""
+    """Receding-horizon MPC (amendment 1): plan at t = 24/32/40/48/56,
+    execute REPLAN_EVERY actions, re-roll for re-observation, repeat;
+    success from the final re-roll's simulator state."""
     rng = np.random.default_rng(21_100 + abs(hash(label)) % 100_000)
     override = bank.actions.copy()
+    observed = bank.frames                     # round-0 context: bank frames
     started = time.time()
-    for episode in episodes:
-        window_z = z_bank[episode, PLAN_TIME - 2:PLAN_TIME + 1]
-        window_a = torch.from_numpy(
-            bank.actions[episode, PLAN_TIME - 3:PLAN_TIME]).to(device)
-        weights = weights_fn(episode)
-        override[episode, PLAN_TIME:] = cem_plan(
-            model, host, window_z, window_a, goal_z, weights, device, rng)
-    _, _, endo = collect_base(bank.num_episodes, bank.length, base_seed,
-                              bank.stream, action_override=override)
+    endo = None
+    rounds = list(range(PLAN_TIME, EPISODE_END, REPLAN_EVERY))
+    for round_index, t_plan in enumerate(rounds):
+        horizon = EPISODE_END - t_plan
+        contexts = _encode_context(model, host, observed, t_plan, device)
+        for episode in episodes:
+            window_a = torch.from_numpy(
+                override[episode, t_plan - 3:t_plan]).to(device)
+            plan = cem_plan(model, host, contexts[episode], window_a,
+                            pose_head, weights_fn(episode), horizon, device,
+                            rng)
+            stop = (t_plan + REPLAN_EVERY if round_index < len(rounds) - 1
+                    else EPISODE_END)
+            override[episode, t_plan:stop] = plan[:stop - t_plan]
+        frames, _, endo = collect_base(
+            bank.num_episodes, bank.length, base_seed, bank.stream,
+            action_override=override)
+        if round_index < len(rounds) - 1:
+            observed = _reobserve(frames, bank)
     mask = success_mask(endo[episodes], bank.xi[episodes], tolerance)
     return {
         "label": label,
         "episodes": int(len(episodes)),
         "success_rate": float(mask.mean()),
         "successes": int(mask.sum()),
+        "rounds": [int(t) for t in rounds],
         "seconds": round(time.time() - started, 1),
     }
 
@@ -266,14 +384,21 @@ def register() -> None:
     X2.mkdir(parents=True, exist_ok=True)
     import datetime
     REGISTRATION.write_text(json.dumps({
-        "schema_version": 1,
-        "study": "v21-x2-consumer-registration",
+        "schema_version": 2,
+        "study": "v21-x2-consumer-registration-amendment1",
         "registered_utc": datetime.datetime.now(
             datetime.timezone.utc).isoformat(),
+        "amendment1": "knot-CEM (K=6) + t_p 24 + receding-horizon MPC "
+                      "(replan every 8 with re-observation), adjudicated by "
+                      "the true-dynamics diagnostic "
+                      "(outputs/v21_x2/feasibility.json: flat CEM 25-42%, "
+                      "knot CEM 100%); wave-1 open-loop numbers preserved "
+                      "as descriptive reference",
         "task": TASK_NAME,
         "goals": GOAL_ANGLES,
         "plan_time": PLAN_TIME,
-        "horizon": HORIZON,
+        "replan_every": REPLAN_EVERY,
+        "knots": KNOTS,
         "tolerance_ladder": TOLERANCE_LADDER,
         "tolerance_rule": f"smallest with oracle success >= "
                           f"{ORACLE_MIN_SUCCESS} on the calibration half",
@@ -323,7 +448,6 @@ def main(argv: Iterable[str] | None = None) -> None:
     calibration_idx = np.arange(half)
     eval_idx = np.arange(half, episodes)
     cue_off = bank.events["cue_off"]
-    goal_frames = render_goal_frames()
 
     results: dict[str, Any] = {"schema_version": 1,
                                "study": "v21-x2-consumer",
@@ -336,23 +460,21 @@ def main(argv: Iterable[str] | None = None) -> None:
         for arm in ("lkc_rfix", "acgru", "none"):
             arms[arm] = w2.load_checkpoint(w3_root, TASK_NAME, arm, seed,
                                            device)
-        # Shared per-arm assets: bank embeddings, goal embeddings,
-        # prior_read features.
+        # Shared per-arm assets: bank embeddings, the registered pose cost
+        # head (amendment 2), prior_read features.
         assets: dict[str, dict[str, Any]] = {}
         for arm, (model, carrier, checkpoint) in arms.items():
             host = checkpoint["host"]
             z_bank = torch.from_numpy(p1b.encode_bank(
                 w1.encode_host(host), model, bank, device)).to(device)
-            goal_tensor = p0_data_frames_to_tensor(goal_frames).to(device)
-            with torch.no_grad():
-                goal_z = w1.p0.host_encode(
-                    w1.encode_host(host), model,
-                    goal_tensor.unsqueeze(0)).float()[0]
+            pose_head = fit_pose_head(model, host, bank, calibration_idx,
+                                      device)
             prior = w2.plain_prior_read(
                 carrier, z_bank,
                 torch.from_numpy(bank.actions.astype(np.float32)).to(device))
             assets[arm] = {"model": model, "carrier": carrier, "host": host,
-                           "z": z_bank, "goal_z": goal_z, "prior": prior}
+                           "z": z_bank, "pose_head": pose_head,
+                           "prior": prior}
         # Detuned-trust prior for the candidate.
         detuned = detune_trust(arms["lkc_rfix"][1])
         assets["lkc_rfix_detuned"] = {
@@ -372,7 +494,7 @@ def main(argv: Iterable[str] | None = None) -> None:
             for tolerance in TOLERANCE_LADDER:
                 oracle_cal = plan_and_execute(
                     candidate["model"], candidate["host"], candidate["z"],
-                    bank, candidate["goal_z"],
+                    bank, candidate["pose_head"],
                     lambda e: goal_weight_matrix(
                         "oracle", None, bank.xi, np.array([e]))[0],
                     calibration_idx, base_seed, tolerance, device,
@@ -422,7 +544,7 @@ def main(argv: Iterable[str] | None = None) -> None:
             asset = assets[arm]
             seed_block[label] = plan_and_execute(
                 asset["model"], asset["host"], asset["z"], bank,
-                asset["goal_z"],
+                asset["pose_head"],
                 lambda e, k=kind, p=proba: goal_weight_matrix(
                     k, p, bank.xi, np.array([e]))[0],
                 eval_idx, base_seed, tolerance, device, f"{label}_s{seed}")
@@ -436,9 +558,9 @@ def main(argv: Iterable[str] | None = None) -> None:
 
     results["tolerance_star"] = tolerance_star
     output.mkdir(parents=True, exist_ok=True)
-    (output / "x2_results.json").write_text(
+    (output / "x2_results_v2.json").write_text(
         json.dumps(results, indent=2, sort_keys=True) + "\n")
-    print(f"[v21-x2] wrote {output / 'x2_results.json'}")
+    print(f"[v21-x2] wrote {output / 'x2_results_v2.json'}")
 
 
 def p0_data_frames_to_tensor(frames: np.ndarray) -> torch.Tensor:
