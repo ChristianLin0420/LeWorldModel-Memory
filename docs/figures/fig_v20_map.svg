@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="660" viewBox="0 0 980 660" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#626E76"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="660" fill="#FFFFFF"/>
+  <text x="490" y="30" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">Every V20 design choice is forced by a frozen V19 result</text>
+
+  <!-- left column: evidence -->
+  <text x="235" y="68" text-anchor="middle" font-size="13" font-weight="bold" fill="#626E76">V19 FROZEN EVIDENCE (P0&#8211;P3, 2026-06/07)</text>
+  <!-- right column: design -->
+  <text x="745" y="68" text-anchor="middle" font-size="13" font-weight="bold" fill="#626E76">V20 DESIGN RESPONSE</text>
+
+  <!-- row 1 -->
+  <rect x="40" y="84" width="390" height="66" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="235" y="106" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">P0: exact SIGReg &#8658; rank starvation (rank 9&#8211;20 vs 58&#8211;64)</text>
+  <text x="235" y="124" text-anchor="middle" font-size="11" fill="#252A2E">P1b: JEPA hosts are blind to low-salience exogenous cues;</text>
+  <text x="235" y="140" text-anchor="middle" font-size="11" fill="#252A2E">rescue needed 2&#215; sprites + border tint (Amendment 2) &#8212; Ins. 1&#8211;4</text>
+  <line x1="430" y1="117" x2="546" y2="117" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+  <rect x="550" y="84" width="390" height="66" rx="9" fill="#EDF7F5" stroke="#28756D" stroke-width="1.6"/>
+  <text x="745" y="106" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#28756D">VisReg host: scale &#8869; shape, constant gradients</text>
+  <text x="745" y="124" text-anchor="middle" font-size="11" fill="#252A2E">P0-style preflight vs VICReg; registered prediction:</text>
+  <text x="745" y="140" text-anchor="middle" font-size="11" fill="#252A2E">the certified salience threshold s* drops (measurable, new)</text>
+
+  <!-- row 2 -->
+  <rect x="40" y="164" width="390" height="66" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="235" y="186" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">P3 Insight 8: training-time NLL collapses host rank</text>
+  <text x="235" y="204" text-anchor="middle" font-size="11" fill="#252A2E">lkc_nll: 0/5 rank passes on t1/t3 (all other arms 4&#8211;5/5),</text>
+  <text x="235" y="220" text-anchor="middle" font-size="11" fill="#252A2E">despite +7&#8211;9 dev points: the aux loss reshapes the encoder</text>
+  <line x1="430" y1="197" x2="546" y2="197" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+  <rect x="550" y="164" width="390" height="66" rx="9" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="745" y="186" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">Calibration moves OUT of training, into deployment</text>
+  <text x="745" y="204" text-anchor="middle" font-size="11" fill="#252A2E">the innovation NLL &#8467;&#8348;(&#966;) is minimized online, on frozen</text>
+  <text x="745" y="220" text-anchor="middle" font-size="11" fill="#252A2E">weights, over the tiny calibration set &#966; only</text>
+
+  <!-- row 3 -->
+  <rect x="40" y="244" width="390" height="66" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="235" y="266" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">P3 Insight 9: trust must be slow</text>
+  <text x="235" y="284" text-anchor="middle" font-size="11" fill="#252A2E">fixed-trust (r &#8801; r&#772;) was the ONLY arm above the references</text>
+  <text x="235" y="300" text-anchor="middle" font-size="11" fill="#252A2E">(T1 0.457 vs ac-gru 0.372, 4/5 wins); per-frame trust head lost</text>
+  <line x1="430" y1="277" x2="546" y2="277" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+  <rect x="550" y="244" width="390" height="66" rx="9" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="745" y="266" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">Trust becomes a slowly-filtered PARAMETER, not a head</text>
+  <text x="745" y="284" text-anchor="middle" font-size="11" fill="#252A2E">&#966; random walk with rate &#961; &#8810; q; gain &#951;&#8348; = P&#8348;/(P&#8348;+s&#8348;) derived,</text>
+  <text x="745" y="300" text-anchor="middle" font-size="11" fill="#252A2E">not tuned; &#961;=0 recovers the winner exactly (subsumption)</text>
+
+  <!-- row 4 -->
+  <rect x="40" y="324" width="390" height="66" rx="9" fill="#F5F6F7" stroke="#4B780A" stroke-width="1.6"/>
+  <text x="235" y="346" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#4B780A">P3 Insight 10: mechanism real, utility conditional</text>
+  <text x="235" y="364" text-anchor="middle" font-size="11" fill="#252A2E">transport causally confirmed (counterfactual +0.377,</text>
+  <text x="235" y="380" text-anchor="middle" font-size="11" fill="#252A2E">p&#8202;=&#8202;8&#215;10&#8315;&#8309;); but ac-GRU won Tier-1 &#8212; adaptivity or nonlinearity?</text>
+  <line x1="430" y1="357" x2="546" y2="357" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+  <rect x="550" y="324" width="390" height="66" rx="9" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.6"/>
+  <text x="745" y="346" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#4B780A">The dichotomy becomes the registered experiment</text>
+  <text x="745" y="364" text-anchor="middle" font-size="11" fill="#252A2E">if ac-GRU&#8217;s edge is adaptivity &#8658; DFC closes it;</text>
+  <text x="745" y="380" text-anchor="middle" font-size="11" fill="#252A2E">if nonlinear dynamics &#8658; DFC won&#8217;t &#8212; either answer is a result</text>
+
+  <!-- row 5 -->
+  <rect x="40" y="404" width="390" height="66" rx="9" fill="#F5F6F7" stroke="#626E76" stroke-width="1.6"/>
+  <text x="235" y="426" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#626E76">V17 post-mortem: &#8220;AutoVISReg&#8221; collapsed the host</text>
+  <text x="235" y="444" text-anchor="middle" font-size="11" fill="#252A2E">repo&#8217;s own home-grown distribution-matching variant failed;</text>
+  <text x="235" y="460" text-anchor="middle" font-size="11" fill="#252A2E">published VisReg differs exactly where V17 broke</text>
+  <line x1="430" y1="437" x2="546" y2="437" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+  <rect x="550" y="404" width="390" height="66" rx="9" fill="#EDF7F5" stroke="#28756D" stroke-width="1.6"/>
+  <text x="745" y="426" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#28756D">Registered caution, not silent adoption</text>
+  <text x="745" y="444" text-anchor="middle" font-size="11" fill="#252A2E">exact published objective (sorted-projection SW, stop-grad</text>
+  <text x="745" y="460" text-anchor="middle" font-size="11" fill="#252A2E">normalization, K=4096); fail-closed preflight before any use</text>
+
+  <!-- phasing strip -->
+  <text x="490" y="510" text-anchor="middle" font-size="13" font-weight="bold" fill="#626E76">PHASING &#8212; all V19 machinery reused (tasks, certificates, gates, power analysis n=10)</text>
+
+  <rect x="40" y="526" width="200" height="92" rx="9" fill="#EDF7F5" stroke="#28756D" stroke-width="1.8"/>
+  <text x="140" y="548" text-anchor="middle" font-size="12" font-weight="bold" fill="#28756D">W0 &#183; host preflight</text>
+  <text x="140" y="566" text-anchor="middle" font-size="10.5" fill="#252A2E">VisReg vs VICReg, 2&#215;3 seeds</text>
+  <text x="140" y="581" text-anchor="middle" font-size="10.5" fill="#252A2E">+ salience-threshold sweep s*</text>
+  <text x="140" y="596" text-anchor="middle" font-size="10.5" fill="#626E76">gate: health + s* &#8595; or fallback</text>
+  <text x="140" y="611" text-anchor="middle" font-size="10" font-style="italic" fill="#626E76">~1 GPU-day</text>
+
+  <line x1="240" y1="572" x2="276" y2="572" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+
+  <rect x="280" y="526" width="200" height="92" rx="9" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.8"/>
+  <text x="380" y="548" text-anchor="middle" font-size="12" font-weight="bold" fill="#4B780A">W1 &#183; dev grid</text>
+  <text x="380" y="566" text-anchor="middle" font-size="10.5" fill="#252A2E">dfc &#183; dfc_&#951;fix &#183; rfix &#183; acgru &#183; none</text>
+  <text x="380" y="581" text-anchor="middle" font-size="10.5" fill="#252A2E">t1dev/t3dev &#215; 3 seeds = 30 runs</text>
+  <text x="380" y="596" text-anchor="middle" font-size="10.5" fill="#626E76">gate: dfc &#8805; rfix (subsumption)</text>
+  <text x="380" y="611" text-anchor="middle" font-size="10" font-style="italic" fill="#626E76">~2 GPU-days</text>
+
+  <line x1="480" y1="572" x2="516" y2="572" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+
+  <rect x="520" y="526" width="200" height="92" rx="9" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.8"/>
+  <text x="620" y="548" text-anchor="middle" font-size="12" font-weight="bold" fill="#A45A1C">W2 &#183; drift protocol</text>
+  <text x="620" y="566" text-anchor="middle" font-size="10.5" fill="#252A2E">held-out regime shifts (new r*, q*)</text>
+  <text x="620" y="581" text-anchor="middle" font-size="10.5" fill="#252A2E">where adaptation can matter at all</text>
+  <text x="620" y="596" text-anchor="middle" font-size="10.5" fill="#626E76">gate: &#951;&#8348; responds only under drift</text>
+  <text x="620" y="611" text-anchor="middle" font-size="10" font-style="italic" fill="#626E76">~1 GPU-day</text>
+
+  <line x1="720" y1="572" x2="756" y2="572" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma)"/>
+
+  <rect x="760" y="526" width="180" height="92" rx="9" fill="#252A2E"/>
+  <text x="850" y="548" text-anchor="middle" font-size="12" font-weight="bold" fill="#FFFFFF">W3 &#183; frozen confirm</text>
+  <text x="850" y="566" text-anchor="middle" font-size="10.5" fill="#D8DEE2">n=10 seeds (P3 power), T1&#8211;T4</text>
+  <text x="850" y="581" text-anchor="middle" font-size="10.5" fill="#D8DEE2">Holm across registered claims</text>
+  <text x="850" y="596" text-anchor="middle" font-size="10.5" fill="#D8DEE2">frozen before launch, as P3</text>
+  <text x="850" y="611" text-anchor="middle" font-size="10" font-style="italic" fill="#9AA4AB">~3 GPU-days</text>
+
+  <text x="490" y="646" text-anchor="middle" font-size="11" font-style="italic" fill="#626E76">Awaiting review &#8212; nothing below W0 is implemented until the proposal is approved.</text>
+</svg>

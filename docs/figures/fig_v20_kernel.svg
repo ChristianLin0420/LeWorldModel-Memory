@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="va" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#252A2E"/>
+    </marker>
+    <marker id="vg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#4B780A"/>
+    </marker>
+    <marker id="vb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#A45A1C"/>
+    </marker>
+    <marker id="vt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#28756D"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="620" fill="#FFFFFF"/>
+  <text x="490" y="32" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">V20 kernel: one filter, three timescales &#8212; route each innovation to the uncertainty that explains it</text>
+
+  <!-- central innovation node -->
+  <rect x="360" y="64" width="260" height="66" rx="12" fill="#252A2E"/>
+  <text x="490" y="92" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#FFFFFF">THE INNOVATION</text>
+  <text x="490" y="112" text-anchor="middle" font-size="12.5" fill="#D8DEE2">x&#8348; &#8722; m&#8315;&#8348;&#160;&#160;(what the model did not predict)</text>
+
+  <!-- routing question -->
+  <text x="490" y="160" text-anchor="middle" font-size="12.5" font-style="italic" fill="#626E76">which uncertainty explains it?</text>
+
+  <!-- three routes -->
+  <line x1="420" y1="130" x2="185" y2="196" stroke="#28756D" stroke-width="1.8" marker-end="url(#vt)"/>
+  <line x1="490" y1="136" x2="490" y2="196" stroke="#4B780A" stroke-width="1.8" marker-end="url(#vg)"/>
+  <line x1="560" y1="130" x2="795" y2="196" stroke="#A45A1C" stroke-width="1.8" marker-end="url(#vb)"/>
+
+  <text x="270" y="172" text-anchor="middle" font-size="11.5" fill="#28756D">distributional mismatch</text>
+  <text x="490" y="184" text-anchor="middle" font-size="11.5" fill="#4B780A">transient, state-explainable</text>
+  <text x="710" y="172" text-anchor="middle" font-size="11.5" fill="#A45A1C">persistent, systematic</text>
+
+  <!-- Level 0: perception -->
+  <rect x="40" y="200" width="290" height="182" rx="10" fill="#EDF7F5" stroke="#28756D" stroke-width="2"/>
+  <rect x="40" y="200" width="290" height="30" rx="10" fill="#28756D"/>
+  <text x="185" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">TRAINING &#183; perception filter</text>
+  <text x="185" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">VisReg: scale &#8869; shape</text>
+  <text x="185" y="272" text-anchor="middle" font-size="11.5" fill="#252A2E">&#8466;<tspan font-size="8.5" dy="3">scale</tspan><tspan dy="-3"> = (1/D)&#931;(1&#8722;&#963;&#11388;)&#178;</tspan></text>
+  <text x="185" y="291" text-anchor="middle" font-size="11.5" fill="#252A2E">&#8466;<tspan font-size="8.5" dy="3">shape</tspan><tspan dy="-3"> = SW(Z&#771;, &#119977;) over K slices</tspan></text>
+  <text x="185" y="316" text-anchor="middle" font-size="10.5" fill="#626E76">constant gradient under collapse</text>
+  <text x="185" y="331" text-anchor="middle" font-size="10.5" fill="#626E76">&#8658; every direction stays alive &#8658;</text>
+  <text x="185" y="346" text-anchor="middle" font-size="10.5" fill="#626E76">exogenous evidence survives encoding</text>
+  <text x="185" y="369" text-anchor="middle" font-size="10" font-style="italic" fill="#28756D">fixes: P0 rank starvation &#183; encoder blindness (Ins. 3&#8211;4)</text>
+
+  <!-- Level 1: fast state -->
+  <rect x="345" y="200" width="290" height="182" rx="10" fill="#F1F7E8" stroke="#4B780A" stroke-width="2"/>
+  <rect x="345" y="200" width="290" height="30" rx="10" fill="#4B780A"/>
+  <text x="490" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">EPISODE &#183; fast state filter</text>
+  <text x="490" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">V19 LKC (kept &#8212; structure validated)</text>
+  <text x="490" y="272" text-anchor="middle" font-size="11.5" fill="#252A2E">m&#8348; = m&#8315;&#8348; + k&#8348; &#8857; (x&#8348; &#8722; m&#8315;&#8348;)</text>
+  <text x="490" y="291" text-anchor="middle" font-size="11.5" fill="#252A2E">k&#8348; = &#963;&#8315;&#8348; / (&#963;&#8315;&#8348; + r)&#160;&#160;&#8592; derived gain</text>
+  <text x="490" y="316" text-anchor="middle" font-size="10.5" fill="#626E76">carries the belief over exogenous &#958;</text>
+  <text x="490" y="331" text-anchor="middle" font-size="10.5" fill="#626E76">transport causally confirmed</text>
+  <text x="490" y="346" text-anchor="middle" font-size="10.5" fill="#626E76">(p<tspan font-size="7.5" dy="2.5">Holm</tspan><tspan dy="-2.5"> = 8&#215;10&#8315;&#8309;, P3)</tspan></text>
+  <text x="490" y="369" text-anchor="middle" font-size="10" font-style="italic" fill="#4B780A">r is NOT a per-frame function &#8212; it is a slow parameter &#8594;</text>
+
+  <!-- Level 2: slow weights -->
+  <rect x="650" y="200" width="290" height="182" rx="10" fill="#FBF2E8" stroke="#A45A1C" stroke-width="2"/>
+  <rect x="650" y="200" width="290" height="30" rx="10" fill="#A45A1C"/>
+  <text x="795" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">DEPLOYMENT &#183; slow parameter filter</text>
+  <text x="795" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">AdaJEPA, re-derived with a principled gain</text>
+  <text x="795" y="272" text-anchor="middle" font-size="11.5" fill="#252A2E">&#966;&#8348; = &#966;&#8348;&#8331;&#8321; &#8722; &#951;&#8348; &#8857; &#8711;&#966; &#8467;&#8348;(&#966;)</text>
+  <text x="795" y="291" text-anchor="middle" font-size="11.5" fill="#252A2E">&#951;&#8348; = P&#8348;/(P&#8348; + s&#8348;)&#160;&#160;&#8592; derived, per-parameter</text>
+  <text x="795" y="316" text-anchor="middle" font-size="10.5" fill="#626E76">calibrates trust (r, q, B) on frozen weights</text>
+  <text x="795" y="331" text-anchor="middle" font-size="10.5" fill="#626E76">no training-time aux loss (Insight 8)</text>
+  <text x="795" y="346" text-anchor="middle" font-size="10.5" fill="#626E76">&#951;&#8348;&#8594;0 recovers fixed-trust = the P3 winner</text>
+  <text x="795" y="369" text-anchor="middle" font-size="10" font-style="italic" fill="#A45A1C">AdaJEPA&#8217;s fixed &#951; is the ablation, not the design</text>
+
+  <!-- unifying banner -->
+  <rect x="120" y="416" width="740" height="76" rx="10" fill="#F5F6F7" stroke="#626E76" stroke-width="1.4"/>
+  <text x="490" y="444" text-anchor="middle" font-size="13" font-weight="bold" fill="#252A2E">One family: Kalman filters &#61; gated SSMs &#61; test-time training (online regression with different carriers and gains)</text>
+  <text x="490" y="466" text-anchor="middle" font-size="11.5" fill="#626E76">V19 instantiated the state-carrier end; AdaJEPA the weight-carrier end; VisReg the distribution end.</text>
+  <text x="490" y="482" text-anchor="middle" font-size="11.5" fill="#626E76">V20 is not their sum &#8212; it is the single filter they are all projections of, with every gain derived from an uncertainty recursion.</text>
+
+  <!-- subsumption strip -->
+  <rect x="120" y="512" width="740" height="82" rx="10" fill="#FFFFFF" stroke="#4B780A" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="490" y="538" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4B780A">Subsumption ladder (each limit is a registered V19/V18 finding)</text>
+  <text x="490" y="560" text-anchor="middle" font-size="11.5" fill="#252A2E">&#951;&#8348; &#8801; 0 &#8658; fixed-trust LKC (the only envelope-beating V19 arm) &#160;&#183;&#160; k&#8348; &#8801; 0 + hold channel &#8658; the legal integrator</text>
+  <text x="490" y="578" text-anchor="middle" font-size="11.5" fill="#252A2E">&#951;&#8348; &#8801; const &#8658; AdaJEPA &#160;&#183;&#160; shape term off &#8658; VICReg-family host &#8212; V20 must beat every one of its own limits</text>
+</svg>
