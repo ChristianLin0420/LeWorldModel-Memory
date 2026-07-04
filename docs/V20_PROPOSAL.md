@@ -94,7 +94,7 @@ New instrument, and the first place VisReg earns its keep or doesn't: the **sali
 
 ![DFC — Dual-Filter Carrier](figures/fig_v20_dfc.svg)
 
-The fast filter is the V19 LKC with zero changes — same N = 32, same fixed log-spaced spectrum τ ∈ [2, 96] + hold channel, same zero-init read, same `prior_read` evaluation coordinate. Structure was validated (correction beat k≡0 for the first time in five generations; transport causal at p = 8×10⁻⁵); it is not re-litigated.
+The fast filter is the V19 LKC with zero changes — same N = D state width, same fixed log-spaced spectrum τ ∈ [2, 96] + hold channel, same zero-init read, same `prior_read` evaluation coordinate. Structure was validated (correction beat k≡0 for the first time in five generations; transport causal at p = 8×10⁻⁵); it is not re-litigated.
 
 The slow filter is Level 2 above, with the following registered commitments:
 

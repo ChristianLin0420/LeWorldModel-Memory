@@ -34,7 +34,12 @@ from lewm.tasks_v19.overlays import (CUE_COLORS, GRAY, OUProcess2D,
                                      draw_border, draw_disc, draw_rect,
                                      draw_ring)
 
-TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev", "t3dev")
+TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev", "t3dev",
+         # V20 W0 salience ladder (docs/V20_PROPOSAL.md 4.1): t1 at reduced
+         # cue salience.  s1 = amendment-1 exact, s4 = t1 itself; appended at
+         # the END so every pre-existing task keeps its _TASK_IDS entry and
+         # every frozen bank stays byte-reproducible.
+         "t1s1", "t1s2", "t1s3")
 
 # Domain-separation salt for seed derivation: keeps a task's random streams
 # disjoint from every other task's at the same user seed.
@@ -527,6 +532,29 @@ def _build_registry() -> dict[str, V19Task]:
             duration_range=(5, 5),
             ou=OUProcess2D(theta=0.12, sigma=0.9,
                            x_bounds=(6.0, 30.0), y_bounds=(4.0, 22.0))),
+        # V20 W0 salience ladder: t1's geometry/streams at monotonically
+        # reduced salience (marker_radius, cue_half, cue_border_px), keeping
+        # the fill-tiles-ring invariant cue_half = marker_radius - 1.
+        # Level s1 is the amendment-1 recipe exactly (border 0 = no border);
+        # level s4 is t1 itself (6, 5, 3).  The nuisance/xi stream layouts
+        # match t1's but the draws differ (per-task seed salt), which is what
+        # the per-level checkpoint certificate wants: fresh instances, same
+        # family.
+        "t1s1": TransientCueTask(
+            name="t1s1", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
+            marker_radius=4, cue_half=3, cue_border_px=0),
+        "t1s2": TransientCueTask(
+            name="t1s2", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
+            marker_radius=4, cue_half=3, cue_border_px=1),
+        "t1s3": TransientCueTask(
+            name="t1s3", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
+            marker_radius=5, cue_half=4, cue_border_px=2),
     }
 
 

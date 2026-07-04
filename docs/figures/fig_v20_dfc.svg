@@ -38,7 +38,7 @@
   <!-- ===== fast filter box ===== -->
   <rect x="80" y="170" width="560" height="230" rx="12" fill="#F1F7E8" stroke="#4B780A" stroke-width="2.2"/>
   <rect x="80" y="170" width="560" height="32" rx="12" fill="#4B780A"/>
-  <text x="360" y="191" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">FAST FILTER (per step &#8212; unchanged V19 LKC, N=32, &#964; &#8712; [2, 96] + hold)</text>
+  <text x="360" y="191" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">FAST FILTER (per step &#8212; unchanged V19 LKC, N=D, &#964; &#8712; [2, 96] + hold)</text>
 
   <text x="110" y="228" font-size="12" font-weight="bold" fill="#4B780A">predict</text>
   <text x="200" y="228" font-size="12" fill="#252A2E">m&#8315;&#8348; = A m&#8348;&#8331;&#8321; + B a&#8348;&#8331;&#8321;</text>
