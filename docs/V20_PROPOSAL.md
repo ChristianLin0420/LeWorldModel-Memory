@@ -248,3 +248,66 @@ Post-shift registered probe (pooled t1dev/t3dev × 3 seeds; pre-shift in parenth
 **Insight V20.8 — the drift protocol never required adaptation (the benchmark lesson, again).** The registered drifts (doubled corruption windows; σ=12 pixel noise) leave the frozen fixed-trust arm's post-shift scores fully intact — its "drift cost" is ≈ 0 or negative on every regime. So there was no performance gap for adaptation to close: the premise "fixed trust is provably miscalibrated *and this costs task performance*" delivered its first clause (z² ≈ 0.6) and not its second. This is V19's deepest lesson recurring one level up — the V18 tasks never required memory; the W2 drifts never required adaptation. Any future adaptation study needs a **drift-demand certificate**: a construction-level proof that the shift degrades the frozen reference by a registered margin, exactly as V19's certificates prove the tasks require memory. Without it, adaptation experiments measure only their own noise.
 
 **Guard note (registered honestly):** the stationary subsumption guard *failed on the fresh 480-episode streams* (dfc − rfix = −0.047, 0/6) after passing at −0.002 on the 240-episode W1 banks — the cold-start walk cost compounds with stream length, so ρ\*'s inertness is not scale-free. C4 at W3 (240-episode banks) remains decisive for the registered claim; the length-dependence is now a known liability of the s-EMA cold start (an s-prior or warm-started s would remove the transient, at the price of one more ledger entry).
+
+---
+
+## 11. W3 frozen confirmation: final results (2026-07-05)
+
+**Status: COMPLETE — 90/90 training runs, 0 crashes; 60 stationary deployment evaluations; 300 drift-protocol evaluations on the frozen categorical tasks; Holm gates computed once, on the full grid. Tier-0 health: 77/90 (every failure is the convergence gate, in the P3-style task×seed pattern — t1/s3, t1/s5, t3/s3 fail across arms simultaneously). One confirmatory claim survives Holm; one registered clause fires in the strong direction and inverts V19's Tier-1.**
+
+Stationary registered probe on the frozen tasks (mean over n = 10 seeds; t1/t3 accuracy with chance 0.25/0.25; t4 ridge R²):
+
+| arm | t1 | t3 | t4 |
+|---|---|---|---|
+| **lkc_rfix** | **0.469 ± 0.039** | **0.496 ± 0.037** | −3.16 |
+| dfc (ρ\*) | 0.465 ± 0.019 | 0.460 ± 0.041 | −4.16 |
+| acgru | 0.374 ± 0.050 | 0.345 ± 0.054 | −0.37 |
+| dfc_etafix (η\*) | 0.371 ± 0.019 | 0.367 ± 0.023 | −3.74 |
+| none | 0.261 | 0.319 | −0.02 |
+
+The confirmatory family (crossed tasks × seeds bootstrap, add-one p, Holm):
+
+| claim | mean | CI95 | p_holm | verdict |
+|---|---|---|---|---|
+| C4 subsumption (t1/t3/t4) | −0.347 | [−0.962, +0.007] | 1.000 | **FAIL** |
+| C5 drift_gap (post-shift, t1/t3) | −0.024 | [−0.040, −0.010] | 1.000 | **FAIL** (confidently negative) |
+| C5 drift_noise (post-shift, t1/t3) | −0.033 | [−0.049, −0.019] | 1.000 | **FAIL** (confidently negative) |
+| **C5e derived gain vs fixed η (post-shift, pooled)** | **+0.124** | **[+0.111, +0.137]** | **0.00004** | **PASS** |
+
+C4's pooled magnitude is t4-borne and the per-task split is the honest reading: t1 −0.004 (2/10 — subsumption effectively holds), t3 −0.036 (0/10 — the walk costs real points), t4 −1.00 on the R² scale (0/10 — see the t4 note). Claim 3 confirms at scale: DFC's post-shift calibration ratio is closer to 1.0 than fixed-trust's in **19/20 cells on both drift regimes** (rfix sits over-cautious at z² ≈ 0.65–0.79; DFC restores ≈ 1.12). The W2 stationary-guard failure also reproduces at n = 10 on the fresh 480-episode streams (−0.037, 0/20).
+
+**C6 — the dichotomy resolves by dissolving (the registered moot clause, in the strong direction).** The premise was an ac-GRU advantage for DFC to close. At n = 10 there is none: the T1 envelope gap (acgru − rfix) is **−0.094**, and pooled over the frozen categorical tasks
+
+> **lkc_rfix − acgru = +0.1225 [+0.0731, +0.1700], 19/20 seed-task wins, p ≈ 1×10⁻⁵** (crossed bootstrap; descriptive coordinate — claim 6 presupposed the opposite sign, so this is the moot clause's quantification, not a Holm member).
+
+**Insight V20.9 — the inversion: slow trust makes the canonical carrier beat learned recurrence.** V19's Tier-1 falsified LKC-pure against the recurrent envelope (−1.647). W3 shows the *same cell with the P3-diagnosed repair* — the per-frame trust head replaced by a slow constant — beats that envelope by +0.12 with 19/20 wins at confirmation scale. The V19 → V20 diagnostic chain (Insight 9: "trust must be slow" → promote fixed-trust to first-class) is validated end-to-end, and the program has its first confirmed positive architecture result: **a derived, minimal, fully interpretable linear filter outperforms hand-designed nonlinear recurrence on tasks whose memory demand is certified.** The GRU's P3 victory was a defect of the candidate's trust head, not an advantage of nonlinear dynamics.
+
+**Insight V20.10 — the three-timescale stack collapses to two, and the third contributes theory, not practice.** Every deployment-adaptation configuration tested — derived gain at three walk rates, fixed η at three step sizes, under stationarity and two drift regimes, on dev and frozen tasks — loses to ρ = 0. What survives at the third timescale is exactly one Holm-corrected fact: *if* one adapts parameters online, the classical derived gain dominates AdaJEPA-style fixed steps (+0.124, p_holm = 4×10⁻⁵), uniformly. The surviving V20 architecture is therefore two-timescale: VICReg host (training) + LKC with slow fixed trust (per-frame), with deployment adaptation switched off — and the routing principle survives as the *explanation* for why: each of the three falsified additions (VisReg scale term, per-frame trust, deployment walk) failed by pushing calibration pressure onto a timescale where nothing downstream consumed it.
+
+**t4 note (registered as observed):** the continuous-coordinate probe is hostile to the whole rfix family (−3.2 to −4.2 R² vs acgru −0.37, none −0.02), reproducing P3's t4 pattern (lkc −4.80). The prior-read amplitudes that are harmless to categorical logistic probes destroy an unregularized-scale ridge readout; whether this is information loss or readout fragility is exactly the kind of question the next probe-family revision must settle before t4 participates in another pooled gate.
+
+---
+
+## 12. Program synthesis: what V20 established
+
+**Claims-ladder scoreboard (against §5):**
+
+| # | claim | verdict |
+|---|---|---|
+| 1 | published VisReg is a healthy LeWM host | **FALSIFIED** — rank repaired (validating its mechanism), scale equilibrium σ≈0.07 and oscillating convergence fail the gate; the V17 label now has a published-recipe data point |
+| 2 | VisReg lowers the certified salience threshold | **not evaluable** (fallback clause) — but the instrument delivered: s\*(vicreg) = t1s2, a 1-pixel border tint, threshold ∈ (1.05, 8.43) |
+| 3 | deployment calibration certificate holds on frozen weights | **PASS at scale** (19/20 × 2 regimes) — the dual filter restores z² ≈ 0.6 → 1.12 with θ untouched |
+| 4 | the slow trust filter never hurts (subsumption) | **FALSIFIED at scale** — holds on T1 only; the walk cost is task- and stream-length-dependent |
+| 5 | derived gain beats fixed η under drift / adaptation pays | **split**: derived ≫ fixed η (+0.124, p_holm 4×10⁻⁵, the one Holm survivor) / adaptation never beats not adapting (0/6, 0/20, confident negative CIs) |
+| 6 | adaptivity vs nonlinearity dichotomy | **MOOT, strong direction** — no GRU gap exists once trust is slow: rfix − acgru = +0.1225, p ≈ 10⁻⁵ — V19's Tier-1 inverted |
+
+**The one-sentence verdict:** the kernel-fusion *architecture* mostly falsified, the kernel-fusion *diagnosis* fully vindicated — V20 set out to add two timescales to the validated one and instead proved, with the tightest statistics this program has produced, that the validated one plus slow fixed trust already beats everything it was chasing.
+
+**What stands after V20 (the durable results):**
+1. **The positive architecture result** (Insight V20.9): canonical linear Kalman carrier + fixed log-spaced spectrum + slow fixed trust > parameter-matched ac-GRU on certified-memory tasks, +0.12 pooled, 19/20, p ≈ 10⁻⁵, n = 10, frozen protocol. First confirmed win in twenty design generations.
+2. **The trust-timescale law, now four-fold** (Insights 8, 9, V20.4, V20.5): per-frame trust heads, training-time NLL, deployment NLL walks, and host-level scale terms all trade task information for calibration that nothing downstream consumes. Calibration belongs where a consumer exists — and linear probes consume none.
+3. **The AdaJEPA-level result** (V20.7/C5e): test-time adaptation with a fixed learning rate is strictly dominated by the classical derived gain η_t = P/(P+s) — every AdaJEPA-style system should make this swap; and on streams without certified drift demand, both should be switched off.
+4. **Two benchmark instruments**: the salience ladder with measured s\* (encoder blindness is now a threshold, not a phenomenon), and the drift-demand certificate requirement (V20.8) — the W2/W3 drifts left the frozen reference undamaged, so adaptation had nothing to earn; the memory-demand lesson of V19, one level up.
+5. **The VisReg host study** (V20.1): published recipe, exact fidelity — rank rescue confirmed, scale equilibrium and convergence failed in single-stream LeWM; the fix (target separation / stop-grad) is identified and untested.
+
+**Registered directions for any V21** (in evidence order): (i) drift-demand-certified adaptation streams before any further deployment-adaptation claim; (ii) a scale-robust continuous probe family so t4 can rejoin pooled gates; (iii) VisReg-for-LeWM with clean-target separation, where the salience-threshold instrument (claim 2) is already built and waiting; (iv) if DFC is revisited: warm-started s-EMA and a drift-rate-matched P-replenishment — both priced as ledger entries, both only worth buying after (i).
