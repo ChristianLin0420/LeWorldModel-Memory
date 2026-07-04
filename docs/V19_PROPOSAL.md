@@ -301,6 +301,42 @@ Engineering disclosure: the first launch attempt lost 29 jobs to two interacting
 
 **P3 sizing (registered):** 5 seeds per cell (power 1.00 at +5%, 0.78 at n=3); full 11-arm deck × T1/T3/T4 = 165 cells.
 
-## 12. Key sources
+## 12. P3 frozen confirmation: final results and synthesis (2026-07-05)
+
+**Status: COMPLETE — 165/165 cells (11 arms × T1/T3/T4 × 5 seeds), zero crashes, write-once, gates evaluated by the pre-committed three-tier analyzer. Official outcome: claims-ladder row 3 is FALSIFIED — the registered candidate loses to the action-conditioned recurrent envelope. The mechanism evidence, however, is the most informative of the program: causal action transport is confirmed at p_holm = 8×10⁻⁵, the fixed-trust variant is the only arm that beats the envelope anywhere, and the calibration loss is caught damaging host health.**
+
+**Tier 0 (health, fail-closed report): 130/165 pass.** Two structured pathologies, honestly carried as caveats: (i) data-seed s3 misses the convergence gate across most t1/t3 arms simultaneously (a task×seed event, echoing V18's task-structured health lesson at smaller scale); (ii) **LKC-NLL rank-fails 0/5 on t1 and t3** — see Insight 8.
+
+**Tier 1 (primary endpoint): FAIL.**
+
+| Candidate | Pooled effect vs envelope | CI95 | Per-task | Wins | Status |
+|---|---|---|---|---|---|
+| LKC-pure (registered) | −1.647 | [−4.444, −0.034] | t1 −0.085, t3 −0.053, t4 −4.803 | 1/15 | **FAIL** |
+| LKC-NLL (exploratory) | −0.582 | [−1.579, −0.014] | t1 −0.062, t3 −0.034, t4 −1.650 | 3/15 | exploratory |
+
+The registered clause executes: **hand recurrence suffices for this task class** — the fixed-spectrum linear cell with derived gain does not beat a learned nonlinear GRU given equal parameters and action access. T4 dominates the pooled loss (continuous-R² deficits): tracking a stochastic target through a freeze is where the linear fast state falls furthest behind.
+
+**Tier 2 (descriptive under tier1_failed; Holm-corrected within family):**
+
+| Gate | Estimate | CI95 | p_holm | Reading |
+|---|---|---|---|---|
+| correction useful (vs k≡0) | −0.908 | [−2.638, +0.048] | 1.0 | positive on cue tasks (t1 +0.038, t3 +0.022), negative on T4 — correction helps *recall*, hurts *tracking* |
+| transport endo probe | +0.166 | [−0.911, +1.591] | 1.0 | inconclusive |
+| **transport counterfactual** | **+0.377** | **[+0.165, +0.708]** | **0.00008** | the action-swap divergence tracks ground truth — **transport is causal**, surviving Holm even as a descriptive entry |
+| gain: fixed-k | −0.103 | [−0.636, +0.208] | 1.0 | adaptive k not demonstrated |
+| gain: fixed-trust (r̄) | −0.917 | [−2.351, −0.160] | 1.0 | **LKC-pure loses to its own fixed-trust variant** — see Insight 9 |
+| spectrum: learned A | +0.186 | [−0.037, +0.796] | 1.0 | the old falsification neither confirmed nor overturned |
+| spectrum: two-scalar A | −0.138 | [−0.767, +0.192] | 1.0 | wide spectrum not worse than coarse decays |
+| unobserved evolution (T4) | 0.448 (269/600) | [0.409, 0.488] | 1.0 | prior not closer to the advanced target — T4 gap-transport not achieved |
+
+**Insight 8 — the aux-loss curse returns as a health cost.** LKC-NLL, the one admitted training-time loss, bought +2–7 probe points in development while silently collapsing encoder rank at confirmation scale (0/5 rank passes on t1/t3 — every other arm 4–5/5). Five program generations of auxiliary-objective failures (V4–V7, V12–V15) now have a mechanism-level sequel: **calibration pressure inside the training loss reshapes the representation itself.** The design conclusion is not "abandon calibration" but *move it out of training* — calibrate at deployment, on frozen representations. This is the direct bridge to V20.
+
+**Insight 9 — trust must be slow.** The only arm to beat the recurrent envelope anywhere is `r≡r̄` (T1: 0.457 vs envelope, +0.086, 4/5 seed wins), while the instantaneous learned trust head drags LKC-pure below its own ablation (gain_rfix −0.917). Combined with Insight 8, the picture is sharp: **the predict–correct structure is right; per-frame learned trust is the failure point; a slowly-adapted, stable trust parameter is what works.** In filtering language: the noise covariances should be *estimated on a slow timescale*, not amortized per frame — the classical adaptive-Kalman lesson, rediscovered by intervention.
+
+**Insight 10 — the mechanism is real even where the utility is not.** The counterfactual gate (byte-exact exogenous replay, deranged actions) shows the carrier's latent divergence tracking true state divergence at p_holm = 8×10⁻⁵ — actions causally steer the carried state — while the ξ-utility claim fails. That is exactly the kernel's split: transport moves the *endogenous* belief; remembering ξ is the correction pathway's job, and its bottleneck is trust calibration (Insight 9), not transport.
+
+**Program verdict.** V19 set out to test whether a canonical, derived carrier could beat learned recurrence on tasks where memory is certified to matter. Answer: no — falsified under a frozen, adversarially calibrated protocol. What the program established instead: a certified-memory benchmark methodology (integrator floors, byte-exact leakage proofs, two-sided encoder certificates); the encoder-blindness phenomenon and its salience bound; the first correction-beats-no-correction result in the program's history and its limits; causal confirmation of action transport; and a precise, mechanism-level diagnosis — *slow trust, no training-time calibration losses, structure validated* — that fully determines the next design. That diagnosis is V20 (see `docs/V20_PROPOSAL.md`).
+
+## 13. Key sources
 
 Ex-BMDP/exogenous theory: arXiv:2110.08847, 2206.04282, 2207.08229, 2403.11940, 2211.00164, 2404.14552 · Interventional CRL: arXiv:2102.11107, 2202.03169, 2209.11924, 2203.16437, 2107.10098 · World-model evaluation: arXiv:2406.03689, 2412.05337, 2606.20545, 1909.12000 · Memory kernels: arXiv:2008.07669, 2206.11893, 2403.04253, 2307.02064, 2501.12352, 2412.06464, 2407.14207, 2506.05233 · Kalman line: arXiv:1905.07357, 2010.10201, 2107.10043, 2310.18534, 2409.16824 · JEPA line: arXiv:2511.08544, 2603.19312, 2411.04983, 2506.09985, 2505.03176, 2601.01075 · Benchmarks: arXiv:2309.17207, 2210.13383, 2303.01859, 2503.01450, 2502.10550, 2603.04639, 2307.03864, 1810.06721, 2101.02722, 2512.06204 · Copycat caution: arXiv:1905.11979, 2010.14876.
