@@ -303,6 +303,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--w1-summary", default="outputs/v20_w1/w1_summary.json")
     parser.add_argument("--tasks", default=",".join(TASKS))
     parser.add_argument("--seeds", default="0,1,2")
+    parser.add_argument("--exploratory", default="",
+                        help="extra DFC variants to run under drift as "
+                             "EXPLORATORY arms (comma-separated variant "
+                             "names, e.g. dfc_rho4,dfc_rho2) — registered "
+                             "before W2 ran; the confirmatory claim stays "
+                             "on rho*")
     parser.add_argument("--device", default="cuda")
     return parser.parse_args(argv)
 
@@ -330,8 +336,11 @@ def main(argv: Iterable[str] | None = None) -> None:
         "dfc_etafix": DFC_VARIANTS[eta_star_variant],
         "lkc_rfix": SlowFilterConfig(rho=0.0),       # exact subsumption limit
     }
-    print(f"[v20-w2] dfc={rho_star_variant} etafix={eta_star_variant}",
-          flush=True)
+    for variant in (name.strip() for name in args.exploratory.split(",")):
+        if variant:
+            configs[variant] = DFC_VARIANTS[variant]
+    print(f"[v20-w2] dfc={rho_star_variant} etafix={eta_star_variant} "
+          f"arms={sorted(configs)}", flush=True)
 
     for task in tasks:
         banks = {regime: resolve_drift_bank(task, regime, data_root)

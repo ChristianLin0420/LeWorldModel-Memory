@@ -193,3 +193,31 @@ Calibrated P1b certificates (200-permutation nulls, RidgeCV probes) per ladder l
 **Insight V20.2 — the salience threshold is sharp, border-borne, and sits between 1.05 and 8.43.** s\*(vicreg) = t1s2: a **single-pixel frame border tint alone** — amendment-1 sprite sizes untouched — takes the sighted certificate from 0/3 to 3/3 (scores ≈ 1.0). Two refinements of V19's Insight 4: the amendment-2 sprite enlargement was unnecessary (the border did all the work), and sub-threshold encoding is *partial and seed-lottery-dependent* (t1s1 scores 0.30/0.57/0.75 — one seed near chance, one carrying most of the cue), i.e. below threshold the objective doesn't deterministically delete the factor, it leaves its survival to initialization luck. That seed-variance is itself a warning for any JEPA memory study running few seeds near threshold. Claim 2's cross-host comparison is not evaluable (no healthy VisReg host), per the registered fallback clause; the instrument itself worked and is reusable the moment any alternative host passes claim 1.
 
 **W1 consequence (registered rule applied):** host = `vicreg`; the DFC question proceeds unchanged — it never depended on the host swap (claims 3–6 are host-agnostic).
+
+---
+
+## 9. W1 execution: results (2026-07-04)
+
+**Status: COMPLETE — 18/18 training cells, 0 crashes; 36 deployment-variant evaluations; claim 4 (subsumption) PASS at ρ\*. Frozen for W2/W3: ρ\* = 1e-6 (`dfc_rho6`), η\* = 1e-3 (`dfc_eta3`), n = 10.**
+
+Development grid (registered probe, mean over 3 seeds; chance ≈ 0.33):
+
+| arm | t1dev | t3dev | reading |
+|---|---|---|---|
+| **lkc_rfix** | 0.556 | **0.677** | the V19 winner's recipe, now a first-class arm |
+| **dfc (ρ=1e-6)** | **0.557** | 0.670 | statistically the same animal (see claim 4) |
+| acgru | 0.494 | 0.544 | the envelope — now *behind* fixed-trust on both dev tasks |
+| dfc_eta3 (fixed η=1e-3) | 0.426 | 0.564 | best fixed-η control |
+| dfc (ρ=1e-4) | 0.383 | 0.468 | adaptation cost, mid |
+| dfc (ρ=1e-2) | 0.312 | 0.347 | adaptation cost, large — near floor |
+| none | 0.339 | 0.328 | floor |
+
+**Claim 4 — subsumption gate: PASS.** Paired dfc(ρ\*) − lkc_rfix pooled = **−0.0023** (3/6 wins), within the registered −0.01 tolerance: at ρ = 1e-6 the slow filter is statistically inert on stationary streams, exactly as routing demands.
+
+**Insight V20.3 — fixed-trust now leads the recurrent envelope outright.** On both dev tasks, freshly trained `lkc_rfix` beats ac-GRU (+0.06 t1dev, +0.13 t3dev; 6/6 seed-task cells) — P3's Insight 9 arm, promoted from intervention to first-class candidate, is no longer merely "the only arm above the envelope on T1"; it tops the dev grid. The claim-6 dichotomy premise (an ac-GRU advantage for adaptation to close) may therefore be **moot at confirmation** — the C6 gate carries the registered "envelope gap ≤ 0 → dichotomy moot" clause, and W3 decides it at n = 10 on the frozen tasks. If the dev picture holds, V19's Tier-1 falsification inverts: the linear filter with slow trust *is* sufficient for this task class, and the GRU's P3 edge was specific to LKC-pure's per-frame trust head.
+
+**Insight V20.4 — deployment adaptation on stationary streams is a monotone cost in ρ, and the slow filter recalibrates rather than diffuses.** Ordering on both tasks: rfix ≈ dfc(1e-6) > dfc(1e-4) > dfc(1e-2), with every fixed-η control at or below the derived-gain variant of comparable movement. Telemetry gives the mechanism: η_t cold-starts at ≈ 0.38 (the gradient-EMA s starts empty), anneals to 0.04–0.09, and the φ drift **saturates** at ≈ 29 raw units within ~60 episodes and stays flat to episode 240 — the filter walks to a nearby innovation-NLL equilibrium and stops, i.e. genuine recalibration, not a random walk. But the NLL-optimal φ is *not* the probe-optimal φ: the larger ρ lets φ chase deployment NLL, the more ξ-information the prior read loses. This is Insight 8's lesson (calibration pressure trades away task information) reappearing at the *third* timescale — per-frame trust (P3), training-time NLL (P3), and now the deployment walk rate — and it hardens Insight 9 into a scale-free rule: **whatever the timescale, trust movement is paid for in task information; buy only what miscalibration makes necessary.**
+
+**Registered amendment before W2 (selection-rule bias, disclosed).** The ρ\* rule — max pooled *stationary* dev probe — structurally selects the most inert variant; it cannot select *for* adaptivity. The confirmatory W2/W3 claims stay on ρ\* = 1e-6 as registered; the two rejected values (1e-4, 1e-2) run under W2's drift as **pre-registered exploratory arms**, so "an adaptation rate selected on stationary data pins adaptation to zero" is checkable rather than assumed. If ρ\* proves too inert to buy anything under drift while an exploratory ρ would have, that is claim 5's honest failure mode and the registered diagnosis for any V21.
+
+**W3 freeze (from the registered rules):** host = `vicreg`, ρ\* = 1e-6, η\* = 1e-3, n = 10 seeds (observed-scale effects: power ≈ 1.00 at n = 10; the registered +5% effect reaches only 0.59 — W3 is adequately powered for dev-scale effects and honestly underpowered for +5%-scale ones; registered before launch).

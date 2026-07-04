@@ -35,7 +35,9 @@ sys.path.insert(0, str(ROOT))
 REGIMES = ("stationary", "drift_gap", "drift_noise")
 TASKS = ("t1dev", "t3dev")      # overridden by --tasks (W3 reuses this module)
 SEEDS = (0, 1, 2)               # overridden by --seeds
-ARMS = ("dfc", "dfc_etafix", "lkc_rfix", "acgru", "none")
+ARMS = ("dfc", "dfc_etafix", "lkc_rfix", "acgru", "none",
+        # exploratory drift arms (registered pre-W2; absent dirs are skipped)
+        "dfc_rho4", "dfc_rho2")
 STATIONARY_TOLERANCE = -0.01
 
 
