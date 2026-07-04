@@ -160,4 +160,36 @@ Source kernels: AdaJEPA arXiv:2606.32026 · VisReg arXiv:2606.02572 · V17 inter
 
 ---
 
-**Awaiting review.** On approval, implementation begins at W0; nothing (including the W0 preflight) runs before then.
+**Approved 2026-07-04; execution log follows.** Implementation: `lewm/models/visreg.py` (exact published objective), `lewm/models/v20_dfc.py` (slow filter; ρ=0 subsumption of `lkc_rfix` verified bit-close by test), salience ladder `t1s1/t1s2/t1s3` appended to the frozen task registry (pre-existing task ids and banks byte-stable; leakage pairing re-proven per level), W0–W2 train/eval/certify/aggregate/launch scripts, 27 new tests (V19 suites still green, 120 tests).
+
+---
+
+## 8. W0 execution: results (2026-07-04)
+
+**Status: COMPLETE — 18/18 wave-1 cells, 0 crashes. Claim 1 FALSIFIED at the registered gate (fail-closed): no VisReg λ passed all three t1 seeds; wave 2 skipped; the vicreg fallback stands for W1. Claim 2 not evaluable under the fallback clause — but the ladder produced a sharp standalone result: s\*(vicreg) = t1s2.**
+
+### 8.1 Claim 1 — published VisReg on the exact-LeWM architecture
+
+| arm | health passes | final rank (per seed) | mean rank | convergence (gate ≤ 0.05) |
+|---|---|---|---|---|
+| visreg60 | 0/3 | 25.2, 33.6, 32.2 | 30.3 | 3.67, 0.10, 2.20 |
+| visreg75 | 0/3 | 28.1, 30.2, 26.1 | 28.1 | 0.26, 1.24, 0.59 |
+| visreg90 | 1/3 | 31.8, 30.5, 31.8 | 31.4 | **0.05**, 1.21, 0.27 |
+| *(SIGReg, P0-a2 reference)* | 0/12 | 8.8–17.4 | — | non-convergent |
+
+**Insight V20.1 — VisReg's mechanism claim is validated; its recipe still fails the LeWM gate, and the failure has moved.** The published objective does exactly what its analysis promises: **rank starvation is repaired** (every cell 25–34 vs SIGReg's 9–20 on identical data; the ≥16 rank gate passes 9/9) — the constant-restoring-gradient property is real on this host. What fails is different from both V16 (collapse) and P0 (rank starvation): (i) the **scale equilibrium sits at σ ≈ 0.07**, not the target 1.0 (final ℒ_scale ≈ 0.83–0.87 ⇒ mean per-coordinate σ ≈ 0.07–0.09) — in LeWM's single-stream objective, prediction inputs *and targets* are the same embeddings, so shrinking the code shrinks the MSE too; the published λ ∈ [0.6, 0.9] cannot win that fight, and moving λ from 0.6 to 0.9 barely moves the equilibrium (0.864 → 0.834); (ii) the **convergence gate fails by oscillation, not divergence** — late-window val predictive loss bounces in 0.005–0.07 (occasionally 0.2), so the ≤5% relative-change gate reads 0.10–3.67; the K=4096 fresh random slices re-randomize the shape gradient every batch and the two objectives sit at a noisy equilibrium. Verdict: the V17 lineage (`ADAPTIVE_COLLAPSE_REPAIR_FAILED`: rank repaired, convergence failed) now has an **exact published-recipe data point** — the failure was not V17's home-grown machinery; it is the recipe-host interaction, specifically the missing stop-gradient/target separation that the published setting has and single-stream LeWM does not. Descriptive EP telemetry agrees: the code sits near the projected-zero EP plateau (ratio 0.97–0.99) *while healthy in rank* — the EP statistic and effective rank measure different things, which retroactively sharpens why V16's plateau diagnosis needed the rank instrument at all.
+
+### 8.2 Claim 2 instrument — the certified salience threshold (vicreg)
+
+Calibrated P1b certificates (200-permutation nulls, RidgeCV probes) per ladder level; construction salience = mean absolute cue-window pixel difference between paired ξ branches:
+
+| level | knobs (marker, cue, border px) | salience | sighted scores (3 seeds) | level pass |
+|---|---|---|---|---|
+| t1s1 (= amendment 1) | 4, 3, 0 | 1.05 | 0.297, 0.570, 0.746 | **0/3 FAIL** |
+| t1s2 | 4, 3, **1** | 8.43 | 1.000, 1.000, 0.961 | 3/3 PASS |
+| t1s3 | 5, 4, 2 | 17.93 | 1.000, 1.000, 1.000 | 3/3 PASS |
+| t1 (= amendment 2) | 6, 5, 3 | 24.07 | 1.000, 1.000, 1.000 | 3/3 PASS |
+
+**Insight V20.2 — the salience threshold is sharp, border-borne, and sits between 1.05 and 8.43.** s\*(vicreg) = t1s2: a **single-pixel frame border tint alone** — amendment-1 sprite sizes untouched — takes the sighted certificate from 0/3 to 3/3 (scores ≈ 1.0). Two refinements of V19's Insight 4: the amendment-2 sprite enlargement was unnecessary (the border did all the work), and sub-threshold encoding is *partial and seed-lottery-dependent* (t1s1 scores 0.30/0.57/0.75 — one seed near chance, one carrying most of the cue), i.e. below threshold the objective doesn't deterministically delete the factor, it leaves its survival to initialization luck. That seed-variance is itself a warning for any JEPA memory study running few seeds near threshold. Claim 2's cross-host comparison is not evaluable (no healthy VisReg host), per the registered fallback clause; the instrument itself worked and is reusable the moment any alternative host passes claim 1.
+
+**W1 consequence (registered rule applied):** host = `vicreg`; the DFC question proceeds unchanged — it never depended on the host swap (claims 3–6 are host-agnostic).
