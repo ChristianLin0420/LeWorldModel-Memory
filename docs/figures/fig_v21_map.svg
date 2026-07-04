@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="660" viewBox="0 0 980 660" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ma2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#626E76"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="980" height="660" fill="#FFFFFF"/>
+  <text x="490" y="30" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">V21 = the review panel's objections, converted to phases (leverage per GPU-day)</text>
+
+  <!-- panel verdict strip -->
+  <rect x="60" y="50" width="860" height="54" rx="9" fill="#252A2E"/>
+  <text x="490" y="72" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#FFFFFF">Simulated ICLR panel on V20-as-is: 5 / 4 / 5 / 4 &#8212; AC estimate: reject, P(accept) &#8776; 0.10; reframed &#8776; 0.35; with the fixes below &#8776; strong 7&#8211;8</text>
+  <text x="490" y="92" text-anchor="middle" font-size="11" fill="#D8DEE2">convergent defect: the headline outruns its evidence on four axes &#8212; post-hoc labeling &#183; t4 exclusion &#183; narrow support &#183; missing rival baselines</text>
+
+  <!-- left: objections -->
+  <text x="240" y="130" text-anchor="middle" font-size="13" font-weight="bold" fill="#626E76">PANEL OBJECTION (4/4 convergent)</text>
+  <text x="740" y="130" text-anchor="middle" font-size="13" font-weight="bold" fill="#626E76">V21 PHASE THAT RETIRES IT</text>
+
+  <rect x="60" y="144" width="380" height="60" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="250" y="168" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">&#8220;+0.1225 is a moot-clause quantification, not</text>
+  <text x="250" y="186" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">confirmatory; pooling silently excludes t4&#8221;</text>
+  <line x1="440" y1="174" x2="536" y2="174" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma2)"/>
+  <rect x="540" y="144" width="380" height="60" rx="9" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.6"/>
+  <text x="730" y="168" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#4B780A">X1 &#183; preregistered single-endpoint confirmation wave</text>
+  <text x="730" y="186" text-anchor="middle" font-size="11" fill="#252A2E">fresh seeds; pooling rule frozen incl. t4 handling; ~1&#8211;2 GPU-days</text>
+
+  <rect x="60" y="216" width="380" height="60" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="250" y="240" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">&#8220;t4 pathology unresolved; unhealthy cells in the</text>
+  <text x="250" y="258" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">pooled grid; baseline got no repair budget&#8221;</text>
+  <line x1="440" y1="246" x2="536" y2="246" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma2)"/>
+  <rect x="540" y="216" width="380" height="60" rx="9" fill="#F1F7E8" stroke="#4B780A" stroke-width="1.6"/>
+  <text x="730" y="236" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#4B780A">X0 &#183; free repairs (&#8776;0 GPU-days) + baseline parity</text>
+  <text x="730" y="252" text-anchor="middle" font-size="11" fill="#252A2E">Tier-0 sensitivity, per-task CIs, scale-robust t4 probes;</text>
+  <text x="730" y="268" text-anchor="middle" font-size="11" fill="#252A2E">tuned + slow-gate GRU, acssm back, one gated-delta cell</text>
+
+  <rect x="60" y="288" width="380" height="60" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="250" y="312" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">&#8220;Probe-only endpoints; the V18 behavior-level ask</text>
+  <text x="250" y="330" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">unmet for the third cycle; V20.5 is tautological&#8221;</text>
+  <line x1="440" y1="318" x2="536" y2="318" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma2)"/>
+  <rect x="540" y="288" width="380" height="60" rx="9" fill="#FBF2E8" stroke="#A45A1C" stroke-width="1.8"/>
+  <text x="730" y="308" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">X2 &#183; THE CONSUMER: belief-conditioned MPC return</text>
+  <text x="730" y="324" text-anchor="middle" font-size="11" fill="#252A2E">reward-bearing certified tasks + return-floor certificate;</text>
+  <text x="730" y="340" text-anchor="middle" font-size="11" fill="#252A2E">&#963;-aware vs mean-only; calibration priced in reward units</text>
+
+  <rect x="60" y="360" width="380" height="60" rx="9" fill="#F5F6F7" stroke="#A45A1C" stroke-width="1.6"/>
+  <text x="250" y="384" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">&#8220;Zero external validity; single host; s&#8727; is a</text>
+  <text x="250" y="402" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#A45A1C">single-host observation; no delay scaling&#8221;</text>
+  <line x1="440" y1="390" x2="536" y2="390" stroke="#626E76" stroke-width="1.7" marker-end="url(#ma2)"/>
+  <rect x="540" y="360" width="380" height="60" rx="9" fill="#EDF7F5" stroke="#28756D" stroke-width="1.6"/>
+  <text x="730" y="380" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#28756D">X3 &#183; portability: MIKASA-Robo subset through the</text>
+  <text x="730" y="396" text-anchor="middle" font-size="11" fill="#252A2E">certificate pipeline; s&#8727; on FrozenDINO (2nd host);</text>
+  <text x="730" y="412" text-anchor="middle" font-size="11" fill="#252A2E">delay-scaling curves per carrier</text>
+
+  <!-- paper strategy -->
+  <rect x="60" y="450" width="860" height="120" rx="10" fill="#FFFFFF" stroke="#4B780A" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="490" y="476" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4B780A">Paper strategy (AC recommendation adopted): split, with a re-merge option</text>
+  <text x="80" y="500" font-size="11.5" fill="#252A2E"><tspan font-weight="bold">Paper A (next cycle, after X0&#8211;X1):</tspan> methodology-led &#8212; certified memory demand, the s&#8727; threshold, drift-demand certificates,</text>
+  <text x="80" y="518" font-size="11.5" fill="#252A2E">with the inversion as a properly-registered case study. Needs &#8776; 4&#8211;6 GPU-days. Panel-estimated 7&#8211;8 with these fixes.</text>
+  <text x="80" y="542" font-size="11.5" fill="#252A2E"><tspan font-weight="bold">Paper B (after X2&#8211;X3):</tspan> the architecture claim &#8212; slow-trust filter vs modern recurrence, carried by return-level endpoints,</text>
+  <text x="80" y="560" font-size="11.5" fill="#252A2E">external benchmark, delay scaling. Re-merge into one paper if X2 lands positive early.</text>
+
+  <!-- framing rules -->
+  <rect x="60" y="586" width="860" height="58" rx="9" fill="#F5F6F7" stroke="#626E76" stroke-width="1.3"/>
+  <text x="490" y="608" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#252A2E">Framing rules (all four reviews converge): confirmatory layer = frozen-gate survivors only &#183; the inversion = registered-moot outcome with a</text>
+  <text x="490" y="626" text-anchor="middle" font-size="11.5" fill="#252A2E">three-dataset directional replication chain &#183; TTA claim scoped to &#8220;among adaptors, on no-demand streams&#8221; &#183; internal-program framing cut</text>
+</svg>

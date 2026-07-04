@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="640" viewBox="0 0 980 640" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#252A2E"/>
+    </marker>
+    <marker id="kg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#4B780A"/>
+    </marker>
+    <marker id="kt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#28756D"/>
+    </marker>
+    <marker id="kb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#A45A1C"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="640" fill="#FFFFFF"/>
+  <text x="490" y="30" text-anchor="middle" font-size="19" font-weight="bold" fill="#252A2E">V21 kernel: a belief is only as good as the decisions it licenses &#8212; give the belief a consumer</text>
+
+  <!-- the lesson strip -->
+  <rect x="60" y="52" width="860" height="58" rx="9" fill="#F5F6F7" stroke="#626E76" stroke-width="1.3"/>
+  <text x="490" y="76" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#252A2E">The V20 split that forces V21: calibration RESTORED (claim 3, 19/20) yet WORTHLESS (claim 5, 0/20)</text>
+  <text x="490" y="96" text-anchor="middle" font-size="11.5" fill="#626E76">because linear probes absorb a trust rescaling as reparameterization &#8212; the evaluation family consumed no uncertainty. V21 changes the consumer, not the filter.</text>
+
+  <!-- validated stack (left) -->
+  <rect x="60" y="140" width="270" height="210" rx="10" fill="#F1F7E8" stroke="#4B780A" stroke-width="2"/>
+  <rect x="60" y="140" width="270" height="30" rx="10" fill="#4B780A"/>
+  <text x="195" y="160" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">VALIDATED STACK (frozen)</text>
+  <text x="195" y="192" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">VICReg host + LKC, slow fixed trust</text>
+  <text x="195" y="214" text-anchor="middle" font-size="11.5" fill="#252A2E">m&#8348; = m&#8315;&#8348; + k&#8348; &#8857; (x&#8348; &#8722; m&#8315;&#8348;)</text>
+  <text x="195" y="233" text-anchor="middle" font-size="11.5" fill="#252A2E">belief (m&#8348;, &#963;&#8348;) over exogenous &#958;</text>
+  <text x="195" y="258" text-anchor="middle" font-size="10.5" fill="#626E76">beats the recurrent envelope:</text>
+  <text x="195" y="274" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#4B780A">+0.1225 [+0.073, +0.170], 19/20, p&#8776;10&#8315;&#8309;</text>
+  <text x="195" y="290" text-anchor="middle" font-size="10.5" fill="#626E76">(W3, n=10, frozen protocol)</text>
+  <text x="195" y="316" text-anchor="middle" font-size="10.5" font-style="italic" fill="#4B780A">W3 checkpoints reused as-is &#8212;</text>
+  <text x="195" y="331" text-anchor="middle" font-size="10.5" font-style="italic" fill="#4B780A">V21 trains no new carriers for X0&#8211;X1</text>
+
+  <!-- consumer (center) -->
+  <rect x="380" y="140" width="270" height="210" rx="10" fill="#FBF2E8" stroke="#A45A1C" stroke-width="2.2"/>
+  <rect x="380" y="140" width="270" height="30" rx="10" fill="#A45A1C"/>
+  <text x="515" y="160" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">THE CONSUMER (new)</text>
+  <text x="515" y="192" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">Belief-conditioned MPC</text>
+  <text x="515" y="214" text-anchor="middle" font-size="11.5" fill="#252A2E">reward head r&#770;(z&#771;, m) &#8212; needs the belief</text>
+  <text x="515" y="233" text-anchor="middle" font-size="11.5" fill="#252A2E">plan: max&#8342; E[&#931; r&#770; | m&#8348;, &#963;&#8348;]</text>
+  <text x="515" y="258" text-anchor="middle" font-size="10.5" fill="#626E76">two planner variants, one intervention:</text>
+  <text x="515" y="274" text-anchor="middle" font-size="10.5" fill="#252A2E">mean-only (consumes m) vs</text>
+  <text x="515" y="290" text-anchor="middle" font-size="10.5" fill="#252A2E">&#963;-aware (expected value under belief)</text>
+  <text x="515" y="316" text-anchor="middle" font-size="10.5" font-style="italic" fill="#A45A1C">calibration finally has a buyer:</text>
+  <text x="515" y="331" text-anchor="middle" font-size="10.5" font-style="italic" fill="#A45A1C">&#963;-aware planning is priced in return</text>
+
+  <!-- endpoint (right) -->
+  <rect x="700" y="140" width="220" height="210" rx="10" fill="#EDF7F5" stroke="#28756D" stroke-width="2"/>
+  <rect x="700" y="140" width="220" height="30" rx="10" fill="#28756D"/>
+  <text x="810" y="160" text-anchor="middle" font-size="13" font-weight="bold" fill="#FFFFFF">THE ENDPOINT (new)</text>
+  <text x="810" y="192" text-anchor="middle" font-size="12" font-weight="bold" fill="#252A2E">Certified-memory RETURN</text>
+  <text x="810" y="216" text-anchor="middle" font-size="11" fill="#252A2E">T1-act: reach the cued marker</text>
+  <text x="810" y="234" text-anchor="middle" font-size="11" fill="#252A2E">T4-act: track through the gap</text>
+  <text x="810" y="260" text-anchor="middle" font-size="10.5" fill="#626E76">return-floor certificate:</text>
+  <text x="810" y="276" text-anchor="middle" font-size="10.5" fill="#626E76">integrator policy &#8776; floor,</text>
+  <text x="810" y="292" text-anchor="middle" font-size="10.5" fill="#626E76">oracle-&#958; policy = ceiling &#8212;</text>
+  <text x="810" y="308" text-anchor="middle" font-size="10.5" fill="#626E76">the gap is the certified</text>
+  <text x="810" y="324" text-anchor="middle" font-size="10.5" fill="#626E76">memory demand, in reward units</text>
+
+  <line x1="330" y1="245" x2="376" y2="245" stroke="#252A2E" stroke-width="2" marker-end="url(#ka)"/>
+  <text x="353" y="235" text-anchor="middle" font-size="10.5" fill="#252A2E">(m, &#963;)</text>
+  <line x1="650" y1="245" x2="696" y2="245" stroke="#252A2E" stroke-width="2" marker-end="url(#ka)"/>
+  <text x="673" y="235" text-anchor="middle" font-size="10.5" fill="#252A2E">actions</text>
+
+  <!-- claims strip -->
+  <rect x="60" y="390" width="860" height="130" rx="10" fill="#FFFFFF" stroke="#4B780A" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="490" y="414" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4B780A">The four registered questions (each answerable either way)</text>
+  <text x="80" y="438" font-size="11" fill="#252A2E"><tspan font-weight="bold">X1 transfer:</tspan> does the probe-space inversion (rfix &gt; acgru) survive the consumer &#8212; i.e. show up in return?</text>
+  <text x="80" y="458" font-size="11" fill="#252A2E"><tspan font-weight="bold">X1 uncertainty value:</tspan> &#963;-aware &gt; mean-only planning exactly where belief variance is decision-relevant (T4 gap)?</text>
+  <text x="80" y="478" font-size="11" fill="#252A2E"><tspan font-weight="bold">X1 calibration value:</tspan> calibrated trust &gt; detuned trust under the &#963;-aware planner, while probes cannot tell them apart &#8212; the V20 claim-3/5 split, redeemed or closed</text>
+  <text x="80" y="498" font-size="11" fill="#252A2E"><tspan font-weight="bold">X2/X3 generality:</tspan> the inversion vs a modern gated linear-attention cell, and on an external certified benchmark (MIKASA-Robo / POPGym subset)</text>
+
+  <!-- exclusions -->
+  <rect x="60" y="540" width="860" height="76" rx="10" fill="#F5F6F7" stroke="#626E76" stroke-width="1.3"/>
+  <text x="490" y="564" text-anchor="middle" font-size="12" font-weight="bold" fill="#626E76">Registered exclusions (V20 verdicts, not re-litigated)</text>
+  <text x="490" y="584" text-anchor="middle" font-size="11" fill="#252A2E">deployment adaptation (dead until drift-demand certificates exist) &#183; VisReg host line (parked; s&#8727; instrument ready if target separation is built)</text>
+  <text x="490" y="602" text-anchor="middle" font-size="11" fill="#252A2E">learned timescales, hierarchies, per-frame trust, training-time NLL (frozen defaults, four-fold law)</text>
+</svg>
