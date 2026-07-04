@@ -150,3 +150,27 @@ The −3-to−4 "pathology" was entirely the unregularized-scale ridge readout; 
 **Claim 5 — resolved with a mechanism split.** The hedging channel (per-decision uncertainty consumption) is ≈ nil: +0.003 calibrated, +0.014 detuned — direction as predicted, magnitude negligible. But trust calibration itself is **heavily priced by the consumer**: detuning r ×16 costs −0.27 success. The mediation analysis pins the channel: selector accuracy falls 0.825 → 0.536 under detune — the miscalibrated filter's gain is too small to *accumulate the cue into the belief by plan time*. So the effect is belief-informativeness, probe-visible, not a hidden calibration effect. **Refinement of the trust-timescale law (V20.5): trust is priced at encode time, not at read time** — miscalibration that gates information acquisition costs return and probes alike; miscalibration that merely rescales an already-acquired code costs neither. No consumer of per-decision uncertainty has yet been found; the consumer that matters consumes belief *content*.
 
 **X2 verdict for the paper:** the memory carrier acts — certified, executed, causally checked — and the claim-4 result upgrades the inversion from a probe statement to a control statement. The host's rollout incompetence (Finding-1) is reported as the reason the planning substrate is oracle dynamics, with the rollout-competence certificate registered as the prerequisite for any latent-planning successor.
+
+---
+
+## 10. X3 execution: portability (2026-07-05)
+
+**s\*(DINOv2) = t1s1 — encoder blindness is acquired, not architectural.** The sighted-certificate ladder on a second, architecturally unrelated, *untrained-on-this-stream* host (frozen DINOv2 ViT-S features, no projector, no training anywhere):
+
+| level | DINOv2 sighted scores | vicreg reference (W0) |
+|---|---|---|
+| t1s1 (amendment-1, salience 1.05) | **1.000, 0.996, 0.996 — PASS** | 0.297, 0.570, 0.746 — FAIL |
+| t1s2 … t1 | 1.000 everywhere | 0.961–1.000 |
+
+The frozen pretrained encoder reads the lowest-salience cue essentially perfectly, exactly where the task-trained VICReg encoder is a seed lottery. Two consequences: (i) **s\* is now an instrument** — a two-host measurement with a demonstrated ordering, s\*(dino) = t1s1 < s\*(vicreg) = t1s2; (ii) the threshold is a property of the **SSL training regime, not of the input or the architecture** — training on the stream is what *deletes* the low-salience factor a general-purpose encoder retains for free. This is the final sharpening of V19's Insight 3: encoder blindness is an acquired deletion, and frozen pretrained backbones dodge the failure mode entirely (with the per-task certificate to prove it).
+
+**Delay scaling (frozen W3 carriers, fresh banks at L ∈ {64, 96, 128}; chance 0.25):**
+
+| arm | L=64 (delay ≈ 50) | L=96 (≈ 82) | L=128 (≈ 114) |
+|---|---|---|---|
+| lkc_rfix | 0.451 | 0.380 | 0.310 |
+| acgru | 0.317 | 0.307 | 0.263 |
+
+The rfix advantage is positive at every tested delay and **narrows under extrapolation** (+0.134 → +0.073 → +0.047): both carriers decay toward chance beyond the training length, the filter more slowly. Reported as measured — the memory claim is scoped to delays near the training regime; the hold channel does not by itself confer indefinite retention of the read-out content. (The envelope\* curve is appended when the X1 checkpoints exist.)
+
+**MIKASA-Robo: deferred with a feasibility note.** The wheel exists (`mikasa_robo_suite 0.0.5`) but its `mani-skill==3.0.0b15` dependency fails to build in the pinned program environment (numpy source-build failure); the integration path is a dedicated venv plus an EpisodeBatch bank bridge, ≈ 0.5–1 day with GPU-sim risk. Per the review panel's own leverage ranking (last) and the registered A/B split, the external-benchmark arm belongs to Paper B; Paper A's portability evidence is the two-host s\* + delay scaling above.
