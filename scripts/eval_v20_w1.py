@@ -95,6 +95,16 @@ def export_variant(variant: str, config: SlowFilterConfig,
         arrays[f"tel_{key}"] = value
     for key, value in result.phi_trace.items():
         arrays[f"phi_{key}"] = value
+    if bank.xi_kind == "cont":
+        # The continuous-task probe references (p2.export_eval convention).
+        from lewm.tasks_v19 import make_task
+        task = make_task(checkpoint["task"])
+        index = np.arange(bank.num_episodes)
+        gap_on = bank.events["gap_on"]
+        arrays["posterior_mean"] = task.posterior_mean_prediction(
+            bank).astype(np.float32)
+        arrays["frozen_pos"] = task._normalize(
+            bank.exo_state[index, gap_on - 1, 0:2]).astype(np.float32)
     meta = {
         "schema_version": p2.EXPORT_SCHEMA_VERSION,
         "task": checkpoint["task"],

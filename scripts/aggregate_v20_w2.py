@@ -33,8 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 REGIMES = ("stationary", "drift_gap", "drift_noise")
-TASKS = ("t1dev", "t3dev")
-SEEDS = (0, 1, 2)
+TASKS = ("t1dev", "t3dev")      # overridden by --tasks (W3 reuses this module)
+SEEDS = (0, 1, 2)               # overridden by --seeds
 ARMS = ("dfc", "dfc_etafix", "lkc_rfix", "acgru", "none")
 STATIONARY_TOLERANCE = -0.01
 
@@ -248,11 +248,17 @@ def render_markdown(summary: dict[str, Any]) -> str:
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default="outputs/v20_w2")
+    parser.add_argument("--tasks", default=",".join(TASKS))
+    parser.add_argument("--seeds", default=",".join(map(str, SEEDS)))
     return parser.parse_args(argv)
 
 
 def main(argv: Iterable[str] | None = None) -> None:
+    global TASKS, SEEDS
     args = parse_args(argv)
+    TASKS = tuple(name.strip() for name in args.tasks.split(",")
+                  if name.strip())
+    SEEDS = tuple(int(value) for value in args.seeds.split(","))
     root = Path(args.root)
     summary = build_summary(root)
     (root / "w2_summary.json").write_text(

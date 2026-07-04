@@ -336,6 +336,13 @@ def main(argv: Iterable[str] | None = None) -> None:
     for task in tasks:
         banks = {regime: resolve_drift_bank(task, regime, data_root)
                  for regime in REGIMES}
+        if banks["stationary"].xi_kind != "cat":
+            # The drift protocol's pre/post probe coordinate is categorical
+            # by registration; continuous tasks keep their standard
+            # stationary endpoint (docs/V20_PROPOSAL.md 4.4).
+            print(f"[v20-w2] {task}: xi_kind != cat — drift protocol "
+                  f"skipped by registration", flush=True)
+            continue
         for seed in seeds:
             rfix = load_checkpoint(w1_root, task, "lkc_rfix", seed, device)
             others = {arm: load_checkpoint(w1_root, task, arm, seed, device)
