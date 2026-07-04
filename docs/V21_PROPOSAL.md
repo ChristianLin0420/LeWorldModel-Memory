@@ -94,4 +94,59 @@ Everything inherits `docs/V20_PROPOSAL.md` §7 and `docs/V19_PROPOSAL.md` §13. 
 
 ---
 
-**Awaiting review.** On approval, implementation begins at X0; the panel artifacts (four reviews + area-chair synthesis) are preserved in the session workflow transcript for audit.
+**Approved 2026-07-05; execution log follows.**
+
+---
+
+## 8. X0a execution: the free repairs (2026-07-05)
+
+**Status: COMPLETE — both panel objections retired, both in the inversion's favor.**
+
+**Tier-0 sensitivity (objection I1's "carried by unhealthy cells"):** excluding every (task, seed) cell where either arm failed its health gates, the W3 inversion *strengthens*: full grid +0.1225 (p = 1.0×10⁻⁵, 19/20) → healthy-only **+0.1308 [+0.0960, +0.1655], p = 9.5×10⁻⁷, 13/14** (cluster-exclusion variant identical). Per-task t-CIs published alongside (t1 +0.094 [+0.055, +0.133]; t3 +0.151 [+0.114, +0.187]). Claim 4's split is likewise stable under exclusions (t1 ≈ 0, t3 ≈ −0.038). Artifacts: `outputs/v21_x0/sensitivity.{json,md}`.
+
+**t4 probe-family repair (objection I2, adjudicated: READOUT FRAGILITY):** re-probing the frozen W3 t4 exports under the scale-robust family (StandardScaler + RidgeCV(10⁻³..10³), standardized targets):
+
+| arm | legacy R² | repaired R² | MLP control |
+|---|---|---|---|
+| lkc_rfix | −3.15 | **+0.153** | −0.08 |
+| dfc(ρ\*) | −4.17 | +0.148 | −0.08 |
+| acgru | −0.37 | +0.094 | −0.26 |
+| none | −0.02 | −0.02 | −0.02 |
+
+The −3-to−4 "pathology" was entirely the unregularized-scale ridge readout; under the repaired family the rfix family *leads on t4 too*. **With t4 rejoined under the registered scale-free pooling (per-task standardized paired d): pooled d = +1.84 [+1.39, +4.04], p = 5×10⁻⁵, per-task d = +1.73 (t1) / +2.95 (t3) / +0.83 (t4).** The panel's strongest cherry-pick objection inverted into additional support. Artifacts: `outputs/v21_x0/t4_probes.{json,md}`.
+
+**X1 registration frozen and timestamped** (`outputs/v21_x1/registration.json`) before any X0b sweep result existed: endpoint, the repaired t4 family, the envelope-selection rule, the confirmation rule (bootstrap p < 0.05 AND ≥ 2/3 tasks positive), and the falsified clause (fair tuning closes the gap → V20 was baseline-effort asymmetry; report and stop). The gate script refuses artifacts predating the registration.
+
+---
+
+## 9. X2 execution: the consumer (2026-07-05)
+
+**Status: COMPLETE — the return-floor certificate established, claim 4 confirmed at 3/3 seeds with a large effect, claim 5 resolved with a mechanism split, and one major negative finding about the host. Three diagnostic-adjudicated amendments, every wave preserved on disk.**
+
+**The amendment trail (each failure localized before proceeding):**
+1. *Wave 1* (flat CEM + latent goal distance): oracle 4–8%. Diagnostic: true-dynamics flat CEM only reaches 25–42% — **flat CEM cannot search 46–78-dim action spaces**; knot-parameterized CEM (K=6) reaches **100% with ~0.01 rad residuals**. Task fully feasible; planner parameterization amended.
+2. *Wave 2* (knot-CEM + receding-horizon MPC + the pose cost head the V19 gate-6 build list had named — needed because the encoder's L2 geometry is pose-blind, Spearman(z-dist, angle-dist) ≈ 0.0–0.12): oracle still 0%. Diagnostic: **pose decoded from predicted latents degrades 0.104 (real frame) → 0.469 (one-step prediction) → ~1.9 rad (≥ 4 steps — no information).**
+
+**X2-Finding-1 — the world model cannot imagine.** The exact-LeWM predictor (H=3 teacher forcing) does not transport the endogenous state under open-loop rollout: one predicted step already quadruples the pose-decode error; four steps erase it. Latent model-based planning is untestable on this host regardless of cost head, planner, or replan rate — measured the first time the program ever asked the V8-lineage model to roll forward (V19/V20 evaluated exclusively through teacher-forced one-step prediction and probes). This retroactively grounds V18's rollout-compounding observations and names the prerequisite any behavior-level world-model memory study must certify first: **rollout competence** — a third demand certificate alongside memory demand and drift demand. Multi-step/overshooting training objectives are the known remedy and are a host-level (not memory-level) fix.
+
+3. *Wave 3* (amendment 3): the planner uses **oracle dynamics** (physics-only stepping — the proven 100% ceiling), so the only difference between arms is belief-driven goal selection: the memory factor isolated exactly.
+
+**Wave-3 results** (T1-act: 4 registered goal configurations indexed by the vanished cue; frozen selector probe at t_p = 24 → knot-CEM → executed; success = final qpos within 0.25 rad, the strictest ladder rung; 120 eval episodes × 3 checkpoint seeds; execution ground-truth re-roll reads ~3–4 points *higher* than the planning-env estimate — systematic, small against the effects, reported not corrected):
+
+| arm (selector → identical planner) | success rate (mean of 3 seeds) |
+|---|---|
+| oracle-ξ (ceiling) | **0.917** |
+| **lkc_rfix (argmax / hedged)** | **0.769 / 0.772** |
+| lkc_rfix, trust detuned ×16 (argmax / hedged) | 0.500 / 0.514 |
+| acgru (argmax / hedged) | 0.508 / 0.497 |
+| none-carrier selector | 0.256 (= chance) |
+| integrator floor | 0.244 |
+| belief ablated (uniform weights) | 0.064 (centroid-parking collapse) |
+
+**Return-floor certificate: ESTABLISHED** — oracle 0.917 vs integrator floor 0.244; gap 0.67 ≫ the registered 0.3. The task's memory demand now exists in reward units.
+
+**Claim 4 — the inversion transfers to control: CONFIRMED (3/3 seeds, large).** rfix 0.769 vs acgru 0.508 under the *identical* planner: **+0.26 success rate** — the +0.09 probe gap is amplified ~3× by the argmax decision. The V18 reviewer's behavior-level ask, unmet for two program generations, is answered: the slow-trust filter's memory is worth a quarter of all episodes in executed task success over the learned-recurrence envelope. Causal checks pass in both directions (none-carrier = chance; belief ablation collapses below chance).
+
+**Claim 5 — resolved with a mechanism split.** The hedging channel (per-decision uncertainty consumption) is ≈ nil: +0.003 calibrated, +0.014 detuned — direction as predicted, magnitude negligible. But trust calibration itself is **heavily priced by the consumer**: detuning r ×16 costs −0.27 success. The mediation analysis pins the channel: selector accuracy falls 0.825 → 0.536 under detune — the miscalibrated filter's gain is too small to *accumulate the cue into the belief by plan time*. So the effect is belief-informativeness, probe-visible, not a hidden calibration effect. **Refinement of the trust-timescale law (V20.5): trust is priced at encode time, not at read time** — miscalibration that gates information acquisition costs return and probes alike; miscalibration that merely rescales an already-acquired code costs neither. No consumer of per-decision uncertainty has yet been found; the consumer that matters consumes belief *content*.
+
+**X2 verdict for the paper:** the memory carrier acts — certified, executed, causally checked — and the claim-4 result upgrades the inversion from a probe statement to a control statement. The host's rollout incompetence (Finding-1) is reported as the reason the planning substrate is oracle dynamics, with the rollout-competence certificate registered as the prerequisite for any latent-planning successor.

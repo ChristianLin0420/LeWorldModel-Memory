@@ -34,9 +34,11 @@ os.environ.setdefault("MUJOCO_GL", "egl")
 
 from lewm.tasks_v19 import make_task
 import scripts.make_v19_p0_data as p0_data
-from scripts.x2_planning_v21 import (GOAL_ANGLES, HORIZON, PLAN_TIME,
+from scripts.x2_planning_v21 import (EPISODE_END, GOAL_ANGLES, PLAN_TIME,
                                      SUCCESS_LAST_FRAMES, TOLERANCE_LADDER,
                                      _wrap)
+
+HORIZON = EPISODE_END - PLAN_TIME
 
 EPISODES_TO_TEST = 12
 CEM_POP = 64
