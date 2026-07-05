@@ -26,7 +26,7 @@ We consider the negative and self-corrective results part of the contribution, a
 
 **World models with memory.** Recurrent state-space models and their successors [Hafner et al., 2019–2023; Hansen et al., 2024; Samsami et al., 2024] report return-level results with memory in imagination. We do not compete with these systems; we supply the audit layer they skip. Our return-level endpoint (§4.3) deliberately isolates the memory factor by planning with oracle dynamics after the host failed a rollout-competence check — which is itself a result those systems' evaluation protocols would not have surfaced, because multi-step training objectives are baked in rather than certified.
 
-**Linear recurrence and derived filters.** The learned envelope in §4 includes a parameter-matched action-conditioned gated delta-rule cell [Yang et al., 2024; von Oswald et al., 2025 lineage], GRU variants including a chrono-initialized slow-gate control [Tallec & Ollivier, 2018], and an action-conditioned SSM. The derived carrier is a latent Kalman cell with a fixed log-spaced spectrum and an exact hold channel (HiPPO-adjacent construction; RKN lineage [Becker et al., 2019]). We claim no novelty for either family; the comparison exists to exercise the certificates, and we state its scale honestly: ~1,200 training episodes, one scene family, both arms recovering under half the sighted ceiling.
+**Linear recurrence and derived filters.** The learned envelope in §4 includes a parameter-matched action-conditioned gated delta-rule cell [Yang et al., 2024; von Oswald et al., 2025 lineage], GRU variants including a chrono-initialized slow-gate control [Tallec & Ollivier, 2018], and an action-conditioned SSM. The derived carrier is a latent Kalman cell with a fixed log-spaced spectrum and an exact hold channel (HiPPO-adjacent construction; RKN lineage [Becker et al., 2019]). We claim no novelty for either family; the comparison exists to exercise the certificates, and we state its scale honestly: about 1,200 training episodes, one scene family, both arms recovering under half the sighted ceiling.
 
 **Probing and its limits.** Work on probing representations has long warned that decodability is not use [Belinkov, 2022; Ravichander et al., 2021]. We give this warning a quantitative, preregistered instance in world models: two independent cases where probe-level and control-level rankings dissociate (§4.4, §5.3), one of which survived an adversarial verification pass on our own program.
 
@@ -82,7 +82,7 @@ Two exploratory results, reported because they audit the field's default evaluat
 
 ### 5.1 First contact with an external benchmark: the certificate catches a shortcut
 
-We ran MIKASA-Robo RememberColor9 (nine colors; cue cube shown, hidden, then nine candidates presented) through §3.1 with a frozen DINOv2 host, three bank seeds, xi-independent random actions (2,304 episodes total). Sighted: 1.000/1.000/1.000 — the cue is perfectly encoded. Leakage: 0.086–0.125 (chance 0.111) — the decision phase is clean. **Integrator floor: 0.859–0.930** — a memoryless adversary that stores its first observation decodes the answer at ~0.9, because the cue cube is visible at $t{=}0$.
+We ran MIKASA-Robo RememberColor9 (nine colors; cue cube shown, hidden, then nine candidates presented) through §3.1 with a frozen DINOv2 host, three bank seeds, xi-independent random actions (2,304 episodes total). Sighted: 1.000/1.000/1.000 — the cue is perfectly encoded. Leakage: 0.086–0.125 (chance 0.111) — the decision phase is clean. **Integrator floor: 0.859–0.930** — a memoryless adversary that stores its first observation decodes the answer at about 0.9, because the cue cube is visible at $t{=}0$.
 
 Under MIKASA's sliding-window demand notion the task requires memory; under ours it requires *initial-observation storage*, not online filtering — an agent architecture with any $o_0$-conditioning (a goal encoder, a first-frame feature cache) bypasses the intended difficulty. We report this not as a defect of MIKASA-Robo but as the demonstration the protocol exists for: **the two demand types are distinguishable only by certificate, and benchmarks labeled "memory" mix them.** (The task family is easily repaired — delay the cue onset — and the certificate verifies the repair.)
 
@@ -96,9 +96,15 @@ Our program's prior generation reported "encoder blindness is acquired, not arch
 
 What survives is the instrument thesis in its strongest form: **whether an encoder deletes your cue is a property of the (encoder, scene) pair that cannot be predicted from the recipe — it must be certified per pair,** and the certificate that told us we were wrong is the same certificate we are proposing.
 
+![Two-host × two-scene salience grid](figures/fig_a_sstar.png)
+*Figure 1: The $s^*$ instrument across two hosts and two scenes (mean over bank seeds, whiskers min–max). The task-trained VICReg encoder fails the s1 rung on reacher — the deletion that defines $s^*{=}$ t1s2 — yet passes the same rung on point-mass (open square above the gate), which withdrew our "acquired, not architectural" attribution. Frozen DINOv2 saturates every rung on both scenes, so its $s^*$ is an upper bound at the render floor.*
+
 ### 5.3 Delay scaling, and a negative on the obvious repair
 
 The probe-level advantage holds at every tested cue-to-decision delay and shrinks under extrapolation beyond the training length: 0.451 / 0.380 / 0.310 (filter) vs 0.317 / 0.307 / 0.263 (GRU) vs 0.328 / 0.323 / 0.272 (delta cell) at L = 64/96/128 (training length 64, chance 0.25). The natural repair — the filter's spectrum is a design knob, so re-derive its half-lives for the evaluated horizon on frozen weights — was registered with a confirmation bar and **failed it** (+0.002 at L = 128; the L = 64 no-op sanity check returned +0.000 exactly). The decay is not retention-limited (the cue rides an exact eigenvalue-1 hold channel); it is *readout*-limited — the learned weights are fit to length-64 statistics. We report the memory claim scoped to delays near the training regime, with the mechanism for why extrapolation fails attached.
+
+![Delay scaling with the falsified spectrum repair](figures/fig_a_delay.png)
+*Figure 2: Registered-probe accuracy vs episode length (frozen checkpoints, fresh banks; whiskers ± sd over seeds). The filter leads at every delay; all carriers decay toward chance beyond the training length. The dashed overlay is the registered repair — the filter's spectrum re-derived for each horizon — which recovers nothing: the decay is readout-limited, not retention-limited.*
 
 ## 6. What the certificates caught: a summary
 
