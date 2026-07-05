@@ -68,13 +68,20 @@ def collect_base(num_episodes: int, length: int, seed: int, stream: str,
     os.environ.setdefault("MUJOCO_GL", "egl")
     from dm_control import suite
 
-    env = suite.load(DOMAIN, TASK, task_kwargs={"random": seed % 2**32})
-    # Hide the native target (model-level change: persists across resets).
-    env.physics.named.model.geom_rgba["target", 3] = 0.0
+    # V21 §12/F2b: second-scene override. Unset (the default) leaves every
+    # frozen bank byte-identical; set LEWM_DMC_DOMAIN/LEWM_DMC_TASK only for
+    # the registered off-reacher instrument runs.
+    domain = os.environ.get("LEWM_DMC_DOMAIN", DOMAIN)
+    dmc_task = os.environ.get("LEWM_DMC_TASK", TASK)
+    env = suite.load(domain, dmc_task, task_kwargs={"random": seed % 2**32})
+    if domain == "reacher":
+        # Hide the native target (model-level change: persists across
+        # resets); other domains have no target geom.
+        env.physics.named.model.geom_rgba["target", 3] = 0.0
 
     spec = env.action_spec()
     if spec.shape != (ACTION_DIM,):
-        raise RuntimeError(f"{DOMAIN}.{TASK} action dim {spec.shape} != ({ACTION_DIM},)")
+        raise RuntimeError(f"{domain}.{dmc_task} action dim {spec.shape} != ({ACTION_DIM},)")
     low = np.asarray(spec.minimum, dtype=np.float32)
     high = np.asarray(spec.maximum, dtype=np.float32)
     center, half_range = (low + high) * 0.5, (high - low) * 0.5

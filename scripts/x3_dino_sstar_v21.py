@@ -93,18 +93,23 @@ def certify_level(encoder: DinoFeatures, level: str, seed: int
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--levels", default=",".join(LADDER),
+                        help="ascending-salience ladder to certify")
+    parser.add_argument("--stem", default="dino_sstar",
+                        help="output filename stem under outputs/v21_x3")
     return parser.parse_args(argv)
 
 
 def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
+    ladder = tuple(args.levels.split(","))
     device = torch.device(
         args.device if args.device == "cpu" or torch.cuda.is_available()
         else "cpu")
     encoder = DinoFeatures(device)
     levels: dict[str, Any] = {}
     s_star = None
-    for level in LADDER:
+    for level in ladder:
         cells = [certify_level(encoder, level, seed) for seed in SEEDS]
         passes = sum(cell["pass"] for cell in cells)
         level_pass = passes >= 2
@@ -122,12 +127,13 @@ def main(argv: Iterable[str] | None = None) -> None:
         "study": "v21-x3-dino-salience-threshold",
         "encoder": "vit_small_patch14_dinov2.lvd142m (frozen, 384-d)",
         "gate": p1b.SIGHTED_ACC_MIN,
+        "ladder": list(ladder),
         "levels": levels,
         "s_star_dino": s_star,
         "s_star_vicreg_reference": "t1s2 (outputs/v20_w0/w0_summary.md)",
     }
     X3.mkdir(parents=True, exist_ok=True)
-    (X3 / "dino_sstar.json").write_text(
+    (X3 / f"{args.stem}.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n")
     lines = ["# V21 X3 — s* on frozen DINOv2 (second host)", "",
              "| level | sighted scores (3 seeds) | pass |", "|---|---|---|"]
@@ -136,7 +142,7 @@ def main(argv: Iterable[str] | None = None) -> None:
                      f"{'PASS' if row['level_pass'] else 'fail'} |")
     lines.append("")
     lines.append(f"**s\\*(dino)** = `{s_star}` · s\\*(vicreg) = `t1s2`")
-    (X3 / "dino_sstar.md").write_text("\n".join(lines) + "\n")
+    (X3 / f"{args.stem}.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
 

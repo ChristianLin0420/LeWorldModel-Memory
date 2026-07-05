@@ -39,7 +39,9 @@ TASKS = ("t1", "t2", "t3", "t4", "t1dev", "t2dev", "t3dev",
          # cue salience.  s1 = amendment-1 exact, s4 = t1 itself; appended at
          # the END so every pre-existing task keeps its _TASK_IDS entry and
          # every frozen bank stays byte-reproducible.
-         "t1s1", "t1s2", "t1s3")
+         "t1s1", "t1s2", "t1s3",
+         # V21 §12/F2a sub-s1 rungs — appended at the END, same reason.
+         "t1s0a", "t1s0b", "t1s0c")
 
 # Domain-separation salt for seed derivation: keeps a task's random streams
 # disjoint from every other task's at the same user seed.
@@ -555,6 +557,25 @@ def _build_registry() -> dict[str, V19Task]:
             markers=((9, 9), (54, 9), (9, 54), (54, 54)),
             onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
             marker_radius=5, cue_half=4, cue_border_px=2),
+        # V21 §12/F2a: dev-only rungs below s1 to localize s*(dino) — the
+        # §11 ladder is left-censored (DINOv2 passes every existing level).
+        # Same family, same invariant cue_half = marker_radius - 1; never
+        # part of the frozen confirmation set.
+        "t1s0a": TransientCueTask(
+            name="t1s0a", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
+            marker_radius=3, cue_half=2, cue_border_px=0),
+        "t1s0b": TransientCueTask(
+            name="t1s0b", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(4, 6), cue_shape="disc",
+            marker_radius=2, cue_half=1, cue_border_px=0),
+        "t1s0c": TransientCueTask(
+            name="t1s0c", n_classes=4,
+            markers=((9, 9), (54, 9), (9, 54), (54, 54)),
+            onset_range=(6, 14), duration_range=(2, 3), cue_shape="disc",
+            marker_radius=2, cue_half=1, cue_border_px=0),
     }
 
 

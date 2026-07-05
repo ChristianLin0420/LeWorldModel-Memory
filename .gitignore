@@ -48,3 +48,4 @@ Thumbs.db
 
 # local secrets
 .wandb.key
+.venv-mikasa/
