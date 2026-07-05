@@ -36,6 +36,11 @@ import scripts.eval_v19_p2 as p2eval
 import scripts.eval_v20_w2 as w2
 import scripts.make_v19_p0_data as p0_data
 import scripts.train_v20_w1 as w1
+from lewm.models.v21_carriers import make_carrier_v21
+
+# X1 envelope checkpoints carry v21 sweep arms (e.g. gdelta_l10); the v21
+# factory falls through to the v19 registry for the W3 arms.
+w2.make_carrier = make_carrier_v21
 
 X3 = ROOT / "outputs" / "v21_x3"
 LENGTHS = (64, 96, 128)
@@ -44,7 +49,11 @@ EPISODES = 240
 
 
 def build_delay_bank(length: int) -> EpisodeBatch:
-    task = dataclasses.replace(make_task("t1"), length=length)
+    task = make_task("t1")
+    # ``length`` is a plain class attribute on the (non-dataclass) V19Task
+    # base, so dataclasses.replace cannot set it; shadow it on the frozen
+    # instance instead (generate() reads self.length).
+    object.__setattr__(task, "length", length)
     clean = task.generate(p0_data.STREAM, EPISODES, X3_BANK_SEED)
     return p0_data.corrupt_bank(clean, p0_data.CORRUPTION_SEED)
 

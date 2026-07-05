@@ -169,8 +169,11 @@ The frozen pretrained encoder reads the lowest-salience cue essentially perfectl
 | arm | L=64 (delay ≈ 50) | L=96 (≈ 82) | L=128 (≈ 114) |
 |---|---|---|---|
 | lkc_rfix | 0.451 | 0.380 | 0.310 |
+| gdelta_l10 (envelope\*, X1 seeds 10–19, n=10) | 0.328 | 0.323 | 0.272 |
 | acgru | 0.317 | 0.307 | 0.263 |
 
-The rfix advantage is positive at every tested delay and **narrows under extrapolation** (+0.134 → +0.073 → +0.047): both carriers decay toward chance beyond the training length, the filter more slowly. Reported as measured — the memory claim is scoped to delays near the training regime; the hold channel does not by itself confer indefinite retention of the read-out content. (The envelope\* curve is appended when the X1 checkpoints exist.)
+The rfix advantage is positive at every tested delay and **narrows under extrapolation** (+0.134 → +0.073 → +0.047): both carriers decay toward chance beyond the training length, the filter more slowly. Reported as measured — the memory claim is scoped to delays near the training regime; the hold channel does not by itself confer indefinite retention of the read-out content.
+
+**Envelope\* row (appended once the X1 checkpoints existed): the return-level winner does not inherit the filter's probe-level delay robustness.** `gdelta_l10` tracks `acgru` at every extrapolated delay (+0.011 / +0.016 / +0.010 vs the GRU — within seed noise, sd 0.04–0.07) and sits well below `lkc_rfix` throughout; no crossover anywhere on the tested range. Its shallower absolute decay (−0.056 vs rfix's −0.141 from L=64 to L=128) is floor proximity, not retention. So the two X-series findings dissociate: the envelope wins **returns** near the training regime (X1, pooled d = +0.996), while the long-delay **probe-readout** advantage is specific to the filter's hold channel. Paper framing: the delay-scaling figure carries three curves, and the dissociation is reported as a scoping result — "best return-level carrier" and "most delay-robust readout" are different architectures on this stream.
 
 **MIKASA-Robo: deferred with a feasibility note.** The wheel exists (`mikasa_robo_suite 0.0.5`) but its `mani-skill==3.0.0b15` dependency fails to build in the pinned program environment (numpy source-build failure); the integration path is a dedicated venv plus an EpisodeBatch bank bridge, ≈ 0.5–1 day with GPU-sim risk. Per the review panel's own leverage ranking (last) and the registered A/B split, the external-benchmark arm belongs to Paper B; Paper A's portability evidence is the two-host s\* + delay scaling above.
