@@ -43,3 +43,18 @@
 | 6 | X2 at ≥10 checkpoint seeds with registered test + α; selector stats persisted (done for mediation) | ~1 GPU-day | B; A cites current n=3 as case study honestly |
 
 **Recommended sequence for an ICLR deadline: fixes 1–3 (≈ 2–3 GPU-days total), then write Paper A.** Fixes 4–6 are the V22 program if Paper B is wanted later.
+
+---
+
+## 5. Fix-wave outcome (2026-07-05, overnight execution — see §12 of the proposal for registrations and results)
+
+All three fixes ran to completion the same day, every one registered before execution, on GPUs 0–2:
+
+| fix | outcome | effect on the submission |
+|---|---|---|
+| 1 — MIKASA external arm | **Ran.** The blocker of three generations was a numpy pin. The certificate **failed RememberColor9 informatively**: sighted 1.000, leakage at chance, but integrator floor 0.875–0.930 — the cue is visible at t = 0, so the task demands initial-observation storage, not online filtering. Inversion direction +0.245 external (rfix 0.845 sd 0.004 vs gdelta 0.600 sd 0.23). | The flip condition all three lenses named, delivered in its strongest form: first contact with an un-self-built world produced an audit finding about the external benchmark itself, plus an external replication of both the inversion direction and the delta-cell seed lottery. |
+| 2a — localize s\*(dino) | Censoring stands: all sub-s1 rungs ≥ 0.988, including a 2-px, 2–3-frame cue. Ordering gap widens to ≥ 3 rungs. | "Threshold" becomes "upper bound" for the DINO side; the two-host ordering strengthens. |
+| 2b — deconfound | **Correction branch fired**: vicreg trained on point_mass-s1 passes its own certificate (0.871/0.789) — the deletion is scene-specific. "Acquired, not architectural" withdrawn per the frozen table; two-scene certificate grid gained. | C3(ii) retired by honest withdrawal; the instrument thesis (certify per (encoder, scene) pair) is *stronger* than the mechanism claim it replaces. |
+| 3 — delay knob | **Falsified-clause fired**: spectrum rescale recovers nothing (+0.002 at L=128; exact no-op sanity at L=64). Decay is readout-length-bound, not retention-bound. | Horizon-control selling point dead; §11 delay caveat gains a mechanism. C3(iii) stays honestly unmet. |
+
+**Updated verdict.** Paper A's thesis — *certificates that catch what framing misses* — now has its exhibits: an external benchmark audited (and caught) on first contact, a two-scene × two-host instrument grid, and two same-day self-corrections executed under frozen registrations. The panel's unanimous 6→7 flip condition (fix 1) is met; fix 2's correction converts a vulnerable mechanism claim into instrument scope; fix 3 is a clean negative that costs a selling point Paper B needed, not Paper A. **Post-fix estimate: 7, with the honest-correction record as the differentiator.** Remaining before submission: the writing itself (framing rules from §3 of this review), the s\* prose sweep ("threshold" → "upper bound"), and the §11 scope corrections — all documentation, no further GPU work registered for Paper A.
