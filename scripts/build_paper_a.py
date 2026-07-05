@@ -72,8 +72,7 @@ def main() -> None:
     abstract = abstract_match.group(1)
     body = text[abstract_match.end() - len("## "):]
     # png figure refs -> pdf (vector in the paper)
-    body = body.replace("figures/fig_a_delay.png", "figures/fig_a_delay.pdf")
-    body = body.replace("figures/fig_a_sstar.png", "figures/fig_a_sstar.pdf")
+    body = re.sub(r"figures/(fig_a_\w+)\.png", r"figures/\1.pdf", body)
 
     # LaTeX numbers sections itself: strip the manual "N." / "N.M" heading
     # prefixes and promote H2 -> \section
@@ -100,7 +99,7 @@ def main() -> None:
         r"\(\\(?:linewidth|columnwidth) - \d+\\tabcolsep\) \* "
         r"\\real\{([\d.]+)\}", r"\1\\linewidth", body_tex)
     body_tex = re.sub(r"\\begin\{longtable\}\[\]\{(@\{\})?(.*?)(@\{\})?\}",
-                      r"\\begin{table}[t]\\small\\centering"
+                      r"\\begin{table}[h]\\small\\centering"
                       r"\\begin{tabular}{\2}", body_tex, flags=re.S)
     body_tex = body_tex.replace(r"\end{longtable}",
                                 "\\end{tabular}\n\\end{table}")

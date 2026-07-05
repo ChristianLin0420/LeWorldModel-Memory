@@ -149,11 +149,66 @@ def fig_sstar() -> None:
     plt.close(fig)
 
 
+def fig_protocol() -> None:
+    """Episode-timeline schematic of the two-sided demand certificate,
+    annotated with the RememberColor9 audit numbers (artifact-sourced)."""
+    f1 = load("outputs/v21_f1/certification.json")
+    banks = [f1["banks"][k] for k in sorted(f1["banks"])]
+    sighted = float(np.mean([b["sighted"] for b in banks]))
+    floor = float(np.mean([b["floor"] for b in banks]))
+    leak = float(np.mean([b["leakage"] for b in banks]))
+    chance = f1["chance"]
+
+    fig, ax = plt.subplots(figsize=(4.6, 2.1))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 10)
+    ax.axis("off")
+    # episode band
+    spans = [(2, 18, "#dbe9fb", "cue window\n$\\xi$ visible"),
+             (18, 34, "#efeeea", "delay\n(all hidden)"),
+             (34, 98, "#e6f4ee", "decision window\n$\\xi$ unmarked")]
+    for x0, x1, face, label in spans:
+        ax.fill_between([x0, x1], 5.4, 7.6, color=face, zorder=1)
+        ax.annotate(label, ((x0 + x1) / 2, 6.5), ha="center", va="center",
+                    fontsize=7.3, color=INK)
+    ax.plot([2, 98], [5.4, 5.4], color=INK2, lw=1)
+    ax.plot([2, 98], [7.6, 7.6], color=INK2, lw=1)
+    ax.annotate("$o_0$", (2, 8.1), fontsize=8, color=INK, ha="left")
+    ax.annotate("episode $\\rightarrow$", (98, 8.1), fontsize=7.3,
+                color=INK2, ha="right")
+    # three probes
+    probes = [
+        (10, "1 sighted probe", f"must pass $\\geq$ 0.75",
+         f"here: {sighted:.2f} PASS", BLUE),
+        (40, "2 integrator floor:\n$[\\mathrm{enc}(o_0);a_{0:L-2}]$",
+         "must be at chance",
+         f"here: {floor:.2f} $\\gg$ {chance:.2f} FAIL", "#e34948"),
+        (72, "3 leakage probe", "must be at chance",
+         f"here: {leak:.2f} PASS", AQUA),
+    ]
+    for x0, name, rule, verdict, color in probes:
+        ax.annotate("", (x0, 5.3), (x0, 4.0),
+                    arrowprops={"arrowstyle": "->", "color": color,
+                                "lw": 1.6})
+        ax.annotate(name, (x0, 3.4), ha="center", va="top", fontsize=7.3,
+                    color=INK)
+        ax.annotate(rule, (x0, 1.9), ha="center", va="top", fontsize=6.8,
+                    color=INK2)
+        ax.annotate(verdict, (x0, 0.9), ha="center", va="top", fontsize=6.8,
+                    color=color, fontweight="bold")
+    fig.tight_layout(pad=0.3)
+    for ext in ("pdf", "png"):
+        fig.savefig(FIG / f"fig_a_protocol.{ext}", dpi=300)
+    plt.close(fig)
+
+
 def main() -> None:
     FIG.mkdir(parents=True, exist_ok=True)
     fig_delay()
     fig_sstar()
-    print(f"[plot-a] wrote fig_a_delay + fig_a_sstar under {FIG}")
+    fig_protocol()
+    print(f"[plot-a] wrote fig_a_delay + fig_a_sstar + fig_a_protocol "
+          f"under {FIG}")
 
 
 if __name__ == "__main__":

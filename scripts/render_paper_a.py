@@ -89,9 +89,11 @@ def replacements(a: dict[str, dict]) -> dict[str, str]:
     env = a["x2_envelope"]
 
     detune_drop = x2_mean("rfix_argmax") - x2_mean("rfix_detuned_argmax")
-    hedge = ((x2_mean("rfix_hedged") - x2_mean("rfix_argmax"))
-             + (x2_mean("rfix_detuned_hedged")
-                - x2_mean("rfix_detuned_argmax"))) / 2
+    hedge_cal = x2_mean("rfix_hedged") - x2_mean("rfix_argmax")
+    hedge_det = (x2_mean("rfix_detuned_hedged")
+                 - x2_mean("rfix_detuned_argmax"))
+    env_sel_min = min(env["per_seed"][s]["selector_accuracy"]
+                      for s in env["per_seed"])
 
     values: dict[str, str] = {
         # X1
@@ -130,7 +132,9 @@ def replacements(a: dict[str, dict]) -> dict[str, str]:
                          2, sign=True),
         "X2_GDELTA_SUCCESS": fmt(env["mean_argmax"]),
         "X2_DETUNE_DROP": fmt(-detune_drop, 2, sign=True),
-        "X2_HEDGE_GAIN": fmt(hedge, 3, sign=True),
+        "X2_HEDGE_CAL": fmt(hedge_cal, 3, sign=True),
+        "X2_HEDGE_DET": fmt(hedge_det, 3, sign=True),
+        "ENV_SEL_MIN": fmt(env_sel_min),
         "DETUNE_FACTOR": "16",
         "SEL_CALIBRATED": fmt(sel["lkc_rfix"]),
         "SEL_DETUNED": fmt(sel["lkc_rfix_detuned"]),

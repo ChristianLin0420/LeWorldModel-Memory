@@ -62,7 +62,7 @@
     }
   },
   "schema_version": 1,
-  "template_sha256": "0c4c335f0a8295adb75f32ab176edc72f18c6f62105e023febc10d2b78bf2129",
+  "template_sha256": "0cad63be46278d89f94110a9a1cea8d9763a0eccef64e3d95ae0c944b8a49bd0",
   "values": {
     "DELAY_ACGRU_128": "0.263",
     "DELAY_ACGRU_64": "0.317",
@@ -75,6 +75,7 @@
     "DELAY_RFIX_96": "0.380",
     "DETUNE_FACTOR": "16",
     "DINO_MIN_SCORE": "0.988",
+    "ENV_SEL_MIN": "0.225",
     "F1_CHANCE": "0.111",
     "F1_EPISODES": "2,304",
     "F1_FLOOR_MEAN": "0.89",
@@ -128,7 +129,8 @@
     "X2_GAP": "0.67",
     "X2_GAP_MIN": "0.3",
     "X2_GDELTA_SUCCESS": "0.339",
-    "X2_HEDGE_GAIN": "+0.008",
+    "X2_HEDGE_CAL": "+0.003",
+    "X2_HEDGE_DET": "+0.014",
     "X2_MARGIN": "+0.26",
     "X2_NONE_SUCCESS": "0.256",
     "X2_ORACLE_SUCCESS": "0.917",
