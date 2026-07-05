@@ -119,7 +119,32 @@ The −3-to−4 "pathology" was entirely the unregularized-scale ridge readout; 
 
 ---
 
-## 9. X2 execution: the consumer (2026-07-05)
+## 9. X0b + X1 execution: baseline parity and the confirmation gate (2026-07-04/05)
+
+**X0b — the fair envelope, built (objection I4).** Sixteen parameter-matched configs on the t1/t3 dev split (2 seeds each): the ac-GRU lr×width sweep (h64/h102/h160 × lr {1,3,10}×10⁻⁴), the **symmetric-repair control** (chrono-initialized slow-gate GRU — the LKC's slow-trust diagnosis applied to the baseline), the reinstated ac-SSM, and the input-dependent-gain family member the related work names (parameter-matched action-conditioned gated delta cell). Selection by the registered rule (max pooled dev mean, registered probe):
+
+| envelope member (top of 16) | pooled dev mean |
+|---|---|
+| **gdelta_l10 ← envelope\*** | **0.6354** |
+| acgru_h160_l10 | 0.5875 |
+| acgru_chrono_l10 | 0.5514 |
+| acssm | 0.4104 |
+
+Two sweep-level findings: the best learned-recurrence baseline is the **delta-rule cell, not any GRU variant** — the input-dependent-gain family earns its place in the envelope; and the symmetric-repair control does *not* rescue the GRU (chrono-init 0.551 ≤ tuned GRU 0.588), so the filter's edge is not "somebody finally slowed a gate down." Artifacts: `outputs/v21_x0/sweep_summary.{json,md}`.
+
+**X1 — claim 2 CONFIRMED by the frozen gate.** Registration (`outputs/v21_x1/registration.json`, timestamped 2026-07-04T15:42Z, before any sweep result existed) froze the endpoint — pooled standardized paired d, **lkc_rfix − envelope\***, tasks t1/t3/t4 under the repaired probe family, ten fresh seeds (10–19), confirmation = bootstrap p_pos < 0.05 AND ≥ 2/3 tasks positive — and the falsified clause (fair tuning closes the gap → V20 was baseline-effort asymmetry; report and stop). The gate script refuses artifacts predating the registration. Result:
+
+| task | mean diff (rfix − gdelta_l10) | wins | d |
+|---|---|---|---|
+| t1 | +0.1247 | 10/10 | +1.98 |
+| t3 | +0.0383 | 7/10 | +0.52 |
+| t4 | +0.0623 | 7/10 | +0.49 |
+
+**Pooled d = +0.996, CI95 [+0.637, +1.899], p_pos = 5.0×10⁻⁵ → CONFIRMED (3/3 tasks positive).** The V20 inversion is no longer a moot-clause quantification: on fresh seeds, against the strongest of sixteen fairly-tuned rivals including the modern delta-rule family, under the repaired t4 probe family with t4 *included*, the derived filter wins the registered single-endpoint gate. The baseline-effort-asymmetry explanation is falsified. (Scope note kept honest: the gate is a single registered endpoint at α = 0.05; X2's claims ran under their own registered gates rather than a joint Holm family — the proposal's "Holm-corrected with X2" clause was superseded by the X2 amendment trail, reported as such.) Artifacts: `outputs/v21_x1/x1_gates.{json,md}`.
+
+---
+
+## 10. X2 execution: the consumer (2026-07-05)
 
 **Status: COMPLETE — the return-floor certificate established, claim 4 confirmed at 3/3 seeds with a large effect, claim 5 resolved with a mechanism split, and one major negative finding about the host. Three diagnostic-adjudicated amendments, every wave preserved on disk.**
 
@@ -147,13 +172,17 @@ The −3-to−4 "pathology" was entirely the unregularized-scale ridge readout; 
 
 **Claim 4 — the inversion transfers to control: CONFIRMED (3/3 seeds, large).** rfix 0.769 vs acgru 0.508 under the *identical* planner: **+0.26 success rate** — the +0.09 probe gap is amplified ~3× by the argmax decision. The V18 reviewer's behavior-level ask, unmet for two program generations, is answered: the slow-trust filter's memory is worth a quarter of all episodes in executed task success over the learned-recurrence envelope. Causal checks pass in both directions (none-carrier = chance; belief ablation collapses below chance).
 
+**Claim 4 addendum — the envelope\* arm (post-registration robustness, 2026-07-05).** The frozen X2 registration (2026-07-04T15:51Z) named `acgru` as the comparison — it predates the X0b selection — so once envelope\* = `gdelta_l10` existed, the missing arm was run through the byte-identical planner (X1 t1 checkpoints, fresh seeds 10–12, same tolerance\* = 0.25; `outputs/v21_x2/x2_results_envelope.json`): **argmax 0.339** (0.408 / 0.200 / 0.408), hedged 0.311, selector accuracy 0.225–0.442. Labeled exploratory (it is not in the frozen gate; different seed population; n = 3). Two readings: (i) the control-transfer statement strengthens — rfix (0.769) beats *both* tested envelope members in executed return, by +0.26 over the GRU and +0.43 over the delta cell; (ii) more interesting, **the envelope's internal ranking flips between endpoints** — gdelta_l10 wins the probe-dev sweep (0.635 vs 0.588) yet loses control (0.339 vs 0.508), with one seed's plan-time selector at chance (0.225). The registered probe reads the deep-gap window *and t_dec*, late in the episode; the selector reads at t_p = 24, right after the cue. Memory that certifies on a late-episode probe need not be available at decision time — a second, independent instance of the program's own thesis that probe-level and return-level memory evaluations dissociate, this time *within* the learned-recurrence family. The filter shows no such gap.
+
 **Claim 5 — resolved with a mechanism split.** The hedging channel (per-decision uncertainty consumption) is ≈ nil: +0.003 calibrated, +0.014 detuned — direction as predicted, magnitude negligible. But trust calibration itself is **heavily priced by the consumer**: detuning r ×16 costs −0.27 success. The mediation analysis pins the channel: selector accuracy falls 0.825 → 0.536 under detune — the miscalibrated filter's gain is too small to *accumulate the cue into the belief by plan time*. So the effect is belief-informativeness, probe-visible, not a hidden calibration effect. **Refinement of the trust-timescale law (V20.5): trust is priced at encode time, not at read time** — miscalibration that gates information acquisition costs return and probes alike; miscalibration that merely rescales an already-acquired code costs neither. No consumer of per-decision uncertainty has yet been found; the consumer that matters consumes belief *content*.
 
 **X2 verdict for the paper:** the memory carrier acts — certified, executed, causally checked — and the claim-4 result upgrades the inversion from a probe statement to a control statement. The host's rollout incompetence (Finding-1) is reported as the reason the planning substrate is oracle dynamics, with the rollout-competence certificate registered as the prerequisite for any latent-planning successor.
 
+**T4-act: de-scoped, with the reason on the record.** The §4 design named two reward-bearing tasks; only T1-act was built. The registered purpose of T4-act was the σ-aware-MPC redemption test on segments where belief *variance* is decision-relevant (the occlusion gap) — a test that presupposes latent-rollout planning, which Finding-1 falsified for this host before the task existed. Under the oracle-dynamics amendment, claim 5's question was resolved on T1-act through the detune (−0.27) + mediation (selector accuracy 0.825 → 0.536) chain: calibration is priced at encode time. A T4-act built on oracle dynamics could only re-measure the hedging channel already found ≈ nil, at the cost of a new task, reward, and certificate. The variance-relevance test is registered forward as part of the latent-planning successor (alongside the rollout-competence certificate), not silently dropped.
+
 ---
 
-## 10. X3 execution: portability (2026-07-05)
+## 11. X3 execution: portability (2026-07-05)
 
 **s\*(DINOv2) = t1s1 — encoder blindness is acquired, not architectural.** The sighted-certificate ladder on a second, architecturally unrelated, *untrained-on-this-stream* host (frozen DINOv2 ViT-S features, no projector, no training anywhere):
 
@@ -174,6 +203,6 @@ The frozen pretrained encoder reads the lowest-salience cue essentially perfectl
 
 The rfix advantage is positive at every tested delay and **narrows under extrapolation** (+0.134 → +0.073 → +0.047): both carriers decay toward chance beyond the training length, the filter more slowly. Reported as measured — the memory claim is scoped to delays near the training regime; the hold channel does not by itself confer indefinite retention of the read-out content.
 
-**Envelope\* row (appended once the X1 checkpoints existed): the return-level winner does not inherit the filter's probe-level delay robustness.** `gdelta_l10` tracks `acgru` at every extrapolated delay (+0.011 / +0.016 / +0.010 vs the GRU — within seed noise, sd 0.04–0.07) and sits well below `lkc_rfix` throughout; no crossover anywhere on the tested range. Its shallower absolute decay (−0.056 vs rfix's −0.141 from L=64 to L=128) is floor proximity, not retention. So the two X-series findings dissociate: the envelope wins **returns** near the training regime (X1, pooled d = +0.996), while the long-delay **probe-readout** advantage is specific to the filter's hold channel. Paper framing: the delay-scaling figure carries three curves, and the dissociation is reported as a scoping result — "best return-level carrier" and "most delay-robust readout" are different architectures on this stream.
+**Envelope\* row (appended once the X1 checkpoints existed): the X1 confirmation extends across the tested delay range.** `gdelta_l10` — the strongest fair-envelope member, the arm the X1 gate confirmed the filter against (pooled d = +0.996) — tracks `acgru` at every extrapolated delay (+0.011 / +0.016 / +0.010 vs the GRU, within seed noise, sd 0.04–0.07) and sits well below `lkc_rfix` throughout; no crossover anywhere on the tested range. Its shallower absolute decay (−0.056 vs rfix's −0.141 from L=64 to L=128) is floor proximity, not retention. So the fair envelope is internally homogeneous under delay: input-dependent-gain (delta-rule) and learned-gate (GRU) recurrence share the same decay shape, and the filter's hold-channel advantage over *both* persists at every delay while narrowing toward chance. Paper framing: the delay figure carries three curves and reads as the X1 result's delay-generalization, scoped to the tested range.
 
 **MIKASA-Robo: deferred with a feasibility note.** The wheel exists (`mikasa_robo_suite 0.0.5`) but its `mani-skill==3.0.0b15` dependency fails to build in the pinned program environment (numpy source-build failure); the integration path is a dedicated venv plus an EpisodeBatch bank bridge, ≈ 0.5–1 day with GPU-sim risk. Per the review panel's own leverage ranking (last) and the registered A/B split, the external-benchmark arm belongs to Paper B; Paper A's portability evidence is the two-host s\* + delay scaling above.
