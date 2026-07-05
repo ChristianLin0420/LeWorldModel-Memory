@@ -1,0 +1,137 @@
+{
+  "artifacts": {
+    "f1_cert": {
+      "path": "outputs/v21_f1/certification.json",
+      "sha256": "75ed1760a49c148c041f7392e2bfe03b989be7fd31eb0c2396054570199aba78"
+    },
+    "f2b_s0": {
+      "path": "outputs/v21_f2b/certificates/t1s1/vicreg/s0.json",
+      "sha256": "d34bebf13aa8d3da80ba09100205a11d1ef6cce2b98035c39360dfb564f4f2de"
+    },
+    "f2b_s1": {
+      "path": "outputs/v21_f2b/certificates/t1s1/vicreg/s1.json",
+      "sha256": "dac2de2292e055b4de7c584ee0fdbf2b796dabc30c968934c185926ece165ff1"
+    },
+    "w0_summary": {
+      "path": "outputs/v20_w0/w0_summary.json",
+      "sha256": "5b306b889a8e7c118d73e035a0fe7b20745c7ba1a307e1eab62547f0c2a47e56"
+    },
+    "x0_sensitivity": {
+      "path": "outputs/v21_x0/sensitivity.json",
+      "sha256": "45c4de2ffa248b5f386ea5a17ad836b17085851931c367b158445888411d5624"
+    },
+    "x0_t4": {
+      "path": "outputs/v21_x0/t4_probes.json",
+      "sha256": "b7e3a330f2eb207951cf2efcf2c07db3e2543123e5e169c5432e938a5fb13136"
+    },
+    "x0b_sweep": {
+      "path": "outputs/v21_x0/sweep_summary.json",
+      "sha256": "9fc556a0dd1379ad21651a55ba0bd92d4c8392f413ddf768f9fb75dd6e39f696"
+    },
+    "x1_gates": {
+      "path": "outputs/v21_x1/x1_gates.json",
+      "sha256": "e3d86257a195fcc7aa3b88802f9ac8c3f57f94aeb39b23f315ec470133616741"
+    },
+    "x2_envelope": {
+      "path": "outputs/v21_x2/x2_results_envelope.json",
+      "sha256": "d2d6e1df9a0a562c9fcb2edd5e97d2e11179f3497b5e07e8b9ed8f6f3f6108be"
+    },
+    "x2_selector": {
+      "path": "outputs/v21_x2/x2_selector_stats.json",
+      "sha256": "24395f2c4cb009df2fb37f9406e0800fbcf2e1b8e18e0be9608432cf70f98b6c"
+    },
+    "x2_v3": {
+      "path": "outputs/v21_x2/x2_results_v3.json",
+      "sha256": "6c196beae4e391c61f2779b55d6f5f9ed2d05b51eacbe8cbea03449b739706d8"
+    },
+    "x3_delay": {
+      "path": "outputs/v21_x3/delay_scaling.json",
+      "sha256": "8e644b7b0f890a7fb43ebd2b3c0a3a5e30cc77d04be222c7a66acad1f92a7ef6"
+    },
+    "x3_dino_ext": {
+      "path": "outputs/v21_x3/dino_sstar_ext.json",
+      "sha256": "cee8cb0d511dba06f7cd097e08984b71b12b852917f3a946c99a55b10c001c22"
+    },
+    "x3_dino_pm": {
+      "path": "outputs/v21_x3/dino_sstar_pointmass.json",
+      "sha256": "fbeb27f0e61659b5b8666ef9cbb60ac8f3f2d685ea9c396365864a8f9714e09f"
+    },
+    "x3_tau": {
+      "path": "outputs/v21_x3/tau_rescale.json",
+      "sha256": "18713402f1bc4552c9a9e09d2059395c69d84491b9d5f331b5aabca88e302337"
+    }
+  },
+  "schema_version": 1,
+  "template_sha256": "e330ae337c7e23379db9b51d0d69afc3728b369b38e0af16ea3d759f5747ed3b",
+  "values": {
+    "DELAY_ACGRU_128": "0.263",
+    "DELAY_ACGRU_64": "0.317",
+    "DELAY_ACGRU_96": "0.307",
+    "DELAY_GDELTA_128": "0.272",
+    "DELAY_GDELTA_64": "0.328",
+    "DELAY_GDELTA_96": "0.323",
+    "DELAY_RFIX_128": "0.310",
+    "DELAY_RFIX_64": "0.451",
+    "DELAY_RFIX_96": "0.380",
+    "DETUNE_FACTOR": "16",
+    "DINO_MIN_SCORE": "0.988",
+    "F1_CHANCE": "0.111",
+    "F1_EPISODES": "2,304",
+    "F1_FLOOR_MEAN": "0.89",
+    "F1_FLOOR_RANGE": "0.859\u20130.930",
+    "F1_GDELTA_MEAN": "0.600",
+    "F1_GDELTA_SD": "0.23",
+    "F1_LEAKAGE_RANGE": "0.086\u20130.125",
+    "F1_RFIX_MEAN": "0.845",
+    "F1_RFIX_SD": "0.004",
+    "F1_SIGHTED": "1.000/1.000/1.000",
+    "F2B_S0_SIGHTED": "0.871",
+    "F2B_S1_SIGHTED": "0.789",
+    "FLOOR_MARGIN": "0.05",
+    "GDELTA_RANK_RANGE": "3.0\u201310.7",
+    "RANK_MIN": "16",
+    "ROLLOUT_1STEP": "0.469",
+    "ROLLOUT_REAL": "0.104",
+    "SEL_CALIBRATED": "0.825",
+    "SEL_DETUNED": "0.536",
+    "SIGHTED_GATE": "0.75",
+    "SSTAR_DINO_BOUND": "t1s0c",
+    "SSTAR_VICREG": "t1s2",
+    "T4_ACGRU_REPAIRED": "+0.094",
+    "T4_POOLED_D": "+1.84",
+    "T4_RFIX_LEGACY": "-3.15",
+    "T4_RFIX_REPAIRED": "+0.153",
+    "TAU_DELTA_128": "+0.002",
+    "TAU_DELTA_64": "+0.000",
+    "W0_VICREG_S1_SCORES": "0.297/0.570/0.746",
+    "W3_FULL": "+0.1225 (p = 1.0e-05)",
+    "X0B_ACGRU_DEV": "0.588",
+    "X0B_CHRONO_DEV": "0.551",
+    "X0B_GDELTA_DEV": "0.635",
+    "X0_HEALTHY": "+0.1308",
+    "X0_HEALTHY_P": "9.5e-07",
+    "X0_HEALTHY_WINS": "13/14",
+    "X1_CI_HI": "+1.899",
+    "X1_CI_LO": "+0.637",
+    "X1_P": "5.0e-05",
+    "X1_POOLED_D": "+0.996",
+    "X1_T1_D": "+1.98",
+    "X1_T1_WINS": "10/10",
+    "X1_T3_D": "+0.52",
+    "X1_T3_WINS": "7/10",
+    "X1_T4_D": "+0.49",
+    "X1_T4_WINS": "7/10",
+    "X2_ABLATED_SUCCESS": "0.064",
+    "X2_ACGRU_SUCCESS": "0.508",
+    "X2_DETUNE_DROP": "-0.27",
+    "X2_FLOOR_SUCCESS": "0.244",
+    "X2_GAP": "0.67",
+    "X2_GAP_MIN": "0.3",
+    "X2_GDELTA_SUCCESS": "0.339",
+    "X2_HEDGE_GAIN": "+0.008",
+    "X2_MARGIN": "+0.26",
+    "X2_NONE_SUCCESS": "0.256",
+    "X2_ORACLE_SUCCESS": "0.917",
+    "X2_RFIX_SUCCESS": "0.769"
+  }
+}
