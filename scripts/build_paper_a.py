@@ -106,6 +106,15 @@ def main() -> None:
     for junk in (r"\endhead", r"\endfirsthead", r"\endlastfoot",
                  r"\noalign{}"):
         body_tex = body_tex.replace(junk, "")
+    # appendix split: everything after the marker gets lettered sections
+    body_tex = re.sub(r"(\\phantomsection\\label\{[^}]*\}\n)?APPENDIXMARKER",
+                      "", body_tex)
+    body_tex = body_tex.replace("APPENDIXMARKER", "")
+    marker = r"\section{What the certificates caught"
+    if marker in body_tex:
+        body_tex = body_tex.replace(marker, "\\appendix\n" + marker, 1)
+    body_tex = body_tex.replace(r"\section{References}",
+                                r"\section*{References}")
 
     (OUT / "body.tex").write_text(body_tex)
     (OUT / "abstract.tex").write_text(abstract_tex)
