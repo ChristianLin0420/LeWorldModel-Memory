@@ -61,6 +61,7 @@ def main() -> None:
     (OUT / "figures").mkdir(exist_ok=True)
     for name in ("iclr2026_conference.sty", "natbib.sty"):
         shutil.copy(ROOT / "paper" / name, OUT / name)
+    shutil.copy(ROOT / "templates" / "PAPER_A.refs.tex", OUT / "refs.tex")
     for fig in (ROOT / "docs" / "figures").glob("fig_a_*.pdf"):
         shutil.copy(fig, OUT / "figures" / fig.name)
 
@@ -98,33 +99,70 @@ def main() -> None:
     body_tex = re.sub(
         r"\(\\(?:linewidth|columnwidth) - \d+\\tabcolsep\) \* "
         r"\\real\{([\d.]+)\}", r"\1\\linewidth", body_tex)
-    body_tex = re.sub(r"\\begin\{longtable\}\[\]\{(@\{\})?(.*?)(@\{\})?\}",
-                      r"\\begin{table}[h]\\small\\centering"
-                      r"\\begin{tabular}{\2}", body_tex, flags=re.S)
-    body_tex = body_tex.replace(r"\end{longtable}",
-                                "\\end{tabular}\n\\end{table}")
-    for junk in (r"\endhead", r"\endfirsthead", r"\endlastfoot",
-                 r"\noalign{}"):
-        body_tex = body_tex.replace(junk, "")
-    # appendix split: everything after the marker gets lettered sections
+
+    def to_table(match: re.Match) -> str:
+        spec, inner = match.group(1).replace("@{}", ""), match.group(2)
+        caption = ""
+        cap = re.search(r"\\caption\{((?:[^{}]|\{[^{}]*\})*)\}"
+                        r"\\tabularnewline\n?", inner)
+        if cap:
+            caption = f"\\caption{{{cap.group(1)}}}\n"
+            inner = inner[:cap.start()] + inner[cap.end():]
+        # captioned longtables carry a duplicate header block
+        inner = re.sub(r"\\endfirsthead.*?\\endhead", "", inner, flags=re.S)
+        inner = inner.replace("\\endhead", "")
+        inner = re.sub(r"\\bottomrule(\\noalign\{\})?\s*\\endlastfoot", "",
+                       inner)
+        inner = inner.replace("\\noalign{}", "")
+        inner = inner.replace("\\toprule\n",
+                              "\\toprule\\rowcolor{NVIDIAHeader}\n", 1)
+        return ("\\begin{table}[h]\\small\\centering\n" + caption
+                + f"\\begin{{tabular}}{{{spec}}}" + inner.rstrip()
+                + "\n\\bottomrule\n\\end{tabular}\n\\end{table}")
+
+    body_tex = re.sub(
+        r"\\begin\{longtable\}\[\]\{(.*?)\}\n(.*?)\\end\{longtable\}",
+        to_table, body_tex, flags=re.S)
+    # references (natbib thebibliography) precede the lettered appendix
     body_tex = re.sub(r"(\\phantomsection\\label\{[^}]*\}\n)?APPENDIXMARKER",
                       "", body_tex)
     body_tex = body_tex.replace("APPENDIXMARKER", "")
     marker = r"\section{What the certificates caught"
     if marker in body_tex:
-        body_tex = body_tex.replace(marker, "\\appendix\n" + marker, 1)
-    body_tex = body_tex.replace(r"\section{References}",
-                                r"\section*{References}")
+        body_tex = body_tex.replace(
+            marker, "\\input{refs}\n\\appendix\n" + marker, 1)
 
     (OUT / "body.tex").write_text(body_tex)
     (OUT / "abstract.tex").write_text(abstract_tex)
     (OUT / "main.tex").write_text(r"""\documentclass{article}
 \usepackage{iclr2026_conference,times}
-\usepackage{amsmath,amssymb,graphicx,booktabs,longtable,array,calc}
-\usepackage{hyperref,url}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,booktabs,array,longtable,multirow,calc}
+\usepackage{xcolor,colortbl,microtype,caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\graphicspath{{figures/}}
+\emergencystretch=2em
+
+% Restrained NVIDIA-inspired academic visual system (house style).
+\definecolor{NVIDIAGreen}{HTML}{76B900}
+\definecolor{NVIDIADark}{HTML}{4B780A}
+\definecolor{NVIDIACharcoal}{HTML}{252A2E}
+\definecolor{NVIDIAPale}{HTML}{F1F7E8}
+\definecolor{NVIDIAHeader}{HTML}{E6F0D6}
+\renewcommand{\floatpagefraction}{0.9}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\captionsetup{
+  font=footnotesize,
+  labelfont={bf,color=NVIDIADark},
+  textfont={color=NVIDIACharcoal},
+  skip=3pt
+}
+
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \providecommand{\pandocbounded}[1]{#1}
-\renewcommand{\floatpagefraction}{0.9}
 \title{""" + title + r"""}
 \author{Anonymous authors\\Paper under double-blind review}
 \begin{document}
