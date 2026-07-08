@@ -104,14 +104,33 @@ identity.
 
 The v1 carrier consumes native frozen latents directly; it does not insert a
 Hadamard transform or a learned preprocessing adapter. `W_x` is initialized to
-the identity, `B` to zero, and `W_o` to zero. Recurrence arithmetic and state
-remain in fp32 even when the host boundary uses a lower-precision dtype.
+the identity, the surprise projection `W_g` to the identity, `B` to zero, and
+the diagonal read scale `rho` to zero. Recurrence arithmetic and state remain
+in fp32 even when the host boundary uses a lower-precision dtype.
 
 The tested sequence interface accepts LeWM tensors `(batch, time, D)` or DINO
 tensors `(batch, time, P, D)`, with actions `(batch, time-1, A)`. The equivalent
 streaming interface is `initialize`, `observe`, and action-only `imagine`. At
 time `t`, `prior_read` is always produced after the action prediction and before
 `z_t` is consumed. This timing convention is part of the formal lock.
+
+### 2.2 Pre-selection compute-fairness correction
+
+The deterministic resource ledger caught two implementation mismatches before
+any complete development selection or formal run. A dense output matrix was
+being applied to both prior and posterior reads, putting the candidate about
+51% above the registered baseline FLOP reference, and the inherited gDelta
+default width targeted a different historical parameter budget. The incomplete
+20-cell diagnostic grid was archived and is excluded from every selection.
+
+The corrected v1.1 graph replaces the twice-applied dense read with a diagonal
+scale and spends the unchanged parameter budget on the surprise projection
+`W_g`. Its measured ledger gap is 4.6% on LeWM and at most 2.3% on DINO-WM,
+inside the unchanged 10% margin. gDelta uses the nearest target-matched state
+width (95 for LeWM; 191 for DINO-WM), inside the unchanged 5% parameter margin.
+No threshold, cohort, age, seed, optimization rule, or label-free objective was
+changed; the correction and archived-grid boundary are machine-readable in the
+formal implementation amendment.
 
 ## 3. SAGE-Mem state update
 
@@ -150,18 +169,18 @@ The innovation in the shared state coordinate is
   e_t = W_x z_t - m_t^-.
 \]
 
-The implementation preserves absolute innovation magnitude with
+The compute-matched implementation first mixes the innovation once and then
+preserves its absolute magnitude:
 
 \[
-  s_t = \log(1+|e_t|).
+  s_t = \log(1+|W_g e_t|).
 \]
 
 Its channelwise surprise gate is
 
 \[
   g_t = \sigma\!\left(
-    \operatorname{softplus}(\beta) \odot
-    \left(s_t-\theta\right)
+    4\left(s_t-\theta\right)
   \right).
 \]
 
@@ -171,11 +190,11 @@ The corrected persistent state is
   m_t = m_t^- + g_t \odot e_t.
 \]
 
-`theta` learns a channelwise threshold and `softplus(beta)` constrains the gate
-slope to be nonnegative. The initialization makes the reference threshold
-`log(2)` and the positive slope `4`. No normalization pools across channels,
-time, episodes, or counterfactual labels. The storage diagnostic is taken from
-`m_t^-` before the current observation is consumed.
+`theta` learns a channelwise threshold; the positive gate slope is fixed to
+`4`. The initialization makes the reference threshold `log(2)`. No
+normalization pools across channels, time, episodes, or counterfactual labels.
+The storage diagnostic is taken from `m_t^-` before the current observation is
+consumed.
 
 ### 3.3 Parameter-free spatial aggregation
 
@@ -222,24 +241,27 @@ observation count:
 The pre-observation prior read and post-observation residual are respectively
 
 \[
-  r_t^- = c(q_t^-)W_o\operatorname{Agg}(m_t^-),
+  r_t^- = c(q_t^-)\rho\odot\operatorname{Agg}(m_t^-),
 \]
 
 and
 
 \[
-  \widetilde z_t = z_t + c(q_t)W_o\operatorname{Agg}(m_t).
+  \widetilde z_t = z_t + c(q_t)\rho\odot\operatorname{Agg}(m_t).
 \]
 
-`W_o` is initialized exactly to zero. Consequently, before training both fused
-and prior outputs are exactly the no-state host. Write-based confidence
+`rho` is initialized exactly to zero. Consequently, before training both fused
+and prior outputs are exactly the no-state host. The diagonal exposure avoids
+paying for the same dense projection twice at every step; `W_g` retains a
+second dense transform inside the write mechanism, so the parameter budget is
+unchanged while measured forward FLOPs remain within the registered 10% band.
+Write-based confidence
 suppresses an immature read after reset and cannot grow during `imagine`, when
 no observation is written. It does not erase the reset intervention or make
 reset/full a clean causal estimand.
 
-There is no separate low-rank exposure adapter. Exposure capacity is counted in
-the single `D x D` matrix `W_o` and is identical across LeWM and DINO contracts
-up to `D`.
+There is no separate low-rank exposure adapter. The same channelwise read scale
+is shared over every DINO patch and both prior/posterior reads.
 
 ## 4. Exact trainable parameter count
 
@@ -248,10 +270,10 @@ The only trainable tensors are:
 | Tensor | Shape | Parameters |
 |---|---:|---:|
 | `W_x` | `D x D` | `D^2` |
+| `W_g` | `D x D` | `D^2` |
 | `B` | `D x A` | `DA` |
-| `W_o` | `D x D` | `D^2` |
+| `rho` | `D` | `D` |
 | `theta` | `D` | `D` |
-| `beta` | `D` | `D` |
 
 Therefore
 
@@ -367,8 +389,9 @@ with the finite candidate grid
   \in \{0.1,0.25\}.
 \]
 
-Every candidate is inadmissible if its native next-feature MSE exceeds 1.02
-times the frozen native reference. Development uses exactly three seeds.
+Every candidate is inadmissible if its next-feature MSE exceeds 1.02 times the
+strongest healthy parameter-matched baseline locked for the next-feature
+contrast. Development uses exactly three seeds.
 The final pair of auxiliary weights is selected by a prewritten deterministic
 rule, then locked; it may not be changed after any fresh ten-seed formal outcome
 is inspected.
@@ -451,8 +474,8 @@ required:
    without an output gain is a failure, not partial success.
 5. **Mechanism ablations:** full beats both the persistent-state ablation and
    the exposure-path ablation.
-6. **Native prediction health:** full next-feature MSE is at most 1.02 times the
-   native frozen-host MSE.
+6. **Prediction health:** full next-feature MSE is at most 1.02 times the locked
+   strongest healthy parameter-matched baseline MSE.
 7. **Reset health:** reset/full next-feature-MSE ratio is at most 1.25.
 
 The program-level executed-use claim additionally requires a resolved execution
@@ -469,7 +492,7 @@ a weaker “mostly successful” retention claim.
 
 The formal model graph exposes three reads and two mechanism ablations:
 
-- **Prior read:** `W_o m_t^-`, before the current observation. This diagnoses
+- **Prior read:** `rho ⊙ Agg(m_t^-)`, before the current observation. This diagnoses
   internal storage but is never the primary success endpoint.
 - **Output read:** the frozen predictor output after SAGE-Mem fusion. This is the
   primary retention endpoint.
@@ -479,7 +502,7 @@ The formal model graph exposes three reads and two mechanism ablations:
   accumulated before the legal context. It tests whether the multiscale causal
   state, rather than an extra local transformation, is needed.
 - **Exposure ablation:** preserves and audits the state/prior but blocks the
-  `W_o Agg(m_t)` residual from the host. It tests whether gains require the
+  `rho ⊙ Agg(m_t)` residual from the host. It tests whether gains require the
   proposed carrier-to-host path.
 
 The exact ablation construction and any parameter-balancing dummy tensors are
@@ -519,7 +542,7 @@ the frozen host.
 |---|---|
 | Name and frozen-sidecar scope | exact source/commit and dependency hashes |
 | v1 equations for `m^-`, `e`, `s`, `g`, `m`, `q`, confidence, and fusion | formal wrapper mapping and host timing checks |
-| `D`, `A`, exact parameter formula and zero-init `W_o` | fixed sketch `Q`, event selection, tie handling |
+| `D`, `A`, exact parameter formula and zero-init `rho` | fixed sketch `Q`, event selection, tie handling |
 | round-robin `tau=(4,8,16,64)` and fixed `Lambda` | loss normalization and deterministic candidate-selection rule |
 | native latent coordinates; identity-init `W_x`; zero-init `B` | optimizer, schedule, epochs, batch size, precision |
 | write-mass `kappa=4`; `2^{-1/64}` mass decay | seed IDs, bank hashes, cell order, launch receipts |

@@ -116,7 +116,7 @@
       <text x="36" y="78" class="box-title">1 · Action-predicted causal prior</text>
       <text x="36" y="101" class="mono">m⁻ₜ = Λ ⊙ mₜ₋₁ + B aₜ₋₁</text>
       <text x="351" y="101" class="small">emit prior before current zₜ · action term broadcasts over patches</text>
-      <text x="36" y="121" class="tiny">native coordinates · Wₓ = I, B = 0, Wₒ = 0 at initialization · recurrence state stays fp32</text>
+      <text x="36" y="121" class="tiny">native coordinates · Wₓ = Wg = I, B = 0, ρ = 0 at initialization · recurrence state stays fp32</text>
     </g>
 
     <g id="multiscale-bands">
@@ -134,8 +134,8 @@
     <g id="surprise-update">
       <rect x="20" y="278" width="604" height="116" class="trainable"/>
       <text x="36" y="302" class="box-title">3 · Surprise-gated write + evidence mass</text>
-      <text x="36" y="326" class="mono">eₜ = Wₓ zₜ − m⁻ₜ      sₜ = log(1 + |eₜ|)</text>
-      <text x="36" y="349" class="mono">gₜ = σ(softplus(β) ⊙ (sₜ − θ))</text>
+      <text x="36" y="326" class="mono">eₜ = Wₓ zₜ − m⁻ₜ      sₜ = log(1 + |Wg eₜ|)</text>
+      <text x="36" y="349" class="mono">gₜ = σ(4 (sₜ − θ))</text>
       <text x="36" y="372" class="mono">mₜ = m⁻ₜ + gₜ ⊙ eₜ      qₜ = 2⁻¹ᐟ⁶⁴ qₜ₋₁ + mean(gₜ)</text>
       <text x="36" y="389" class="tiny">write confidence c(q) = 1 − exp(−q/4) · no observation write during imagination</text>
     </g>
@@ -148,8 +148,8 @@
 
       <rect x="312" y="414" width="312" height="70" class="trainable"/>
       <text x="328" y="438" class="box-title">4b · Zero-init host residual</text>
-      <text x="328" y="459" class="mono">z̃ₜ = zₜ + c(qₜ) Wₒ Agg(mₜ)</text>
-      <text x="328" y="477" class="tiny">prior uses c(q⁻ₜ)WₒAgg(m⁻ₜ) before zₜ</text>
+      <text x="328" y="459" class="mono">z̃ₜ = zₜ + c(qₜ) ρ ⊙ Agg(mₜ)</text>
+      <text x="328" y="477" class="tiny">diagonal read keeps FLOPs matched · prior is pre-zₜ</text>
     </g>
 
     <path d="M322,130 V150" class="arrow"/>
@@ -184,7 +184,7 @@
 
       <rect x="38" y="291" width="126" height="72" class="read"/>
       <text x="101" y="315" text-anchor="middle" class="box-title">Prior</text>
-      <text x="101" y="337" text-anchor="middle" class="mono">c(q⁻)WₒAgg(m⁻)</text>
+      <text x="101" y="337" text-anchor="middle" class="mono">c(q⁻)ρ⊙Agg(m⁻)</text>
       <text x="101" y="355" text-anchor="middle" class="tiny">storage diagnostic</text>
 
       <rect x="177" y="291" width="126" height="72" class="read"/>

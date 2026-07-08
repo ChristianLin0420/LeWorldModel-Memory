@@ -101,6 +101,89 @@ def development_audit_command(spec_path: Path, *, resume: bool = False
     return -1, command
 
 
+def formal_audit_command(spec_path: Path, *, resume: bool = False
+                         ) -> tuple[int, list[str]]:
+    command = [
+        str(ROOT / ".venv/bin/python"), "scripts/audit_sage_mem_v1.py",
+        "--stage", "formal", "--spec", str(spec_path.resolve()),
+        "--execute",
+    ]
+    if resume:
+        command.append("--resume")
+    return -1, command
+
+
+def formal_preparation_command(spec_path: Path) -> tuple[int, list[str]]:
+    from scripts.prepare_sage_mem_v1_formal import CONFIRMATION
+
+    return -1, [
+        str(ROOT / ".venv/bin/python"),
+        "scripts/prepare_sage_mem_v1_formal.py",
+        "--stage", "prepare", "--spec", str(spec_path.resolve()),
+        "--confirmation", CONFIRMATION,
+    ]
+
+
+def formal_raw_context_command(
+        spec_path: Path, spec: dict, *, resume: bool = False
+        ) -> tuple[int, list[str]]:
+    root = output_root(spec)
+    command = [
+        str(ROOT / ".venv/bin/python"),
+        "scripts/prepare_sage_mem_v1_raw_context_reference.py",
+        "--config", str(spec_path.resolve()),
+        "--prepared-root", str(root / "formal_preparation" / "banks"),
+        "--output-root", str(root / "raw_context_phase_a"),
+        "--execute",
+    ]
+    if resume:
+        command.append("--resume")
+    return -1, command
+
+
+def formal_execution_decks_command(
+        spec_path: Path, spec: dict, *, resume: bool = False
+        ) -> tuple[int, list[str]]:
+    root = output_root(spec)
+    command = [
+        str(ROOT / ".venv/bin/python"),
+        "scripts/prepare_sage_mem_v1_execution_decks.py",
+        "--spec", str(spec_path.resolve()),
+        "--preparation-root", str(root / "formal_preparation"),
+        "--output-root", str(
+            root / "formal_preparation" / "execution_decks"),
+        "--execute",
+    ]
+    if resume:
+        command.append("--resume")
+    return -1, command
+
+
+def formal_finalization_command(spec_path: Path, spec: dict, *,
+                                validate_existing: bool = False) \
+        -> tuple[int, list[str]]:
+    root = output_root(spec)
+    command = [
+        str(ROOT / ".venv/bin/python"),
+        "scripts/sage_mem_v1_formal_finalizer.py",
+        "--phase-a-root", str(root),
+        "--label-registry", str(
+            root / "formal_preparation" / "custody" / "registry.json"),
+        "--output-root", str(root / "formal_finalized"),
+        "--execute",
+    ]
+    raw_context = root / "raw_context_phase_a"
+    if raw_context.is_dir():
+        command.extend(("--raw-context-root", str(raw_context)))
+    execution_decks = (root / "formal_preparation" / "execution_decks"
+                       / "registry.json")
+    if execution_decks.is_file():
+        command.extend(("--execution-deck-registry", str(execution_decks)))
+    if validate_existing:
+        command.append("--validate-finalized-output")
+    return -1, command
+
+
 def _environment(gpu: int) -> dict[str, str]:
     value = dict(os.environ)
     if gpu >= 0:
@@ -164,12 +247,27 @@ def main(argv: Iterable[str] | None = None) -> None:
               "physical_gpus={0,1,2}; no process launched")
         for gpu, command in banks:
             print(f"gpu=cpu bank {' '.join(command)}")
+        if args.stage == "prepare":
+            _, command = formal_preparation_command(args.spec)
+            print("gpu=coordinator formal-banks " + " ".join(command))
+            _, command = formal_raw_context_command(
+                args.spec, spec, resume=args.resume)
+            print("gpu=cpu raw-context " + " ".join(command))
+            _, command = formal_execution_decks_command(
+                args.spec, spec, resume=args.resume)
+            print("gpu=cpu execution-decks " + " ".join(command))
         for gpu, command in commands:
             print(f"gpu={gpu if gpu >= 0 else 'cpu'} {' '.join(command)}")
         if args.stage == "development":
             _, command = development_audit_command(
                 args.spec, resume=args.resume)
             print("gpu=cpu audit " + " ".join(command))
+        if args.stage == "full":
+            _, command = formal_finalization_command(args.spec, spec)
+            print("gpu=cpu formal-finalizer " + " ".join(command))
+            _, command = formal_audit_command(
+                args.spec, resume=args.resume)
+            print("gpu=cpu formal-audit " + " ".join(command))
         return
     if args.stage == "full" \
             and args.formal_confirmation != FORMAL_CONFIRMATION:
@@ -184,6 +282,18 @@ def main(argv: Iterable[str] | None = None) -> None:
                 args.spec, resume=args.resume):
             _run(gpu, command, _log_path(spec, "development-bank", gpu,
                                          command))
+    if args.stage == "prepare":
+        gpu, command = formal_preparation_command(args.spec)
+        _run(gpu, command, _log_path(
+            spec, "formal-preparation", gpu, command))
+        gpu, command = formal_raw_context_command(
+            args.spec, spec, resume=args.resume)
+        _run(gpu, command, _log_path(
+            spec, "formal-raw-context", gpu, command))
+        gpu, command = formal_execution_decks_command(
+            args.spec, spec, resume=args.resume)
+        _run(gpu, command, _log_path(
+            spec, "formal-execution-decks", gpu, command))
     # One serial queue per physical GPU. GPU 0 intentionally owns two cohorts.
     queues: dict[int, list[list[str]]] = {0: [], 1: [], 2: []}
     for gpu, command in commands:
@@ -209,6 +319,17 @@ def main(argv: Iterable[str] | None = None) -> None:
             args.spec, resume=args.resume)
         _run(gpu, command, _log_path(
             spec, "development-audit", gpu, command))
+    if args.stage == "full":
+        destination = output_root(spec) / "formal_finalized" / "summary.json"
+        gpu, command = formal_finalization_command(
+            args.spec, spec,
+            validate_existing=bool(destination.exists() and args.resume))
+        _run(gpu, command, _log_path(
+            spec, "formal-finalization", gpu, command))
+        gpu, command = formal_audit_command(
+            args.spec, resume=args.resume)
+        _run(gpu, command, _log_path(
+            spec, "formal-audit", gpu, command))
 
 
 if __name__ == "__main__":

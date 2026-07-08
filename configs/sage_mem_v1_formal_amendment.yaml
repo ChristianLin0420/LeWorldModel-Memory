@@ -1,0 +1,59 @@
+schema_version: 1
+study: sage-mem-v1
+amendment: formal-two-phase-implementation-v1
+status: locked-before-development-selection-or-formal-data
+base_protocol:
+  path: configs/sage_mem_v1.yaml
+  sha256: 1cdf2d80b0ca1705c9cde9d510e3bebb722431f4074d0c616aed4f3ca65e5afe
+scope: implementation-only completion of preregistered pending formal hooks
+fairness_correction:
+  trigger: deterministic parameter/FLOP ledger preflight before any complete development selection or formal run
+  invalid_partial_grid_archived: true
+  outcome_dependent_choice: false
+  thresholds_or_margins_changed: false
+  candidate_revision: two-dense-plus-diagonal-read-v1.1
+  candidate_parameter_formula: D(2D+A+2)
+  gdelta_state_dim: {SIGReg-LeWM: 95, DINO-WM: 191}
+  rationale: replace a twice-applied dense read with a diagonal read plus one surprise projection; choose gDelta width nearest the unchanged target
+outcome_independence:
+  development_selection_read: false
+  aggregate_development_metrics_read: false
+  formal_features_or_labels_read: false
+  thresholds_changed: false
+  cohorts_arms_ages_seeds_or_counts_changed: false
+  optimization_or_objective_changed: false
+phase_a:
+  cells: 600
+  formal_test_labels_available_to_workers: false
+  carrier_training_labels_forbidden: true
+  preserved_artifacts: [checkpoint, history, resources, predictions_or_features, mse, identities]
+  exact_bank_hash_required: true
+phase_b:
+  begins_only_after_complete_phase_a_validation: true
+  durable_label_reveal_receipt_required: true
+  shared_arm_blind_consumer: one per cohort and seed, pooled across all arms
+  evidence_ages_reported_separately: [4, 8, 15]
+  pointmaze_counterfactuals_per_native_cluster: 4
+  raw_context_reference:
+    short_frames: 3
+    long_frames: 16
+    separate_from_parameter_matched_grid: true
+    phase_a: label-free equal-width frozen features only
+    post_reveal_consumer: one shared short-long arm-blind LSQR readout per cohort and seed
+    mse_endpoint_registered: false
+causal_endpoints:
+  carrier_prior: diagnostic
+  frozen_host_output: primary
+  reset_timing: immediately after cue offset
+  reset_indices:
+    lewm: {age-4: 15, age-8: 11, age-15: 4}
+    dinowm: {age-4: 4, age-8: 4, age-15: 4}
+execution:
+  sealed_controller_decks_optional_per_cohort: true
+  skipped_receipt_required_when_oracle_gate_fails: true
+  program_level_use_claim_minimum_eligible_cohorts: 2
+  pre_reveal_artifact: row x selected-class x true-target-class success cube
+  semantic_target_indexing: only after durable post-grid label reveal
+  unavailable_cohort_receipt_required: true
+  program_claim_reported_separately_by_age: true
+claim_boundary: no formal or paper claim is permitted from Phase-A artifacts alone

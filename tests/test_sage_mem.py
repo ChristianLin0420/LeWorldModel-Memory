@@ -38,8 +38,8 @@ def _inputs(*, patches: int | None = None, seed: int = 0,
 def _activate_read(carrier: SAGEMem, seed: int = 1) -> None:
     generator = torch.Generator().manual_seed(seed)
     with torch.no_grad():
-        carrier.w_o.weight.copy_(0.05 * torch.randn(
-            carrier.w_o.weight.shape, generator=generator))
+        carrier.read_scale.copy_(0.05 * torch.randn(
+            carrier.read_scale.shape, generator=generator))
         carrier.action_projection.weight.copy_(0.02 * torch.randn(
             carrier.action_projection.weight.shape, generator=generator))
 
@@ -55,14 +55,27 @@ def test_exact_official_parameter_targets_and_trainable_tensor_ledger() -> None:
     carrier = SAGEMem(D, A)
     assert set(dict(carrier.named_parameters())) == {
         "gate_threshold",
-        "gate_log_slope",
+        "read_scale",
         "w_x.weight",
+        "gate_projection.weight",
         "action_projection.weight",
-        "w_o.weight",
     }
     assert set(dict(carrier.named_buffers())) == {
-        "half_lives", "decay", "maturity_decay",
+        "half_lives", "decay", "gate_slope", "maturity_decay",
     }
+
+
+@pytest.mark.parametrize("embed_dim,action_dim", [(192, 10), (384, 10)])
+@pytest.mark.parametrize("tokens", [1, 196])
+def test_compute_matched_revision_stays_within_registered_flop_margin(
+        embed_dim: int, action_dim: int, tokens: int) -> None:
+    carrier = SAGEMem(embed_dim, action_dim)
+    candidate = carrier.estimate_flops(
+        batch_size=1, timesteps=20, tokens=tokens)
+    matched_baseline = (carrier.parameter_count() * 2 * 20 * tokens)
+    assert abs(candidate - matched_baseline) / matched_baseline <= 0.10
+    assert carrier.describe()["compute_revision"] == \
+        "two-dense-plus-diagonal-read-v1.1"
 
 
 @pytest.mark.parametrize("variant", SAGE_MEM_VARIANTS)

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Development-only host adapters for the SAGE-Mem v1 audit.
+"""Host adapters for SAGE-Mem development and label-free formal Phase A.
 
 This module deliberately has a narrower authority than the formal runner.  It
 can smoke-test the model contract and train development cells on deterministic
-subsets of existing parent *TRAIN* feature caches.  It cannot prepare fresh
-formal banks or run a formal cell; both methods fail closed until separately
-reviewed fresh-bank builders exist.
+subsets of existing parent *TRAIN* feature caches.  Its formal authority is
+limited to fresh-bank preparation and label-free carrier Phase A.  Semantic
+labels, consumers, correctness, and physical execution remain exclusively in
+the complete-grid finalizer.
 
 The adapters reuse the authenticated parent cache loaders and frozen host
 loaders.  Candidate SAGE-Mem arms consume native ``(B,L,D)`` LeWM or
@@ -38,12 +39,14 @@ from sklearn.preprocessing import StandardScaler
 import warnings
 
 from lewm.models.frozen_swap_carriers import make_frozen_carrier
-from lewm.models.v21_carriers import GatedDeltaCell
+from lewm.models.v21_carriers import GatedDeltaCell, gdelta_parameter_count
 from lewm.official_tasks.dinowm_spatial_carrier import (
     spatial_carrier_forward,
 )
 from scripts.prepare_sage_mem_v1_development import SOURCES
-from scripts.sage_mem_v1_spec import AGES, ARMS, COHORTS, canonical_json
+from scripts.sage_mem_v1_spec import (
+    AGES, ARMS, COHORTS, canonical_json, output_root, spec_fingerprint,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +62,9 @@ FORMAL_PENDING_MESSAGE = (
 # chunk size of four.  Evaluation is gradient-free and can use a larger chunk.
 SPATIAL_TRAIN_MICRO_BATCH = 32
 SPATIAL_EVAL_BATCH = 32
+PHASE_A_SCHEMA = "sage_mem_v1_phase_a_cell_v1"
+PHASE_A_HISTORY_SCHEMA = "sage_mem_v1_phase_a_history_v1"
+PHASE_A_RESOURCE_SCHEMA = "sage_mem_v1_phase_a_resources_v1"
 
 _COHORTS: dict[str, dict[str, Any]] = {
     "lewm_reacher_color": {
@@ -112,6 +118,24 @@ def _atomic_npz(path: Path, arrays: Mapping[str, np.ndarray]) -> str:
     try:
         with os.fdopen(descriptor, "wb") as stream:
             np.savez_compressed(stream, **arrays)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+    return _sha256_file(path)
+
+
+def _atomic_json(path: Path, value: Mapping[str, Any]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(canonical_json(value) + "\n")
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
@@ -291,6 +315,43 @@ class _PointMazeBank(_DevelopmentBank):
         return np.asarray(self.parent.proprio[bases], dtype=np.float32)
 
 
+class _DinoFormalSplitBank:
+    """Local-index view over one label-free DINO formal split."""
+
+    spatial = True
+
+    def __init__(self, parent: Any, split: str) -> None:
+        self.parent = parent
+        self.split = split
+        self.rows = np.asarray(parent.indices(split), dtype=np.int64)
+        self.count = len(self.rows)
+        self.fit_indices = np.arange(self.count, dtype=np.int64)
+        identity = parent.identity(split)
+        self.episode_ids = np.asarray(
+            identity["episode_id"], dtype=np.int64)
+        self.native_cluster_ids = np.asarray(
+            identity["native_cluster_id"], dtype=np.int64)
+        if self.count < 1 or len(np.unique(self.episode_ids)) != self.count:
+            raise DevelopmentAdapterError(
+                f"DINO formal split identity is malformed: {split}")
+
+    def _rows(self, indices: np.ndarray) -> np.ndarray:
+        local = np.asarray(indices, dtype=np.int64)
+        if local.ndim != 1 or np.any(local < 0) or np.any(local >= self.count):
+            raise DevelopmentAdapterError(
+                f"DINO formal local row leaves split: {self.split}")
+        return self.rows[local]
+
+    def features(self, age: int, indices: np.ndarray) -> np.ndarray:
+        return self.parent.features(int(age), self._rows(indices))
+
+    def actions(self, indices: np.ndarray) -> np.ndarray:
+        return self.parent.actions(self._rows(indices))
+
+    def proprio(self, indices: np.ndarray) -> np.ndarray:
+        return self.parent.proprio(self._rows(indices))
+
+
 class SageMemV1HostAdapter:
     """One cohort-specific bridge over immutable parent TRAIN caches."""
 
@@ -332,8 +393,7 @@ class SageMemV1HostAdapter:
         spatial = int(self.info["tokens"]) > 1
         model = _build_sage(model_contract, d, a, "full").to(device)
         with torch.no_grad():
-            eye = torch.eye(d, device=device, dtype=model.w_o.weight.dtype)
-            model.w_o.weight.copy_(0.01 * eye)
+            model.read_scale.fill_(0.01)
         shape = ((2, 6, int(self.info["tokens"]), d)
                  if spatial else (2, 6, d))
         features = torch.randn(shape, device=device)
@@ -381,15 +441,459 @@ class SageMemV1HostAdapter:
             seed_registry: Mapping[str, int],
             forbidden_parent_artifacts: Sequence[str],
             model_contract: Any) -> Mapping[str, Any]:
-        del split_counts, seed_registry, forbidden_parent_artifacts, model_contract
-        raise FormalIntegrationPending(FORMAL_PENDING_MESSAGE)
+        """Materialize or revalidate one fresh, externally sealed formal bank."""
+
+        self._validate_formal_prepare_inputs(
+            split_counts, seed_registry, forbidden_parent_artifacts,
+            model_contract)
+        paths = self._formal_storage_paths()
+        presence = {name: path.exists() for name, path in paths.items()
+                    if name in {"bank", "vault", "custody"}}
+        if any(presence.values()) and not all(presence.values()):
+            raise DevelopmentAdapterError(
+                f"partial formal bank/custody state: {presence}")
+        if not any(presence.values()):
+            self._formal_device()
+            if self.info["family"] == "lewm":
+                from scripts.sage_mem_v1_lewm_formal import (
+                    prepare_lewm_formal_bank,
+                )
+                prepare_lewm_formal_bank(
+                    cohort=self.cohort, spec=self.spec,
+                    output_directory=paths["bank"],
+                    label_vault_path=paths["vault"],
+                    label_custody_receipt_path=paths["custody"],
+                    device_name="cuda:0")
+            else:
+                from scripts.sage_mem_v1_dino_formal import (
+                    materialize_dino_formal_bank,
+                    plan_pointmaze_formal_from_spec,
+                    plan_pusht_formal_pair_from_spec,
+                )
+                if self.info["family"] == "dinowm_pusht":
+                    plan = plan_pusht_formal_pair_from_spec(
+                        self.spec, root=ROOT)[self.cohort]
+                else:
+                    plan = plan_pointmaze_formal_from_spec(
+                        self.spec, root=ROOT)
+                materialize_dino_formal_bank(
+                    plan, paths["bank"],
+                    label_vault_destination=paths["vault"],
+                    label_vault_receipt_destination=paths["custody"],
+                    progress=lambda message: None)
+            self._seal_formal_bank(paths["bank"])
+
+        bank_handle, custody_handle = self._validated_formal_handles(paths)
+        selection = self._locked_development_selection()
+        development = self._development_split_handle()
+        formal_splits = bank_handle["splits"]
+        result_splits = {"development": development}
+        for split in ("formal_train", "consumer_train", "formal_test"):
+            result_splits[split] = {
+                "count": int(formal_splits[split]["count"]),
+                "selection_sha256": str(
+                    formal_splits[split]["selection_sha256"]),
+            }
+        return {
+            "status": "prepared",
+            "cohort": self.cohort,
+            "disjoint_with_every_parent_bank": True,
+            "development_formal_disjoint": True,
+            "formal_labels_hidden": True,
+            "labels_used_for_carrier_training": False,
+            "gdelta_development_healthy": selection[
+                "gdelta_development_healthy"],
+            "locked_comparators": selection["locked_comparators"],
+            "splits": result_splits,
+            "formal_bank": bank_handle,
+            "label_custody": custody_handle,
+            "phase_a_contract": {
+                "schema": PHASE_A_SCHEMA,
+                "representation": "feature_artifact",
+                "consumer": "centralized-pooled-consumer-train-features",
+                "formal_test_labels_available": False,
+            },
+        }
 
     def run_formal_cell(
             self, *, arm: str, seed: int, output_directory: Path,
             model_contract: Any, prepared: Mapping[str, Any]
     ) -> Mapping[str, Any]:
-        del arm, seed, output_directory, model_contract, prepared
-        raise FormalIntegrationPending(FORMAL_PENDING_MESSAGE)
+        """Run label-free Phase A and emit finalizer-exact feature artifacts."""
+
+        if arm not in ARMS:
+            raise DevelopmentAdapterError(f"unknown formal arm {arm!r}")
+        self._validate_phase_a_prepared(prepared)
+        destination = Path(output_directory)
+        destination.mkdir(parents=True, exist_ok=True)
+        if any(destination.iterdir()):
+            raise FileExistsError(
+                f"formal Phase-A directory is not empty: {destination}")
+        _configure_determinism(seed)
+        device = self._formal_device()
+        bank_handle, banks = self._open_formal_banks(prepared)
+        host = self._open_formal_host(device)
+        host_before = self._host_digest(host)
+        if not isinstance(host_before, str) or len(host_before) != 64:
+            raise DevelopmentAdapterError("formal frozen-host digest malformed")
+        carrier, candidate_native = self._build_carrier(
+            arm, model_contract, device)
+        started = time.perf_counter()
+        if device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(device)
+        history, gradients_finite = self._train_carrier(
+            host, banks["formal_train"], carrier, arm, seed,
+            candidate_native, device)
+        if not gradients_finite:
+            raise DevelopmentAdapterError("formal carrier gradients are non-finite")
+        arrays = self._phase_a_measurements(
+            host, banks, carrier, candidate_native, device)
+        elapsed = time.perf_counter() - started
+        host_after = self._host_digest(host)
+        if host_before != host_after:
+            raise DevelopmentAdapterError("formal Phase A mutated frozen host")
+
+        measurement_path = destination / "measurements.npz"
+        measurement_sha = _atomic_npz(measurement_path, arrays)
+        checkpoint_path = destination / "checkpoint.pt"
+        checkpoint_sha = _atomic_torch(checkpoint_path, {
+            "carrier_state_dict": carrier.state_dict(),
+            "cohort": self.cohort, "arm": arm, "seed": int(seed),
+            "bank_manifest_sha256": bank_handle["manifest_sha256"],
+            "formal_test_labels_read": False,
+        })
+        history_path = destination / "history.json"
+        history_sha = _atomic_json(history_path, {
+            "schema": PHASE_A_HISTORY_SCHEMA,
+            "study": "sage-mem-v1", "status": "complete",
+            "formal_test_labels_read": False,
+            "development_outcomes_read": False,
+            "bank_manifest_sha256": bank_handle["manifest_sha256"],
+            "epochs": [{
+                "epoch": int(row["epoch"]),
+                "train_label_free_loss": float(row["loss"]),
+            } for row in history],
+        })
+        resources = self._resource_report(
+            carrier, banks["formal_train"], elapsed, device)
+        if not all(_finite_nonnegative(value) for value in resources.values()):
+            raise DevelopmentAdapterError("formal resource report is non-finite")
+        resource_path = destination / "resources.json"
+        resource_sha = _atomic_json(resource_path, {
+            "schema": PHASE_A_RESOURCE_SCHEMA,
+            "study": "sage-mem-v1", "status": "complete",
+            "metrics": resources,
+        })
+
+        def artifact(path: Path, digest: str) -> dict[str, Any]:
+            return {"path": path.name, "sha256": digest,
+                    "size": path.stat().st_size}
+
+        physical_gpu = int(self.spec["cohorts"][self.cohort]["gpu"])
+        return {
+            "schema": PHASE_A_SCHEMA,
+            "study": "sage-mem-v1",
+            "stage": "formal-phase-a",
+            "status": "complete-label-free",
+            "cohort": self.cohort,
+            "arm": arm,
+            "seed": int(seed),
+            "physical_gpu": physical_gpu,
+            "cuda_visible_devices": str(physical_gpu),
+            "protocol_fingerprint": spec_fingerprint(self.spec),
+            "completed_unix_ns": time.time_ns(),
+            "ages": list(AGES),
+            "formal_test_labels_read": False,
+            "formal_test_labels_available": False,
+            "development_outcomes_read": False,
+            "labels_used_for_training": False,
+            "bank_manifest_sha256": bank_handle["manifest_sha256"],
+            "host_hash_before": host_before,
+            "host_hash_after": host_after,
+            "prediction_representation": "feature_artifact",
+            "consumer_contract": (
+                "centralized-pooled-consumer-train-features"),
+            "shared_consumer_sha256": None,
+            "artifacts": {
+                "measurements": artifact(
+                    measurement_path, measurement_sha),
+                "checkpoint": artifact(checkpoint_path, checkpoint_sha),
+                "history": artifact(history_path, history_sha),
+                "resource_report": artifact(resource_path, resource_sha),
+            },
+        }
+
+    def _validate_formal_prepare_inputs(
+            self, split_counts: Mapping[str, int],
+            seed_registry: Mapping[str, int],
+            forbidden_parent_artifacts: Sequence[str],
+            model_contract: Any) -> None:
+        expected_counts = self.spec["cohorts"][self.cohort]["split_episodes"]
+        if dict(split_counts) != dict(expected_counts):
+            raise DevelopmentAdapterError("formal split counts changed")
+        if dict(seed_registry) != dict(self.spec["_seed_registry"]):
+            raise DevelopmentAdapterError("formal seed registry changed")
+        expected_forbidden = self.spec["cohorts"][self.cohort][
+            "forbidden_parent_artifacts"]
+        if list(forbidden_parent_artifacts) != list(expected_forbidden):
+            raise DevelopmentAdapterError("formal parent exclusions changed")
+        if not callable(getattr(model_contract, "builder", None)):
+            raise DevelopmentAdapterError("formal model contract is malformed")
+
+    def _formal_storage_paths(self) -> dict[str, Path]:
+        root = output_root(self.spec) / "formal_preparation"
+        custody_root = root / "custody"
+        return {
+            "bank": root / "banks" / self.cohort,
+            "vault": custody_root / "vaults" / f"{self.cohort}.npz",
+            "custody": custody_root / "receipts" / f"{self.cohort}.json",
+        }
+
+    @staticmethod
+    def _seal_formal_bank(root: Path) -> None:
+        if not root.is_dir() or root.is_symlink():
+            raise DevelopmentAdapterError("formal bank root is unsafe")
+        for path in sorted(root.rglob("*"), reverse=True):
+            if path.is_symlink():
+                raise DevelopmentAdapterError("formal bank contains symlink")
+            os.chmod(path, 0o555 if path.is_dir() else 0o444)
+        os.chmod(root, 0o555)
+
+    def _locked_development_selection(self) -> dict[str, Any]:
+        path = (output_root(self.spec) / "development" / "selections"
+                / self.cohort / "receipt.json")
+        if not path.is_file() or path.is_symlink():
+            raise DevelopmentAdapterError(
+                "sealed development selection receipt is missing")
+        value = json.loads(path.read_text())
+        comparators = value.get("locked_comparators")
+        if value.get("stage") != "development-selection" \
+                or value.get("status") != "selected" \
+                or value.get("cohort") != self.cohort \
+                or value.get("protocol_fingerprint") != spec_fingerprint(
+                    self.spec) \
+                or not isinstance(value.get(
+                    "gdelta_development_healthy"), bool) \
+                or not isinstance(comparators, Mapping) \
+                or set(comparators) != {
+                    "retention", "next_feature", "execution"}:
+            raise DevelopmentAdapterError(
+                "sealed development selection receipt is malformed")
+        return {
+            "gdelta_development_healthy": bool(
+                value["gdelta_development_healthy"]),
+            "locked_comparators": dict(comparators),
+            "receipt_sha256": _sha256_file(path),
+        }
+
+    def _development_split_handle(self) -> dict[str, Any]:
+        path = (output_root(self.spec) / "development_banks" / self.cohort
+                / "manifest.json")
+        if not path.is_file() or path.is_symlink():
+            raise DevelopmentAdapterError("development bank receipt is missing")
+        value = json.loads(path.read_text())
+        selection = value.get("selection")
+        expected = int(self.spec["cohorts"][self.cohort][
+            "split_episodes"]["development"])
+        if value.get("status") != "prepared-parent-train-only" \
+                or value.get("cohort") != self.cohort \
+                or value.get("parent_train_only") is not True \
+                or value.get("formal_evidence_permitted") is not False \
+                or not isinstance(selection, Mapping) \
+                or selection.get("count") != expected \
+                or not isinstance(selection.get("sha256"), str) \
+                or len(selection["sha256"]) != 64:
+            raise DevelopmentAdapterError("development split receipt malformed")
+        return {"count": expected,
+                "selection_sha256": selection["sha256"]}
+
+    def _validated_formal_handles(
+            self, paths: Mapping[str, Path]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if self.info["family"] == "lewm":
+            from scripts.sage_mem_v1_lewm_formal import (
+                sealed_label_vault_handle, trajectory_bank_handle,
+            )
+            manifest_path = paths["bank"] / "manifest.json"
+            bank = trajectory_bank_handle(manifest_path)
+            custody = sealed_label_vault_handle(
+                manifest_path, paths["custody"])
+            vault_sha = custody["vault_sha256"]
+            receipt_sha = custody["custody_receipt"]["sha256"]
+            receipt_size = custody["custody_receipt"]["size"]
+        else:
+            from scripts.sage_mem_v1_dino_formal import (
+                validate_materialized_bank_provenance,
+            )
+            bank = validate_materialized_bank_provenance(paths["bank"])
+            if not paths["custody"].is_file() \
+                    or paths["custody"].is_symlink() \
+                    or oct(paths["custody"].stat().st_mode & 0o777) != "0o400":
+                raise DevelopmentAdapterError(
+                    "DINO formal custody receipt is not protected")
+            receipt = json.loads(paths["custody"].read_text())
+            vault = Path(receipt.get("path", ""))
+            if receipt.get("status") != "sealed-for-post-grid-finalizer" \
+                    or receipt.get("cohort") != self.cohort \
+                    or receipt.get("per_cell_api_access") is not False \
+                    or not vault.is_file() or vault.is_symlink() \
+                    or oct(vault.stat().st_mode & 0o777) != "0o400" \
+                    or vault.stat().st_size != receipt.get("size") \
+                    or _sha256_file(vault) != receipt.get("sha256") \
+                    or receipt.get("sha256") != bank.get(
+                        "sealed_label_vault_sha256"):
+                raise DevelopmentAdapterError(
+                    "DINO formal label custody identity failed")
+            vault_sha = receipt["sha256"]
+            receipt_sha = _sha256_file(paths["custody"])
+            receipt_size = paths["custody"].stat().st_size
+        bank = dict(bank)
+        bank["bank_root"] = str(paths["bank"].resolve())
+        return bank, {
+            "status": "sealed-for-post-grid-finalizer",
+            "vault_sha256": vault_sha,
+            "custody_receipt_sha256": receipt_sha,
+            "custody_receipt_size": int(receipt_size),
+            "per_cell_api_access": False,
+            "path_exposed_to_phase_a": False,
+        }
+
+    def _validate_phase_a_prepared(self, value: Mapping[str, Any]) -> None:
+        bank = value.get("formal_bank")
+        custody = value.get("label_custody")
+        custody_keys = {
+            "status", "vault_sha256", "custody_receipt_sha256",
+            "custody_receipt_size", "per_cell_api_access",
+            "path_exposed_to_phase_a",
+        }
+        if value.get("status") != "prepared" \
+                or value.get("cohort") != self.cohort \
+                or value.get("formal_labels_hidden") is not True \
+                or value.get("labels_used_for_carrier_training") is not False \
+                or not isinstance(bank, Mapping) \
+                or bank.get("cohort") != self.cohort \
+                or not isinstance(bank.get("bank_root"), str) \
+                or not isinstance(bank.get("manifest_sha256"), str) \
+                or len(bank["manifest_sha256"]) != 64 \
+                or not isinstance(custody, Mapping) \
+                or set(custody) != custody_keys \
+                or custody.get("status") != \
+                    "sealed-for-post-grid-finalizer" \
+                or custody.get("per_cell_api_access") is not False \
+                or custody.get("path_exposed_to_phase_a") is not False \
+                or not isinstance(custody.get("vault_sha256"), str) \
+                or len(custody["vault_sha256"]) != 64 \
+                or not isinstance(custody.get(
+                    "custody_receipt_sha256"), str) \
+                or len(custody["custody_receipt_sha256"]) != 64:
+            raise DevelopmentAdapterError("formal Phase-A preparation malformed")
+        root = Path(bank["bank_root"])
+        if root.resolve() != self._formal_storage_paths()["bank"].resolve():
+            raise DevelopmentAdapterError("formal bank root changed")
+        manifest = root / "manifest.json"
+        if not manifest.is_file() or manifest.is_symlink() \
+                or _sha256_file(manifest) != bank["manifest_sha256"]:
+            raise DevelopmentAdapterError("formal bank manifest identity failed")
+
+    def _open_formal_banks(
+            self, prepared: Mapping[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        expected = prepared["formal_bank"]
+        root = Path(expected["bank_root"])
+        if self.info["family"] == "lewm":
+            from scripts.sage_mem_v1_lewm_formal import (
+                load_lewm_trajectory_banks,
+            )
+            handle, banks = load_lewm_trajectory_banks(
+                root / "manifest.json", expected_cohort=self.cohort,
+                expected_counts={
+                    split: int(self.spec["cohorts"][self.cohort][
+                        "split_episodes"][split])
+                    for split in ("formal_train", "consumer_train",
+                                  "formal_test")})
+        else:
+            from scripts.sage_mem_v1_dino_formal import open_label_free_bank
+            parent = open_label_free_bank(root)
+            handle = parent.provenance_handle()
+            handle["bank_root"] = str(root.resolve())
+            banks = {split: _DinoFormalSplitBank(parent, split)
+                     for split in ("formal_train", "consumer_train",
+                                   "formal_test")}
+        if handle["manifest_sha256"] != expected["manifest_sha256"]:
+            raise DevelopmentAdapterError("formal bank changed after preparation")
+        return handle, banks
+
+    def _open_formal_host(self, device: torch.device) -> Any:
+        parent_protocol = ROOT / self.spec["cohorts"][self.cohort][
+            "parent_protocol"]
+        if self.info["family"] == "lewm":
+            from scripts.paper_a_matched_color_v1_1_spec import (
+                DEFAULT_SHA, load_locked_spec,
+            )
+            from scripts.prepare_paper_a_matched_host import _load_host
+            parent = load_locked_spec(
+                parent_protocol, DEFAULT_SHA, verify_inputs=False)
+            return _load_host(parent, str(self.info["host"]), device)
+        import yaml
+        cfg = yaml.safe_load(parent_protocol.read_text())
+        if not isinstance(cfg, Mapping):
+            raise DevelopmentAdapterError("DINO parent protocol malformed")
+        from scripts.sage_mem_v1_dino_formal import (
+            activate_parent_dependency_environment,
+        )
+        activate_parent_dependency_environment(cfg, root=ROOT)
+        if self.info["family"] == "dinowm_pusht":
+            from scripts.run_dinowm_wave2_spatial_carrier import FrozenNativeHost
+            return FrozenNativeHost(cfg, load_encoder=False)
+        from scripts.run_dinowm_pointmaze_wave3 import FrozenPointMazeHost
+        return FrozenPointMazeHost(cfg, load_encoder=False)
+
+    def _formal_device(self) -> torch.device:
+        if not torch.cuda.is_available():
+            raise DevelopmentAdapterError("formal execution requires CUDA")
+        expected = str(self.spec["cohorts"][self.cohort]["gpu"])
+        if os.environ.get("CUDA_VISIBLE_DEVICES") != expected \
+                or torch.cuda.device_count() != 1:
+            raise DevelopmentAdapterError(
+                f"{self.cohort} formal execution requires physical GPU "
+                f"{expected} as the only visible device")
+        return torch.device("cuda:0")
+
+    def _phase_a_measurements(
+            self, host: Any, banks: Mapping[str, Any],
+            carrier: torch.nn.Module, candidate_native: bool,
+            device: torch.device) -> dict[str, np.ndarray]:
+        carrier.eval()
+        consumer = banks["consumer_train"]
+        test = banks["formal_test"]
+        result = _phase_a_identity_arrays(consumer, test)
+        consumer_full, test_full, test_reset, test_prior = [], [], [], []
+        full_mse, reset_mse, prior_mse = [], [], []
+        for age in AGES:
+            consumer_value = _collect_phase_a_features(
+                host, consumer, carrier, int(age), consumer.fit_indices,
+                candidate_native, device)
+            test_value = _collect_phase_a_features(
+                host, test, carrier, int(age), test.fit_indices,
+                candidate_native, device)
+            consumer_full.append(consumer_value["host"])
+            test_full.append(test_value["host"])
+            test_reset.append(test_value["reset"])
+            test_prior.append(test_value["prior"])
+            full_mse.append(test_value["mse"])
+            reset_mse.append(test_value["reset_mse"])
+            prior_mse.append(test_value["prior_mse"])
+        result.update({
+            "consumer_train_full_features": np.stack(consumer_full),
+            "formal_test_full_features": np.stack(test_full),
+            "formal_test_reset_features": np.stack(test_reset),
+            "formal_test_prior_features": np.stack(test_prior),
+            "formal_test_full_mse": np.stack(full_mse),
+            "formal_test_reset_mse": np.stack(reset_mse),
+            "formal_test_prior_mse": np.stack(prior_mse),
+        })
+        _validate_phase_a_arrays(result, consumer.count, test.count)
+        return result
 
     def run_development_cell(
             self, *, arm: str, seed: int,
@@ -595,7 +1099,18 @@ class SageMemV1HostAdapter:
             variant = arm.removeprefix("sage_mem_")
             return _build_sage(model_contract, d, a, variant).to(device), True
         if arm == "gdelta":
-            return GatedDeltaCell(d, a).to(device), False
+            target = int(self.spec["cohorts"][self.cohort][
+                "target_parameters"])
+            state_dim = min(range(2, 4 * d + 1), key=lambda candidate: (
+                abs(gdelta_parameter_count(candidate, d, a) - target),
+                candidate))
+            carrier = GatedDeltaCell(d, a, state_dim=state_dim).to(device)
+            margin = float(self.spec["fairness_reporting"][
+                "maximum_parameter_relative_gap"])
+            if abs(carrier.parameter_count() - target) / target > margin:
+                raise DevelopmentAdapterError(
+                    "no registered parameter-matched gDelta width exists")
+            return carrier, False
         base = {"fixed_trust_aux": "fixed_trust",
                 "ssm_aux": "ssm"}.get(arm, arm)
         return make_frozen_carrier(base, d, a).to(device), False
@@ -986,6 +1501,169 @@ def _auxiliary_loss(
     return (weights["replay"] * replay
             + weights["exposure"] * exposure_alignment
             + weights["reset"] * reset_distillation)
+
+
+def _phase_a_identity_arrays(consumer: Any,
+                             test: Any) -> dict[str, np.ndarray]:
+    result: dict[str, np.ndarray] = {}
+    for prefix, bank in (("consumer_train", consumer),
+                         ("formal_test", test)):
+        episode = np.asarray(bank.episode_ids, dtype=np.int64)
+        cluster = np.asarray(
+            getattr(bank, "native_cluster_ids", episode), dtype=np.int64)
+        if episode.ndim != 1 or cluster.shape != episode.shape \
+                or len(np.unique(episode)) != len(episode) \
+                or np.any(episode < 0) or np.any(cluster < 0):
+            raise DevelopmentAdapterError(
+                f"formal Phase-A identity malformed: {prefix}")
+        result[f"{prefix}_episode_id"] = np.repeat(
+            episode[None], len(AGES), axis=0)
+        result[f"{prefix}_native_cluster_id"] = np.repeat(
+            cluster[None], len(AGES), axis=0)
+        result[f"{prefix}_evidence_age"] = np.repeat(
+            np.asarray(AGES, dtype=np.int64)[:, None], len(episode), axis=1)
+    return result
+
+
+def _validate_phase_a_arrays(arrays: Mapping[str, np.ndarray],
+                             consumer_count: int, test_count: int) -> None:
+    expected = {
+        "formal_test_episode_id", "formal_test_native_cluster_id",
+        "formal_test_evidence_age", "consumer_train_episode_id",
+        "consumer_train_native_cluster_id", "consumer_train_evidence_age",
+        "formal_test_full_mse", "formal_test_reset_mse",
+        "formal_test_prior_mse", "formal_test_full_features",
+        "formal_test_reset_features", "formal_test_prior_features",
+        "consumer_train_full_features",
+    }
+    if set(arrays) != expected:
+        raise DevelopmentAdapterError("formal Phase-A array schema changed")
+    for prefix, count in (("consumer_train", consumer_count),
+                          ("formal_test", test_count)):
+        reference = np.asarray(arrays[f"{prefix}_episode_id"])
+        cluster = np.asarray(arrays[f"{prefix}_native_cluster_id"])
+        ages = np.asarray(arrays[f"{prefix}_evidence_age"])
+        if reference.shape != (len(AGES), count) \
+                or cluster.shape != reference.shape \
+                or ages.shape != reference.shape \
+                or not all(np.issubdtype(value.dtype, np.integer)
+                           for value in (reference, cluster, ages)):
+            raise DevelopmentAdapterError(
+                f"formal Phase-A identity shape changed: {prefix}")
+        for index, age in enumerate(AGES):
+            if not np.array_equal(reference[index], reference[0]) \
+                    or not np.array_equal(cluster[index], cluster[0]) \
+                    or not np.all(ages[index] == age):
+                raise DevelopmentAdapterError(
+                    f"formal Phase-A identity drifts across ages: {prefix}")
+    for name in ("formal_test_full_mse", "formal_test_reset_mse",
+                 "formal_test_prior_mse"):
+        value = np.asarray(arrays[name])
+        if value.shape != (len(AGES), test_count) \
+                or not np.isfinite(value).all() or np.any(value < 0):
+            raise DevelopmentAdapterError(
+                f"formal Phase-A MSE malformed: {name}")
+    dimensions = set()
+    for name in ("formal_test_full_features",
+                 "formal_test_reset_features",
+                 "formal_test_prior_features",
+                 "consumer_train_full_features"):
+        value = np.asarray(arrays[name])
+        count = consumer_count if name.startswith("consumer_train") \
+            else test_count
+        if value.ndim != 3 or value.shape[:2] != (len(AGES), count) \
+                or value.shape[2] < 1 or not np.isfinite(value).all():
+            raise DevelopmentAdapterError(
+                f"formal Phase-A feature malformed: {name}")
+        dimensions.add(int(value.shape[2]))
+    if len(dimensions) != 1:
+        raise DevelopmentAdapterError(
+            "formal Phase-A feature dimensions differ across interventions")
+
+
+@torch.no_grad()
+def _collect_phase_a_features(
+        host: Any, bank: Any, carrier: torch.nn.Module,
+        age: int, indices: np.ndarray, candidate_native: bool,
+        device: torch.device) -> dict[str, np.ndarray]:
+    """Collect label-free features plus full/reset/prior prediction health."""
+
+    values: dict[str, list[np.ndarray]] = {
+        "host": [], "reset": [], "prior": [], "mse": [],
+        "reset_mse": [], "prior_mse": [],
+    }
+    batch_size = SPATIAL_EVAL_BATCH if bank.spatial else 64
+    for offset in range(0, len(indices), batch_size):
+        local = indices[offset:offset + batch_size]
+        features = torch.from_numpy(bank.features(age, local)).to(device)
+        actions = torch.from_numpy(bank.actions(local)).to(device)
+        prop_np = bank.proprio(local)
+        proprio = None if prop_np is None else torch.from_numpy(prop_np).to(
+            device)
+        full = _carrier_forward(
+            carrier, features, actions, candidate_native=candidate_native)
+        reset_at = _cue_offset_reset_index(
+            spatial=bank.spatial, age=int(age),
+            sequence_length=features.shape[1])
+        reset_full = _carrier_forward(
+            carrier, features[:, reset_at:], actions[:, reset_at:],
+            candidate_native=candidate_native)
+        if bank.spatial:
+            endpoint = 3 + int(age)
+            start, stop = endpoint - 3, endpoint
+            assert proprio is not None
+            with _amp_context(device):
+                host_prediction = host.predict(
+                    full["fused"][:, start:stop], proprio[:, start:stop],
+                    actions[:, start:stop])[:, -1, :, :384]
+                prior_prediction = host.predict(
+                    full["prior"][:, start:stop], proprio[:, start:stop],
+                    actions[:, start:stop])[:, -1, :, :384]
+            reset_context = reset_full["fused"][
+                :, start - reset_at:stop - reset_at]
+            with _amp_context(device):
+                reset_prediction = host.predict(
+                    reset_context, proprio[:, start:stop],
+                    actions[:, start:stop])[:, -1, :, :384]
+            target = features[:, endpoint]
+            mse_dimensions = (1, 2)
+        else:
+            endpoint, start, stop = 19, 16, 19
+            with _amp_context(device):
+                host_prediction = host.predict(
+                    full["fused"][:, start:stop],
+                    actions[:, start:stop])[:, -1]
+                prior_prediction = host.predict(
+                    full["prior"][:, start:stop],
+                    actions[:, start:stop])[:, -1]
+            reset_context = reset_full["fused"][
+                :, start - reset_at:stop - reset_at]
+            with _amp_context(device):
+                reset_prediction = host.predict(
+                    reset_context, actions[:, start:stop])[:, -1]
+            target = features[:, endpoint]
+            mse_dimensions = (1,)
+        host_np = host_prediction.float().cpu().numpy()
+        reset_np = reset_prediction.float().cpu().numpy()
+        prior_np = full["prior"][:, endpoint].float().cpu().numpy()
+        if bank.spatial:
+            from lewm.official_tasks.dinowm_native_audit import (
+                spatial_pyramid_pool,
+            )
+            host_np = spatial_pyramid_pool(host_np)
+            reset_np = spatial_pyramid_pool(reset_np)
+            prior_np = spatial_pyramid_pool(prior_np)
+        values["host"].append(host_np)
+        values["reset"].append(reset_np)
+        values["prior"].append(prior_np)
+        for name, prediction in (
+                ("mse", host_prediction),
+                ("reset_mse", reset_prediction),
+                ("prior_mse", prior_prediction)):
+            values[name].append(torch.mean(
+                torch.square(prediction.float() - target.float()),
+                dim=mse_dimensions).cpu().numpy())
+    return {name: np.concatenate(parts) for name, parts in values.items()}
 
 
 @torch.no_grad()

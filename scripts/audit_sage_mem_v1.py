@@ -174,6 +174,10 @@ def audit_development(spec: Mapping[str, Any]) -> tuple[
             gap = abs(flops - median_flops) / median_flops
             arm_summary[arm]["flop_relative_gap_from_baseline_median"] = gap
             arm_summary[arm]["flop_matched"] = gap <= flop_margin
+            if arm != "none":
+                arm_summary[arm]["healthy"] = bool(
+                    arm_summary[arm]["healthy"]
+                    and arm_summary[arm]["flop_matched"])
         reference_values = {
             arm: arm_summary[arm]["metrics"]["next_feature_mse"]
             for arm in gdelta_gate["reference_arms"]
@@ -705,12 +709,19 @@ def main(argv: Iterable[str] | None = None) -> None:
         result = write_development_audit(spec, resume=args.resume)
         print(json.dumps(result, sort_keys=True))
         return
-    result = audit(spec)
-    destination = output_root(spec) / "audit" / "receipt.json"
-    if destination.exists():
-        raise FileExistsError(f"audit receipt already exists: {destination}")
-    atomic_json(destination, result)
-    print(json.dumps(result, sort_keys=True))
+    from scripts.audit_sage_mem_v1_formal import main as formal_main
+    root = output_root(spec)
+    command = [
+        "--spec", str(args.spec.resolve()),
+        "--phase-a-root", str(root),
+        "--finalized-root", str(root / "formal_finalized"),
+        "--prepare-root", str(root / "formal_preparation"),
+        "--output", str(root / "formal_audit" / "report.json"),
+        "--execute",
+    ]
+    if args.resume:
+        command.append("--resume")
+    raise SystemExit(formal_main(command))
 
 
 if __name__ == "__main__":

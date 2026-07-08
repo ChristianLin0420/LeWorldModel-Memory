@@ -27,6 +27,10 @@ from scripts.sage_mem_v1_interface import (  # noqa: E402
     load_model_contract,
     validate_host_adapter_instance,
 )
+from scripts.sage_mem_v1_formal_amendment import (  # noqa: E402
+    FormalAmendmentError,
+    load_formal_amendment,
+)
 from scripts.sage_mem_v1_spec import (  # noqa: E402
     ARMS,
     COHORTS,
@@ -47,14 +51,64 @@ from scripts.sage_mem_v1_spec import (  # noqa: E402
 
 PROTOCOL_PRODUCERS = (
     "configs/sage_mem_v1.yaml",
+    "configs/sage_mem_v1_formal_amendment.yaml",
+    "configs/paper_a_matched_color_v1_1.yaml",
+    "configs/paper_a_matched_color_v1_1.sha256",
+    "configs/paper_a_matched_color_v1_1.lock.json",
+    "configs/dinowm_wave2_spatial_carrier_v1_1.yaml",
+    "configs/dinowm_wave2_spatial_carrier_v1_1.lock.json",
+    "configs/dinowm_pointmaze_wave3.yaml",
+    "configs/dinowm_pointmaze_wave3.lock.json",
+    "lewm/models/frozen_swap_carriers.py",
+    "lewm/models/sage_mem.py",
+    "lewm/models/v19_carriers.py",
+    "lewm/models/v21_carriers.py",
+    "lewm/official_tasks/dinowm_spatial_carrier.py",
+    "lewm/official_tasks/dinowm_native_audit.py",
+    "lewm/official_tasks/dinowm_pointmaze.py",
+    "lewm/official_tasks/matched_memory.py",
+    "lewm/official_tasks/native_sequence_hdf5.py",
+    "lewm/official_tasks/pusht_downstream.py",
+    "lewm/official_tasks/pusht_memory.py",
     "scripts/sage_mem_v1_spec.py",
     "scripts/sage_mem_v1_interface.py",
     "scripts/sage_mem_v1_losses.py",
+    "scripts/sage_mem_v1_formal_amendment.py",
+    "scripts/sage_mem_v1_lewm_formal.py",
+    "scripts/sage_mem_v1_dino_formal.py",
+    "scripts/prepare_sage_mem_v1_formal.py",
+    "scripts/prepare_sage_mem_v1_execution_decks.py",
+    "scripts/prepare_sage_mem_v1_raw_context_reference.py",
+    "scripts/sage_mem_v1_formal_finalizer.py",
     "scripts/prepare_sage_mem_v1_development.py",
+    "scripts/make_official_lewm_memory_data.py",
+    "scripts/paper_a_delayed_goal_use.py",
+    "scripts/paper_a_evidence_age.py",
+    "scripts/paper_a_matched_color_v1_1_spec.py",
+    "scripts/prepare_paper_a_matched_host.py",
+    "scripts/run_dinowm_native_pusht_audit_v1.py",
+    "scripts/run_dinowm_native_pusht_audit_v2.py",
+    "scripts/run_dinowm_pointmaze_wave3.py",
+    "scripts/run_dinowm_wave2_spatial_carrier.py",
+    "scripts/train_frozen_official_swap.py",
+    "scripts/train_paper_a_matched_color_v1_1.py",
+    "scripts/run_sage_mem_v1_campaign.py",
     "scripts/run_sage_mem_v1.py",
     "scripts/launch_sage_mem_v1.py",
     "scripts/audit_sage_mem_v1.py",
+    "scripts/audit_sage_mem_v1_formal.py",
     "tests/test_sage_mem_v1_protocol.py",
+    "tests/test_run_sage_mem_v1_campaign.py",
+    "tests/test_sage_mem.py",
+    "tests/test_sage_mem_v1_host_adapters.py",
+    "tests/test_sage_mem_v1_formal_amendment.py",
+    "tests/test_sage_mem_v1_lewm_formal.py",
+    "tests/test_sage_mem_v1_dino_formal.py",
+    "tests/test_prepare_sage_mem_v1_formal.py",
+    "tests/test_prepare_sage_mem_v1_execution_decks.py",
+    "tests/test_prepare_sage_mem_v1_raw_context_reference.py",
+    "tests/test_sage_mem_v1_formal_finalizer.py",
+    "tests/test_audit_sage_mem_v1_formal.py",
 )
 FORMAL_CONFIRMATION = "RUN_SAGE_MEM_V1_FORMAL"
 
@@ -176,6 +230,35 @@ def preflight_report(spec: Mapping[str, Any], *,
     integration_error = "; ".join(integration_errors) or None
     if integration_error is not None and require_integrations:
         raise SageMemRunError(integration_error)
+    root = output_root(spec)
+    boundary = {
+        "development_audit_present": (
+            root / "development" / "audit_receipt.json").exists(),
+        "development_selection_present": (
+            root / "development" / "selections").exists(),
+        "formal_preparation_present": (
+            root / "formal_preparation").exists(),
+        "formal_cells_present": (root / "formal" / "cells").exists(),
+        "partial_development_cells_present": len(list(
+            (root / "development" / "cells").glob(
+                "*/*/seed-*/manifest.json"))) if (
+                    root / "development" / "cells").is_dir() else 0,
+        "development_or_formal_outcomes_read": False,
+    }
+    if any(boundary[key] for key in (
+            "development_audit_present", "development_selection_present",
+            "formal_preparation_present", "formal_cells_present")):
+        raise SageMemRunError(
+            "preselection source freeze was requested after a selection or "
+            "formal boundary")
+    producers = _producer_identities()
+    source_set_sha256 = hashlib.sha256(
+        canonical_json(producers).encode("utf-8")).hexdigest()
+    try:
+        amendment = load_formal_amendment()
+    except FormalAmendmentError as error:
+        raise SageMemRunError(str(error)) from error
+    amendment_path = Path(amendment["_path"])
     return {
         "schema_version": 1,
         "study": "sage-mem-v1",
@@ -188,6 +271,17 @@ def preflight_report(spec: Mapping[str, Any], *,
         "integrations": integrations,
         "integration_error": integration_error,
         "integration_requirements": integration_requirements(),
+        "preselection_source_lock": {
+            "status": "frozen-before-complete-development-selection",
+            "producer_identities": producers,
+            "source_set_sha256": source_set_sha256,
+            "formal_amendment": {
+                "path": str(amendment_path.relative_to(ROOT)),
+                "size": amendment_path.stat().st_size,
+                "sha256": amendment["_sha256"],
+            },
+            "boundary": boundary,
+        },
         "formal_execution_started": False,
     }
 
@@ -267,6 +361,7 @@ def _producer_identities() -> dict[str, dict[str, Any]]:
 
 def _seal(spec: Mapping[str, Any]) -> dict[str, Any]:
     _require_ready_receipt(spec, "preflight")
+    preselection_path = _receipt_path(spec, "preflight")
     for cohort in COHORTS:
         path = _receipt_path(spec, "smoke", cohort)
         if not path.is_file():
@@ -300,6 +395,10 @@ def _seal(spec: Mapping[str, Any]) -> dict[str, Any]:
                 or sha256_file(selection_path) != identity["sha256"]:
             raise SageMemRunError(
                 f"development selection receipt changed: {cohort}")
+    try:
+        formal_amendment = load_formal_amendment()
+    except FormalAmendmentError as error:
+        raise SageMemRunError(str(error)) from error
     model_contract, host_contract = _integration_contracts(spec)
     integrations = {}
     for name, module in (("model", model_contract.module),
@@ -319,6 +418,17 @@ def _seal(spec: Mapping[str, Any]) -> dict[str, Any]:
             "path": str(development_audit_path.relative_to(ROOT)),
             "size": development_audit_path.stat().st_size,
             "sha256": sha256_file(development_audit_path),
+        },
+        "formal_amendment": {
+            "path": str(Path(formal_amendment["_path"]).relative_to(ROOT)),
+            "size": Path(formal_amendment["_path"]).stat().st_size,
+            "sha256": formal_amendment["_sha256"],
+            "status": formal_amendment["status"],
+        },
+        "preselection_source_receipt": {
+            "path": str(preselection_path.relative_to(ROOT)),
+            "size": preselection_path.stat().st_size,
+            "sha256": sha256_file(preselection_path),
         },
         "seed_registry": spec["_seed_registry"],
         "formal_execution_started": False,
@@ -368,6 +478,32 @@ def require_valid_lock(spec: Mapping[str, Any]) -> dict[str, Any]:
                 or sha256_file(selection_path) != identity.get("sha256"):
             raise SageMemRunError(
                 f"sealed development selection changed: {cohort}")
+    amendment_identity = lock.get("formal_amendment")
+    if not isinstance(amendment_identity, Mapping) \
+            or not _is_sha256(amendment_identity.get("sha256")):
+        raise SageMemRunError("sealed formal amendment identity is missing")
+    try:
+        amendment = load_formal_amendment()
+    except FormalAmendmentError as error:
+        raise SageMemRunError(str(error)) from error
+    amendment_path = Path(amendment["_path"])
+    if amendment_identity.get("path") != str(amendment_path.relative_to(ROOT)) \
+            or amendment_identity.get("size") != amendment_path.stat().st_size \
+            or amendment_identity.get("sha256") != amendment["_sha256"] \
+            or amendment_identity.get("status") != amendment["status"]:
+        raise SageMemRunError("sealed formal amendment changed")
+    preselection = lock.get("preselection_source_receipt")
+    if not isinstance(preselection, Mapping) \
+            or not _is_sha256(preselection.get("sha256")):
+        raise SageMemRunError(
+            "sealed preselection source receipt is missing")
+    preselection_path = resolve_repo_path(preselection.get("path"))
+    if not preselection_path.is_file() or preselection_path.is_symlink() \
+            or preselection_path.stat().st_size != preselection.get("size") \
+            or sha256_file(preselection_path) != preselection["sha256"]:
+        raise SageMemRunError(
+            "sealed preselection source receipt changed")
+    _require_ready_receipt(spec, "preflight")
     return lock
 
 
@@ -595,16 +731,20 @@ def validate_development_cell_directory(
 
 def _require_ready_receipt(spec: Mapping[str, Any], stage: str,
                            cohort: str | None = None) -> dict[str, Any]:
-    path = _receipt_path(spec, stage, cohort)
-    if not path.is_file():
+    receipt_path = _receipt_path(spec, stage, cohort)
+    if not receipt_path.is_file():
         suffix = f": {cohort}" if cohort else ""
         raise SageMemRunError(f"{stage} receipt missing{suffix}")
-    value = _load_json(path)
+    value = _load_json(receipt_path)
     validate_manifest_identity(value, spec, stage=stage)
     expected_status = "ready" if stage == "preflight" else "passed"
     if value.get("status") != expected_status:
         raise SageMemRunError(f"{stage} receipt is not {expected_status}")
     if stage == "preflight":
+        if receipt_path.is_symlink() \
+                or oct(receipt_path.stat().st_mode & 0o777) != "0o444":
+            raise SageMemRunError(
+                "preflight source-freeze receipt is not immutable")
         integrations = value.get("integrations")
         if not isinstance(integrations, Mapping):
             raise SageMemRunError("preflight integration identities missing")
@@ -614,11 +754,34 @@ def _require_ready_receipt(spec: Mapping[str, Any], stage: str,
                     or not _is_sha256(identity.get("sha256")):
                 raise SageMemRunError(
                     f"preflight integration identity malformed: {name}")
-            path = Path(identity.get("path", ""))
-            if not path.is_file() or path.stat().st_size != identity.get("size") \
-                    or sha256_file(path) != identity["sha256"]:
+            source_path = Path(identity.get("path", ""))
+            if not source_path.is_file() \
+                    or source_path.stat().st_size != identity.get("size") \
+                    or sha256_file(source_path) != identity["sha256"]:
                 raise SageMemRunError(
                     f"integration changed after preflight: {name}")
+        source_lock = value.get("preselection_source_lock")
+        current = _producer_identities()
+        if not isinstance(source_lock, Mapping) \
+                or source_lock.get("status") != \
+                "frozen-before-complete-development-selection" \
+                or source_lock.get("producer_identities") != current \
+                or source_lock.get("source_set_sha256") != hashlib.sha256(
+                    canonical_json(current).encode("utf-8")).hexdigest():
+            raise SageMemRunError(
+                "preselection producer source set changed")
+        try:
+            amendment = load_formal_amendment()
+        except FormalAmendmentError as error:
+            raise SageMemRunError(str(error)) from error
+        amendment_path = Path(amendment["_path"])
+        if source_lock.get("formal_amendment") != {
+            "path": str(amendment_path.relative_to(ROOT)),
+            "size": amendment_path.stat().st_size,
+            "sha256": amendment["_sha256"],
+        }:
+            raise SageMemRunError(
+                "preselection formal amendment identity changed")
     return value
 
 
@@ -738,14 +901,41 @@ def validate_prepared_payload(spec: Mapping[str, Any], cohort: str,
         hashes.add(record["selection_sha256"])
     if len(hashes) != len(expected):
         raise SageMemRunError(f"fresh-bank split hashes collide: {cohort}")
+    bank = value.get("formal_bank")
+    custody = value.get("label_custody")
+    phase_a = value.get("phase_a_contract")
+    if not isinstance(bank, Mapping) or bank.get("cohort") != cohort \
+            or not _is_sha256(bank.get("manifest_sha256")) \
+            or not isinstance(bank.get("bank_root"), str) \
+            or not isinstance(custody, Mapping) \
+            or custody.get("status") != "sealed-for-post-grid-finalizer" \
+            or custody.get("per_cell_api_access") is not False \
+            or custody.get("path_exposed_to_phase_a") is not False \
+            or "path" in custody \
+            or not _is_sha256(custody.get("vault_sha256")) \
+            or not _is_sha256(custody.get("custody_receipt_sha256")) \
+            or phase_a != {
+                "schema": "sage_mem_v1_phase_a_cell_v1",
+                "representation": "feature_artifact",
+                "consumer": "centralized-pooled-consumer-train-features",
+                "formal_test_labels_available": False,
+            }:
+        raise SageMemRunError(f"formal two-phase handle failed: {cohort}")
+    bank_root = Path(bank["bank_root"])
+    expected_root = (output_root(spec) / "formal_preparation" / "banks"
+                     / cohort).resolve()
+    manifest_path = bank_root / "manifest.json"
+    if bank_root.resolve() != expected_root or bank_root.is_symlink() \
+            or not manifest_path.is_file() or manifest_path.is_symlink() \
+            or sha256_file(manifest_path) != bank["manifest_sha256"]:
+        raise SageMemRunError(f"formal bank identity failed: {cohort}")
 
 
 def _prepare(spec: Mapping[str, Any], cohort: str) -> dict[str, Any]:
-    if spec["freshness"]["formal_preparation_status"] == \
-            "pending-executable-fresh-bank-builders":
-        raise SageMemRunError(
-            "formal preparation is fail-closed: executable fresh-bank "
-            "builders have not yet been delivered, reviewed, and registered")
+    try:
+        load_formal_amendment()
+    except FormalAmendmentError as error:
+        raise SageMemRunError(str(error)) from error
     require_valid_lock(spec)
     require_exact_gpu(spec, cohort)
     model_contract, adapter = _adapter(spec, cohort)
@@ -767,63 +957,25 @@ def _prepare(spec: Mapping[str, Any], cohort: str) -> dict[str, Any]:
     }
 
 
-def validate_formal_payload(spec: Mapping[str, Any], cohort: str, arm: str,
-                            seed: int, value: Mapping[str, Any]) -> None:
-    if value.get("status") != "complete" \
-            or value.get("cohort") != cohort or value.get("arm") != arm \
-            or value.get("seed") != seed \
-            or value.get("labels_used_for_training") is not False \
-            or not _is_sha256(value.get("host_hash_before")) \
-            or value.get("host_hash_before") != value.get("host_hash_after"):
-        raise SageMemRunError("formal cell identity/label/host invariant failed")
-    required = spec["fairness_reporting"]["required_per_arm_fields"]
-    resources = value.get("resource_report")
-    if not isinstance(resources, Mapping) or set(required).difference(resources):
-        raise SageMemRunError("formal cell lacks resource reporting")
-    for key in required:
-        number = resources[key]
-        if isinstance(number, bool) or not isinstance(number, (int, float)) \
-                or not math.isfinite(float(number)) or number < 0:
-            raise SageMemRunError(f"invalid resource field: {key}")
-    if isinstance(value.get("next_feature_mse"), bool) \
-            or not isinstance(value.get("next_feature_mse"), (int, float)) \
-            or not math.isfinite(float(value["next_feature_mse"])) \
-            or value["next_feature_mse"] < 0:
-        raise SageMemRunError("next-feature health metric missing")
-    required_flags = (
-        "host_output_exposure_measured", "reset_intervention_measured",
-        "external_consumer_gate_evaluated", "counterfactual_pairing_preserved",
-    )
-    if any(value.get(flag) is not True for flag in required_flags):
-        raise SageMemRunError("formal causal/execution measurements incomplete")
-    artifact = value.get("episode_results")
-    if not isinstance(artifact, Mapping) \
-            or not isinstance(artifact.get("path"), str) \
-            or not _is_sha256(artifact.get("sha256")):
-        raise SageMemRunError("episode-level result artifact missing")
-    relative = Path(artifact["path"])
-    if relative.is_absolute() or ".." in relative.parts \
-            or len(relative.parts) != 1:
-        raise SageMemRunError("formal episode artifact path is unsafe")
-
-
 def validate_cell_directory(spec: Mapping[str, Any], path: Path,
                             cohort: str, arm: str, seed: int) -> dict[str, Any]:
+    """Validate one label-free formal Phase-A cell and return its manifest."""
+
+    from scripts.sage_mem_v1_formal_finalizer import (
+        SageMemFormalFinalizerError,
+        validate_phase_a_cell,
+    )
+
     manifest_path = path / "manifest.json"
     if not manifest_path.is_file():
         raise SageMemRunError(f"cell manifest missing: {path}")
+    try:
+        validate_phase_a_cell(path, cohort, arm, seed)
+    except SageMemFormalFinalizerError as error:
+        raise SageMemRunError(str(error)) from error
     manifest = _load_json(manifest_path)
-    validate_manifest_identity(manifest, spec, stage="full")
-    validate_formal_payload(spec, cohort, arm, seed, manifest["result"])
-    artifact = path / manifest["result"]["episode_results"]["path"]
-    if not artifact.is_file() \
-            or sha256_file(artifact) != manifest["result"][
-                "episode_results"]["sha256"]:
-        raise SageMemRunError(f"cell artifact identity failed: {path}")
-    allowed = {"manifest.json", artifact.name}
-    unexpected = {item.name for item in path.iterdir()}.difference(allowed)
-    if unexpected:
-        raise SageMemRunError(f"unexpected formal cell files: {sorted(unexpected)}")
+    if manifest.get("protocol_fingerprint") != spec_fingerprint(spec):
+        raise SageMemRunError("formal Phase-A protocol fingerprint differs")
     return manifest
 
 
@@ -855,19 +1007,23 @@ def _run_full_cell(spec: Mapping[str, Any], cohort: str, arm: str,
         )
         if not isinstance(result, Mapping):
             raise SageMemRunError("run_formal_cell must return a mapping")
-        validate_formal_payload(spec, cohort, arm, seed, result)
-        artifact = staging / result["episode_results"]["path"]
-        if not artifact.is_file() or sha256_file(artifact) != \
-                result["episode_results"]["sha256"]:
-            raise SageMemRunError("formal result artifact hash mismatch")
-        manifest = {
-            "schema_version": 1, "study": "sage-mem-v1", "stage": "full",
-            "status": "complete", "cohort": cohort, "arm": arm,
-            "seed": seed, "physical_gpu": spec["cohorts"][cohort]["gpu"],
-            "protocol_fingerprint": spec_fingerprint(spec),
-            "result": dict(result), "completed_unix_ns": time.time_ns(),
-        }
+        manifest = dict(result)
+        if manifest.get("cohort") != cohort or manifest.get("arm") != arm \
+                or manifest.get("seed") != seed \
+                or manifest.get("protocol_fingerprint") != spec_fingerprint(spec) \
+                or manifest.get("bank_manifest_sha256") != prepared[
+                    "result"]["formal_bank"]["manifest_sha256"]:
+            raise SageMemRunError("formal Phase-A identity differs")
         atomic_json(staging / "manifest.json", manifest)
+        from scripts.sage_mem_v1_formal_finalizer import (
+            PRODUCTION_CONTRACT,
+            SageMemFormalFinalizerError,
+            _validate_cell,
+        )
+        try:
+            _validate_cell(staging, cohort, arm, seed, PRODUCTION_CONTRACT)
+        except SageMemFormalFinalizerError as error:
+            raise SageMemRunError(str(error)) from error
         os.rename(staging, final)
         return validate_cell_directory(spec, final, cohort, arm, seed)
     except BaseException:
@@ -950,12 +1106,17 @@ def main(argv: Iterable[str] | None = None) -> None:
         return
     if destination.exists():
         if args.resume:
-            existing = _load_json(destination)
-            validate_manifest_identity(existing, spec, stage=args.stage)
+            existing = (_require_ready_receipt(spec, "preflight")
+                        if args.stage == "preflight" else
+                        _load_json(destination))
+            if args.stage != "preflight":
+                validate_manifest_identity(existing, spec, stage=args.stage)
             print(canonical_json(existing))
             return
         raise FileExistsError(f"stage receipt already exists: {destination}")
     atomic_json(destination, result)
+    if args.stage == "preflight":
+        os.chmod(destination, 0o444)
     print(canonical_json(result))
 
 

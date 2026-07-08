@@ -22,14 +22,17 @@ predicted state before observation t is consumed.  All recurrence arithmetic
 is performed in fp32 with autocast disabled; reads are cast back to the input
 dtype at the boundary.
 
-The only trainable tensors are W_x, B, W_o, and two channel-wise gate vectors.
-Consequently the count is exactly
+The only trainable tensors are the observation and surprise projections
+``W_x`` and ``W_g``, the action map ``B``, and two channel-wise vectors for
+the read scale and gate threshold.  Consequently the count is exactly
 
     D^2 + DA + D^2 + D + D = D(2D + A + 2),
 
-matching the fixed-trust and diagonal-SSM publication arms.  W_o is
-zero-initialized, so both fused and prior outputs are exactly the no-state host
-at initialization.
+matching the fixed-trust and diagonal-SSM publication arms.  The diagonal
+read scale is zero-initialized, so both fused and prior outputs are exactly the
+no-state host at initialization.  This compute-matched form uses two dense
+latent projections per observation, rather than paying for a dense output
+projection twice (prior and posterior) at every step.
 """
 
 from __future__ import annotations
@@ -140,23 +143,25 @@ class SAGEMem(Carrier):
         self.region_size = region_size
         self.maturity_scale = float(maturity_scale)
 
-        # Exact matched budget: D^2 + DA + D^2 + 2D.
+        # Exact matched budget: D^2 + D^2 + DA + D + D.  A diagonal read is
+        # intentional: applying one dense W_o to both the prior and posterior
+        # would make this carrier about 1.5x the registered baseline FLOPs.
         self.w_x = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.gate_projection = nn.Linear(
+            embed_dim, embed_dim, bias=False)
         self.action_projection = nn.Linear(
             action_dim, embed_dim, bias=False)
-        self.w_o = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.read_scale = nn.Parameter(torch.empty(embed_dim))
         self.gate_threshold = nn.Parameter(torch.empty(embed_dim))
-        self.gate_log_slope = nn.Parameter(torch.empty(embed_dim))
 
         # Identity lift makes innovation magnitudes interpretable at step 0;
         # action dynamics start neutral and are learned from the host loss.
         with torch.no_grad():
             self.w_x.weight.copy_(torch.eye(embed_dim))
+            self.gate_projection.weight.copy_(torch.eye(embed_dim))
             self.action_projection.weight.zero_()
-            self.w_o.weight.zero_()
+            self.read_scale.zero_()
             self.gate_threshold.fill_(math.log1p(DEFAULT_GATE_REFERENCE))
-            self.gate_log_slope.fill_(
-                math.log(math.expm1(DEFAULT_GATE_SLOPE)))
 
         assignments = torch.arange(embed_dim) % len(half_life_values)
         half_life_tensor = torch.tensor(
@@ -164,6 +169,9 @@ class SAGEMem(Carrier):
         decay = torch.exp2(-1.0 / half_life_tensor)
         self.register_buffer("half_lives", half_life_tensor)
         self.register_buffer("decay", decay)
+        self.register_buffer(
+            "gate_slope", torch.tensor(DEFAULT_GATE_SLOPE,
+                                        dtype=torch.float32))
         self.register_buffer(
             "maturity_decay",
             torch.tensor(
@@ -398,10 +406,12 @@ class SAGEMem(Carrier):
     ) -> tuple[SAGEMemState, torch.Tensor, torch.Tensor]:
         lifted = self._linear_fp32(observation.float(), self.w_x)
         innovation = lifted - predicted.memory
-        surprise = torch.log1p(innovation.abs())
-        slope = F.softplus(self.gate_log_slope.float())
+        mixed_innovation = self._linear_fp32(
+            innovation, self.gate_projection)
+        surprise = torch.log1p(mixed_innovation.abs())
         gate = torch.sigmoid(
-            slope * (surprise - self.gate_threshold.float()))
+            self.gate_slope.float()
+            * (surprise - self.gate_threshold.float()))
         memory = predicted.memory + gate * innovation
         write_mass = predicted.write_mass + gate.mean(
             dim=-1, keepdim=True)
@@ -413,7 +423,7 @@ class SAGEMem(Carrier):
 
     def _read(self, state: SAGEMemState) -> torch.Tensor:
         exposed = self.aggregate(state.memory)
-        residual = self._linear_fp32(exposed, self.w_o)
+        residual = exposed * self.read_scale.float()
         return self._confidence(state) * residual
 
     def _applied_exposure(self, state: SAGEMemState) -> torch.Tensor:
@@ -608,9 +618,10 @@ class SAGEMem(Carrier):
             self, *, batch_size: int, timesteps: int, tokens: int) -> int:
         """Deterministic inference FLOP estimate used by fairness ledgers.
 
-        A multiply-add counts as two FLOPs.  The estimate includes one latent
-        lift, two projected reads, action prediction, gate arithmetic, and two
-        local/regional/global aggregations per observed token.  It deliberately
+        A multiply-add counts as two FLOPs.  The estimate includes the latent
+        lift and surprise projection, two diagonal reads, action prediction,
+        gate arithmetic, and two local/regional/global aggregations per
+        observed token.  It deliberately
         uses the same formula for all four controls because their allocated
         inference structure and parameter budget are identical.
         """
@@ -625,7 +636,7 @@ class SAGEMem(Carrier):
                     or value < 1):
                 raise ValueError(f"{name} must be a positive integer")
         d, a = self.embed_dim, self.action_dim
-        per_token_step = 6 * d * d + 32 * d
+        per_token_step = 4 * d * d + 40 * d
         per_batch_step = 2 * d * a
         return int(batch_size * timesteps
                    * (tokens * per_token_step + per_batch_step))
@@ -642,11 +653,12 @@ class SAGEMem(Carrier):
             "parameter_target": sage_mem_parameter_count(
                 self.embed_dim, self.action_dim),
             "parameter_formula": "D(2D+A+2)",
+            "compute_revision": "two-dense-plus-diagonal-read-v1.1",
             "half_lives": [float(value) for value in
                            torch.unique(self.half_lives).tolist()],
             "decay_assignment": "round_robin_over_channels",
             "write_rule": "sigmoid_surprise_gated_predict_correct",
-            "surprise": "log1p(abs(W_x z - m_minus))",
+            "surprise": "log1p(abs(W_g (W_x z - m_minus)))",
             "aggregation": "fixed_local_regional_global",
             "aggregation_weights": list(self.aggregation_weights),
             "region_size": self.region_size,

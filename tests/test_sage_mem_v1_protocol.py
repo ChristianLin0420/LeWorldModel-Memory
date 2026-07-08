@@ -19,6 +19,11 @@ from scripts.audit_sage_mem_v1 import (
 from scripts.launch_sage_mem_v1 import (
     development_audit_command,
     development_bank_commands,
+    formal_audit_command,
+    formal_execution_decks_command,
+    formal_finalization_command,
+    formal_preparation_command,
+    formal_raw_context_command,
     planned_commands,
 )
 from scripts.prepare_sage_mem_v1_development import build_development_manifest
@@ -28,7 +33,6 @@ from scripts.run_sage_mem_v1 import (
     _normalize_development_result,
     _prepare,
     preflight_report,
-    validate_formal_payload,
 )
 from scripts.sage_mem_v1_interface import (
     SageMemInterfaceError,
@@ -137,8 +141,8 @@ def test_development_banks_are_deterministic_parent_train_only(
     assert first["formal_evidence_permitted"] is False
 
 
-def test_formal_prepare_is_explicitly_fail_closed() -> None:
-    with pytest.raises(SageMemRunError, match="fresh-bank builders"):
+def test_formal_prepare_is_fail_closed_until_implementation_is_sealed() -> None:
+    with pytest.raises(SageMemRunError, match="sealed implementation lock"):
         _prepare(_spec(), "lewm_reacher_color")
 
 
@@ -237,6 +241,14 @@ def test_preflight_reports_missing_host_integration_without_claiming_ready() -> 
         "lewm/models/sage_mem.py")
     assert len(report["integrations"]["model"]["sha256"]) == 64
     assert len(report["parent_identities"]) == 5
+    source_lock = report["preselection_source_lock"]
+    assert source_lock["status"] == \
+        "frozen-before-complete-development-selection"
+    assert len(source_lock["producer_identities"]) >= 50
+    assert len(source_lock["source_set_sha256"]) == 64
+    assert source_lock["boundary"]["development_audit_present"] is False
+    assert source_lock["boundary"][
+        "development_or_formal_outcomes_read"] is False
 
 
 def test_launcher_plans_exact_cells_and_double_confirmation() -> None:
@@ -261,55 +273,30 @@ def test_launcher_plans_exact_cells_and_double_confirmation() -> None:
                    for part in command) for _, command in banks)
     assert "audit_sage_mem_v1.py" in development_audit_command(
         DEFAULT_SPEC)[1][1]
-
-
-def test_formal_payload_requires_resource_health_reset_and_execution_fields() -> None:
-    spec = _spec()
-    payload = {
-        "status": "complete", "cohort": "lewm_reacher_color",
-        "arm": "sage_mem_full", "seed": 0,
-        "labels_used_for_training": False,
-        "host_hash_before": "a" * 64, "host_hash_after": "a" * 64,
-        "resource_report": {
-            "trainable_parameters": 76032,
-            "forward_flops_per_episode": 1,
-            "persistent_state_floats": 192,
-            "peak_cuda_bytes": 1,
-            "wall_clock_train_seconds": 1.0,
-        },
-        "next_feature_mse": 0.1,
-        "host_output_exposure_measured": True,
-        "reset_intervention_measured": True,
-        "external_consumer_gate_evaluated": True,
-        "counterfactual_pairing_preserved": True,
-        "episode_results": {"path": "episode_results.npz",
-                            "sha256": "b" * 64},
-    }
-    validate_formal_payload(
-        spec, "lewm_reacher_color", "sage_mem_full", 0, payload)
-    broken = copy.deepcopy(payload)
-    broken["labels_used_for_training"] = True
-    with pytest.raises(SageMemRunError):
-        validate_formal_payload(
-            spec, "lewm_reacher_color", "sage_mem_full", 0, broken)
-
-    broken = copy.deepcopy(payload)
-    broken["host_hash_before"] = broken["host_hash_after"] = None
-    with pytest.raises(SageMemRunError):
-        validate_formal_payload(
-            spec, "lewm_reacher_color", "sage_mem_full", 0, broken)
-
-    broken = copy.deepcopy(payload)
-    broken["resource_report"]["forward_flops_per_episode"] = float("nan")
-    with pytest.raises(SageMemRunError):
-        validate_formal_payload(
-            spec, "lewm_reacher_color", "sage_mem_full", 0, broken)
-
-    broken = copy.deepcopy(payload)
-    broken["episode_results"]["path"] = "../escape.npz"
-    with pytest.raises(SageMemRunError):
-        validate_formal_payload(
-            spec, "lewm_reacher_color", "sage_mem_full", 0, broken)
+    preparation = formal_preparation_command(DEFAULT_SPEC)[1]
+    assert "prepare_sage_mem_v1_formal.py" in preparation[1]
+    assert "PREPARE_SAGE_MEM_V1_FORMAL" in preparation
+    raw_context = formal_raw_context_command(
+        DEFAULT_SPEC, _spec(), resume=True)[1]
+    assert "prepare_sage_mem_v1_raw_context_reference.py" in raw_context[1]
+    assert "--prepared-root" in raw_context
+    assert any("raw_context_phase_a" in part for part in raw_context)
+    assert "--resume" in raw_context
+    execution_decks = formal_execution_decks_command(
+        DEFAULT_SPEC, _spec(), resume=True)[1]
+    assert "prepare_sage_mem_v1_execution_decks.py" in execution_decks[1]
+    assert "--preparation-root" in execution_decks
+    assert "--resume" in execution_decks
+    finalization = formal_finalization_command(DEFAULT_SPEC, _spec())[1]
+    assert "sage_mem_v1_formal_finalizer.py" in finalization[1]
+    assert "--label-registry" in finalization
+    assert "--validate-finalized-output" not in finalization
+    validation = formal_finalization_command(
+        DEFAULT_SPEC, _spec(), validate_existing=True)[1]
+    assert "--validate-finalized-output" in validation
+    formal_audit = formal_audit_command(DEFAULT_SPEC, resume=True)[1]
+    assert formal_audit[formal_audit.index("--stage") + 1] == "formal"
+    assert "--resume" in formal_audit
 
 
 def test_host_adapter_contract_checks_description_and_method_signatures() -> None:
@@ -518,7 +505,8 @@ def test_development_audit_locks_healthy_comparators_without_formal_data(
                     "gradient_finite": True,
                     "resource_report": {
                         "trainable_parameters": 0 if arm == "none" else target,
-                        "forward_flops_per_episode": 1000,
+                        "forward_flops_per_episode": (
+                            1300 if arm == "ssm" else 1000),
                         "persistent_state_floats": 0 if arm == "none" else 192,
                         "peak_cuda_bytes": 100,
                         "wall_clock_train_seconds": 1.0,
@@ -536,9 +524,11 @@ def test_development_audit_locks_healthy_comparators_without_formal_data(
     assert global_receipt["formal_data_read"] is False
     for selection in selections.values():
         assert selection["gdelta_development_healthy"] is True
+        assert selection["arm_summary"]["ssm"]["flop_matched"] is False
+        assert selection["arm_summary"]["ssm"]["healthy"] is False
         assert selection["locked_comparators"] == {
-            "retention": "ssm", "next_feature": "ssm_aux",
-            "execution": "ssm"}
+            "retention": "ssm_aux", "next_feature": "ssm_aux",
+            "execution": "ssm_aux"}
 
 
 def test_paired_cluster_bootstrap_is_deterministic_and_preserves_pairing() -> None:
