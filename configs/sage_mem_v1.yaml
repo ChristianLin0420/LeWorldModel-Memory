@@ -1,0 +1,245 @@
+schema_version: 1
+study: sage-mem-v1
+protocol_status: preregistered-before-development-or-formal-outcomes
+claim_scope: task-level causal memory mechanism audit; no pooled cross-host score
+implementation_lock: outputs/sage_mem_v1/protocol_lock.json
+
+cohorts:
+  lewm_reacher_color:
+    gpu: 0
+    host_family: SIGReg-LeWM
+    task: Reacher matched-color recall
+    parent_protocol: configs/paper_a_matched_color_v1_1.yaml
+    adapter: lewm_reacher_matched_color
+    classes: 4
+    chance: 0.25
+    target_parameters: 76032
+    ages: [4, 8, 15]
+    split_episodes: {development: 240, formal_train: 1200, consumer_train: 480, formal_test: 720}
+    forbidden_parent_artifacts:
+      - outputs/paper_a_matched_color_v1_1/cache/reacher/manifest.json
+  lewm_pusht_color:
+    gpu: 0
+    host_family: SIGReg-LeWM
+    task: PushT matched-color recall
+    parent_protocol: configs/paper_a_matched_color_v1_1.yaml
+    adapter: lewm_pusht_matched_color
+    classes: 4
+    chance: 0.25
+    target_parameters: 76032
+    ages: [4, 8, 15]
+    split_episodes: {development: 240, formal_train: 1200, consumer_train: 480, formal_test: 720}
+    forbidden_parent_artifacts:
+      - outputs/paper_a_matched_color_v1_1/cache/pusht/manifest.json
+  dinowm_pusht_token:
+    gpu: 1
+    host_family: DINO-WM
+    task: PushT token binding
+    parent_protocol: configs/dinowm_wave2_spatial_carrier_v1_1.yaml
+    adapter: dinowm_pusht_token
+    classes: 4
+    chance: 0.25
+    target_parameters: 299520
+    ages: [4, 8, 15]
+    split_episodes: {development: 320, formal_train: 1200, consumer_train: 600, formal_test: 960}
+    forbidden_parent_artifacts:
+      - outputs/dinowm_wave2_spatial_carrier_v1_1/cache/manifest.json
+  dinowm_pusht_binding:
+    gpu: 1
+    host_family: DINO-WM
+    task: PushT multi-item visual binding recall
+    parent_protocol: configs/dinowm_wave2_spatial_carrier_v1_1.yaml
+    adapter: dinowm_pusht_binding
+    classes: 6
+    chance: 0.16666666666666666
+    target_parameters: 299520
+    ages: [4, 8, 15]
+    split_episodes: {development: 320, formal_train: 1200, consumer_train: 600, formal_test: 960}
+    forbidden_parent_artifacts:
+      - outputs/dinowm_wave2_spatial_carrier_v1_1/cache/manifest.json
+  dinowm_pointmaze_goal:
+    gpu: 2
+    host_family: DINO-WM
+    task: PointMaze delayed-goal recall
+    parent_protocol: configs/dinowm_pointmaze_wave3.yaml
+    adapter: dinowm_pointmaze_goal
+    classes: 4
+    chance: 0.25
+    target_parameters: 299520
+    ages: [4, 8, 15]
+    split_episodes: {development: 120, formal_train: 600, consumer_train: 240, formal_test: 360}
+    forbidden_parent_artifacts:
+      - outputs/dinowm_pointmaze_wave3/cache/selection.json
+      - outputs/dinowm_pointmaze_wave3/cache/manifest.json
+
+freshness:
+  master_seed: 2026070801
+  derivation: sha256("sage-mem-v1" || master_seed || cohort || split || purpose), first 8 bytes modulo 2147483647
+  episode_disjoint_within_cohort: true
+  exclude_every_parent_episode_or_rng_registry: true
+  development_and_formal_banks_disjoint: true
+  development_labels_may_select_hyperparameters_only: true
+  formal_labels_hidden_until_all_cells_complete: true
+  development_source: deterministic subset of parent TRAIN partition only
+  development_must_not_read_parent_validation_or_test: true
+  formal_preparation_status: pending-executable-fresh-bank-builders
+  formal_fail_closed_until_each_adapter_proves_parent-disjoint-selection: true
+  development_builder: scripts/prepare_sage_mem_v1_development.py
+
+arms:
+  - none
+  - gru
+  - lstm
+  - ssm
+  - fixed_trust
+  - gdelta
+  - fixed_trust_aux
+  - ssm_aux
+  - sage_mem_full
+  - sage_mem_next_only
+  - sage_mem_no_exposure
+  - sage_mem_exposure_only
+baseline_roles:
+  none: no persistent state
+  gru: parameter-matched recurrent baseline
+  lstm: parameter-matched recurrent baseline
+  ssm: parameter-matched diagonal state-space baseline
+  fixed_trust: previously registered predict-correct baseline
+  gdelta: modern gated-delta baseline; enters formal comparison only after the locked development health gate
+  fixed_trust_aux: fixed-trust with the identical label-free auxiliary loss and exposure opportunity
+  ssm_aux: state-space memory with the identical label-free auxiliary loss and exposure opportunity
+  sage_mem_full: candidate persistent memory plus host-output exposure
+  sage_mem_next_only: objective control; full architecture with auxiliary weights zero
+  sage_mem_no_exposure: architecture control; persistent memory without host-output exposure
+  sage_mem_exposure_only: architecture control; exposure path with state reset every step
+long_context_reference:
+  enabled: true
+  short_context_frames: 3
+  long_context_frames: 16
+  role: raw-access reference trained and evaluated separately from carrier parameter matching
+
+model_interface:
+  module: lewm.models.sage_mem
+  api_version: sage_mem_v1_api_v1
+  builder: build_sage_mem_v1
+  required_output_keys: [fused, prior, posterior, exposure, diagnostics]
+  labels_forbidden_in_builder_or_forward: true
+host_adapter_interface:
+  module: scripts.sage_mem_v1_host_adapters
+  api_version: sage_mem_v1_host_adapter_v1
+  builder: build_host_adapter
+  integration_status: development_adapter_delivered_formal_fresh_bank_pending
+
+label_free_objective:
+  next_feature_mse_weight: 1.0
+  exposure_alignment_weight: 0.10
+  past_feature_replay_weight: 0.10
+  targets: frozen host features only
+  semantic_labels_or_oracle_state_forbidden: true
+  detach_all_targets: true
+  objective_control_sets_auxiliary_weights_to_zero: true
+
+optimization:
+  development_arms: [none, gru, lstm, ssm, fixed_trust, gdelta, fixed_trust_aux, ssm_aux, sage_mem_full, sage_mem_next_only, sage_mem_no_exposure, sage_mem_exposure_only]
+  development_seeds: [101, 102, 103]
+  formal_seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  scheduler: cosine-annealing
+  gradient_clip_norm: 1.0
+  outcome_dependent_early_stopping: false
+  equal_hyperparameter_budget_per_trainable_arm: true
+  frozen_host_encoder_and_predictor: true
+  deterministic_algorithms: true
+development_selection:
+  comparator_arms: [gru, lstm, ssm, fixed_trust, gdelta, fixed_trust_aux, ssm_aux]
+  tie_break_order: [ssm_aux, fixed_trust_aux, gdelta, ssm, fixed_trust, gru, lstm]
+  metrics: {retention: maximize, next_feature: minimize, execution: reuse-retention-comparator-without-development-execution-selection}
+  requires_all_registered_cells: true
+  labels_allowed_only_for_posthoc_retention_and_execution_metrics: true
+  one_selection_receipt_per_cohort: true
+  global_audit_receipt_required_before_seal: true
+
+fairness_reporting:
+  target_parameter_count_source: exact per-cohort target_parameters field
+  exact_target_values: {SIGReg-LeWM: 76032, DINO-WM: 299520}
+  maximum_parameter_relative_gap: 0.05
+  maximum_flop_relative_gap: 0.10
+  required_per_arm_fields:
+    - trainable_parameters
+    - forward_flops_per_episode
+    - persistent_state_floats
+    - peak_cuda_bytes
+    - wall_clock_train_seconds
+  parameter_match_excludes_none_and_long_context: true
+
+admission:
+  cue_balanced_accuracy_min: 0.75
+  cue_min_class_recall_min: 0.70
+  shortcut_absolute_ceiling: 0.30
+  shortcut_chance_plus_ceiling: 0.05
+  host_hash_unchanged_required: true
+  rollout_health_required: true
+  all_registered_ages_required: true
+  fail_closed_before_formal_training: true
+  gdelta_development_health_gate:
+    required: true
+    next_feature_mse_ratio_max: 1.02
+    reference_arms: [gru, lstm, ssm, fixed_trust, fixed_trust_aux, ssm_aux]
+    finite_gradients_required: true
+    exact_host_parameter_target_or_within_registered_5_percent: true
+
+confirmatory_gates:
+  next_feature_noninferiority:
+    metric: next-feature MSE
+    relative_margin: 0.02
+    confidence: 0.90
+    reference: strongest healthy parameter-matched baseline
+  host_output_exposure:
+    metric: balanced accuracy at frozen formal readout
+    minimum_absolute_gain: 0.05
+    confidence: 0.95
+    comparison: sage_mem_full minus strongest locked baseline at each age
+  reset_causality:
+    metric: balanced accuracy
+    minimum_absolute_drop: 0.03
+    reset_to_full_mse_ratio_max: 1.25
+    confidence: 0.95
+    intervention: reset candidate persistent state immediately after cue offset
+  mechanism_controls:
+    minimum_absolute_gain: 0.03
+    confidence: 0.95
+    required_comparisons: [sage_mem_full-sage_mem_next_only, sage_mem_full-sage_mem_no_exposure, sage_mem_full-sage_mem_exposure_only, sage_mem_full-fixed_trust_aux, sage_mem_full-ssm_aux]
+  execution:
+    oracle_gate: 0.90
+    minimum_absolute_success_gain: 0.03
+    confidence: 0.95
+    comparator: strongest fixed external consumer baseline
+    consumer_arm_blind: true
+    controller_and_physics_pinned: true
+    skipped_if_oracle_gate_fails: true
+  interpretation: every claim is cohort-by-task-by-age; no universal success claim and no heterogeneous pooled score
+
+statistics:
+  bootstrap_draws: 20000
+  bootstrap_seed: 2026070821
+  interval: percentile
+  resampling_unit: formal seed and native episode cluster
+  preserve_pairing: arms, reset interventions, context references, and counterfactual variants within episode
+  stratify_by: semantic class and registered evidence age
+  multiple_comparison_policy: report every registered contrast; no outcome-selected subset
+
+execution:
+  gpu_ownership: {0: [lewm_reacher_color, lewm_pusht_color], 1: [dinowm_pusht_token, dinowm_pusht_binding], 2: [dinowm_pointmaze_goal]}
+  allowed_physical_gpus: [0, 1, 2]
+  one_visible_cuda_device_per_worker: true
+  stages: [preflight, smoke, development, seal, prepare, full, audit]
+  explicit_execute_required: true
+  formal_confirmation_phrase: RUN_SAGE_MEM_V1_FORMAL
+  atomic_cell_directories: true
+  resume_requires_valid_manifest: true
+  never_overwrite_completed_cell: true
+  fail_closed_on_unexpected_files_or_status: true
+  output_root: outputs/sage_mem_v1
