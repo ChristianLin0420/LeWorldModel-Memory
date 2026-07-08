@@ -1,0 +1,33 @@
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{DINO-WM PointMaze persistent-carrier results.}
+\label{tab:appendix-pointmaze-carriers}
+\begin{tabular}{llrrrr}
+\toprule
+Age & Carrier & BAcc & $\Delta$ no state & $\Delta$ reset & Params \\
+\midrule
+4 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $53.0$ $[47.2,59.6]$ & $+28.0$ $[+22.2,+34.6]$ & $+28.0$ $[+22.2,+34.7]$ & 298{,}368 \\
+ & LSTM & $89.0$ $[82.8,94.0]$ & $+64.0$ $[+57.9,+69.0]$ & $+64.0$ $[+57.9,+69.0]$ & 299{,}632 \\
+ & State-space & $99.8$ $[99.3,100.0]$ & $+74.8$ $[+74.4,+75.0]$ & $+74.8$ $[+74.4,+75.0]$ & 299{,}520 \\
+ & Fixed-trust & $100.0$ $[100.0,100.0]$ & $+75.0$ $[+75.0,+75.0]$ & $+75.0$ $[+75.0,+75.0]$ & 299{,}520 \\
+\addlinespace[2pt]
+8 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $39.2$ $[35.8,43.2]$ & $+14.2$ $[+10.8,+18.2]$ & $+14.2$ $[+10.8,+18.2]$ & 298{,}368 \\
+ & LSTM & $67.2$ $[57.8,76.3]$ & $+42.2$ $[+32.7,+51.2]$ & $+42.2$ $[+32.7,+51.5]$ & 299{,}632 \\
+ & State-space & $95.2$ $[92.7,97.3]$ & $+70.2$ $[+67.7,+72.3]$ & $+70.2$ $[+67.7,+72.3]$ & 299{,}520 \\
+ & Fixed-trust & $98.8$ $[97.8,99.6]$ & $+73.8$ $[+72.7,+74.6]$ & $+73.8$ $[+72.7,+74.6]$ & 299{,}520 \\
+\addlinespace[2pt]
+15 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $35.2$ $[32.7,38.0]$ & $+10.2$ $[+7.7,+13.0]$ & $+10.2$ $[+7.6,+13.0]$ & 298{,}368 \\
+ & LSTM & $53.5$ $[46.1,61.0]$ & $+28.5$ $[+21.1,+36.0]$ & $+28.5$ $[+21.1,+36.0]$ & 299{,}632 \\
+ & State-space & $76.0$ $[70.4,81.3]$ & $+51.0$ $[+45.5,+56.2]$ & $+51.0$ $[+45.4,+56.3]$ & 299{,}520 \\
+ & Fixed-trust & $86.6$ $[83.2,89.8]$ & $+61.6$ $[+58.2,+64.9]$ & $+61.6$ $[+58.2,+64.8]$ & 299{,}520 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Entries are percentage points with 95\% intervals from matched carrier-seed by equal-native-episode cluster resampling; all four counterfactual labels remain within their native episode cluster.}
+\end{table}

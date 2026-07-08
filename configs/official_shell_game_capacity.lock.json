@@ -1,0 +1,26 @@
+{
+  "immutable": true,
+  "producer_sha256": {
+    "lewm/models/frozen_swap_carriers.py": "dbcd2c40318ebc97063d22d59de76c36b304e775f43550b7fe33df66f168e3aa",
+    "lewm/models/official_lewm.py": "10744dc4bc8bfea0dacda8f79dfd9d171c3442f2bdbeea40764c27d2ffcc940b",
+    "lewm/models/v19_carriers.py": "aeb386ad2c391b6f44388801912a1dd3b2b879cf72ef931660f807c3d12eebfe",
+    "lewm/official_tasks/artifacts.py": "dde602f068cf857adce6ac404fe28e84894a44ef093ddd97bdfd414d15e44501",
+    "lewm/official_tasks/shell_game_admission.py": "cec20900712ad234b5884871fc580fd3a3496443fb7625dac92a2b669f29f698",
+    "lewm/official_tasks/shell_game_capacity.py": "a0bcf43e5aaef4bdb28c12091b5d850bcdcdae6906e9e4a43e816b58674e0427",
+    "lewm/official_tasks/shell_game_pipeline.py": "b2fe42444fe97d4f165533a882e7815853ec03df74b2fa7b42fb2b8b5d5b8098",
+    "lewm/official_tasks/shell_game_spec.py": "e268b84751baad68c89183581adecdc39ab681e5078bd1a3ab70aea728e2edfc",
+    "lewm/tasks_v19/__init__.py": "0f6fb8e424d0a47e7388f3ccb5f8d053612ab1f1ea20c9b2681c8afe58494ac5",
+    "lewm/tasks_v19/base.py": "35d49edc1b7f366846b31f37b4a038a7cf9f130168ca8cbb2063ac933316afc7",
+    "lewm/tasks_v19/overlays.py": "116fd8a61d082acad753515d90876aaa9e64bb5d21406997cdb4445dba66f4f7",
+    "scripts/cache_official_lewm.py": "73a5a7fa3e48da20d662ddca7772888720a7559fcef292bbfc448dd439bdeffe",
+    "scripts/cache_official_shell_game_capacity.py": "9feb54c6429f2b156d83638b685c5d73b10a7dda10c6e646fda0c642b862fa51",
+    "scripts/collect_official_shell_game_base.py": "a58cf2ecf5545b73e9b2219bc86a87d2d463153b91fc6ac39ddbbaceaab27c5b",
+    "scripts/launch_official_shell_game_capacity.py": "8e5b30c6cd04b510d440909c55b8743de49e16a6f1b7917597c07d601373dd2b",
+    "scripts/make_official_lewm_memory_data.py": "af02f6c8a4cfaedce7bb5d3155ca1ccb2c2c12f48ae60239240e4a04b08252bd",
+    "scripts/prepare_official_shell_game_stage.py": "176175de5a6c6c0dd8a87b70dbac3924e6620c0b0ed64a93d6f85b93ed33586f",
+    "scripts/train_official_shell_game_capacity.py": "3e9bd9fc9da2bbac6c4846753506ce22c8e3447f8832c96b74c4638bbf4ff887"
+  },
+  "schema": "official_shell_game_capacity_lock_v1",
+  "spec_path": "configs/official_shell_game_capacity.yaml",
+  "spec_sha256": "957b696af7972fc3632e7ff0e522b270db6b14cc54e6b5199f8b28c43c1e1024"
+}

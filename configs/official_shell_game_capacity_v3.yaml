@@ -1,0 +1,172 @@
+# Immutable V3 protocol: one development-only cue-salience candidate after
+# V2 failed the unchanged 0.75 frozen-encoder availability gate.  No V1/V2
+# artifact, threshold, task semantic, formal split definition, or carrier
+# definition is modified.
+schema_version: 3
+study: Official frozen LeWM shell-game capacity audit — cue-salience V3
+protocol_status: locked_before_v3_development_and_formal_run
+
+amendment:
+  kind: pre-formal_salience_amendment_v3
+  threshold_changed_from_v1_or_v2: false
+  semantic_capacity_contract_changed_from_v1_or_v2: false
+  carrier_definitions_changed_from_v1_or_v2: false
+  formal_protocol_changed_from_v2: false
+  rationale: V2 passed exact construction but failed frozen cue availability; V3 predeclares one larger three-slot cue card before a new development-only check.
+  parent_v2:
+    spec_path: configs/official_shell_game_capacity_v2.yaml
+    spec_sha256: 174046525cd4a642d8c384ba7bd0acc45aaf45f1b18c248e5d01d480c3ec0dd1
+    lock_path: configs/official_shell_game_capacity_v2.lock.json
+    lock_sha256: 3b3462d64e6ba485357b8430032665fd2f29889082dfd89d9e34a53bd951072d
+    output_root: outputs/official_shell_game_capacity_v2
+    failed_gate: cue_initial_slot_availability
+    unchanged_threshold: 0.75
+    formal_data_read: false
+    all_exact_counterfactual_gates_passed: true
+    evidence:
+      single-item:
+        path: outputs/official_shell_game_capacity_v2/development-cache/single-item/salience_selection.json
+        sha256: f697b90cdf0e4f8ecfae634ef378178133a237900e39bde4eadf5439df895688
+        manifest_path: outputs/official_shell_game_capacity_v2/development-cache/single-item/manifest.json
+        manifest_sha256: d6a6cf835715ff69bdfdd33f9335d599d6ab9d4fecd26376e3f976f3398053c0
+        selected: false
+        per_item_accuracy: [0.6625]
+      two-item:
+        path: outputs/official_shell_game_capacity_v2/development-cache/two-item/salience_selection.json
+        sha256: ae5d40d7c166be0ad4187676120f31d6148c404d0ca143fae5de6bf1c521fffc
+        manifest_path: outputs/official_shell_game_capacity_v2/development-cache/two-item/manifest.json
+        manifest_sha256: e3f60874258115fb1bb555895c7403cc5a6b5634dffeeb205e499c3dfa6c095e
+        selected: false
+        per_item_accuracy: [0.6625, 0.6875]
+      four-item:
+        path: outputs/official_shell_game_capacity_v2/development-cache/four-item/salience_selection.json
+        sha256: 6afd594472fb51208b03854f61a7d98192e0f0ea074db65f2c827f95a9ea01f4
+        manifest_path: outputs/official_shell_game_capacity_v2/development-cache/four-item/manifest.json
+        manifest_sha256: 8b21c49e2239a4b34610fb07df84fb7eee697be699afa972f420d9850617fa3b
+        selected: false
+        per_item_accuracy: [0.6625, 0.6875, 0.6583333333333333, 0.6541666666666667]
+
+official_host:
+  source: quentinll/lewm-reacher
+  source_commit: 62adae4b71dc474ddf8f794c476ebfe737a743ca
+  weights_path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+  weights_sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  frozen_encoder: true
+  frozen_predictor: true
+  latent_dim: 192
+  observation_length: 64
+  context: 3
+  action_block_dim: 10
+
+semantic_stages:
+  - key: single-item
+    display_name: Single-item shell-game recall
+    capacity: 1
+  - key: two-item
+    display_name: Two-item shell-game recall
+    capacity: 2
+  - key: four-item
+    display_name: Four-item shell-game recall
+    capacity: 4
+
+task_contract:
+  num_slots: 3
+  decision_index: 63
+  decision_observation_excluded: true
+  final_context_indices: [60, 61, 62]
+  cue_start: 4
+  cue_frames: 3
+  cue_stride: 4
+  swap_times: [24, 32, 40, 48]
+  swap_frames: 4
+  shuffle_off: 52
+  items_may_share_slot: true
+  capacity_stages_nested_by_seed: true
+  target: ordered final slot for every cued item
+
+cue_salience:
+  schema: official_shell_game_cue_salience_v3
+  cued_cup_fill: item_color
+  ball_radius: 6
+  cue_card: three_slot_spatial_panel
+  card_bounds: [2, 36, 62, 62]
+  header_bounds: [4, 38, 60, 43]
+  cell_width: 16
+  cell_bounds_y: [45, 60]
+  neutral_cell_color: [92, 94, 104]
+  card_background: [25, 28, 34]
+  other_cups: unchanged_neutral_identical
+  off_cue_pixels: byte_identical_to_v1_and_v2
+  selection_candidates: 1
+  selection_policy: development-only pass/fail; a failed candidate requires a new version
+
+development_selection:
+  split: development
+  immutable_partition: contiguous_by_episode_index
+  fit_indices: [0, 240]
+  check_indices: [240, 480]
+  fit_episodes: 240
+  check_episodes: 240
+  criterion: minimum per-item frozen cue initial-slot accuracy
+  threshold: 0.75
+  threshold_changed_from_v1_or_v2: false
+  all_stages_must_pass: true
+  formal_data_must_not_be_collected_before_all_stages_pass: true
+  action_if_failed: stop and create a newly locked version; never tune on formal train or validation
+
+data:
+  development:
+    episodes: 480
+    base_seed: 583600
+    counterfactual_seed: 593600
+  train:
+    episodes: 1200
+    base_seed: 583701
+    counterfactual_seed: 593701
+  validation:
+    episodes: 240
+    base_seed: 583702
+    counterfactual_seed: 593702
+  frame_skip: 5
+  raw_action_dim: 2
+  source_stream: clean
+  compression_level: 1
+
+admission:
+  cue_probe_frames: 3
+  post_shuffle_probe_frames: 4
+  cue_initial_slot_accuracy_min: 0.75
+  swap_pair_accuracy_min: 0.75
+  leakage_margin_above_chance: 0.05
+  policy: Every exact counterfactual and frozen-representation gate must pass before carrier training.
+
+carrier_training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  windows_per_episode: 8
+  primary_metrics:
+    - mean per-item balanced accuracy
+    - per-item balanced accuracy
+    - exact-set accuracy
+    - per-item chance
+    - exact-set chance
+  frozen_host_hash_must_match: true
+
+artifacts:
+  root: outputs/official_shell_game_capacity_v3
+  base: base
+  stages: stages
+  development_cache: development-cache
+  cache: cache
+  carriers: carriers
+  logs: logs
+
+launcher:
+  allowed_devices: ["cuda:1", "cuda:2"]
+  preview_by_default: true
+  explicit_execute_required: true
+  jobs_per_gpu: 1

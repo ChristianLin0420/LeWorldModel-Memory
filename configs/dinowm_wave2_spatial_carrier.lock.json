@@ -1,0 +1,75 @@
+{
+  "grid": {
+    "arms": 5,
+    "cells": 50,
+    "seeds": 5,
+    "tasks": 2
+  },
+  "locked_before_formal_metrics": true,
+  "parameter_matching": {
+    "action_dim": 10,
+    "arms": {
+      "acgru": {
+        "delta": -1152,
+        "parameters": 298368,
+        "relative_mismatch": 0.0038461538461538464,
+        "width": 148,
+        "width_name": "hidden_dim"
+      },
+      "aclstm": {
+        "delta": 112,
+        "parameters": 299632,
+        "relative_mismatch": 0.00037393162393162396,
+        "width": 122,
+        "width_name": "hidden_dim"
+      },
+      "diag_ssm": {
+        "delta": 0,
+        "parameters": 299520,
+        "relative_mismatch": 0.0,
+        "width": 384,
+        "width_name": "width"
+      },
+      "lkc_fixed_trust": {
+        "delta": 0,
+        "parameters": 299520,
+        "relative_mismatch": 0.0,
+        "width": 384,
+        "width_name": "state_dim"
+      },
+      "none": {
+        "delta": -299520,
+        "parameters": 0,
+        "relative_mismatch": 1.0,
+        "width": null,
+        "width_name": null
+      }
+    },
+    "embed_dim": 384,
+    "target_parameters": 299520
+  },
+  "protocol_sha256": "6e0b6ae1512730616b6e0718b61107e115e64c033f610724e94fb57b81a2863a",
+  "schema": "dinowm_wave2_spatial_carrier_lock_v1",
+  "smoke_receipt": {
+    "path": "outputs/dinowm_wave2_spatial_carrier/smoke/receipt.json",
+    "semantic_readout_fitted": false,
+    "sha256": "a1813b140e70a40b230021c154f2af706399ed32121626d24a8fbc049f054102"
+  },
+  "source_sha256": {
+    "configs/dinowm_native_pusht_audit_v2r2.lock.json": "45d9ca4d8417b713e91b68168e40eaa2bdfe0e6c94576cd2b00ac40e9ffde7e3",
+    "configs/dinowm_native_pusht_audit_v2r2.yaml": "142240cb2e569d3e94ed028df174d6c62cb50aa5e9dc7c38d6a98127daae7efb",
+    "lewm/models/frozen_swap_carriers.py": "dbcd2c40318ebc97063d22d59de76c36b304e775f43550b7fe33df66f168e3aa",
+    "lewm/models/v19_carriers.py": "aeb386ad2c391b6f44388801912a1dd3b2b879cf72ef931660f807c3d12eebfe",
+    "lewm/official_tasks/dinowm_native_audit.py": "3cd30b3c7059f59f252d1e8d75c5a200014166a63da43b682250a5290c56c8ad",
+    "lewm/official_tasks/dinowm_spatial_carrier.py": "aea35d33187144b1695d983ed23c9e636b089a58793642cbf646357023250aed",
+    "lewm/official_tasks/pusht_memory.py": "3cc56078a4125197ee5a252bda65a500cbb3a4829c3de6bd47ad3fbadc7b7f83",
+    "outputs/dinowm_native_pusht_audit_v2/deps_manifest.json": "7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153",
+    "outputs/dinowm_native_pusht_audit_v2/venv/lib/python3.12/site-packages/dinowm_v2_paths.pth": "3137e64e2cd265834aa952709c261bd8c923f1c2d9c946ff3d95bd6154fd34d3",
+    "outputs/dinowm_native_pusht_audit_v2r2/formal/verification.json": "0655bca82a33a871d4e0dddd5ec3197526fa76456301f391aafeac012afe2b16",
+    "scripts/run_dinowm_native_pusht_audit_v1.py": "39253963969c749ad86bbb44e61c6d517918975bd27d297d73d813adbfbecead",
+    "scripts/run_dinowm_native_pusht_audit_v2.py": "6792a2bafe07a07aa8254df3d7f5fcd9dcd562da1c20c415eadeb3e6fcda3e53",
+    "scripts/run_dinowm_wave2_spatial_carrier.py": "77b04b1c23bb4dc05db78544c852d16c7ee04cd5a4bf2c06ae460bda72d28f65",
+    "scripts/verify_dinowm_wave2_spatial_carrier.py": "0a76a74b67541acb10042ab22f4efa5b5c36cac73eceb14146c9f8448c8b2577",
+    "tests/test_dinowm_spatial_carrier.py": "b771e8bb1ed8801bf012779a97bb257b2b4666a64d279f770651ad654aed55dc"
+  }
+}

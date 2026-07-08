@@ -1,0 +1,109 @@
+# Formal evidence-age strengthening study.  The SHA sidecar is created only
+# after the implementation and tests are frozen, and every runner verifies it
+# before writing an artifact.
+schema_version: 1
+study: paper-a-evidence-age-v1
+protocol_status: locked-before-metrics
+implementation_lock: configs/paper_a_evidence_age_v1.lock.json
+
+execution:
+  allowed_devices: ["cuda:0"]
+  default_device: "cuda:0"
+  explicit_execute_required: true
+  deterministic_algorithms: true
+
+parents:
+  reacher:
+    config:
+      path: configs/paper_a_expansion.yaml
+      sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+    weights:
+      path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+      sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+    cache_root: outputs/paper_a_expansion/cache
+    checkpoint_root: outputs/paper_a_expansion/frozen_swap
+    source_data_root: outputs/paper_a_expansion/data
+    train_seed: 270701
+    validation_seed: 270702
+    split_names: [train, val]
+    tasks:
+      - {key: t1, display_name: Transient-marker recall, classes: 4}
+      - {key: t3, display_name: Drifting-color recall, classes: 4}
+  pusht:
+    config:
+      path: configs/official_pusht_memory.yaml
+      sha256: b7ac425a416f40be233d409fa558af0e7ac75ba84c1bae020cc562c2dce37ea8
+    lock:
+      path: configs/official_pusht_memory.lock.json
+      sha256: c7af75ef0a26301c530447f56292d543335cb6cb83b24a7980cb241d4d7e49de
+    weights:
+      path: outputs/paper_a_strengthening/pretrained/lewm-pusht/weights.pt
+      sha256: 48938400ae3464c9680731287f583a9cb516f55a8ec64ea13a91be47fb15b607
+    artifact_root: outputs/official_pusht_memory
+    tasks:
+      - {key: transient-visual-token-recall, display_name: PushT transient visual-token recall, classes: 4}
+      - {key: multi-item-visual-binding-recall, display_name: PushT multi-item visual-binding recall, classes: 6}
+
+arms: [none, gru, lstm, ssm, fixed_trust]
+seeds: [0, 1, 2, 3, 4]
+
+read_time:
+  role: existing-checkpoint causal read-time sweep
+  reacher_ages: [4, 8, 15, 24, 32, 40, final]
+  pusht_ages: [4, 8, 15]
+  context_history: 3
+  feature: concat(z[q-3:q], prior_read[q])
+  current_observation_excluded: true
+  readout:
+    model: StandardScaler+LogisticRegression
+    logistic_c: 1.0
+    solver: lbfgs
+    max_iter: 4000
+    random_state: 0
+
+strict_fixed_endpoint:
+  role: paired fixed-endpoint cue-offset study
+  reacher:
+    decision_index: 63
+    ages: [15, 24, 32, 43]
+    replay_prerequisite: exact regeneration of source frames, actions, endogenous state, exogenous state, labels, and events
+  pusht:
+    decision_index: 19
+    ages: [4, 8, 15]
+    cue_length: 3
+    replay_prerequisite: exact selected episode/local-start identity and cue-only pixel mutation
+  mixture:
+    policy: replicate each training episode once at every registered age
+    age_weighting: equal
+    validation_pairing: same base episode at every registered age
+  admission:
+    cue_accuracy_min: 0.75
+    shortcut_margin_above_chance: 0.05
+    require_postcue_final_context: true
+    require_frozen_host_hash: true
+  carrier_training:
+    epochs: 100
+    batch_size: 64
+    learning_rate: 0.0003
+    weight_decay: 0.00001
+    windows_per_episode: 8
+    frozen_encoder: true
+    frozen_predictor: true
+  endpoint:
+    context_history: 3
+    feature: concat(z[q-3:q], prior_read[q])
+    current_observation_excluded: true
+
+statistics:
+  bootstrap_draws: 20000
+  bootstrap_seed: 20260711
+  interval: percentile
+  confidence: 0.95
+  pairing: matched checkpoint seed and validation episode
+  pusht_episode_resampling: class-stratified
+
+outputs:
+  root: outputs/paper_a_evidence_age_v1
+  read_time: outputs/paper_a_evidence_age_v1/read_time
+  strict: outputs/paper_a_evidence_age_v1/strict
+  logs: outputs/paper_a_evidence_age_v1/logs

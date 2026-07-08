@@ -1,0 +1,21 @@
+{
+  "immutable": true,
+  "producer_sha256": {
+    "lewm/models/frozen_swap_carriers.py": "dbcd2c40318ebc97063d22d59de76c36b304e775f43550b7fe33df66f168e3aa",
+    "lewm/models/official_lewm.py": "10744dc4bc8bfea0dacda8f79dfd9d171c3442f2bdbeea40764c27d2ffcc940b",
+    "lewm/models/official_lewm_config.py": "1cc985eb18fd49c848f4c7ab05288d568f454a565999f06cefe232506c407d3f",
+    "lewm/models/official_lewm_pusht.py": "86fe072675f300333772596fe49d3061628e589a1cacfae8f053c4bbc666b23c",
+    "lewm/official_tasks/artifacts.py": "dde602f068cf857adce6ac404fe28e84894a44ef093ddd97bdfd414d15e44501",
+    "lewm/official_tasks/pusht_admission.py": "ec7e82e5c36973b1c1c54cb088c0a075ec03ecef178e017ab24b3a793d9e4adc",
+    "lewm/official_tasks/pusht_hdf5.py": "9c30378d77d7c6a8dbc1a97590abd44f69ce1f4e829e2809cf1bc1d0b5b1ed41",
+    "lewm/official_tasks/pusht_memory.py": "3cc56078a4125197ee5a252bda65a500cbb3a4829c3de6bd47ad3fbadc7b7f83",
+    "lewm/official_tasks/pusht_pipeline.py": "571b291edf3c15db21dae7ff340a3d2bde672a33c522c072e313a1160bf04e9f",
+    "lewm/official_tasks/pusht_spec.py": "a4a570efda201b0a0fd919aee05404645a896892389e61b8e562c66d9a36fc47",
+    "scripts/cache_official_pusht_memory.py": "3f59a0278304e537bb1cc88b82740aa531369495d5980683a5ef569b69c9e70f",
+    "scripts/launch_official_pusht_memory.py": "cf82d27c9102e1e7c0c7d8b665b4375df4554cedb55b8d6e7055285442887f7a",
+    "scripts/train_official_pusht_carrier.py": "a2d042af849609f7a6bcb036de4b0844710b3a966ac8368c4cec4b3ccf5412e5"
+  },
+  "schema": "official_pusht_memory_lock_v1",
+  "spec_path": "configs/official_pusht_memory.yaml",
+  "spec_sha256": "b7ac425a416f40be233d409fa558af0e7ac75ba84c1bae020cc562c2dce37ea8"
+}

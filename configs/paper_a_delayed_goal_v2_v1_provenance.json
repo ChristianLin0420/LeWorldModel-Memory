@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "study": "paper-a-delayed-goal-v2-v1-provenance",
+  "v1_spec": {
+    "path": "configs/paper_a_delayed_goal_use.yaml",
+    "sha256": "3e2f6f27bcb5c2a5e5d442ab7770467a5fb1bf9001197857b14b1da351931946"
+  },
+  "v1_code": [
+    {
+      "path": "scripts/paper_a_delayed_goal_spec.py",
+      "sha256": "ecf589263e724adad73685a555b94200a0974f26c0d2f470bb26e9dfec883138"
+    },
+    {
+      "path": "scripts/paper_a_delayed_goal_use.py",
+      "sha256": "69d283a44e7813eaac87580e129c01cfcecf8f64b0f891736e507bb8b30278c0"
+    },
+    {
+      "path": "scripts/train_paper_a_delayed_goal_repair.py",
+      "sha256": "828c1aaf0265458ca0c936fba0751ae9540f941df63e1ae1f38cf9ff24be5b3d"
+    },
+    {
+      "path": "scripts/evaluate_paper_a_delayed_goal_use.py",
+      "sha256": "3d65811c0703f1ac7159397008d6466234010504fb44fee98d5ecd05fae26276"
+    },
+    {
+      "path": "scripts/aggregate_paper_a_delayed_goal_use.py",
+      "sha256": "6f76742f9f08ef51edacb91b2c25ff3eca5eb5bc925e2b420c7565476841836d"
+    }
+  ],
+  "v1_failure": {
+    "failed_task": "Transient-marker recall",
+    "failed_gate": "label_oracle_success",
+    "observed_oracle_decision_accuracy": 1.0,
+    "observed_oracle_success": 0.8875,
+    "observed_oracle_return": 0.8880037388944255,
+    "registered_oracle_success_min": 0.9,
+    "action_time_accuracy": 0.225,
+    "registered_shortcut_accuracy_max": 0.35,
+    "label_shuffle_max_by_seed": [
+      0.2708333333333333,
+      0.325,
+      0.25416666666666665,
+      0.3375,
+      0.3125
+    ],
+    "shortcut_gates_passed": true,
+    "valid_for_use_claim": false,
+    "other_task_oracle_success": 0.9166666666666666,
+    "completed_evaluations": [
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/drifting-color-recall/checkpoint-seed-0/metrics.json",
+        "sha256": "ea399879c7b8a50f2b3e4854cf8a39d6232bce3165ece8369d3b6e93b0630578"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/drifting-color-recall/checkpoint-seed-1/metrics.json",
+        "sha256": "bbb00ee4a037b717eb3625071544ea5bd67093601b6f8ef7d5772737e9c0baeb"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/drifting-color-recall/checkpoint-seed-2/metrics.json",
+        "sha256": "47ba5b9f36ee5d2d4322f6ad145fa2f6e9ae6b4931366e16d1e6857e6ac81276"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/drifting-color-recall/checkpoint-seed-3/metrics.json",
+        "sha256": "d9068bb16cfe038a67502136a50a9b75aaf62672c4e4a06b28ba17f92e91be3e"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/drifting-color-recall/checkpoint-seed-4/metrics.json",
+        "sha256": "d2efca97dd4dd3b6660aeffdd0361ef8f50d5f95e2c364a006d0c74aeeea2245"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/transient-marker-recall/checkpoint-seed-0/metrics.json",
+        "sha256": "7188d45997ebea2572cfe01d16433a237223a1a2e026b1794985a3f548222f3e"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/transient-marker-recall/checkpoint-seed-1/metrics.json",
+        "sha256": "650687b24afcd6de453d77cd29b2fe762ede088be1e7f511b34484c15eeee38e"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/transient-marker-recall/checkpoint-seed-2/metrics.json",
+        "sha256": "38f522bbc2db5f9314e139b575e774171962faafa4d0a7244c9f861c9ac2c1ee"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/transient-marker-recall/checkpoint-seed-3/metrics.json",
+        "sha256": "9d7b8dd90e1779515c15f6b19373d2460eefd00d2928d9a4e23c4f3bd978da69"
+      },
+      {
+        "path": "outputs/paper_a_delayed_goal_use_v1/evaluations/transient-marker-recall/checkpoint-seed-4/metrics.json",
+        "sha256": "5f363116908821528d8e47c36b1da1e0bf8eafe730a1dc9bef2006e394aed0c0"
+      }
+    ]
+  },
+  "repair_inventory": {
+    "cells": 40,
+    "repair_pt_set_sha256": "1589627350ad43100f26f500721d2dd578041ee6b6126047dc7ba8e97c1e546c",
+    "repair_metrics_set_sha256": "a48200d5a7e063ed067ddcdf4f0189b1f33c19adefe92805ed896abb0a8ec04f",
+    "all_120_files_set_sha256": "43233259271554333ccdd0ba57fccba9fc90aaa55c1977e28a747710acc8a9f2"
+  },
+  "repair_checkpoints": [
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-0/cue-repair/repair.pt", "sha256": "c21cdf9946c926548ed0c29313ba1478380c389a42c421897527a7bd45d1b8e4"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-0/objective-off/repair.pt", "sha256": "e8631ac564a7238e705040847a0aae7e8ea0f2d285a8298401a3a85dbe2a4b21"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-1/cue-repair/repair.pt", "sha256": "366ccd6c67e9a8b0d8a465001f4dac639f42d520affeff76f205193a7b0d4c25"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-1/objective-off/repair.pt", "sha256": "c778f726e2a945a34f51679d0d10edc476acab5a2f69206c18a412a1e64d6086"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-2/cue-repair/repair.pt", "sha256": "a881ec3e71e92b99b4f5033f2fb9f3cd8a62e8cb272c38d2216e597ae0f53348"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-2/objective-off/repair.pt", "sha256": "0202e632f428ac2c8e0c45de0fabf3008e308d9d95cd527f804acf339f858c63"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-3/cue-repair/repair.pt", "sha256": "c96bf2585fb5f7f83ef76fff8c52eb91a89aa7d030dedb646f7aa017ab6d58f9"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-3/objective-off/repair.pt", "sha256": "29dc52661fc40aabd7afbdae61b8ca25ca9d940dfaca292f45ead1cdbe5d84ea"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-4/cue-repair/repair.pt", "sha256": "300c78d51ef42b30551da381aacd837f1e935f802c91e570e65b695715775fb6"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/action-conditioned-gru/checkpoint-seed-4/objective-off/repair.pt", "sha256": "c91853ac62615b97f0cd5f8e42df47196503c11807c87bd1c6c038b243689a5d"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-0/cue-repair/repair.pt", "sha256": "76ac0021dafe614ee34b52e35099fe281976343542427fbb77832b82aaaf287c"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-0/objective-off/repair.pt", "sha256": "b928f118627e911b4c1c3f06df2dadd88d704ce10f947d0a59f5b181dc5b31da"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-1/cue-repair/repair.pt", "sha256": "0b8b22cca3a801a1b900aa8d8b3b4d6bedb7a4f9696ed8dbbefac1f78d831ccd"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-1/objective-off/repair.pt", "sha256": "f7189a49f7319f906a132f744018009755c7c776508babd9f470b20145724a5c"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-2/cue-repair/repair.pt", "sha256": "cc466f5a9560c02bfb02ce40a77b9ec1a8c00db2caeb70fc34a8330e7fdf6dfe"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-2/objective-off/repair.pt", "sha256": "1e379419b6f18edeac61be888eaa0b7bd06aa0c746c3a6306ac0fc8148e60a47"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-3/cue-repair/repair.pt", "sha256": "2b12361e1abdc2a28c7bfe25c5db178dde2bf35bb5e639cb09555deff842677d"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-3/objective-off/repair.pt", "sha256": "6cde76941c24450d2933d2a8a014b5e7f1c1e3cbeb398a763e57d558b4a45fb0"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-4/cue-repair/repair.pt", "sha256": "6c0c0cf72f1e3c5b77624c9c4252ae9100cf19b8d07a9771493105c825c7bad5"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/drifting-color-recall/diagonal-state-space-carrier/checkpoint-seed-4/objective-off/repair.pt", "sha256": "4f4dd783ca898f251c3b0f0baf8b32402a5abc296b1d48bc3e19cebd67c396bd"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-0/cue-repair/repair.pt", "sha256": "95817fbf69aff5729a38a8d4626ef8f83ee3db6886a0864024c9e17b44de4823"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-0/objective-off/repair.pt", "sha256": "5c64d5aefc3d124d84689bc30b8b78351de7579a78cb77abc8f2a18430f8064f"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-1/cue-repair/repair.pt", "sha256": "22231459a28701f117f93001a21b3935d757ed35fca24bf42cd01cfc919b3af3"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-1/objective-off/repair.pt", "sha256": "3bbd0a7dc4190233fbbe3ed0dcd3194019945d51fd23b1ea09ab96e5a1dc372e"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-2/cue-repair/repair.pt", "sha256": "7d596f53f24c3967e8175f86bbfea89ee8efe32a5a157eebb38ae4310a44dcff"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-2/objective-off/repair.pt", "sha256": "003b38a199845431a2c3bdd4d27d1c7a739fa8024a4f08a88fb0856a49a5c9e9"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-3/cue-repair/repair.pt", "sha256": "a2769f8284c2a5a6f51d8778cb4519ca07235ad99dcdb99146146e512f9792f6"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-3/objective-off/repair.pt", "sha256": "fd7b548aae9d7e8f909f8dd55ecb0de4781be6ed160a1d7254229fd72130d7e9"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-4/cue-repair/repair.pt", "sha256": "44c3c9cc4fbfb22025e8028c4dd787a5916c15fa8c1dfdc0ba23cd69002a328f"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/action-conditioned-gru/checkpoint-seed-4/objective-off/repair.pt", "sha256": "476c88e3833a36adaf138b21668b6a60a3513b3a127ba3bb30f91ceb87240150"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-0/cue-repair/repair.pt", "sha256": "b8457f3b069686836285052b22aa9b578e1084a90134e93755c92aadeff137d5"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-0/objective-off/repair.pt", "sha256": "a91d1c38537502f3b60de7b3eb93e1853f20f34b1a1aa821e78187f6537e5fb2"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-1/cue-repair/repair.pt", "sha256": "8525eea5d6a77cd2b7522fc8cf14777605a857e8a462c71cf9ebfe39508d8885"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-1/objective-off/repair.pt", "sha256": "58f06c3d40c8bcea4e8143fe464e7b99e614a3236d4232c98e0176be0d2e7381"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-2/cue-repair/repair.pt", "sha256": "589d5bc58dbbcf478d6998e3d251fe63018853d594e5de8fb9c0cc01316fc886"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-2/objective-off/repair.pt", "sha256": "c2f73a7c99da71988d44562885a16170c525839b753b636350118f7bb1f9af0e"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-3/cue-repair/repair.pt", "sha256": "e0396e0002e32c83310861923416ad60b66f812b358e568bed7e992fc2c5f9b7"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-3/objective-off/repair.pt", "sha256": "81ea284b8daf510bea679ba5e0b0edf8a31cbd0c7e252c101ed2aeb526082787"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-4/cue-repair/repair.pt", "sha256": "6dc99a141fdead2442fded5d5a88fb95990b8df7077fd33ce011b0c0319d7b54"},
+    {"path": "outputs/paper_a_delayed_goal_use_v1/repairs/transient-marker-recall/diagonal-state-space-carrier/checkpoint-seed-4/objective-off/repair.pt", "sha256": "8da42e5c7ac24e6967795e1439b830f2af0c89edf28d6bacf97866d5b7eae0ca"}
+  ]
+}

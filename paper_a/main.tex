@@ -1,0 +1,59 @@
+\documentclass{article}
+\usepackage{iclr2026_conference,times}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,booktabs,array,multirow,tabularx}
+\usepackage{xcolor,colortbl,microtype,caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\hypersetup{
+  pdfauthor={},
+  pdftitle={When Do Latent World Models Remember? A Controlled Audit of LeWM and DINO-WM},
+  pdfsubject={Anonymous ICLR submission}
+}
+\graphicspath{{figures/}}
+\emergencystretch=2em
+
+\definecolor{AuditGreen}{HTML}{6B9F12}
+\definecolor{AuditDark}{HTML}{4E760B}
+\definecolor{AuditPale}{HTML}{EEF5E3}
+\definecolor{AuditBlue}{HTML}{4D6F91}
+\definecolor{AuditOrange}{HTML}{C96F2D}
+\definecolor{AuditGray}{HTML}{F2F3F4}
+\definecolor{AuditRed}{HTML}{A94B3F}
+\newcommand{\Pass}{\textcolor{AuditDark}{\ensuremath{\checkmark}}}
+\newcommand{\Fail}{\textcolor{AuditRed}{\ensuremath{\times}}}
+\newcommand{\Unclear}{\textcolor{AuditOrange}{\ensuremath{\sim}}}
+\newcommand{\Included}{\textcolor{AuditBlue}{\ensuremath{\bullet}}}
+\newcommand{\NA}{\textcolor{black!40}{\textemdash}}
+\newcommand{\best}[1]{\textbf{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+
+\renewcommand{\floatpagefraction}{0.9}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{5pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{5pt plus 2pt minus 2pt}
+\captionsetup{font=footnotesize,labelfont={bf,color=AuditGreen},skip=3pt}
+
+\title{When Do Latent World Models Remember?\\
+A Controlled Audit of LeWM and DINO-WM}
+\author{Anonymous authors\\Paper under double-blind review}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+\input{body.tex}
+
+\phantomsection\label{paper-a-main-end}
+\clearpage
+\input{refs.tex}
+
+\clearpage
+\appendix
+\raggedbottom
+\input{appendix.tex}
+\end{document}

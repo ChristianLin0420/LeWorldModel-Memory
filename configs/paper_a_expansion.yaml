@@ -1,0 +1,70 @@
+# Publication expansion requested after the initial Paper A review.
+# This file fixes the new experiment matrix before carrier/context results run.
+schema_version: 1
+display_names:
+  t1: Transient-marker recall
+  t3: Drifting-color recall
+  t4: Occluded-target prediction
+
+official_host:
+  source: quentinll/lewm-reacher
+  source_commit: 62adae4b71dc474ddf8f794c476ebfe737a743ca
+  weights_sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  objective_family: SIGReg LeWorldModel
+  frozen_encoder: true
+  frozen_predictor: true
+  latent_dim: 192
+  context: 3
+  action_block_dim: 10
+
+availability_gate:
+  categorical_accuracy_min: 0.75
+  continuous_r2_min: 0.30
+  policy: A task enters carrier ranking only when the frozen official encoder passes.
+
+frozen_carrier_swap:
+  tasks: [t1, t3]
+  diagnostic_only_tasks: [t4]
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  primary_metric: legal decision-time categorical accuracy
+  primary_contrast: fixed_trust minus parameter-matched GRU
+  secondary_contrasts: [fixed_trust minus LSTM, fixed_trust minus SSM]
+  frozen_host_hash_must_match: true
+
+long_context:
+  tasks: [t1, t3]
+  contexts: [3, 16, 32, 56]
+  seeds: [0, 1, 2]
+  epochs: 60
+  # Compute-only amendment made before any long-context metric completed:
+  # 256 replaces 64; objective, epochs, optimizer, seeds, and endpoints stay fixed.
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 0.001
+  frozen_encoder: true
+  trainable_predictor: true
+  metrics: [next_latent_mse, legal_decision_accuracy, target_windows_per_episode]
+
+learned_rollout:
+  tasks: [t1, t3]
+  objectives: [one_step, overshoot_8]
+  seeds: [0, 1, 2]
+  epochs: 60
+  horizons: [1, 2, 4, 8, 16]
+  frozen_encoder: true
+  metrics:
+    - normalized_latent_mse
+    - endogenous_pose_error
+    - true_action_advantage_over_shuffled
+    - predicted_latent_effective_rank
+  control_policy: Run learned-model CEM only if the overshoot model beats copy-last and shuffled-action references through horizon 8.
+
+gpu_assignment:
+  0: frozen carrier swap
+  1: long-context baselines
+  2: learned-rollout repair and evaluation

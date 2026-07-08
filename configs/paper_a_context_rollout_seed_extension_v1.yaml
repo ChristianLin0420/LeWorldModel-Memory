@@ -1,0 +1,133 @@
+# Immutable five-seed extension of the completed Paper-A Reacher context and
+# learned-rollout controls.  This stage was specified after parent seeds 0--2
+# completed.  It adds only optimizer/model seeds 3 and 4 and never writes under
+# outputs/paper_a_expansion.
+schema_version: 1
+study: paper-a-reacher-context-rollout-seed-extension-v1
+
+semantic_tasks:
+  t1:
+    name: Transient-marker recall
+    slug: transient-marker-recall
+    family: transient-marker
+  t3:
+    name: Drifting-color recall
+    slug: drifting-color-recall
+    family: drifting-color
+
+parent:
+  study: paper-a-expansion
+  root: outputs/paper_a_expansion
+  config:
+    path: configs/paper_a_expansion.yaml
+    sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+  summary:
+    path: outputs/paper_a_expansion/summary.json
+    sha256: 71ad6b346d6bf43b0f9e3f50df4be71a43dc10c1d766d76bb18b8cfd72b344da
+  official_weights:
+    path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+    sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  cache_root: outputs/paper_a_expansion/cache
+  caches:
+    t1:
+      train:
+        path: outputs/paper_a_expansion/cache/t1/train.npz
+        sha256: af2d0326e6aad51835183e9ac9b034489b0f77c02576d191734920f7c6d894d5
+      validation:
+        path: outputs/paper_a_expansion/cache/t1/val.npz
+        sha256: 9c542ff7054c597ea7e2c12ad0265ef79b4204a3ca4f99e5822cb07b43bae214
+    t3:
+      train:
+        path: outputs/paper_a_expansion/cache/t3/train.npz
+        sha256: 047a3b7ea5eaf41ce5730fa58a0cb8f23b374d911c5314b049a3ba51bb9e1e25
+      validation:
+        path: outputs/paper_a_expansion/cache/t3/val.npz
+        sha256: 8dfad1407b59d8500eecc3f3ef867627c3351db6495c5c26be9aa75cc0725373
+  trainers:
+    long_context:
+      path: scripts/train_official_long_context.py
+      sha256: 8ed2d0100793fc6610dd86db8f72a69b72569adaeb5e2cd018a67f19c3263f5e
+    learned_rollout:
+      path: scripts/train_official_rollout.py
+      sha256: 3adb2ca83aab3ab3b12d6d7751c20feb870a26948d5ce6e730d28e5cee219170
+  aggregator:
+    path: scripts/aggregate_paper_a_expansion.py
+    sha256: ac4be1a133247b8a7158c259afaa3c68eed5535d140911fe5527b2e7b240d8a8
+  launcher:
+    path: scripts/launch_paper_a_expansion.py
+    sha256: 361fb354aadbf9b8d9e8b31b5c90ad14442665a95c6ebd7d63e3793a7e5ff29b
+
+output:
+  root: outputs/paper_a_context_rollout_seed_extension_v1
+  long_context: outputs/paper_a_context_rollout_seed_extension_v1/long_context
+  learned_rollout: outputs/paper_a_context_rollout_seed_extension_v1/learned_rollout
+  staging: outputs/paper_a_context_rollout_seed_extension_v1/.staging
+  logs: outputs/paper_a_context_rollout_seed_extension_v1/logs
+  summary_json: outputs/paper_a_context_rollout_seed_extension_v1/summary.json
+  summary_markdown: outputs/paper_a_context_rollout_seed_extension_v1/summary.md
+  summary_sha256: outputs/paper_a_context_rollout_seed_extension_v1/summary.sha256
+
+seed_contract:
+  parent_seeds: [0, 1, 2]
+  extension_seeds: [3, 4]
+  combined_seeds: [0, 1, 2, 3, 4]
+  policy: Add training seeds only; do not select or tune from parent outcomes.
+
+long_context:
+  tasks: [t1, t3]
+  contexts: [3, 16, 32, 56]
+  epochs: 60
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 0.001
+  grad_clip: 1.0
+  num_workers: 0
+  position_initialization: interpolate
+  amp: true
+  amp_dtype: bfloat16
+  frozen_encoder: true
+  trainable_components: [action_encoder, predictor, pred_proj]
+  objective: final-token next-latent MSE over all exact-H windows
+  decision_index: 63
+  legal_input: z[max(0,q-H):q] and actions[max(0,q-H):q]
+  semantic_readout: final contextual prediction before decision observation q
+
+learned_rollout:
+  tasks: [t1, t3]
+  objectives: [one_step, overshoot_8]
+  objective_horizons:
+    one_step: 1
+    overshoot_8: 8
+  epochs: 60
+  batch_size: 64
+  learning_rate: 0.0001
+  weight_decay: 0.001
+  context: 3
+  anchor: 24
+  evaluation_horizons: [1, 2, 4, 8, 16]
+  frozen_encoder: true
+  trainable_components: [action_encoder, predictor, pred_proj]
+  metrics:
+    - normalized_latent_mse
+    - copy_last_normalized_mse
+    - shuffled_action_normalized_mse
+    - true_action_advantage
+    - pose_angular_mae
+    - predicted_effective_rank
+    - target_effective_rank
+  competence_gate: better than copy-last and positive true-action advantage at horizons 1, 2, 4, and 8
+
+analysis:
+  bootstrap_unit: matched optimizer/model seed
+  bootstrap_draws: 20000
+  bootstrap_seed: 20260706
+  confidence_level: 0.95
+  interval: percentile
+  task_weighting: equal within matched seed for pooled summaries
+
+execution:
+  allowed_devices: [cuda:1, cuda:2]
+  forbidden_devices: [cuda:0, cuda:3]
+  default_gpus: [1, 2]
+  max_jobs_per_gpu: 1
+  require_explicit_execute: true

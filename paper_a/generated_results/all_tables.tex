@@ -1,0 +1,183 @@
+\long\def\PaperMatchedColorResults{
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{Matched-color retention across hosts and evidence ages.}
+\label{tab:appendix-matched-color}
+\begin{tabular}{llrrrr}
+\toprule
+Host & Carrier & Age 4 & Age 8 & Age 15 & $\Delta_{4-15}$ \\
+\midrule
+Reacher & No state & $23.1$ $[19.6,26.9]$ & $23.1$ $[19.6,26.9]$ & $23.1$ $[19.6,26.9]$ & $+0.0$ $[+0.0,+0.0]$ \\
+ & GRU & $29.9$ $[25.0,35.2]$ & $28.2$ $[23.7,33.2]$ & $26.2$ $[22.8,29.8]$ & $+3.6$ $[+0.6,+7.0]$ \\
+ & LSTM & $27.8$ $[24.1,31.7]$ & $23.8$ $[20.3,27.5]$ & $23.7$ $[20.1,27.5]$ & $+4.1$ $[+2.0,+6.3]$ \\
+ & State-space & $81.9$ $[79.0,84.8]$ & $52.8$ $[49.1,56.6]$ & $35.9$ $[31.9,40.0]$ & $+46.0$ $[+41.6,+50.5]$ \\
+ & Fixed-trust & $77.2$ $[73.7,80.7]$ & $58.3$ $[54.3,62.4]$ & $42.1$ $[38.1,46.4]$ & $+35.1$ $[+30.5,+39.7]$ \\
+\addlinespace[2pt]
+PushT & No state & $25.6$ $[21.7,29.6]$ & $25.6$ $[21.7,29.6]$ & $25.6$ $[21.7,29.6]$ & $+0.0$ $[+0.0,+0.0]$ \\
+ & GRU & $41.8$ $[38.2,45.6]$ & $29.6$ $[26.1,33.2]$ & $26.4$ $[23.2,29.7]$ & $+15.4$ $[+11.8,+19.2]$ \\
+ & LSTM & $30.8$ $[27.3,34.2]$ & $26.2$ $[22.8,29.6]$ & $25.5$ $[22.0,28.9]$ & $+5.3$ $[+2.2,+8.5]$ \\
+ & State-space & $49.6$ $[45.5,53.7]$ & $32.2$ $[28.4,36.1]$ & $28.1$ $[24.5,31.8]$ & $+21.5$ $[+17.6,+25.5]$ \\
+ & Fixed-trust & $60.3$ $[56.2,64.3]$ & $44.5$ $[40.3,48.5]$ & $34.2$ $[30.0,38.2]$ & $+26.1$ $[+21.9,+30.4]$ \\
+\midrule
+\multicolumn{2}{l}{Registered host ranking interaction} & \multicolumn{4}{l}{$-0.2$ $[-5.7,+5.3]$; 90\% CI $[-4.8,+4.4]$; equivalent within $\pm5$ points} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Entries are percentage-point balanced accuracy with 95\% intervals; $\Delta_{4-15}$ is the paired shortest-minus-longest contrast. The registered interaction is the PushT-minus-Reacher difference in fixed-trust-minus-state-space accuracy at age 15.}
+\end{table}
+
+}
+
+\long\def\PaperDinoPushTResults{
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{DINO-WM PushT carrier results on two registered visual-memory tasks.}
+\label{tab:appendix-dinowm-pusht}
+\begin{tabular}{lllrrrr}
+\toprule
+Task & Age & Carrier & BAcc & $\Delta$ no state & $\Delta$ reset & Params \\
+\midrule
+Token recall & 4 & No state & $25.4$ $[21.7,29.4]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $26.8$ $[23.0,30.7]$ & $+1.3$ $[-0.5,+3.2]$ & $+1.8$ $[-1.3,+5.0]$ & 298{,}368 \\
+ &  & LSTM & $26.5$ $[22.7,30.4]$ & $+1.1$ $[-0.5,+2.7]$ & $+2.1$ $[-1.7,+5.9]$ & 299{,}632 \\
+ &  & State-space & $53.5$ $[49.1,58.0]$ & $+28.1$ $[+23.8,+32.5]$ & $+28.5$ $[+24.0,+33.0]$ & 299{,}520 \\
+ &  & Fixed-trust & $68.2$ $[64.1,72.2]$ & $+42.7$ $[+38.2,+47.2]$ & $+43.2$ $[+39.1,+47.1]$ & 299{,}520 \\
+\addlinespace[1pt]
+ & 8 & No state & $24.8$ $[21.0,28.7]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $25.3$ $[21.5,29.0]$ & $+0.5$ $[-1.4,+2.3]$ & $+0.9$ $[-1.5,+3.3]$ & 298{,}368 \\
+ &  & LSTM & $25.2$ $[21.5,29.1]$ & $+0.4$ $[-1.2,+2.1]$ & $+0.5$ $[-3.3,+4.3]$ & 299{,}632 \\
+ &  & State-space & $37.4$ $[33.1,41.8]$ & $+12.6$ $[+8.6,+16.5]$ & $+12.4$ $[+8.0,+16.8]$ & 299{,}520 \\
+ &  & Fixed-trust & $45.6$ $[41.2,50.0]$ & $+20.8$ $[+16.6,+25.0]$ & $+21.3$ $[+16.8,+26.0]$ & 299{,}520 \\
+\addlinespace[1pt]
+ & 15 & No state & $23.3$ $[19.6,27.1]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $24.6$ $[20.9,28.4]$ & $+1.3$ $[-0.5,+3.1]$ & $+0.7$ $[-2.7,+4.0]$ & 298{,}368 \\
+ &  & LSTM & $24.1$ $[20.5,27.8]$ & $+0.8$ $[-0.9,+2.5]$ & $-0.3$ $[-4.1,+3.6]$ & 299{,}632 \\
+ &  & State-space & $28.5$ $[24.7,32.5]$ & $+5.1$ $[+2.0,+8.3]$ & $+3.5$ $[-0.4,+7.3]$ & 299{,}520 \\
+ &  & Fixed-trust & $29.3$ $[25.3,33.3]$ & $+6.0$ $[+3.1,+8.8]$ & $+3.8$ $[-0.4,+8.0]$ & 299{,}520 \\
+\midrule
+\addlinespace[1pt]
+Binding recall & 4 & No state & $16.0$ $[12.9,19.4]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $15.6$ $[12.5,18.9]$ & $-0.5$ $[-2.2,+1.3]$ & $-1.6$ $[-4.8,+1.5]$ & 298{,}368 \\
+ &  & LSTM & $15.2$ $[12.2,18.4]$ & $-0.8$ $[-2.5,+0.8]$ & $-1.8$ $[-4.7,+1.2]$ & 299{,}632 \\
+ &  & State-space & $30.9$ $[26.9,35.0]$ & $+14.9$ $[+11.6,+18.3]$ & $+14.3$ $[+10.3,+18.2]$ & 299{,}520 \\
+ &  & Fixed-trust & $28.1$ $[24.2,32.1]$ & $+12.0$ $[+8.9,+15.2]$ & $+11.4$ $[+7.6,+15.4]$ & 299{,}520 \\
+\addlinespace[1pt]
+ & 8 & No state & $16.5$ $[13.3,19.8]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $17.2$ $[14.0,20.7]$ & $+0.8$ $[-0.9,+2.5]$ & $-0.5$ $[-3.6,+2.7]$ & 298{,}368 \\
+ &  & LSTM & $16.7$ $[13.5,20.0]$ & $+0.2$ $[-1.3,+1.7]$ & $-1.1$ $[-4.3,+2.2]$ & 299{,}632 \\
+ &  & State-space & $23.5$ $[19.8,27.5]$ & $+7.1$ $[+4.0,+10.3]$ & $+6.9$ $[+3.0,+10.8]$ & 299{,}520 \\
+ &  & Fixed-trust & $21.7$ $[18.1,25.4]$ & $+5.2$ $[+2.8,+7.7]$ & $+5.0$ $[+1.4,+8.6]$ & 299{,}520 \\
+\addlinespace[1pt]
+ & 15 & No state & $15.6$ $[12.5,19.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ &  & GRU & $14.1$ $[11.2,17.1]$ & $-1.5$ $[-3.2,+0.1]$ & $-3.2$ $[-5.8,-0.4]$ & 298{,}368 \\
+ &  & LSTM & $14.6$ $[11.7,17.7]$ & $-1.0$ $[-2.7,+0.6]$ & $-1.8$ $[-4.9,+1.3]$ & 299{,}632 \\
+ &  & State-space & $20.3$ $[16.6,24.2]$ & $+4.7$ $[+1.7,+7.8]$ & $+4.0$ $[+0.5,+7.8]$ & 299{,}520 \\
+ &  & Fixed-trust & $17.6$ $[14.3,21.1]$ & $+2.0$ $[+0.0,+4.0]$ & $+1.7$ $[-1.6,+5.2]$ & 299{,}520 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize All performance entries are percentage points with 95\% intervals. Absolute BAcc is class balanced; contrasts preserve matched carrier seeds and class-stratified held-out episodes. Params counts trainable carrier parameters only.}
+\end{table}
+
+}
+
+\long\def\PaperPointMazeCarrierResults{
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{DINO-WM PointMaze persistent-carrier results.}
+\label{tab:appendix-pointmaze-carriers}
+\begin{tabular}{llrrrr}
+\toprule
+Age & Carrier & BAcc & $\Delta$ no state & $\Delta$ reset & Params \\
+\midrule
+4 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $53.0$ $[47.2,59.6]$ & $+28.0$ $[+22.2,+34.6]$ & $+28.0$ $[+22.2,+34.7]$ & 298{,}368 \\
+ & LSTM & $89.0$ $[82.8,94.0]$ & $+64.0$ $[+57.9,+69.0]$ & $+64.0$ $[+57.9,+69.0]$ & 299{,}632 \\
+ & State-space & $99.8$ $[99.3,100.0]$ & $+74.8$ $[+74.4,+75.0]$ & $+74.8$ $[+74.4,+75.0]$ & 299{,}520 \\
+ & Fixed-trust & $100.0$ $[100.0,100.0]$ & $+75.0$ $[+75.0,+75.0]$ & $+75.0$ $[+75.0,+75.0]$ & 299{,}520 \\
+\addlinespace[2pt]
+8 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $39.2$ $[35.8,43.2]$ & $+14.2$ $[+10.8,+18.2]$ & $+14.2$ $[+10.8,+18.2]$ & 298{,}368 \\
+ & LSTM & $67.2$ $[57.8,76.3]$ & $+42.2$ $[+32.7,+51.2]$ & $+42.2$ $[+32.7,+51.5]$ & 299{,}632 \\
+ & State-space & $95.2$ $[92.7,97.3]$ & $+70.2$ $[+67.7,+72.3]$ & $+70.2$ $[+67.7,+72.3]$ & 299{,}520 \\
+ & Fixed-trust & $98.8$ $[97.8,99.6]$ & $+73.8$ $[+72.7,+74.6]$ & $+73.8$ $[+72.7,+74.6]$ & 299{,}520 \\
+\addlinespace[2pt]
+15 & No state & $25.0$ $[25.0,25.0]$ & \textit{reference} & $+0.0$ $[+0.0,+0.0]$ & 0 \\
+ & GRU & $35.2$ $[32.7,38.0]$ & $+10.2$ $[+7.7,+13.0]$ & $+10.2$ $[+7.6,+13.0]$ & 298{,}368 \\
+ & LSTM & $53.5$ $[46.1,61.0]$ & $+28.5$ $[+21.1,+36.0]$ & $+28.5$ $[+21.1,+36.0]$ & 299{,}632 \\
+ & State-space & $76.0$ $[70.4,81.3]$ & $+51.0$ $[+45.5,+56.2]$ & $+51.0$ $[+45.4,+56.3]$ & 299{,}520 \\
+ & Fixed-trust & $86.6$ $[83.2,89.8]$ & $+61.6$ $[+58.2,+64.9]$ & $+61.6$ $[+58.2,+64.8]$ & 299{,}520 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Entries are percentage points with 95\% intervals from matched carrier-seed by equal-native-episode cluster resampling; all four counterfactual labels remain within their native episode cluster.}
+\end{table}
+
+}
+
+\long\def\PaperPointMazeGateChecklist{
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{PointMaze prerequisite admission and controller checklist.}
+\label{tab:appendix-pointmaze-gates}
+\begin{tabular}{lp{0.34\textwidth}ll}
+\toprule
+Gate & Observed & Criterion & Status \\
+\midrule
+Old-observation requirement & four labels; no post-cue leak & cue-only counterfactual & \textsc{pass} \\
+Visible-cue encoding & 100.0 BAcc; 100.0 min recall & $\geq$75.0; $\geq$70.0 & \textsc{pass} \\
+No-cue visual shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Action-only shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Proprio-only shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Cue-only invariance & outside=0; post-cue=0 & both 0 & \textsc{pass} \\
+Frozen host & digest unchanged & exact equality & \textsc{pass} \\
+Controller oracle & 95.6 & $\geq$90.0 & \textsc{pass} \\
+Worst-goal oracle & 93.3 & $\geq$85.0 & \textsc{pass} \\
+Off-diagonal false success & 0.0 & $\leq$10.0 & \textsc{pass} \\
+Deterministic replay & 100.0 & $\geq$100.0 & \textsc{pass} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Every registered prerequisite must pass before carrier training or external-use evaluation. Shortcut values are the maximum across evidence ages; controller values are percentages.}
+\end{table}
+
+}
+
+\long\def\PaperPointMazeExternalUseResults{
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{PointMaze external-use results under the fixed waypoint controller.}
+\label{tab:appendix-pointmaze-use}
+\begin{tabular}{lrrrrc}
+\toprule
+Carrier & Goal accuracy & Executed success & $\Delta$ no state & $\Delta$ random & Resolved \\
+\midrule
+No state & $25.0$ $[25.0,25.0]$ & $23.9$ $[23.0,24.7]$ & $+0.0$ $[+0.0,+0.0]$ & $+1.5$ $[-1.0,+4.0]$ & \textsc{no} \\
+GRU & $31.7$ $[29.3,34.3]$ & $30.2$ $[27.7,32.7]$ & $+6.2$ $[+4.1,+8.5]$ & $+7.8$ $[+4.0,+11.5]$ & \textsc{yes} \\
+LSTM & $50.9$ $[43.2,58.6]$ & $48.4$ $[41.0,56.0]$ & $+24.5$ $[+17.2,+31.8]$ & $+26.0$ $[+18.4,+33.8]$ & \textsc{yes} \\
+State-space & $78.4$ $[72.0,83.7]$ & $74.5$ $[68.1,80.2]$ & $+50.5$ $[+44.2,+56.0]$ & $+52.1$ $[+45.9,+57.6]$ & \textsc{yes} \\
+Fixed-trust & $81.5$ $[78.0,84.9]$ & $77.5$ $[73.0,81.7]$ & $+53.6$ $[+49.5,+57.4]$ & $+55.1$ $[+50.3,+59.8]$ & \textsc{yes} \\
+\midrule
+\multicolumn{6}{l}{Realized random-goal success: $22.4$ $[19.8,24.9]$; oracle executed success: 95.6.} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Entries are percentage points with 95\% native-episode cluster intervals. Consumers are shared and arm blind; execution uses the fixed released waypoint controller rather than native model planning.}
+\end{table}
+
+}

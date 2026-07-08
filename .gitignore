@@ -29,6 +29,14 @@ logs/
 runs/
 wandb/
 
+# LaTeX build intermediates (keep manuscript sources and final PDFs)
+paper_a/*.aux
+paper_a/*.fdb_latexmk
+paper_a/*.fls
+paper_a/*.log
+paper_a/*.out
+paper_a/draft_v2.*
+
 # Data
 data/
 datasets/

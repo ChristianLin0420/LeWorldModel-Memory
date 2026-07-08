@@ -1,0 +1,201 @@
+# Native-distribution audit for the original official DINO-WM PushT release.
+# V1's failed LeWM-bank compatibility audit remains immutable and separate.
+schema_version: 2.1
+study: Original DINO-WM PushT native-distribution memory-transport audit, implementation revision R
+protocol_status: locked_before_metrics
+locked_date: 2026-07-06
+
+scope:
+  same_bank_v1: failed_preserved
+  native_v2_attempt: stopped_implementation_error_no_metric_observed
+  scientific_protocol_change_from_v2: none
+  implementation_change_from_v2: pre-create declared admission and results artifact directories
+  bank_matched_to_lewm: false
+  reason: The original OSF PushT distribution is used because LeWM's released dinowm_noprop artifact is unavailable and V1 rejected the LeWM bank.
+  prohibited_claims:
+    - matched comparison against LeWM carriers
+    - persistent real-observation memory
+    - downstream use
+    - evaluation of dinowm_noprop
+
+dataset:
+  display_name: Original DINO-WM OSF pusht_noise
+  osf_node: https://osf.io/bmw48/
+  download_url: https://osf.io/download/k2d8w/
+  archive_path: outputs/dinowm_native_pusht_audit_v2/downloads/pusht_noise.zip
+  archive_identity:
+    size: 2785304515
+    sha256: 442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08
+  root: outputs/dinowm_native_pusht_audit_v2/data/pusht_noise
+  manifest_path: outputs/dinowm_native_pusht_audit_v2/data/extracted_manifest.json
+  manifest_identity:
+    size: 3239312
+    sha256: 77aa1adc9fd493889e8ac67987f9c722c1b5061d3b327c3b6d0a6ecafbade33a
+  extracted_subset:
+    files: 18714
+    bytes: 2500667154
+    included: [states.pth, rel_actions.pth, velocities.pth, seq_lengths.pkl, obses/*.mp4]
+    excluded_as_unused: [tokens.pth, abs_actions.pth]
+  observed_schema_before_lock:
+    train_episodes: 18685
+    train_eligible_for_96_raw_steps: 14645
+    official_val_episodes: 21
+    official_val_eligible_for_96_raw_steps: 16
+    frame_shape: [224, 224, 3]
+
+checkpoint:
+  display_name: Original official DINO-WM PushT (proprioceptive)
+  weights_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/model_latest.pth
+  weights_identity:
+    size: 377929744
+    sha256: e909f0cec958fc0b49a79f2e85730ae6b5f83dee61a224705f91883eb3bb74c5
+  config_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/hydra.yaml
+  config_identity:
+    size: 2021
+    sha256: e4d7f21b85c778ab8b83c0bb83bc7625fdfb193a6a0619fef25f4a2afd7f8049
+  checkpoint_epoch_field: 2
+  includes_proprioception: true
+  is_dinowm_noprop: false
+
+source:
+  repo_url: https://github.com/gaoyuezhou/dino_wm.git
+  repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dino_wm
+  revision: 0a9492fa12044b852ae9e001cc74604b79c8bb0c
+  source_tree_sha256: 706fd4c82facb059ec97009a19efe6ab6bc396fb358b07ef9c358dd3464b856a
+
+dino_encoder:
+  name: dinov2_vits14
+  feature_key: x_norm_patchtokens
+  repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dinov2
+  revision: 7764ea0f912e53c92e82eb78a2a1631e92725fc8
+  source_tree_sha256: db1fc7271b4d8072561be692e1c7764dd38b5a423f836f6a0755856f7c55b6a4
+  weights_path: outputs/dinowm_native_pusht_audit_v1/torch_home/hub/checkpoints/dinov2_vits14_pretrain.pth
+  weights_identity:
+    size: 88283115
+    sha256: b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9
+  torch_home: outputs/dinowm_native_pusht_audit_v1/torch_home
+
+preprocessing:
+  video_decode: decord-0.6.0 VideoReader num_threads=1 RGB
+  pixels:
+    - divide uint8 RGB by 255
+    - bilinear antialiased Resize(short_edge=224)
+    - CenterCrop(224x224)
+    - Normalize(mean=0.5,std=0.5)
+    - model bilinear antialiased Resize(196x196)
+    - DINOv2 x_norm_patchtokens (14x14x384)
+  action:
+    stored: rel_actions.pth relative pixel displacements
+    first_operation: divide by 100 exactly as original PushTDataset
+    fixed_mean: [-0.0087, 0.0068]
+    fixed_std: [0.2019, 0.2002]
+    block: normalize each raw 2-D action then time-major flatten five controls to 10-D
+  proprio:
+    coordinates: [state.agent_x, state.agent_y, velocity_x, velocity_y]
+    fixed_mean: [236.6155, 264.5674, -2.93032027, 2.54307914]
+    fixed_std: [101.1202, 87.0112, 74.84556075, 74.14009094]
+  probe_pooling:
+    levels: [1, 2, 4]
+    operation: adaptive integer-bin means on native 14x14 patch grid
+    cue_time_reduction: mean over frames 1, 2, 3
+    output_dim: 8064
+
+tasks:
+  - key: transient-visual-token-recall
+    semantic_name: PushT transient visual-token recall
+    classes: 4
+    label_seed: 561103
+  - key: multi-item-visual-binding-recall
+    semantic_name: PushT multi-item visual-binding recall
+    classes: 6
+    label_seed: 561203
+
+sequence:
+  num_frames: 20
+  frame_skip: 5
+  raw_span: 96
+  cue_start: 1
+  cue_length: 3
+  last_cue_frame: 3
+  cue_anchor_context: [1, 2, 3]
+  teacher_forced_context: [16, 17, 18]
+  teacher_forced_endpoint: 19
+  native_context: 3
+  native_rollout_horizons: 16
+
+selection:
+  source_split: train
+  rationale: The official val split has only 16 episodes long enough for the locked 20-frame/skip-5 audit; reserve disjoint episodes from the native train pool for statistically usable frozen-task readout.
+  train_episodes: 1200
+  validation_episodes: 480
+  split_seed: 561001
+  start_seed: 561002
+  one_sequence_per_episode: true
+  train_validation_episode_disjoint: true
+  host_training_overlap_caveat: Both audit splits draw base trajectories from the checkpoint's native training distribution; task overlays and labels are new and the host remains frozen.
+
+admission:
+  cue_accuracy_min: 0.75
+  shortcut_margin_above_chance: 0.05
+  required_no_shortcuts:
+    - observed real context frames 16-18
+    - native teacher-forced prediction of frame 19
+    - action blocks 15-18
+    - proprioception frames 16-18
+  policy: Every task gate and global rollout health must pass before transport metrics.
+
+rollout_health:
+  episodes: 120
+  shuffle_seed: 9074
+  batch_size: 4
+  horizons: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+  target: frozen DINOv2 x_norm_patchtokens on clean native observations
+  baselines: [copy-last, episode-permuted-action]
+  one_step_copy_ratio_max: 1.0
+  integrated_copy_ratio_max: 1.0
+  integrated_action_advantage_min: 0.0
+  gate_definition:
+    - native one-step mean MSE below copy-last
+    - mean native MSE across 1-16 below mean copy-last MSE
+    - mean native MSE across 1-16 below shuffled-action MSE
+  policy: Fail closed; no post-hoc adaptation.
+
+evaluation:
+  evidence_ages: [1, 4, 8, 15]
+  endpoint_frames: [4, 7, 11, 18]
+  counterfactual_episodes: 120
+  open_loop_probe: StandardScaler+LogisticRegression(C=1,solver=lbfgs,max_iter=3000,random_state=0)
+  paired_separation: within-episode all-label pair mean RMS in full 196x384 visual tensor
+  transport_ratio: mean age separation divided by mean cue separation
+  carrier_injection: false
+  persistent_state_retention: not_applicable
+  downstream_use: not_applicable
+
+bootstrap:
+  unit: episode
+  draws: 10000
+  confidence: 0.95
+  seed: 9073
+
+execution:
+  device: cuda:2
+  isolated_python: outputs/dinowm_native_pusht_audit_v2/venv/bin/python
+  decord_dependency: outputs/dinowm_native_pusht_audit_v2/deps
+  dependency_manifest_path: outputs/dinowm_native_pusht_audit_v2/deps_manifest.json
+  dependency_manifest_identity:
+    size: 17435
+    sha256: 7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153
+  unpickle_shim: outputs/dinowm_native_pusht_audit_v1/shims
+  world_model_training: false
+  frame_batch_size: 64
+  teacher_batch_size: 12
+  cue_batch_size: 12
+  rollout_batch_size: 6
+  counterfactual_episode_batch_size: 2
+  deterministic_algorithms: true
+  tf32: false
+
+artifacts:
+  root: outputs/dinowm_native_pusht_audit_v2r/formal
+  preserve_per_episode_arrays: true
+  paper_edits: false

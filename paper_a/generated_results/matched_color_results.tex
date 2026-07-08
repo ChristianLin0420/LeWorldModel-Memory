@@ -1,0 +1,29 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{Matched-color retention across hosts and evidence ages.}
+\label{tab:appendix-matched-color}
+\begin{tabular}{llrrrr}
+\toprule
+Host & Carrier & Age 4 & Age 8 & Age 15 & $\Delta_{4-15}$ \\
+\midrule
+Reacher & No state & $23.1$ $[19.6,26.9]$ & $23.1$ $[19.6,26.9]$ & $23.1$ $[19.6,26.9]$ & $+0.0$ $[+0.0,+0.0]$ \\
+ & GRU & $29.9$ $[25.0,35.2]$ & $28.2$ $[23.7,33.2]$ & $26.2$ $[22.8,29.8]$ & $+3.6$ $[+0.6,+7.0]$ \\
+ & LSTM & $27.8$ $[24.1,31.7]$ & $23.8$ $[20.3,27.5]$ & $23.7$ $[20.1,27.5]$ & $+4.1$ $[+2.0,+6.3]$ \\
+ & State-space & $81.9$ $[79.0,84.8]$ & $52.8$ $[49.1,56.6]$ & $35.9$ $[31.9,40.0]$ & $+46.0$ $[+41.6,+50.5]$ \\
+ & Fixed-trust & $77.2$ $[73.7,80.7]$ & $58.3$ $[54.3,62.4]$ & $42.1$ $[38.1,46.4]$ & $+35.1$ $[+30.5,+39.7]$ \\
+\addlinespace[2pt]
+PushT & No state & $25.6$ $[21.7,29.6]$ & $25.6$ $[21.7,29.6]$ & $25.6$ $[21.7,29.6]$ & $+0.0$ $[+0.0,+0.0]$ \\
+ & GRU & $41.8$ $[38.2,45.6]$ & $29.6$ $[26.1,33.2]$ & $26.4$ $[23.2,29.7]$ & $+15.4$ $[+11.8,+19.2]$ \\
+ & LSTM & $30.8$ $[27.3,34.2]$ & $26.2$ $[22.8,29.6]$ & $25.5$ $[22.0,28.9]$ & $+5.3$ $[+2.2,+8.5]$ \\
+ & State-space & $49.6$ $[45.5,53.7]$ & $32.2$ $[28.4,36.1]$ & $28.1$ $[24.5,31.8]$ & $+21.5$ $[+17.6,+25.5]$ \\
+ & Fixed-trust & $60.3$ $[56.2,64.3]$ & $44.5$ $[40.3,48.5]$ & $34.2$ $[30.0,38.2]$ & $+26.1$ $[+21.9,+30.4]$ \\
+\midrule
+\multicolumn{2}{l}{Registered host ranking interaction} & \multicolumn{4}{l}{$-0.2$ $[-5.7,+5.3]$; 90\% CI $[-4.8,+4.4]$; equivalent within $\pm5$ points} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Entries are percentage-point balanced accuracy with 95\% intervals; $\Delta_{4-15}$ is the paired shortest-minus-longest contrast. The registered interaction is the PushT-minus-Reacher difference in fixed-trust-minus-state-space accuracy at age 15.}
+\end{table}

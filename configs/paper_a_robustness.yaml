@@ -1,0 +1,76 @@
+# Immutable strengthening stage for the released-host Paper A study.
+#
+# This specification was created after the 86-cell expansion completed.  It
+# does not amend, replace, or write below outputs/paper_a_expansion.  Every
+# strengthening artifact records the SHA-256 of this file and is written below
+# the separate robustness root.
+schema_version: 1
+study: paper-a-reacher-robustness-v1
+
+parent:
+  study: paper-a-expansion
+  root: outputs/paper_a_expansion
+  config:
+    path: configs/paper_a_expansion.yaml
+    sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+  summary:
+    path: outputs/paper_a_expansion/summary.json
+    sha256: 71ad6b346d6bf43b0f9e3f50df4be71a43dc10c1d766d76bb18b8cfd72b344da
+  official_weights:
+    path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+    sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  cache_root: outputs/paper_a_expansion/cache
+  train_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/train.npz
+      sha256: af2d0326e6aad51835183e9ac9b034489b0f77c02576d191734920f7c6d894d5
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/train.npz
+      sha256: 047a3b7ea5eaf41ce5730fa58a0cb8f23b374d911c5314b049a3ba51bb9e1e25
+  validation_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/val.npz
+      sha256: 9c542ff7054c597ea7e2c12ad0265ef79b4204a3ca4f99e5822cb07b43bae214
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/val.npz
+      sha256: 8dfad1407b59d8500eecc3f3ef867627c3351db6495c5c26be9aa75cc0725373
+  frozen_checkpoint_root: outputs/paper_a_expansion/frozen_swap
+
+output:
+  root: outputs/paper_a_robustness_v1
+  fresh_validation_data: outputs/paper_a_robustness_v1/fresh_validation_data
+  fresh_validation_cache: outputs/paper_a_robustness_v1/fresh_validation_cache
+  fresh_validation_evaluation: outputs/paper_a_robustness_v1/fresh_validation_evaluation
+  carrier_seed_extension: outputs/paper_a_robustness_v1/carrier_seed_extension
+  logs: outputs/paper_a_robustness_v1/logs
+
+tasks: [t1, t3]
+
+fresh_validation:
+  episodes_per_bank: 240
+  banks:
+    - id: fresh-a
+      collection_seed: 270703
+    - id: fresh-b
+      collection_seed: 270704
+  checkpoint_arms: [none, gru, lstm, ssm, fixed_trust]
+  checkpoint_seeds: [0, 1, 2, 3, 4]
+  categorical_availability_min: 0.75
+  readout_fit_source: parent_training_cache
+  carrier_training_performed: false
+
+carrier_seed_extension:
+  arms: [gru, ssm, fixed_trust]
+  seeds: [5, 6, 7, 8, 9]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  train_cache_source: parent
+  validation_cache_source: parent
+
+execution:
+  allowed_devices: [cuda:1, cuda:2]
+  forbidden_devices: [cuda:0, cuda:3]
+  default_device: cuda:1
+  require_explicit_execute: true

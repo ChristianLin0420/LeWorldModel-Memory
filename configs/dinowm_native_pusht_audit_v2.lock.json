@@ -1,0 +1,34 @@
+{
+  "schema": "dinowm_native_distribution_audit_lock_v2",
+  "locked_before_metrics": true,
+  "locked_date": "2026-07-06",
+  "protocol_sha256": "ce99877ab3826b8ed2bb0dbb23fa1310060787166b325431760872ed5cecd6ab",
+  "code_sha256": {
+    "scripts/run_dinowm_native_pusht_audit_v2.py": "6792a2bafe07a07aa8254df3d7f5fcd9dcd562da1c20c415eadeb3e6fcda3e53",
+    "scripts/run_dinowm_native_pusht_audit_v1.py": "39253963969c749ad86bbb44e61c6d517918975bd27d297d73d813adbfbecead",
+    "lewm/official_tasks/dinowm_native_audit.py": "3cd30b3c7059f59f252d1e8d75c5a200014166a63da43b682250a5290c56c8ad",
+    "tests/test_dinowm_native_audit.py": "748b1d8ebf3a07446ac3482fa7bc07054375cf0c53daa247e62b93a58dd3e9be",
+    "tests/test_dinowm_native_audit_v2.py": "ce51b73d56fffce4095be7bfbd4a3adcb32529b62b58988ebe4bad1ea2e32245",
+    "scripts/make_dinowm_native_manifest_v2.py": "8d0697e0a8eb1c319268c34731a4e2b3f05c0abb83df491f3adee6f5197d2ea8",
+    "outputs/dinowm_native_pusht_audit_v2/venv/lib/python3.12/site-packages/dinowm_v2_paths.pth": "3137e64e2cd265834aa952709c261bd8c923f1c2d9c946ff3d95bd6154fd34d3",
+    "outputs/dinowm_native_pusht_audit_v2/deps_manifest.json": "7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/__init__.py": "77c9af305f9bfbf08571c318b4b2f28ada196c4b44ccb34d5ff761ecd7eed823",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/optimizer.py": "6a89e77bef8952378972f42cfa773beaf397a049395f9841684aef4c06516a06",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/state.py": "c25a82a4fc5c2eaa906f4a313e5a907bf21a00956085f981cd4067898dc91e62",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/__init__.py": "63c00a13ae22241bbf66d40bceeda271b6b855bc4dc39b908071a6ff4c773489",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/dataclasses.py": "8e4fe5f29fe0ade87ab6a379facca6ec181569d32f2ef872aa240c56199ee311"
+  },
+  "pre_metric_checks": {
+    "unit_and_contract_tests": "36 passed",
+    "official_archive_and_extracted_manifest": "verified",
+    "native_schema_and_episode_counts": "verified",
+    "formal_selection_balance_and_disjointness": "verified",
+    "synthetic_gpu2_model_schema": "passed",
+    "task_bank_metrics_seen": false
+  },
+  "v1_preservation": {
+    "protocol_sha256": "d81ad56f56337f25a41f1345ef4174b766c8735716d93b9cd6b74191131decf1",
+    "status": "stopped_fail_closed",
+    "verification_sha256": "d8968ac1e534d7f69e35c546233388a572ddcb439f78436de2fae94aca4a8e71"
+  }
+}

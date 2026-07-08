@@ -1,0 +1,267 @@
+# Wave 3: preregistered persistent-carrier audit on the released DINO-WM
+# PointMaze checkpoint and native trajectory archive.  Semantic admissions are
+# computed only after this file and every implementation input are sealed.
+schema_version: 1
+study: Frozen official DINO-WM PointMaze transient-goal memory audit
+protocol_status: locked_before_formal_metrics
+draft_date: 2026-07-07
+
+scope:
+  status: preregistered_cross_environment_extension
+  host_family: official released DINO-WM
+  environment: PointMaze U-maze
+  paper_edits: false
+  allowed_claims:
+    - carrier retention under one frozen official DINO-WM PointMaze checkpoint
+    - cue-placement retention at three fixed evidence ages
+    - external arm-blind goal-selection and current-MuJoCo waypoint execution if every gate passes
+  prohibited_claims:
+    - native DINO-WM planning contains persistent memory
+    - native DINO-WM planner improvement
+    - universal maze-memory generalization
+    - exact numerical comparison to LeWM or PushT banks
+    - causal explanation of a cross-host ranking reversal
+
+dataset:
+  display_name: Official DINO-WM OSF point_maze
+  archive_path: outputs/dinowm_pointmaze_wave3/downloads/point_maze.zip
+  archive_identity:
+    size: 718363945
+    sha256: 6c48ccf22c90b9af8dcf0e2cd70849aec8dd8e214ac5f1f09552bf8bc9494acc
+  root: /dev/shm/dinowm_pointmaze_wave3/point_maze
+  extracted_manifest_path: /dev/shm/dinowm_pointmaze_wave3/extracted_manifest.json
+  storage_scope: authorized external tmpfs; archive and all durable results remain under artifacts.root
+  extracted_manifest_identity:
+    size: 319823
+    sha256: 1eca88a6730b9e60f223b5c1b781e6c9459da7d3567c5b36f5dcb6e1758a231c
+  native_episodes: 2000
+  native_steps_per_episode: 100
+  native_split_fraction: 0.9
+  native_split_seed: 42
+  selection_seed: 830103
+  train_base_windows: 300
+  validation_base_windows: 120
+  counterfactual_variants_per_base: 4
+  train_expanded_sequences: 1200
+  validation_expanded_sequences: 480
+  train_validation_episode_disjoint: true
+  sample_without_replacement_within_split: true
+  one_base_window_per_selected_native_episode: true
+
+checkpoint:
+  display_name: Official DINO-WM PointMaze (proprioceptive)
+  weights_path: outputs/dinowm_pointmaze_wave3/checkpoint/model_latest.pth
+  weights_identity:
+    size: 377930533
+    sha256: 78c654baede0e9289b751e9ad251839b8045a6074cc1ec23ab54caaf11a25700
+  config_path: outputs/dinowm_pointmaze_wave3/checkpoint/hydra.yaml
+  config_identity:
+    size: 2045
+    sha256: 25acae83bc681f97f53361f37661be375687797620f58e87319e4e1e2128bcda
+  expected_epoch_field: 10
+  frozen_modules: [dinov2_encoder, predictor, action_encoder, proprio_encoder]
+
+source:
+  dino_wm:
+    repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dino_wm
+    revision: 0a9492fa12044b852ae9e001cc74604b79c8bb0c
+    git_archive_sha256: 706fd4c82facb059ec97009a19efe6ab6bc396fb358b07ef9c358dd3464b856a
+    pointmaze_files:
+      env/pointmaze/maze_model.py: e058056862f76a47bf301349e9dee8be82948fdd16863e5abf008d49310826ac
+      env/pointmaze/dynamic_mjc.py: 2be31a4c81d4628d101f4994ae8fee30f3aacb79bb5c1bfea55cb8a007a27678
+      env/pointmaze/waypoint_controller.py: d7b2f9a8a101374248fc963390cf9f57189b77c5f26f4b85ae085735d7a0047a
+      env/pointmaze/q_iteration.py: 5f022b1432c674560d48a77fb64b503be3d518a2dd397a85d5a813b78b723509
+      env/pointmaze/gridcraft/grid_env.py: 484879378a0a4b42c9ee9af837828d2587f957a07e0ce0444722486ae36f62af
+      env/pointmaze/gridcraft/grid_spec.py: e468d856e36a87e1c49748fc43d584f067843d95d5e1c02ae8607570da3c8c85
+      datasets/point_maze_dset.py: 46d23448894df45c4b7a87e7388bebb709a146f6f29a6159fb5f67fcb42ba78d
+      datasets/traj_dset.py: cf9f538ad3d7a08768b75102df4c4be29149c6732a29845cb4f076a136cc028c
+  dinov2:
+    repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dinov2
+    revision: 7764ea0f912e53c92e82eb78a2a1631e92725fc8
+    git_archive_sha256: db1fc7271b4d8072561be692e1c7764dd38b5a423f836f6a0755856f7c55b6a4
+    weights_path: outputs/dinowm_native_pusht_audit_v1/torch_home/hub/checkpoints/dinov2_vits14_pretrain.pth
+    weights_identity:
+      size: 88283115
+      sha256: b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9
+    torch_home: outputs/dinowm_native_pusht_audit_v1/torch_home
+
+task:
+  key: transient-four-goal-recall
+  semantic_name: PointMaze transient four-goal recall
+  classes: 4
+  chance: 0.25
+  labels: [upper-left, upper-right, lower-left, lower-right]
+  goal_waypoints: [[1.0, 1.0], [1.0, 3.0], [3.0, 1.0], [3.0, 3.0]]
+  counterfactual_design: each native base window is repeated under every label
+  target_source: cue card only
+  cue_visual: fixed U-maze mini-map with one position-varying red goal dot
+  cue_card_box_yxhw: [8, 8, 72, 72]
+  label_specific_color_forbidden: true
+
+sequence:
+  num_frames: 20
+  native_frame_skip: 5
+  cue_start: 1
+  cue_length: 3
+  last_cue_frame: 3
+  predictor_context: 3
+  evidence_ages: [4, 8, 15]
+  endpoint_frames: [7, 11, 18]
+  predictor_contexts: [[4, 5, 6], [8, 9, 10], [15, 16, 17]]
+  endpoint_observation_excluded: true
+  action_block: concatenate the five normalized native controls after each sampled observation
+  no_label_information_after_frame: 3
+
+adapter:
+  visual_shape: [196, 384]
+  native_token_dim: 404
+  native_token_layout: [visual_384, proprio_10, action_10]
+  carrier_scope: one parameter-shared carrier independently applied to all 196 patch trajectories
+  carrier_input_dim: 384
+  carrier_action_dim: 10
+  injection: residual fused visual replaces only native visual channels before the frozen predictor
+  cross_patch_mixing: frozen official predictor attention only
+  full_sequence_recurrence_before_read: true
+  reset_ablation: reinitialize the identical carrier at the first frame of each legal three-frame predictor context
+  primary_read: frozen predictor final visual output from full-sequence carrier state
+  secondary_read: carrier pre-observation prior at endpoint
+  zero_init_native_equivalence_required: true
+
+objective:
+  labels_used_for_carrier_training: false
+  name: frozen-native shifted next-feature MSE
+  source: three consecutive carrier-fused visual frames plus frozen native proprio/action embeddings
+  target: all three one-step-shifted frozen visual and proprioceptive features
+  supervised_channels: [visual_384, proprio_10]
+  excluded_channels: [action_10]
+  host_parameters_trainable: false
+
+training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 20
+  batch_size: 8
+  windows_per_batch: 2
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  scheduler: cosine_to_zero
+  gradient_clip_norm: 1.0
+  common_schedule_seed_base: 831000
+  checkpoint_selection: final_epoch_no_early_stopping
+  deterministic_algorithms: true
+  mixed_precision: bfloat16_predictor_float32_carrier
+
+admission:
+  policy: fail closed before any carrier is trained or semantically evaluated
+  cue_encoding:
+    metric: validation balanced accuracy at last visible cue frame
+    minimum: 0.75
+    minimum_per_class_recall: 0.70
+  shortcuts:
+    no_cue_visual_endpoint_balanced_accuracy_maximum: 0.30
+    action_only_balanced_accuracy_maximum: 0.30
+    proprio_only_balanced_accuracy_maximum: 0.30
+    evaluated_at_every_age: true
+  cue_only_counterfactual:
+    changed_pixels_outside_declared_mask_maximum: 0
+    actions_proprio_states_differ_across_labels_maximum: 0
+    post_cue_visual_differing_pixels_maximum: 0
+  frozen_host_digest_unchanged: true
+  all_gates_required: true
+
+evaluation:
+  spatial_pool_levels: [1, 2, 4]
+  readout: StandardScaler+LogisticRegression(C=1,solver=lbfgs,max_iter=4000,random_state=0)
+  separate_readout_per_age_and_arm: true
+  primary_metric: held-out balanced accuracy of full-state frozen-predictor output
+  contrasts:
+    - each trainable arm minus no persistent carrier
+    - full-sequence state minus three-frame context-reset state within arm
+  validation_predictions_preserved: true
+  next_feature_mse_preserved: true
+
+inference:
+  method: matched carrier-seed x native-validation-episode cluster bootstrap preserving four-label counterfactual sets
+  paired: true
+  draws: 20000
+  confidence: 0.95
+  seed: 832000
+  none_effective_independent_models: 1
+  resampling_units: [matched carrier seed, native episode]
+
+external_use:
+  enabled_only_if_admission_and_controller_gates_pass: true
+  evidence_age: 15
+  consumer: one shared arm-blind StandardScaler+multinomial LogisticRegression per carrier seed
+  consumer_feature: exact registered 1/2/4 spatial-pyramid primary full-predictor read
+  consumer_feature_dim: 8064
+  consumer_training_deck: pooled full-state training features from every arm with no arm identifier
+  validation_fit_forbidden: true
+  native_planner: false
+  controller: unmodified released DINO-WM WaypointController
+  simulator: current MuJoCo binding executing XML generated by unmodified released PointMaze source
+  current_mujoco_required_minimum_version: 3.0
+  frame_skip: 5
+  physics_timestep: 0.01
+  execution_horizon: 160
+  success_radius: 0.50
+  oracle_success_minimum: 0.90
+  oracle_per_class_success_minimum: 0.85
+  off_diagonal_false_success_maximum: 0.10
+  deterministic_reset_replay_minimum: 1.0
+  selected_goal_scored_against_true_goal: true
+  random_goal_seed: 833000
+  claim_boundary: external memory-conditioned navigation execution, not native DINO-WM planning
+  prelock_controller_development:
+    source: first 8 locked training selections only; no validation episode
+    candidate_horizons: [160, 240, 320]
+    selection_rule: smallest horizon with overall oracle >=0.90 and every-goal oracle >=0.875
+    receipt: outputs/dinowm_pointmaze_wave3/controller_development/receipt.json
+    receipt_identity:
+      size: 1634
+      sha256: 9cf9507f3d7746b9096c85140030c308b16ffeab698efeace4ebf233c2347993
+    goal_cue_or_carrier_metric_computed: false
+
+cache:
+  dtype: float32
+  base_visual: cache/base_visual.npy
+  cue_visual: cache/cue_visual.npy
+  metadata: cache/metadata.npz
+  manifest: cache/manifest.json
+  frame_batch_size: 64
+  build_base_batch: 4
+
+execution:
+  isolated_python: outputs/dinowm_native_pusht_audit_v2/venv/bin/python
+  dependency_manifest_path: outputs/dinowm_native_pusht_audit_v2/deps_manifest.json
+  dependency_manifest_identity:
+    size: 17435
+    sha256: 7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153
+  physical_gpu: 2
+  required_cuda_visible_devices: "2"
+  logical_device: cuda:0
+  tf32: false
+  never_gpu3: true
+  explicit_execute_required: true
+
+artifacts:
+  root: outputs/dinowm_pointmaze_wave3
+  smoke: smoke_v5
+  cache: cache
+  admission: formal/admission.json
+  formal: formal
+  paper_edits: false
+
+lock:
+  source_paths:
+    - scripts/develop_dinowm_pointmaze_controller.py
+    - scripts/make_dinowm_pointmaze_manifest.py
+    - scripts/run_dinowm_pointmaze_wave3.py
+    - scripts/verify_dinowm_pointmaze_wave3.py
+    - lewm/official_tasks/dinowm_pointmaze.py
+    - lewm/official_tasks/dinowm_spatial_carrier.py
+    - lewm/models/frozen_swap_carriers.py
+    - lewm/models/v19_carriers.py
+    - tests/test_dinowm_pointmaze.py
+    - tests/test_dinowm_spatial_carrier.py
+    - outputs/dinowm_native_pusht_audit_v2/deps_manifest.json

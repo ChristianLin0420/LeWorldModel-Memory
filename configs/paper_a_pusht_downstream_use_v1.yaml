@@ -1,0 +1,166 @@
+# Locked before any held-out downstream-use metric was computed.
+schema_version: 1
+study: paper-a-pusht-downstream-use-v1
+protocol_status: locked_before_heldout_evaluation
+lock_timestamp_utc: "2026-07-06T15:34:17Z"
+
+compute:
+  only_device: cuda:1
+  cuda_visible_devices: "1"
+  feature_batch_size: 64
+  deterministic_algorithms: true
+
+upstream_simulator:
+  repository: https://github.com/galilai-group/stable-worldmodel.git
+  commit: 0ef3856875e70a1283e637fcd2ab936eae6c4e6f
+  checkout: outputs/pusht_downstream_use_v1/vendor/stable-worldmodel
+  isolated_environment: outputs/pusht_downstream_use_v1/simulator_venv
+  packages:
+    python: 3.12.3
+    pygame: 2.6.1
+    pymunk: 7.2.0
+    shapely: 2.1.2
+    gymnasium: 1.3.0
+    opencv-python-headless: 4.13.0.92
+  renderer: SDL_VIDEODRIVER=dummy
+
+source_audit:
+  parent_protocol: configs/official_pusht_memory.yaml
+  parent_lock: configs/official_pusht_memory.lock.json
+  parent_artifacts: outputs/official_pusht_memory
+  frozen_host_bundle: outputs/paper_a_strengthening/pretrained/lewm-pusht
+  hdf5_reference: outputs/paper_a_strengthening/data/pusht_expert_train.h5
+  cached_state_semantics:
+    dimension: 7
+    order: [agent_x, agent_y, block_x, block_y, block_theta,
+            agent_vx, agent_vy]
+    reset_rule: agent_xy advances by agent_velocity times upstream dt=0.01; stored velocity is exact; contact solver may move block pose by at most 1 pixel
+  carriers:
+    arms: [none, gru, lstm, ssm, fixed_trust]
+    seeds: [0, 1, 2, 3, 4]
+    checkpoint_pattern: outputs/official_pusht_memory/carriers/{task}/{arm}/seed-{seed}/carrier.pt
+    overwrite_forbidden: true
+
+splits:
+  source_train_cache: outputs/official_pusht_memory/cache/base/train.npz
+  source_test_cache: outputs/official_pusht_memory/cache/base/validation.npz
+  task_train_pattern: outputs/official_pusht_memory/cache/tasks/{task}/train.npz
+  task_test_pattern: outputs/official_pusht_memory/cache/tasks/{task}/validation.npz
+  consumer_train:
+    source: first 800 rows under label-blind SHA256 ordering of the 1200 source-train episode ids
+    seed: 791301
+    episodes: 800
+  development:
+    source: remaining rows under the same source-train ordering
+    episodes: 400
+  heldout_test:
+    source: all 480 original validation episodes
+    episodes: 480
+  disjoint_episode_ids_required: true
+  one_sequence_per_episode: true
+
+tasks:
+  - key: transient-visual-token-recall
+    classes: 4
+  - key: multi-item-visual-binding-recall
+    classes: 6
+independent_stop_rules: true
+
+causal_endpoint:
+  cue_indices: [1, 2, 3]
+  final_context_indices: [16, 17, 18]
+  carrier_prior_index: 19
+  observation_19_excluded: true
+  feature: concat(z[16], z[17], z[18], carrier_prior_read[19])
+
+consumer:
+  scope: one common arm-blind consumer per task and carrier-training seed
+  training_deck: pool all five carrier arms at the same seed, train rows only
+  arm_identity_feature: forbidden
+  heldout_labels: forbidden during fitting and model selection
+  preprocessing: StandardScaler fit on the pooled training deck
+  classifier: multinomial logistic regression
+  solver: lbfgs
+  C: 1.0
+  max_iter: 4000
+  random_state: 0
+
+pre_test_gates:
+  cue_window_upper_bound:
+    feature: concat(z_cue[1:4])
+    metric: balanced_accuracy
+    development_minimum: 0.90
+    per_class_recall_minimum: 0.80
+  no_shortcut_receipts:
+    metric: balanced_accuracy
+    maximum_above_chance: 0.05
+    sources:
+      final_context_latent: concat(z[16], z[17], z[18])
+      final_action: normalized action block 18
+      final_state: native state 19
+      time: local_start
+  label_shuffle:
+    permutations: 20
+    seed: 791401
+    maximum_mean_above_chance: 0.05
+  physical_oracle:
+    development_success_minimum: 0.90
+    development_per_class_minimum: 0.80
+  policy: each task stops before test-label evaluation if any task-specific gate fails
+
+physical_goal_set:
+  eligibility:
+    source: native final causal state only
+    block_x_y_closed_interval: [170.0, 342.0]
+    labels_not_used: true
+  goal_type: native block pose [x, y, theta]
+  direction_deck: equally spaced directions starting north and proceeding clockwise
+  reference_goal: endpoint produced by the locked controller from the same cached state after setting only agent velocity to zero
+  executed_start: complete cached 7-D state including its recorded agent velocity
+  position_tolerance_pixels: 8.0
+  angle_tolerance_radians: 0.12
+  selected_goal_only_difference_across_arms: true
+
+controller:
+  name: deterministic radial-retreat orbit-and-push controller
+  relative_actions: true
+  orbit_radius_pixels: 118.0
+  orbit_points: 8
+  steps_per_waypoint: 5
+  push_steps: 9
+  push_distance_pixels: 90.0
+  same_controller_all_tasks_arms_seeds: true
+  simulator_state_or_physics_visible_to_consumer: false
+
+baselines_and_controls:
+  random_goal:
+    distribution: uniform over task classes
+    seed: 791501
+  label_shuffle: required
+  action_state_time_shortcuts: required
+  cue_window_upper_bound: required
+
+metrics:
+  primary: executed_success
+  secondary: [goal_selection_accuracy, block_pose_regret,
+              random_goal_success, oracle_success]
+  contrasts: each carrier arm minus no-carrier, paired within seed and episode
+  task_pooling: forbidden
+  bootstrap:
+    method: crossed paired bootstrap over carrier seed and eligible heldout episode
+    replicates: 10000
+    seed: 791601
+    interval: percentile_95
+
+artifacts:
+  root: outputs/pusht_downstream_use_v1
+  protocol_receipt: outputs/pusht_downstream_use_v1/protocol_receipt.json
+  state_receipt: outputs/pusht_downstream_use_v1/state_reset_receipt.json
+  features: outputs/pusht_downstream_use_v1/features
+  gates: outputs/pusht_downstream_use_v1/gates.json
+  consumers: outputs/pusht_downstream_use_v1/consumers
+  simulator: outputs/pusht_downstream_use_v1/simulator
+  predictions: outputs/pusht_downstream_use_v1/predictions
+  summary: outputs/pusht_downstream_use_v1/summary.json
+  summary_markdown: outputs/pusht_downstream_use_v1/summary.md
+  provenance: outputs/pusht_downstream_use_v1/provenance.json

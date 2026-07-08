@@ -1,0 +1,136 @@
+{
+  "controller_development_receipt_sha256": "9cf9507f3d7746b9096c85140030c308b16ffeab698efeace4ebf233c2347993",
+  "grid": {
+    "arms": 5,
+    "cells": 25,
+    "seeds": 5,
+    "tasks": 1
+  },
+  "locked_before_semantic_metrics": true,
+  "parameter_matching": {
+    "action_dim": 10,
+    "arms": {
+      "acgru": {
+        "delta": -1152,
+        "parameters": 298368,
+        "relative_mismatch": 0.0038461538461538464,
+        "width": 148,
+        "width_name": "hidden_dim"
+      },
+      "aclstm": {
+        "delta": 112,
+        "parameters": 299632,
+        "relative_mismatch": 0.00037393162393162396,
+        "width": 122,
+        "width_name": "hidden_dim"
+      },
+      "diag_ssm": {
+        "delta": 0,
+        "parameters": 299520,
+        "relative_mismatch": 0.0,
+        "width": 384,
+        "width_name": "width"
+      },
+      "lkc_fixed_trust": {
+        "delta": 0,
+        "parameters": 299520,
+        "relative_mismatch": 0.0,
+        "width": 384,
+        "width_name": "state_dim"
+      },
+      "none": {
+        "delta": -299520,
+        "parameters": 0,
+        "relative_mismatch": 1.0,
+        "width": null,
+        "width_name": null
+      }
+    },
+    "embed_dim": 384,
+    "target_parameters": 299520
+  },
+  "pins": {
+    "extracted_contents": {
+      "all_file_sha256_verified": true,
+      "file_count": 2003,
+      "root": "/dev/shm/dinowm_pointmaze_wave3/point_maze",
+      "total_bytes": 30117624491
+    },
+    "identities": {
+      "archive": {
+        "path": "outputs/dinowm_pointmaze_wave3/downloads/point_maze.zip",
+        "sha256": "6c48ccf22c90b9af8dcf0e2cd70849aec8dd8e214ac5f1f09552bf8bc9494acc",
+        "size": 718363945
+      },
+      "checkpoint": {
+        "path": "outputs/dinowm_pointmaze_wave3/checkpoint/model_latest.pth",
+        "sha256": "78c654baede0e9289b751e9ad251839b8045a6074cc1ec23ab54caaf11a25700",
+        "size": 377930533
+      },
+      "checkpoint_config": {
+        "path": "outputs/dinowm_pointmaze_wave3/checkpoint/hydra.yaml",
+        "sha256": "25acae83bc681f97f53361f37661be375687797620f58e87319e4e1e2128bcda",
+        "size": 2045
+      },
+      "controller_development": {
+        "path": "outputs/dinowm_pointmaze_wave3/controller_development/receipt.json",
+        "sha256": "9cf9507f3d7746b9096c85140030c308b16ffeab698efeace4ebf233c2347993",
+        "size": 1634
+      },
+      "dependencies": {
+        "path": "outputs/dinowm_native_pusht_audit_v2/deps_manifest.json",
+        "sha256": "7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153",
+        "size": 17435
+      },
+      "dinov2_weights": {
+        "path": "outputs/dinowm_native_pusht_audit_v1/torch_home/hub/checkpoints/dinov2_vits14_pretrain.pth",
+        "sha256": "b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9",
+        "size": 88283115
+      },
+      "extracted_manifest": {
+        "path": "/dev/shm/dinowm_pointmaze_wave3/extracted_manifest.json",
+        "sha256": "1eca88a6730b9e60f223b5c1b781e6c9459da7d3567c5b36f5dcb6e1758a231c",
+        "size": 319823
+      }
+    },
+    "sources": {
+      "dino_wm": {
+        "clean": true,
+        "git_archive_sha256": "706fd4c82facb059ec97009a19efe6ab6bc396fb358b07ef9c358dd3464b856a",
+        "pointmaze_files": {
+          "datasets/point_maze_dset.py": "46d23448894df45c4b7a87e7388bebb709a146f6f29a6159fb5f67fcb42ba78d",
+          "datasets/traj_dset.py": "cf9f538ad3d7a08768b75102df4c4be29149c6732a29845cb4f076a136cc028c",
+          "env/pointmaze/dynamic_mjc.py": "2be31a4c81d4628d101f4994ae8fee30f3aacb79bb5c1bfea55cb8a007a27678",
+          "env/pointmaze/gridcraft/grid_env.py": "484879378a0a4b42c9ee9af837828d2587f957a07e0ce0444722486ae36f62af",
+          "env/pointmaze/gridcraft/grid_spec.py": "e468d856e36a87e1c49748fc43d584f067843d95d5e1c02ae8607570da3c8c85",
+          "env/pointmaze/maze_model.py": "e058056862f76a47bf301349e9dee8be82948fdd16863e5abf008d49310826ac",
+          "env/pointmaze/q_iteration.py": "5f022b1432c674560d48a77fb64b503be3d518a2dd397a85d5a813b78b723509",
+          "env/pointmaze/waypoint_controller.py": "d7b2f9a8a101374248fc963390cf9f57189b77c5f26f4b85ae085735d7a0047a"
+        },
+        "revision": "0a9492fa12044b852ae9e001cc74604b79c8bb0c"
+      },
+      "dinov2": {
+        "clean": true,
+        "git_archive_sha256": "db1fc7271b4d8072561be692e1c7764dd38b5a423f836f6a0755856f7c55b6a4",
+        "revision": "7764ea0f912e53c92e82eb78a2a1631e92725fc8"
+      }
+    }
+  },
+  "protocol_sha256": "bb070fa13892d5b0ab7f84efc02ccd3bdbc9bdff0f1000b3b160d60e68bef3a4",
+  "schema": "dinowm_pointmaze_wave3_lock_v1",
+  "sealed_unix": 1783392721.3731651,
+  "smoke_receipt_sha256": "c612d35ac06f5e73d83334eb3612399ef693bb19faf43ba71f094caf4ff08609",
+  "source_sha256": {
+    "lewm/models/frozen_swap_carriers.py": "dbcd2c40318ebc97063d22d59de76c36b304e775f43550b7fe33df66f168e3aa",
+    "lewm/models/v19_carriers.py": "aeb386ad2c391b6f44388801912a1dd3b2b879cf72ef931660f807c3d12eebfe",
+    "lewm/official_tasks/dinowm_pointmaze.py": "34ea9bc5a525d35884d44a1b96beb5bc15731dc5b960b9c626773f6c47ac9ab1",
+    "lewm/official_tasks/dinowm_spatial_carrier.py": "aea35d33187144b1695d983ed23c9e636b089a58793642cbf646357023250aed",
+    "outputs/dinowm_native_pusht_audit_v2/deps_manifest.json": "7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153",
+    "scripts/develop_dinowm_pointmaze_controller.py": "5e9b7ccf4e8e113a44f662aef6497b3241d379275606757b320719cdbd1d6aa4",
+    "scripts/make_dinowm_pointmaze_manifest.py": "841be5877b90d77c34d903c7717b3bede1cb89749c17f4229a7ee26805e6b88f",
+    "scripts/run_dinowm_pointmaze_wave3.py": "e70709165c7222a393d116f3775d3e270ee19c21aa49cc3001fb8910a8b78a51",
+    "scripts/verify_dinowm_pointmaze_wave3.py": "2c700f3aa9362049c1da497d6768bea531e58b34c69042f225267749662b8984",
+    "tests/test_dinowm_pointmaze.py": "4b06c488d393ae162b49d1e641a0a63538d7451168ef4552c102f9ac763af9eb",
+    "tests/test_dinowm_spatial_carrier.py": "b771e8bb1ed8801bf012779a97bb257b2b4666a64d279f770651ad654aed55dc"
+  }
+}

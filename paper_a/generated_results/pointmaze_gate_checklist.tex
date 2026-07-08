@@ -1,0 +1,27 @@
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{PointMaze prerequisite admission and controller checklist.}
+\label{tab:appendix-pointmaze-gates}
+\begin{tabular}{lp{0.34\textwidth}ll}
+\toprule
+Gate & Observed & Criterion & Status \\
+\midrule
+Old-observation requirement & four labels; no post-cue leak & cue-only counterfactual & \textsc{pass} \\
+Visible-cue encoding & 100.0 BAcc; 100.0 min recall & $\geq$75.0; $\geq$70.0 & \textsc{pass} \\
+No-cue visual shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Action-only shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Proprio-only shortcut & max 25.0 & $\leq$30.0 & \textsc{pass} \\
+Cue-only invariance & outside=0; post-cue=0 & both 0 & \textsc{pass} \\
+Frozen host & digest unchanged & exact equality & \textsc{pass} \\
+Controller oracle & 95.6 & $\geq$90.0 & \textsc{pass} \\
+Worst-goal oracle & 93.3 & $\geq$85.0 & \textsc{pass} \\
+Off-diagonal false success & 0.0 & $\leq$10.0 & \textsc{pass} \\
+Deterministic replay & 100.0 & $\geq$100.0 & \textsc{pass} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.98\textwidth}{\scriptsize Every registered prerequisite must pass before carrier training or external-use evaluation. Shortcut values are the maximum across evidence ages; controller values are percentages.}
+\end{table}

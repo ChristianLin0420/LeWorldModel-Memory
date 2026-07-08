@@ -1,0 +1,96 @@
+# Immutable formal protocol for the official-host shell-game capacity study.
+# The companion lock hashes this file and every producer source before any
+# formal artifact may be written.
+schema_version: 1
+study: Official frozen LeWM shell-game capacity audit
+protocol_status: locked_before_formal_run
+
+official_host:
+  source: quentinll/lewm-reacher
+  source_commit: 62adae4b71dc474ddf8f794c476ebfe737a743ca
+  weights_path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+  weights_sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  frozen_encoder: true
+  frozen_predictor: true
+  latent_dim: 192
+  observation_length: 64
+  context: 3
+  action_block_dim: 10
+
+semantic_stages:
+  - key: single-item
+    display_name: Single-item shell-game recall
+    capacity: 1
+  - key: two-item
+    display_name: Two-item shell-game recall
+    capacity: 2
+  - key: four-item
+    display_name: Four-item shell-game recall
+    capacity: 4
+
+task_contract:
+  num_slots: 3
+  decision_index: 63
+  decision_observation_excluded: true
+  final_context_indices: [60, 61, 62]
+  cue_start: 4
+  cue_frames: 3
+  cue_stride: 4
+  swap_times: [24, 32, 40, 48]
+  swap_frames: 4
+  shuffle_off: 52
+  items_may_share_slot: true
+  capacity_stages_nested_by_seed: true
+  target: ordered final slot for every cued item
+
+data:
+  train:
+    episodes: 1200
+    base_seed: 380701
+    counterfactual_seed: 381701
+  validation:
+    episodes: 240
+    base_seed: 380702
+    counterfactual_seed: 381702
+  frame_skip: 5
+  raw_action_dim: 2
+  source_stream: clean
+  compression_level: 1
+
+admission:
+  cue_probe_frames: 3
+  post_shuffle_probe_frames: 4
+  cue_initial_slot_accuracy_min: 0.75
+  swap_pair_accuracy_min: 0.75
+  leakage_margin_above_chance: 0.05
+  policy: Every exact counterfactual and frozen-representation gate must pass before carrier training.
+
+carrier_training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  windows_per_episode: 8
+  primary_metrics:
+    - mean per-item balanced accuracy
+    - per-item balanced accuracy
+    - exact-set accuracy
+    - per-item chance
+    - exact-set chance
+  frozen_host_hash_must_match: true
+
+artifacts:
+  root: outputs/official_shell_game_capacity
+  base: base
+  stages: stages
+  cache: cache
+  carriers: carriers
+  logs: logs
+
+launcher:
+  allowed_devices: ["cuda:1", "cuda:2"]
+  preview_by_default: true
+  explicit_execute_required: true
+  jobs_per_gpu: 1

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "study": "paper-a-evidence-age-v1",
+  "spec_path": "configs/paper_a_evidence_age_v1.yaml",
+  "spec_sha256": "c8f6ac92d1f87b6640bbd5cdf03afb4e2d15f729b53b84ff0e498425cf20fd45",
+  "locked_before_metrics": true,
+  "producers": {
+    "scripts/aggregate_paper_a_evidence_age_readtime.py": "41a608c824af2c924630c07b4de9d20d4616dbeb4799e8958f8800d8f13886bf",
+    "scripts/aggregate_paper_a_evidence_age_strict.py": "8edfcc92c80312619449e87974fae82b296d2a3aeee9cdeed2de73b81c237143",
+    "scripts/launch_paper_a_evidence_age.py": "52b1aa99391202189c99aca8e23243ff12dc0fa51745475f6afcacbc8ff9fb12",
+    "scripts/paper_a_evidence_age.py": "a3c5d078da50b66972337c36845af4f301233a0835ccbfda829e0dfe31c5352c",
+    "scripts/paper_a_evidence_age_spec.py": "9ba6a2fc34f6b3362d732bca6e1d0dd39a8ff2a0951d780784c443db08308b77",
+    "scripts/prepare_paper_a_evidence_age_strict.py": "9fa23e3bfe529f92148441596ea56f28507735d2c438c1d87e45ce6f81092a8f",
+    "scripts/run_paper_a_evidence_age_readtime.py": "83adde41094701b17be0de9745e1904a85788098c244f60729059db5d662b272",
+    "scripts/train_paper_a_evidence_age_strict.py": "918c6380a49158d082562e342fc85ef5501bf940d672c9a8008db0b791a6c917",
+    "tests/test_paper_a_evidence_age.py": "94d891d706cbdaffad8d3a107ab0cd965d29624a9702bb0582fcde1919ce556c"
+  }
+}

@@ -1,0 +1,808 @@
+\section{Formal Task and Endpoint Contracts}
+\label{app:protocol}
+
+\subsection{Legacy heterogeneous-cue task inventory}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.0pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Legacy heterogeneous-cue task inventory.  Only the four categorical
+tasks enter the earlier carrier rankings in this table; the controlled matched
+and DINO-WM studies are reported separately below.  ``Observations since cue''
+is $q-\mathrm{cue\_off}$ at the state read before the decision observation.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\centering\arraybackslash}p{0.11\linewidth}>{\centering\arraybackslash}p{0.09\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}Y@{}}
+\toprule
+Task & Checkpoint & Classes & Obs. since cue & Cue accuracy & Status \\
+\midrule
+Transient-marker recall & Reacher & 4 & 43--53 & 1.000 & tested \\
+\rowcolor{AuditGray}
+Drifting-color recall & Reacher & 4 & 43--53 & 1.000 & tested \\
+Transient visual-token recall & PushT & 4 & 15 & 1.000 & tested \\
+\rowcolor{AuditGray}
+Visual-binding recall & PushT & 6 & 15 & .992 & tested \\
+Occluded-target prediction & Reacher & continuous & 16--20 & $R^2=.010$ & stopped at availability \\
+\rowcolor{AuditGray}
+Shell-game capacity & Reacher & 3 slots/item & 43--53 & .954 & stopped at shortcut gate \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The categorical tasks use paired counterfactuals: nuisance state, actions, physics, and every non-cue pixel are identical while the label changes. PushT additionally probes final raw latents, action blocks, and simulator states. The largest balanced accuracy is .254 for transient token recall (ceiling .300) and .171 for visual binding (ceiling .217). The decision observations are excluded by construction.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.8pt}
+\renewcommand{\arraystretch}{1.07}
+\caption{Prerequisite checklist for the four legacy carrier-comparison tasks.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\centering\arraybackslash}p{0.10\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.18\linewidth}>{\centering\arraybackslash}p{0.14\linewidth}Y@{}}
+\toprule
+Task & Necessary & Cue encoded & No late shortcut & Pre-decision state & Cohort \\
+\midrule
+Reacher marker & \Pass & \Pass\ 1.000 & \Pass\ pixel-identical & \Pass\ read 63 & 10 seeds + fresh \\
+\rowcolor{AuditGray}
+Reacher color & \Pass & \Pass\ 1.000 & \Pass\ pixel-identical & \Pass\ read 63 & 10 seeds + fresh \\
+PushT token & \Pass & \Pass\ 1.000 & \Pass\ .254 $\leq$ .300 & \Pass\ read 19 & 5 seeds \\
+\rowcolor{AuditGray}
+PushT binding & \Pass & \Pass\ .992 & \Pass\ .171 $\leq$ .217 & \Pass\ read 19 & 5 seeds \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Temporal interface checklist}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.7pt}
+\renewcommand{\arraystretch}{1.06}
+\caption{Interfaces reported by related systems. Checks denote an explicit interface, not comparable performance. ``Real-observation state'' is updated as new environment observations arrive; a rollout cache alone does not qualify.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}*{5}{>{\centering\arraybackslash}p{0.12\linewidth}}Y@{}}
+\toprule
+System & Bounded context & Real-observation state & Read after expiry & Frozen checkpoint swap & Multi-step rollout \\
+\midrule
+LeWM \citep{r_lewm} & \Pass & \NA & \NA & \NA & \Pass \\
+\rowcolor{AuditGray}
+Fast-LeWM \citep{r_fastlewm} & \Pass & \NA & \NA & \NA & \Pass \\
+DINO-WM \citep{r_dinowm} & \Pass & \NA & \NA & \NA & \Pass \\
+\rowcolor{AuditGray}
+Recall to Imagine \citep{r_r2i} & \NA & \Pass & \Pass & \NA & \Pass \\
+S4WM \citep{r_s4wm} & \NA & \Pass & \Pass & \NA & \Pass \\
+\rowcolor{AuditGray}
+On Memory \citep{r_onmemory} & \Pass & \Pass & \Pass & \NA & \Pass \\
+Mem-World \citep{r_memworld} & \Pass & \Pass & \Pass & \NA & \Pass \\
+\midrule
+This audit & \Pass & \Pass & \Pass & \Pass & diagnostic \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Pre-decision state read}
+
+For Reacher, $q=63$ and the feature is
+\begin{equation}
+  \left[z_{60};z_{61};z_{62};b_{63}\right],
+  \qquad b_{63}\ \text{is read before consuming } z_{63}.
+\end{equation}
+For PushT, $q=19$ and the corresponding feature is $[z_{16};z_{17};z_{18};b_{19}]$. The prior may depend on earlier real latents and actions, but never on the decision observation. Temporal pooling is prohibited at the primary endpoint.
+
+\section{Carrier Contract and Parameter Matching}
+\label{app:carriers}
+
+With frozen encoder $E$, frozen predictor/output map $P$, latent $z_t=E(o_t)$, standardized action block $a_{t-1}$, and carrier state $m_{t-1}$,
+\begin{equation}
+  (b_t,m_t,\widetilde z_t)=C_\phi(m_{t-1},z_t,a_{t-1}),
+  \qquad
+  \widehat z_{t+1}=P(\widetilde z_{t-2:t},a_{t-2:t}).
+\end{equation}
+Only $\phi$ is optimized. The target is the cached raw next latent, not a carrier-fused latent. Fixed-trust memory predicts a channelwise prior from state and action, applies a learned input-independent trust to the current latent innovation, and returns a residual read to LeWM space. The GRU, LSTM, and diagonal state-space carriers use the same timing and fusion path.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{5pt}
+\caption{Carrier parameter and initialization contract.}
+\begin{tabular}{lrrl}
+\toprule
+Carrier & Parameters & Persistent state & Read initialization \\
+\midrule
+No carrier & 0 & none & exact released checkpoint \\
+GRU & 75,924 & learned recurrent state & zero residual \\
+LSTM & 76,372 & hidden + cell state & zero residual \\
+Diagonal state-space & 76,032 & diagonal recurrent state & zero residual \\
+Fixed-trust predict--correct & 76,032 & mean + uncertainty tracks & zero residual \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\input{generated_results/all_tables.tex}
+
+\section{Matched-Color Primary Study}
+\label{app:matched-primary}
+
+\subsection{Adaptive origin and fresh inference}
+
+Two broader matched-host screens were sealed before this study.  Both stopped
+globally at their declared prerequisite gates: color was the unique target that
+passed at every age on both Reacher and PushT, whereas location failed at every
+age on both hosts and TwoRoom did not enter carrier training.  We consequently
+locked the deterministic rule ``retain color as the target and exact-balance
+location as a nuisance'' before constructing any new bank or observing any new
+carrier outcome.  This makes the study admission-informed rather than a fresh
+confirmatory test of target selection.  All carrier inference, however, uses
+new banks and no metric from either stopped screen.
+
+Reacher uses new simulator seeds disjoint from both screens.  PushT excludes
+the union of every earlier HDF5 episode index before applying its new split
+permutation.  Each host has 1,200 training and 480 validation episodes, one
+20-frame sequence per episode, and disjoint train/validation episodes.  Labels
+are independent of the base trajectory.  All 16 color--location combinations
+are exactly balanced in each split.  The four RGB colors, normalized cue
+centers, and square size are identical across hosts.
+
+The cue occupies three observations.  Its intervals are 12--14, 8--10, and
+1--3 for ages 4, 8, and 15 at the common decision index 19.  The endpoint is
+$[z_{16},z_{17},z_{18},h^-_{19}]$; observation 19 is excluded.  For each host,
+arm, and seed, one label-free carrier trains on an equal-age mixture.  A
+separate training-only logistic readout is fitted per age.  There are five
+carrier seeds per arm and 50 formal cells in total.
+
+The paired bootstrap jointly resamples carrier seeds across hosts, resamples
+episodes independently within host, and stratifies episodes by the 16-way
+color--location label.  Ages and arms remain paired within host.  The primary
+interaction is the PushT-minus-Reacher difference in the age-15
+fixed-trust-minus-state-space contrast.  The equivalence margin is $\pm.05$;
+the two-one-sided test therefore uses a 90\% interval.  We separately report a
+95\% interval for the nonzero-effect question.  Each cell also preserves
+per-location and worst-location accuracy.
+
+Table~\ref{tab:appendix-matched-color} reports every host--carrier--age cell,
+the paired age decline, and the registered interaction.  Seed arrays,
+worst-location records, all 50 cell identities, and the independent
+recomputation receipt remain in the machine-readable manifest rather than an
+experiment-log dump.
+
+\PaperMatchedColorResults
+
+\section{Persistent Spatial Carriers on DINO-WM PushT}
+\label{app:dinowm-carrier}
+
+Unlike the diagnostic-only imagination precursor in
+Appendix~\ref{app:dinowm-precursor}, this study trains and compares persistent
+carrier sidecars on the frozen host.
+The host is the original official proprioceptive DINO-WM PushT checkpoint and
+its native OSF \texttt{pusht\_noise} bank.  This bank is not matched to LeWM and
+must not support a numerical cross-family ranking.  The frozen modules are the
+DINOv2 encoder, predictor, action encoder, and proprioceptive encoder.  Their
+combined state digest is checked before and after every cell.
+
+Each observation yields 196 visual tokens of width 384.  A single
+parameter-shared carrier operates independently along all 196 patch
+trajectories; the official frozen predictor remains the only cross-patch
+mixing operation.  The residual carrier output replaces only native visual
+channels.  Native proprioceptive and action channels are unchanged.  GRU,
+LSTM, state-space, and fixed-trust arms contain 298,368, 299,632, 299,520, and
+299,520 trainable parameters, respectively; the no-state arm contains zero.
+The objective is
+the frozen native shifted next-feature MSE on visual and proprioceptive targets,
+with no task label.
+
+Token recall has four labels: a red, green, blue, or amber cue colors both the
+frame border and a square in its upper-left corner.  Binding recall has six
+labels: the six permutations of three ordered red/green/blue swatches, followed
+by one label-invariant neutral anchor.  Only these declared cue pixels differ
+across counterfactuals; the underlying native frame and every post-cue input
+remain identical.
+
+Token and binding cues occupy observations 1--3.  Reads occur at endpoint
+frames 7, 11, and 18, giving ages 4, 8, and 15 while excluding the endpoint
+observation.  The primary representation is the frozen predictor's final visual
+output under full episode state, pooled at spatial levels $1,2,4$.  The reset
+control reinitializes the identical trained carrier at the first frame of each
+legal three-frame context.  A gain over no state measures the total carrier
+effect; a gain over reset estimates, under this intervention, the contribution
+of state accumulated before that local context.  Strong persistent retention
+requires both paired 95\% intervals to lie above zero.
+
+The formal grid contains two tasks, five arms, five seeds, and three ages (50
+formal cells; ages share a cell).  It uses 1,200 training and 480 validation
+episodes.  Inference is a 20,000-draw matched-seed and class-stratified
+held-out-episode bootstrap.  A sealed numerical amendment changed only the
+cache-layout tolerance after the parent attempt stopped before carrier
+outcomes: exact original-layout replay remained bit-identical, and the reusable
+full-bank cache drift was bounded below $10^{-4}$ with zero existing-readout
+prediction flips.  Tasks, grid, objective, optimization, endpoints, and
+inference were unchanged; the parent stop receipt is preserved.
+
+Table~\ref{tab:appendix-dinowm-pusht} gives all 30 task--age--arm reads and both
+paired controls.  At age 15 the mean carrier-prior reads are 66.0/48.0/81.2/
+99.2\% for GRU/LSTM/state-space/fixed-trust on token recall and
+38.3/33.5/64.2/97.2\% on binding.  Full-state next-feature MSE remains within
+.0466--.0598 and does not rank semantic recall.  The manifest binds these
+diagnostics, the amendment, all 50 cells, their preserved predictions, and the
+independent 20,000-draw recomputation.
+
+\PaperDinoPushTResults
+
+\section{DINO-WM PointMaze Retention and External Use}
+\label{app:pointmaze}
+
+The host is the official proprioceptive DINO-WM PointMaze checkpoint and its
+2,000-episode native trajectory archive.  We choose 300 training and 120
+validation base windows from disjoint native episodes.  Each base window is
+repeated under all four labels, yielding 1,200/480 sequences while preserving
+the native episode as the statistical cluster.  The target is one of four fixed
+waypoints.  A transient mini-map card contains a label-invariant U-shaped route
+and one position-varying goal dot; no label-specific color is permitted.  Cue
+pixels occur only in observations 1--3, and all later pixels, actions,
+proprioception, and simulator states are identical across the four variants.
+
+The carrier interface, ages, spatial pyramid, objective, arms, and five-seed
+training contract match the DINO-WM PushT extension.  The 20,000-draw paired
+bootstrap resamples matched carrier seeds and native validation episodes while
+keeping each four-label counterfactual set intact.  We retain absolute
+full-state accuracy, full-minus-no-state, full-minus-reset, prior reads, and
+next-feature error at ages 4, 8, and 15.
+
+The reset is deliberately diagnostic rather than distribution preserving.
+Across ages, mean reset/full next-visual-MSE ratios are 1.15--1.38 for GRU,
+1.85--2.40 for LSTM, 31.4--38.7 for state-space, and 32.8--39.1 for
+fixed-trust.  A positive full-minus-reset interval therefore shows dependence
+on state preceding the legal context under this intervention; it is not an
+unconfounded scalar estimate of retained information.  Full-minus-no-state and
+external execution are reported separately.
+
+External execution is enabled only after cue, shortcut, frozen-host, and
+controller gates pass.  At age 15, one standardized multinomial consumer per
+carrier seed is trained on the pooled full-state training features from every
+arm.  The deck contains no arm identifier, and the same fitted consumer is
+evaluated on the five full-state arm sources.  Prior and reset reads are not
+executed.  Its selected waypoint is executed
+for 160 steps by the unmodified released PointMaze
+\texttt{WaypointController} (source SHA-256 \texttt{d7b2f9a8a101}) under
+MuJoCo 3.10.0 and the released XML (SHA-256 \texttt{64d83955572d}).  The oracle
+must achieve at least .90
+overall and .85 for every goal, off-diagonal false success must not exceed .10,
+and deterministic reset replay must equal 1.0.  A resolved execution gain
+requires positive paired lower bounds against both no state and the realized
+random-goal arm.  This is external memory-conditioned navigation execution,
+not native DINO-WM planning.
+
+Tables~\ref{tab:appendix-pointmaze-carriers}--\ref{tab:appendix-pointmaze-use}
+report every gate, all 15 carrier reads with both controls, and every external
+consumer outcome.  The machine-readable manifest binds the native episode
+clusters, carrier seed arrays, five independently refitted consumer coefficient
+digests, execution deck, all 25 cells, and both audit receipts.
+
+\PaperPointMazeCarrierResults
+\PaperPointMazeGateChecklist
+\PaperPointMazeExternalUseResults
+
+\section{Complete Heterogeneous-Cue Reacher Results}
+\label{app:reacher}
+
+\subsection{Registered-bank seed extension}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.4pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Registered-bank ordinary accuracy at the final read and for the exploratory trajectory feature. GRU, state-space, and fixed-trust combine ten seeds; LSTM is the original five-seed result because it was not part of the locked extension.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}*{4}{>{\centering\arraybackslash}p{0.17\linewidth}}Y@{}}
+\toprule
+Carrier & Marker final & Color final & Marker trajectory & Color trajectory \\
+\midrule
+No carrier & .258 & .212 & .258 & .212 \\
+\rowcolor{AuditGray}
+GRU & .275 [.267,.284] & .217 [.206,.228] & .270 & .234 \\
+LSTM (5 seeds) & .272 [.258,.285] & .226 [.211,.237] & .255 & .226 \\
+\rowcolor{AuditGray}
+State-space & .269 [.260,.278] & .233 [.227,.240] & .512 & .420 \\
+Fixed-trust & .275 [.270,.280] & .201 [.199,.203] & .455 & .414 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The endpoint reversal is not sampling noise from one seed. Fixed-trust is positive relative to no state on marker recall and negative on color recall; state-space is positive on both. The trajectory feature changes the ranking because it pools all post-cue reads and is therefore exploratory.
+
+\subsection{Fresh validation banks}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\caption{Equal-task-bank fresh-validation ordinary accuracy, with no retraining. Means and 95\% intervals pool both new banks inside each of five matched checkpoints.}
+\begin{tabular}{lcc}
+\toprule
+Carrier & Pre-decision state read & Trajectory-feature diagnostic \\
+\midrule
+No carrier & .252 [.252,.252] & .252 [.252,.252] \\
+GRU & .259 [.252,.268] & .263 [.256,.270] \\
+LSTM & .258 [.252,.264] & .264 [.260,.268] \\
+State-space & .261 [.253,.269] & .448 [.432,.462] \\
+Fixed-trust & .252 [.251,.253] & .433 [.427,.439] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:appendix-endpoint} visualizes the same fresh-bank endpoint
+comparison; the complete numeric values are retained above.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\linewidth]{fig_mem_appendix_endpoint.pdf}
+\caption{Fresh-bank endpoint sensitivity. Retrospective pooling over post-cue state reads is more decodable for state-space and fixed-trust, yet the pre-decision state read remains near chance. Tasks and banks are averaged within five checkpoints; whiskers are 95\% seed intervals.}
+\label{fig:appendix-endpoint}
+\end{figure}
+
+\section{Complete Heterogeneous-Cue PushT Results}
+\label{app:pusht}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Official PushT frozen-checkpoint results. Values are balanced accuracy [95\% seed interval], followed by the paired change from no state.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}*{2}{>{\centering\arraybackslash}p{0.25\linewidth}}Y@{}}
+\toprule
+Carrier & Token recall (chance .25) & Binding recall (chance .167) & Equal-task interpretation \\
+\midrule
+No carrier & .254 & .162 & reference \\
+\rowcolor{AuditGray}
+GRU & .239 [.234,.245]; $-.015$ & .167 [.156,.178]; $+.005$ & negative / unresolved \\
+LSTM & .249 [.237,.261]; $-.005$ & .161 [.152,.173]; $-.001$ & unresolved \\
+\rowcolor{AuditGray}
+State-space & .314 [.291,.338]; $+.060$ & .175 [.167,.180]; $+.013$ & positive on both \\
+Fixed-trust & .650 [.646,.654]; $+.396$ & .214 [.210,.218]; $+.052$ & positive on both \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{PushT seed-level balanced accuracy. The no-state copies are identical by construction and are not independent models.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}YY@{}}
+\toprule
+Carrier & Token recall seeds 0--4 & Binding recall seeds 0--4 \\
+\midrule
+No carrier & .254, .254, .254, .254, .254 & .162, .162, .162, .162, .162 \\
+GRU & .242, .231, .240, .233, .250 & .160, .181, .183, .152, .158 \\
+LSTM & .246, .248, .250, .229, .271 & .167, .154, .150, .152, .183 \\
+State-space & .333, .308, .279, .356, .294 & .177, .181, .158, .177, .181 \\
+Fixed-trust & .654, .646, .656, .648, .646 & .206, .213, .215, .221, .217 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The fixed-trust result is not credited as a general architecture claim because the same carrier is unfavorable on Reacher color recall. Its value is as a positive control showing that the frozen intervention can learn delayed information under the next-latent objective for some hosts and cues.
+
+\section{Heterogeneous-Cue Fixed-Endpoint Precursor}
+\label{app:cue-age}
+
+This precursor retains different cue semantics across tasks; the matched-color primary comparison is reported in Appendix~\ref{app:matched-primary}. The cross-checkpoint comparison changes task, visuals, dynamics, and delay together. The strict branch intervenes on cue placement within each task by holding the decision index and underlying episode trajectory fixed while translating only the cue overlay. Reacher always reads before observation 63 at 15, 24, 32, or 43 observations after the cue; PushT always reads before observation 19 at 4, 8, or 15 observations after the cue. The final raw-latent window, actions, simulator state, label, and base episode are identical across ages. Absolute cue time and cue background co-vary with the offset. Reacher regeneration must exactly match the archived source arrays before cue translation; PushT retains the same official episode and local-start identity and permits mutations only inside declared cue pixels.
+
+For each task, module, and seed, one memory module is trained on a mixture containing every training episode once at every registered age, with equal age weight. The same held-out base episode is then evaluated at every age. This avoids fitting a different module to each delay; a separate prespecified linear readout is nevertheless fitted on the training split at each age. All learned modules use five seeds, the frozen encoder/predictor and 100-epoch training schedule remain fixed, and the readout excludes the decision observation. Paired 95\% intervals use 20,000 bootstrap draws over checkpoint seed and episode, with class-stratified episode resampling for PushT. Task admission and final evaluation use the same locked validation bank, so inference is conditional on that bank; admission is evaluated before memory training and does not select a module or age.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4.0pt}
+\caption{Strict cue-offset admission checks. Values are the minimum cue readout and maximum endpoint shortcut over all registered ages. Every age passes before memory-module metrics are aggregated.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.26\linewidth}>{\centering\arraybackslash}p{0.18\linewidth}>{\centering\arraybackslash}p{0.16\linewidth}>{\centering\arraybackslash}p{0.21\linewidth}Y@{}}
+\toprule
+Task & Obs. since cue & Min. cue readout & Max. late shortcut & Status \\
+\midrule
+Reacher marker & 15, 24, 32, 43 & 1.000 & .271 $\leq .300$ & \Pass \\
+\rowcolor{AuditGray}
+Reacher color & 15, 24, 32, 43 & 1.000 & .263 $\leq .300$ & \Pass \\
+PushT token & 4, 8, 15 & 1.000 & .254 $\leq .300$ & \Pass \\
+\rowcolor{AuditGray}
+PushT binding & 4, 8, 15 & .985 & .171 $\leq .217$ & \Pass \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Pre-training cache-schema receipt.}
+The locked PushT preparer retained a redundant \texttt{local\_start} identity array after verifying exact episode/local-start pairing, whereas the locked trainer rejects arrays it does not consume. Seventeen queued commands therefore stopped at cache validation in 5--6 seconds, before creating a carrier, optimizer, checkpoint, or metric. Before any PushT carrier metric existed, a disclosed post-lock artifact-schema amendment archived all 12 original caches, removed only \texttt{local\_start} from trainer-facing copies, and updated their artifact records. Labels, latents, actions, cue boundaries, and episode indices are byte-identical before and after; admissions and both locked programs are unchanged. The receipt (SHA-256 prefix \texttt{07c6581c}) hashes every failed log and original/amended artifact. This is implementation provenance, not an experimental stop or task failure.
+
+\subsection{Complete fixed-endpoint results}
+
+Tables below report the full registered inferential grid. No-state entries are absolute held-out accuracy; because the late inputs and endpoint are identical, they are exactly constant across ages. Learned-module entries are paired accuracy changes from that no-state feature on the same episodes. Reacher reports ordinary accuracy and PushT balanced accuracy. The shared carrier weights are age-balanced, but each age uses a separately fitted training-only linear readout.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.0pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Reacher fixed-endpoint grid: no-state absolute accuracy and learned-module change from no state [paired 95\% CI].}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Task & Module & Age 15 & Age 24 & Age 32 & Age 43 \\
+\midrule
+Marker & No state & .258 & .258 & .258 & .258 \\
+ & GRU & +.023 [$-.006$,.054] & +.024 [$-.005$,.055] & +.024 [$-.005$,.055] & +.024 [$-.005$,.055] \\
+ & LSTM & +.018 [$-.014$,.050] & +.018 [$-.013$,.051] & +.018 [$-.014$,.050] & +.018 [$-.013$,.051] \\
+ & State-space & +.169 [.109,.228] & +.068 [.018,.116] & +.031 [$-.013$,.075] & +.027 [$-.016$,.069] \\
+ & Fixed-trust & +.136 [.073,.199] & +.009 [$-.035$,.053] & +.008 [$-.037$,.053] & +.010 [$-.035$,.056] \\
+\midrule
+Color & No state & .208 & .208 & .208 & .208 \\
+ & GRU & +.017 [$-.013$,.049] & +.018 [$-.012$,.049] & +.017 [$-.013$,.049] & +.017 [$-.014$,.050] \\
+ & LSTM & +.007 [$-.024$,.038] & +.008 [$-.023$,.038] & +.009 [$-.022$,.040] & +.009 [$-.022$,.040] \\
+ & State-space & +.141 [.095,.189] & +.048 [.012,.086] & +.028 [$-.005$,.063] & +.020 [$-.013$,.054] \\
+ & Fixed-trust & +.243 [.175,.310] & +.034 [$-.016$,.084] & $-.002$ [$-.048$,.044] & $-.002$ [$-.048$,.042] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.0pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{PushT fixed-endpoint grid: no-state absolute balanced accuracy and learned-module change from no state [paired 95\% CI].}
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Task & Module & Age 4 & Age 8 & Age 15 \\
+\midrule
+Token & No state & .252 & .252 & .252 \\
+ & GRU & +.403 [.347,.462] & +.179 [.127,.235] & +.036 [.005,.068] \\
+ & LSTM & +.168 [.133,.203] & +.018 [$-.011$,.047] & +.002 [$-.026$,.029] \\
+ & State-space & +.667 [.625,.708] & +.311 [.261,.361] & +.078 [.047,.109] \\
+ & Fixed-trust & +.694 [.652,.735] & +.528 [.478,.578] & +.349 [.302,.396] \\
+\midrule
+Binding & No state & .163 & .163 & .163 \\
+ & GRU & +.113 [.076,.153] & +.033 [.003,.064] & +.003 [$-.023$,.028] \\
+ & LSTM & +.020 [$-.010$,.052] & $-.009$ [$-.035$,.017] & $-.004$ [$-.035$,.027] \\
+ & State-space & +.205 [.162,.249] & +.043 [.014,.072] & +.011 [$-.018$,.039] \\
+ & Fixed-trust & +.225 [.180,.270] & +.082 [.042,.121] & +.054 [.018,.091] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.7pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Direct shortest-minus-longest paired contrast [95\% CI]. Positive values mean the earlier cue is more readable at the same endpoint.}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Module & Reacher marker & Reacher color & PushT token & PushT binding \\
+\midrule
+No state & .000 [.000,.000] & .000 [.000,.000] & .000 [.000,.000] & .000 [.000,.000] \\
+GRU & $-.001$ [$-.005$,.000] & .000 [$-.007$,.007] & +.367 [.319,.421] & +.110 [.077,.145] \\
+LSTM & $-.001$ [$-.005$,.000] & $-.003$ [$-.010$,.004] & +.167 [.136,.198] & +.025 [.003,.045] \\
+State-space & +.143 [.091,.194] & +.121 [.082,.163] & +.589 [.550,.628] & +.194 [.153,.235] \\
+Fixed-trust & +.126 [.068,.185] & +.245 [.185,.305] & +.345 [.304,.388] & +.171 [.131,.210] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At a fixed decision point, moving the cue from the shortest to longest registered offset reduces held-out pre-decision linear-readout performance for state-space and fixed-trust on all four tasks. The range is .121--.245 ordinary accuracy on Reacher and .171--.589 balanced accuracy on PushT; all eight paired intervals exclude zero. GRU and LSTM losses resolve on both PushT tasks but not on Reacher. This identifies a within-task cue-placement effect along the evidence-age axis under fixed base trajectories, not a universal monotonic forgetting law or a complete explanation of the cross-checkpoint reversal.
+
+\subsection{Existing-checkpoint read-time diagnostic}
+
+As a descriptive precursor, we read the already-trained memory modules at earlier causal times without retraining. The state read always precedes the observation at that time and the last three raw latents are joined in the same way as the registered endpoint. Earlier reads show a pronounced transient trace for state-space and fixed-trust memory (Table below), while GRU/LSTM changes are much smaller. This branch does \emph{not} identify delay: read time, physical state, and remaining episode length change together. The fixed-endpoint intervention above is the causal comparison used in the main paper.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4.0pt}
+\caption{Existing-checkpoint paired accuracy gain over no state at earlier state reads. ``Endpoint'' is the registered pre-decision read (15 observations after the cue for PushT; 43--53 for Reacher).}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}*{4}{>{\centering\arraybackslash}p{0.12\linewidth}}Y@{}}
+\toprule
+Task & Module & Age 4 & Age 8 & Age 15 & Endpoint \\
+\midrule
+Reacher marker & State-space & +.683 & +.447 & +.151 & +.014 \\
+ & Fixed-trust & +.676 & +.603 & +.313 & +.021 \\
+\rowcolor{AuditGray}
+Reacher color & State-space & +.678 & +.383 & +.121 & +.030 \\
+\rowcolor{AuditGray}
+ & Fixed-trust & +.678 & +.547 & +.236 & $-.007$ \\
+PushT token & State-space & +.706 & +.363 & +.060 & +.060 \\
+ & Fixed-trust & +.761 & +.687 & +.396 & +.396 \\
+\rowcolor{AuditGray}
+PushT binding & State-space & +.303 & +.078 & +.013 & +.013 \\
+\rowcolor{AuditGray}
+ & Fixed-trust & +.439 & +.219 & +.052 & +.052 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Long-Context and Learned-Rollout Controls}
+\label{app:rollout}
+
+\subsection{Context coverage and semantic exposure}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Five-seed long-context controls. Predictor entries are mean [95\% seed interval]; validation MSE is the five-seed mean. Raw readouts are seed-independent.}
+\begin{tabular}{llccc}
+\toprule
+Task & $H$ & Raw-context accuracy & Predictor accuracy & Validation next-latent MSE \\
+\midrule
+Marker & 3 & .229 & .262 [.258,.266] & .0524 \\
+ & 16 & .250 & .255 [.252,.259] & .0132 \\
+ & 32 & .263 & .250 [.247,.253] & .0049 \\
+ & 56 & .771 & .253 [.250,.256] & .0065 \\
+\midrule
+Color & 3 & .171 & .206 [.202,.210] & .0837 \\
+ & 16 & .179 & .188 [.180,.195] & .0588 \\
+ & 32 & .196 & .185 [.181,.189] & .0525 \\
+ & 56 & .825 & .199 [.190,.211] & .0663 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $H\in\{3,16,32\}$, no validation window contains a cue frame. At $H=56$, every window contains cue evidence. The raw-access discontinuity therefore reflects legal coverage, while the flat predictor curve diagnoses learned exposure under next-latent training.
+
+\subsection{Five-seed learned-rollout control}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\linewidth]{fig_mem_appendix_rollout.pdf}
+\caption{Learned rollout competence from the fixed local anchor. Ratios below one beat copy-last; positive action advantage beats shuffled actions. This control does not contain pre-anchor memory evidence.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\caption{Five-seed rollout results at the registered horizon-eight gate. Ratios are model/copy-last normalized MSE; action advantage is shuffled-action MSE minus true-action MSE.}
+\begin{tabular}{llccc}
+\toprule
+Task & Objective & Copy ratio [95\% CI] & Action advantage [95\% CI] & Passing seeds \\
+\midrule
+Marker & one-step & .040 [.036,.047] & 1.258 [1.240,1.276] & 5/5 \\
+Marker & overshoot-8 & .046 [.042,.052] & 1.210 [1.186,1.228] & 5/5 \\
+Color & one-step & .327 [.322,.334] & .748 [.701,.784] & 5/5 \\
+Color & overshoot-8 & .241 [.239,.243] & .742 [.686,.784] & 5/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All task/objective models are also evaluated at horizons 1, 2, 4, and 16. No rollout metric is included in the retention aggregate; complete values and seed arrays are stored in the authenticated extension summary.
+
+\section{Diagnostic-Only DINO-WM Precursor}
+\label{app:dinowm-precursor}
+\label{app:dinowm}
+
+We apply the same cue/shortcut/temporal logic to a second latent world-model family, the original official proprioceptive DINO-WM PushT checkpoint \citep{r_dinowm}. This is a protocol-portability check, not a matched carrier comparison. The released LeWM-bank \texttt{dinowm\_noprop} URL was unavailable. A first preregistered attempt to run the original checkpoint on the LeWM bank stopped before task metrics because agent-position mean shift was .318 training standard deviations, above the .25 compatibility limit. The completed branch instead uses the checkpoint's original OSF PushT distribution and keeps the failed compatibility record unchanged.
+
+We reserve 1,200/480 disjoint episodes from the native training-distribution bank because only 16 official validation episodes are long enough for the fixed 20-frame, skip-five audit. The DINO encoder and world model remain frozen. Cue decoding uses a fixed spatial-pyramid feature interface; observed context, teacher-forced endpoint, actions, and proprioception must remain within .05 of chance. A three-frame cue anchors native open-loop imagination. At each of 1, 4, 8, and 15 imagined observations, the same predeclared readout class is fit separately on the training split and evaluated on held-out episodes. The rollout must beat copy-last at one step and in the 1--16 average and must beat episode-shuffled actions before the age-indexed diagnostics are evaluated.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.8pt}
+\caption{DINO-WM native-distribution prerequisite checks. Values are balanced accuracy except the final two rollout-health entries.}
+\begin{tabular}{lcc}
+\toprule
+Check & Token (ceiling .300) & Binding (ceiling .217) \\
+\midrule
+Cue decoding (minimum .750) & 1.000 & 1.000 \\
+Observed-context shortcut & .185 & .152 \\
+Teacher-endpoint shortcut & .298 & .163 \\
+Action / proprioception shortcut & .219 / .265 & .181 / .175 \\
+\midrule
+1--16 model/copy-last ratio (required $<1$) & \multicolumn{2}{c}{.200} \\
+1--16 true-action advantage (required $>0$) & \multicolumn{2}{c}{.790} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.4pt}
+\caption{DINO-WM cue-anchored imagination. Readout intervals bootstrap held-out episodes. Transport is within-episode all-label counterfactual RMS at the requested age divided by cue-time RMS.}
+\begin{tabular}{llcc}
+\toprule
+Task & Imagined observations since cue & Balanced accuracy [95\% CI] & Transport ratio [95\% CI] \\
+\midrule
+Token & 1 & .992 [.983,.998] & .337 [.325,.349] \\
+ & 4 & .600 [.556,.644] & .420 [.383,.460] \\
+ & 8 & .265 [.225,.304] & .573 [.514,.634] \\
+ & 15 & .271 [.231,.310] & .721 [.651,.794] \\
+\midrule
+Binding & 1 & .969 [.952,.983] & .517 [.506,.529] \\
+ & 4 & .365 [.323,.408] & .508 [.461,.560] \\
+ & 8 & .238 [.200,.277] & .821 [.722,.926] \\
+ & 15 & .183 [.148,.219] & 1.058 [.931,1.200] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_mem_appendix_dinowm.pdf}
+\caption{Age-indexed DINO-WM imagination diagnostics. Token recall is unresolved by age eight; binding remains above chance at age eight but is unresolved at age 15. Paired full-patch feature distance can grow as linear semantic decodability collapses, so raw counterfactual rollout divergence is not stable, usable memory.}
+\end{figure}
+
+This precursor extends the cue-availability, shortcut, rollout-health, and age-indexed imagination diagnostics beyond LeWM. It does not itself test persistent state, a carrier swap, or downstream use; the separately locked persistent-carrier extension appears in Appendix~\ref{app:dinowm-carrier}. Full-patch distance may reflect nonspecific rollout divergence. Neither study is a numerical comparison with LeWM: the bank is native rather than matched, both precursor readout splits come from the checkpoint's training distribution, and the token teacher-endpoint shortcut passes narrowly at .2979 against .3000.
+
+\section{Legacy Fixed-Consumer Execution Controls}
+\label{app:use}
+
+Both tests ask whether an external consumer can turn retained evidence into a different executed outcome. They do not reuse validation labels for fitting, and they do not test a native LeWM planner. The Reacher consumer chooses a joint goal for a fixed PD controller; the PushT consumer chooses a categorical block-pose goal for one pinned native-physics controller.
+
+\subsection{Reacher drifting-color test}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.8pt}
+\caption{Drifting-color fixed-consumer test. Means pool five representation checkpoints over the same 240 validation episodes. Regret is relative to the label oracle; lower is better.}
+\begin{tabular}{lccc}
+\toprule
+Representation source & Goal decision accuracy & Executed success & Mean regret \\
+\midrule
+No persistent carrier & .180 & .175 & .722 \\
+GRU & .190 & .185 & .712 \\
+State-space & .203 & .196 & .702 \\
+Fixed-trust & .178 & .173 & .724 \\
+Raw 56-latent context & .844 & .782 & .133 \\
+Cue-window representation & 1.000 & .917 & .000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The paired state-space-minus-no-state success difference is .0208 [.0017,.0417], and the paired regret reduction is .0199 [.0010,.0410]. GRU and fixed-trust intervals cross zero. Label-shuffle and action/time controls pass for every representation source. Absolute state-space goal selection remains below four-way chance.
+
+The marker task is ineligible for downstream inference because the cue-window physical oracle reaches .8875, below .90. A controller-only amendment evaluates four longer-horizon or more damped candidates on a class-balanced subset of the training bank. Every candidate reaches .8708 on marker and .9167 on color, below the locked per-task .925 development threshold. The amendment writes a stop record and never reads validation.
+
+\subsection{PushT token and binding tests}
+
+The training split is divided without labels into 800 consumer-training and 400 development episodes; the original 480 validation episodes remain held out. A native block-position rule retains 409 held-out episodes. One further episode is excluded before reading its label because simulator reset moves the block by 1.333 pixels, above the predeclared one-pixel fidelity limit. All reported results therefore use the same 408 episodes (85.0\%).
+
+For each task and carrier-training seed, one arm-blind logistic consumer is fit to a deck pooling all five representation sources. Arm identity is unavailable. Its feature is $[z_{16};z_{17};z_{18};b_{19}]$, with observation 19 excluded. The selected class indexes a fixed radial block-pose goal; the same deterministic controller receives the cached simulator state only after selection. Thus only the selected goal differs across arms. Carrier features run on CUDA 1; execution uses a clean checkout of the native simulator at commit \texttt{0ef3856}.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4.2pt}
+\caption{PushT downstream prerequisite checks. Shortcut and shuffle ceilings are chance plus .05. Oracle values are executed-success rates on the development split.}
+\begin{tabular}{lcc}
+\toprule
+Check & Token (4-way) & Binding (6-way) \\
+\midrule
+Cue balanced accuracy / minimum class recall & 1.000 / 1.000 & .960 / .929 \\
+Largest late shortcut / ceiling & .264 / .300 & .168 / .217 \\
+Mean of 20 label shuffles / ceiling & .257 / .300 & .167 / .217 \\
+Physical oracle / minimum class success & .996 / .994 & .994 / .988 \\
+Wrong-goal executed success & .000 & .000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.07}
+\caption{Complete PushT fixed-consumer results. Selection and success are means over five carrier seeds and the same 408 episodes. Paired intervals use a 10,000-draw crossed seed-by-episode bootstrap. Pose regret is lower-is-better and measured in the controller's native block-pose units.}
+\begin{tabular}{llcccc}
+\toprule
+Task & Representation & Selection & Success & Pose regret & $\Delta$ success vs. none [95\% CI] \\
+\midrule
+Token & No persistent state & .238 & .238 & 140.93 & --- \\
+ & GRU & .246 & .246 & 139.55 & +.008 [$-.003$,.020] \\
+ & LSTM & .244 & .244 & 140.12 & +.006 [$-.007$,.019] \\
+ & State-space & .271 & .271 & 134.55 & +.033 [.013,.057] \\
+ & Fixed-trust & .304 & .304 & 127.92 & +.067 [.039,.096] \\
+\midrule
+Binding & No persistent state & .158 & .158 & 144.01 & --- \\
+ & GRU & .169 & .166 & 142.66 & +.008 [.001,.017] \\
+ & LSTM & .158 & .156 & 144.01 & $-.001$ [$-.011$,.007] \\
+ & State-space & .175 & .172 & 141.60 & +.014 [.002,.029] \\
+ & Fixed-trust & .175 & .172 & 142.40 & +.014 [.001,.028] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The realized random-goal success is .243 for token and .181 for binding; the corresponding nominal expectations are .250 and .167. The held-out oracle is .995 for both tasks. On token recall, state-space and fixed-trust also reduce pose regret by 6.39 [1.88,11.59] and 13.02 [6.82,19.56]. Binding regret intervals cross zero, and both carrier success rates remain below the realized random baseline. We therefore credit token recall with an external-consumer execution effect and binding only with relative downstream sensitivity. Neither is standard PushT performance or evidence that LeWM's native predictor or planner reads the memory state.
+
+\section{Label-Free Repair Diagnostics}
+\label{app:repair}
+
+The first repair reconstructs four evenly spaced frozen cue-time latents from the final carrier prior. Compared with equal continued training, neither GRU nor state-space repair has an interval-resolved executed success or regret gain. The second diagnostic predicts
+\begin{equation}
+  \overline z_{\mathrm{cue}}-\frac12
+  \left(z_{\mathrm{pre}}+z_{\mathrm{post}}\right)
+\end{equation}
+from the final prior. The target is label-free, causal, standardized only on the formal training cache, and never optimized on validation.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Cue-residual repair. Positive twin MSE reduction means the auxiliary head fits better than objective-off continued training. Support additionally requires held-out NMSE below the training-mean predictor.}
+\begin{tabular}{llccc}
+\toprule
+Task & Carrier & Twin MSE reduction [95\% CI] & NMSE / mean & Next-latent change \\
+\midrule
+Marker & GRU & .970 [.928,1.027] & 1.012 & +.0025 \\
+Marker & State-space & 1.164 [1.102,1.230] & 1.034 & +.0065 \\
+Color & GRU & 1.347 [1.273,1.425] & 1.007 & +.0046 \\
+Color & State-space & 2.420 [2.249,2.609] & 1.008 & +.0108 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_mem_appendix_repair.pdf}
+\caption{The auxiliary head reduces residual MSE versus its continued-training twin (a), but held-out NMSE remains above the training-mean baseline in every cell (b). The predeclared success criterion fails in all four cells.}
+\end{figure}
+
+\section{Shell-Game Capacity Attempts}
+\label{app:shell}
+
+The capacity study tracks one, two, or four colored items through visible cup swaps and queries final item slots. Paired counterfactuals, swap visibility, post-shuffle leakage, and late-context leakage are tested before carriers train. The initial cue and one versioned salience amendment fail frozen cue availability. A second development-only amendment with one predeclared large cue card passes at .900--.946 per item and is locked before formal data are read.
+
+On the locked cue-card formal bank, cue availability is .954 and swap visibility is .971. The one-item stage passes all gates. The two- and four-item stages each yield .392 late-context accuracy on one item, above the locked chance-plus-.05 ceiling of .383. Because the grid is a capacity comparison, we do not selectively train only the favorable one-item stage after seeing the formal failures.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_mem_appendix_shell_gates.pdf}
+\caption{Complete shell-game gate history. The initial and salience overlays fail cue availability. The cue-card design passes in development, but its formal multi-item banks narrowly fail the no-shortcut gate; no memory-module comparison is produced.}
+\end{figure}
+
+\section{Statistical Contract and Reproducibility Ledger}
+\label{app:repro}
+
+\paragraph{Inference units.} The matched-color primary study jointly resamples carrier-seed indices across LeWM hosts, independently resamples episodes within host, and stratifies by the 16 color--location combinations. DINO-WM PushT resamples matched carrier seeds and class-stratified held-out episodes. PointMaze resamples matched carrier seeds and native validation episodes while keeping each four-label counterfactual set in one cluster. The legacy carrier intervals resample matched optimizer/model seeds; fresh Reacher banks are averaged with tasks inside seed and are not treated as independent runs. Fixed-consumer intervals use a crossed paired bootstrap over checkpoint seeds and validation episodes. Residual-repair intervals pair condition twins by checkpoint seed and episode. No-carrier copies are never counted as independent seeds.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Legacy and precursor artifact ledger.  Hashes are SHA-256 prefixes
+shown for readability; full digests are stored in the corresponding locks and
+summaries.  The matched and persistent DINO-WM grids use their separately
+generated, receipt-bound result tables and manifests.}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.28\linewidth}>{\centering\arraybackslash}p{0.14\linewidth}>{\centering\arraybackslash}p{0.16\linewidth}Y@{}}
+\toprule
+Study & Formal cells & Spec/summary hash prefix & Integrity checks \\
+\midrule
+Reacher carrier robustness & 30 train + 100 eval & 10637be6 / 7ca5b62 & parent states, fresh banks, endpoints \\
+\rowcolor{AuditGray}
+Official PushT carrier swap & 50 train & b7ac425a / 46400257 & dataset, checkpoint, caches, frozen host \\
+Reacher consumer + first repair & 40 train + 10 eval & 3e2f6f27 & controls, oracle, crossed pairs \\
+\rowcolor{AuditGray}
+Cue-residual repair & 40 train & c7a60d16 & condition twins, causal target, no labels \\
+Context/rollout extension & 24 new train & b97dc9eb / 96dd17e9 & 36 parent + 24 new cells \\
+\rowcolor{AuditGray}
+Fixed-endpoint cue placement & 80 train + 20 no-state eval & c8f6ac92 / 01ec607d & paired ages, 300 hashes, receipt 07c6581c \\
+PushT external-consumer execution & 50 representation cells & 3cf007e2 / 38847fe9 & gates, reset fidelity, 128 hashes \\
+\rowcolor{AuditGray}
+DINO-WM native portability & 2 tasks $\times$ 4 ages & 142240cb / 6c34f5b & native bank, admissions, rollout health \\
+Shell-game cue card & admission only & 8dc779da & versioned development and formal gates \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+All official weights are loaded strictly, and their full parameter-state digest is checked before and after every carrier job. Derived summaries validate every expected path and reject missing, unexpected, staged, or hash-mismatched artifacts. The official PushT HDF5 contains 18,685 episodes and 2,336,736 rows; its extracted SHA-256 begins \texttt{b6ebd9ac}. Formal GPU jobs use only CUDA devices 0--2. Figure PDFs use embedded TrueType fonts and are generated from authenticated summaries and source/check artifacts.
+
+\section{Legacy Claim Boundary}
+
+For the heterogeneous-cue, context, rollout, and repair studies above, the
+evidence establishes: (i) frozen cue encoding for four categorical tasks;
+(ii) causal final-read carrier comparisons under two LeWM checkpoints;
+(iii) robustness to additional Reacher seeds and fresh banks; (iv) a
+fixed-endpoint cue-timing intervention; (v) a raw-context/predictor-output
+dissociation; (vi) external-consumer execution effects on Reacher color and
+PushT token, plus relative PushT binding sensitivity; (vii) partial diagnostic
+portability to native DINO-WM imagination; and (viii) two unsuccessful
+label-free repairs.  The controlled matched and persistent DINO-WM studies
+have separate task-level claims and receipt-bound tables.
+
+It does not establish native consumption of state by a released LeWM planner, end-to-end memory-conditioned control, policy optimality, simultaneous multi-item capacity, natural-scene memory, universal carrier rankings, or carrier generalization across world-model families.

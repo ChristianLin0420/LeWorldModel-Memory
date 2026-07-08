@@ -1,0 +1,202 @@
+# Locked post-V1 diagnostic of a cue-residual delayed repair objective.
+# This is not a pre-registered Paper-A primary result and does not modify or
+# replace the V1 delayed-goal study.
+schema_version: 2
+study: paper-a-delayed-repair-cue-residual-v2
+protocol_status: locked_before_development_health_and_gpu_training
+
+scientific_role:
+  classification: post_v1_diagnostic_repair
+  preregistered_primary_result: false
+  downstream_label_use_claim: false
+  purpose: Test whether isolating cue-induced frozen-latent change yields a learnable delayed self-supervised retention target.
+  interpretation_if_positive: Mechanistic evidence for residual-cue retention under continued frozen-host carrier training only.
+  does_not_establish:
+    - improvement of the V1 executed-choice endpoint
+    - a pre-registered primary result
+    - end-to-end memory-conditioned control
+    - checkpoint or task generalization
+
+parent_v1_diagnostic:
+  spec:
+    path: configs/paper_a_delayed_goal_use.yaml
+    sha256: 3e2f6f27bcb5c2a5e5d442ab7770467a5fb1bf9001197857b14b1da351931946
+  lock:
+    path: configs/paper_a_delayed_goal_use.sha256
+    sha256: 22c89e33446577965d09cf8576b57ebcbee3bb8ae32c54edbaacb72e1bc257fe
+  output_root: outputs/paper_a_delayed_goal_use_v1
+  repair_metrics_tree:
+    pattern: repairs/**/metrics.json
+    count: 40
+    sha256: cb2fc95d8adbac731e02e6e083035133667924d215c6326ed4a91b40620c3a39
+  evaluation_metrics_tree:
+    pattern: evaluations/**/metrics.json
+    count: 10
+    sha256: 18aab1d7625027f7318158e8ea6e494aafe5eb1798049c28a14a2c7440c7b847
+  observed_full_cue_normalized_mse:
+    constant_predictor_floor: 1.0
+    transient-marker-recall:
+      gru: 1.0226341485977173
+      ssm: 1.0657739639282227
+    drifting-color-recall:
+      gru: 1.0710798025131225
+      ssm: 1.0930976629257203
+  observed_executed_success_repair_minus_off:
+    transient-marker-recall:
+      gru: 0.0
+      ssm: 0.006666666666666682
+    drifting-color-recall:
+      gru: -0.0025000000000000022
+      ssm: 0.007500000000000007
+  diagnosis: The 768-D full-cue target remained near its normalized constant-predictor floor and produced no registered final-use improvement.
+
+parent:
+  expansion_root: outputs/paper_a_expansion
+  expansion_config:
+    path: configs/paper_a_expansion.yaml
+    sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+  expansion_summary:
+    path: outputs/paper_a_expansion/summary.json
+    sha256: 71ad6b346d6bf43b0f9e3f50df4be71a43dc10c1d766d76bb18b8cfd72b344da
+  robustness_config:
+    path: configs/paper_a_robustness.yaml
+    sha256: 10637be6d29a5b8ec8b7ade9684e009da3f0dc7f66d89ac12a2b8c73d5120a56
+  official_weights:
+    path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+    sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  checkpoint_root: outputs/paper_a_expansion/frozen_swap
+  checkpoint_tree:
+    carrier_files: 20
+    carrier_sha256: 366b5477c21f0728a4d5747c141831da3e7ea075c9ec14dbca12e52dde1dea16
+    metrics_files: 20
+    metrics_sha256: b999642f2f8045c496576ff7842d9e2e697a92ea144ca4eb47ed9995a8305388
+
+tasks:
+  transient-marker-recall:
+    display_name: Transient-marker recall
+    parent_task_id: t1
+    training_cache:
+      path: outputs/paper_a_expansion/cache/t1/train.npz
+      sha256: af2d0326e6aad51835183e9ac9b034489b0f77c02576d191734920f7c6d894d5
+    validation_cache:
+      path: outputs/paper_a_expansion/cache/t1/val.npz
+      sha256: 9c542ff7054c597ea7e2c12ad0265ef79b4204a3ca4f99e5822cb07b43bae214
+    development_cache:
+      path: outputs/paper_a_robustness_v1/fresh_validation_cache/t1/fresh-a/val.npz
+      sha256: 5836c4f3d9dde8719011ff5aca2d7dc91bd9937a48e465a967a68bb07bb875b4
+      sidecar_sha256: 191e135166cd6eb181204d861d103ef0524f1e74e1466b1cc0371bb09bf0c8ec
+      manifest_sha256: f880b3105994419e5b13fb637e19b297197ee827f6a2e3052ffdd1f13f4b33d2
+      collection_seed: 270703
+    parent_carrier_state_sha256:
+      gru:
+        0: faaa3553518cac799e66149f1bfee378a50776c6b4a4c0f81db7c69a47d85290
+        1: 5867adf22a9ddee8001b00c3200ff42a762284929b133d2aaf7b479ecc293b5e
+        2: 74be25607ee9637395ec772147f46a5d6a830d4c101913cb2d8edc7545b56796
+        3: d508cebbc012756d6078ee0a2b9752a5a9d5a542e09d70315c085e44e244ddf9
+        4: b0d36aa14d08bce0b54fb5cf3c3c0118cdfc0b127b8cac193973d93d887204ee
+      ssm:
+        0: 2558862595d5579832e76bba60b74e736e4bdb7e7b808c56b44143e69d4b08d0
+        1: 5fa0d7e9ca079932ce6f6ffce8921e05fce186af0af6121d15d28e0b736d5f32
+        2: 8a5e656bfc0bfeb3fe3285489f5f81232f672a9f265c04cef45feebf45fc6975
+        3: 5c463f0427f9b66fb01a1526ec6fcab013f2cd3c78cf36efe3030ffb47c16c01
+        4: 5ded44c2a7c72d76026b4b1a1190a4cdea565efbdede9e4510f44e4bf8c84ba1
+  drifting-color-recall:
+    display_name: Drifting-color recall
+    parent_task_id: t3
+    training_cache:
+      path: outputs/paper_a_expansion/cache/t3/train.npz
+      sha256: 047a3b7ea5eaf41ce5730fa58a0cb8f23b374d911c5314b049a3ba51bb9e1e25
+    validation_cache:
+      path: outputs/paper_a_expansion/cache/t3/val.npz
+      sha256: 8dfad1407b59d8500eecc3f3ef867627c3351db6495c5c26be9aa75cc0725373
+    development_cache:
+      path: outputs/paper_a_robustness_v1/fresh_validation_cache/t3/fresh-a/val.npz
+      sha256: 0cfdb48c6164d41017a53ca165cf42e2cf09511322f104519eed1c277384e68c
+      sidecar_sha256: 0b2283222b83cd1edb3c52aee36c90207579a036b20084e887853f17cec23071
+      manifest_sha256: 6778b6a7bf952e2d7d948277111eb6876381071e6606f178c77c0e1373c10612
+      collection_seed: 270703
+    parent_carrier_state_sha256:
+      gru:
+        0: 32383717aae62bdce7069933ab1e8c841033540ddad6ae4b54ec672000d2e788
+        1: 0a701556279af0e6e0a0ce0b9faa974a16c7b63009d13ea4873c4f8d18823430
+        2: 7cc29669ae56f4a3cbadb599496385f3ee1bdaefd7a06712163f48b1b89bdd79
+        3: 3455ed6fc4c3198b9fb03e48426504a9e4f3f3f0d4f257c4bcbe2e46e13e09fd
+        4: 93813b3448ceab21caf1665a818c9e0f9147ffcbe4e25f81a8c83d758f73134a
+      ssm:
+        0: d79ac23445ee62f56a55bf2823706715e57f54dc7e08412a05e9249a7b147f4e
+        1: 4b2565412e0038265b80cc1f99d3ea3de4f5905594f48981e563b63795c20c06
+        2: 8993ae0401f23fa38bdfdbceffbe85cd8cfa682d0bd8045075f2bd505b02c59a
+        3: 31329fda40174e92272fae936cbb4a15ff5611fdf433dd8bb268aa6985f95e65
+        4: f0cf0db224eaf26ba1c6cc219d64d0191844fdbc06b3e8c25472a3c5d9bd65aa
+
+cue_residual_target:
+  dimension: 192
+  cue_summary: mean frozen z[t] for cue_on <= t < cue_off
+  scene_baseline: 0.5 * (z[cue_on-1] + z[cue_off])
+  residual: cue_summary - scene_baseline
+  interpolation_equivalence: mean linear interpolation between immediate pre-cue and post-cue endpoints
+  standardization: per-coordinate training-cache mean and population standard deviation
+  scale_floor: 0.000001
+  target_gradient: stop_gradient
+  repair_head: Linear(192,192)
+  read: prior_read[:,63] before consuming z[:,63]
+  forbidden_inputs: [xi, "z[:,63]", validation optimization, development normalization in formal training]
+
+development_health:
+  source: fresh-a cache used as unlabeled development only
+  labels_loaded: false
+  formal_training_performed: false
+  required_episodes: 240
+  cue_duration_min: 4
+  cue_duration_max: 6
+  coordinate_std_min: 0.05
+  coordinate_std_fraction_min: 1.0
+  median_episode_residual_rms_min: 0.1
+  median_episode_residual_rms_max: 10.0
+  all_target_indices_before_decision: true
+  policy: Every task must pass before any formal repair cell starts.
+
+formal_repair:
+  arms: [gru, ssm]
+  conditions: [objective-off, cue-residual-repair]
+  checkpoint_seeds: [0, 1, 2, 3, 4]
+  initialization: authenticated original parent carrier checkpoint
+  epochs: 20
+  batch_size: 64
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  next_latent_weight: 1.0
+  cue_residual_weight:
+    objective-off: 0.0
+    cue-residual-repair: 1.0
+  next_latent_windows_per_batch: 8
+  gradient_clip_norm: 1.0
+  optimizer: AdamW
+  scheduler: CosineAnnealingLR
+  torch_seed_base: 170000
+  batch_plan_seed_base: 270000
+  pairing: Twins share parent state, head initialization, batch order, next-latent windows, optimizer, and schedule.
+
+formal_endpoints:
+  primary_diagnostic: validation cue-residual MSE normalized by the training-mean zero-predictor MSE
+  paired_contrast: objective-off MSE minus cue-residual-repair MSE
+  secondary:
+    - validation next-latent MSE
+    - cue-residual R2 relative to the training-mean zero predictor
+  diagnostic_support_rule: paired crossed-bootstrap 95% lower bound of residual-MSE reduction exceeds zero and repaired mean normalized MSE is below 1
+  bootstrap_draws: 20000
+  bootstrap_seed: 20260708
+
+output:
+  root: outputs/paper_a_delayed_repair_residual_v2
+  development: outputs/paper_a_delayed_repair_residual_v2/development
+  repairs: outputs/paper_a_delayed_repair_residual_v2/repairs
+  summary: outputs/paper_a_delayed_repair_residual_v2/summary.json
+  logs: outputs/paper_a_delayed_repair_residual_v2/logs
+
+execution:
+  allowed_devices: [cuda:1, cuda:2]
+  forbidden_devices: [cuda:0, cuda:3]
+  preview_by_default: true
+  require_explicit_execute: true
+  jobs_per_gpu: 1

@@ -1,0 +1,172 @@
+{
+  "artifacts": {
+    "fig_mem_appendix_dinowm.pdf": {
+      "path": "paper_a/figures/fig_mem_appendix_dinowm.pdf",
+      "sha256": "564c1d889cf5ca3d2c94b0e6eafbcc1c8ecce09d45a39378c3d1aabfadb3df09",
+      "size": 33047
+    },
+    "fig_mem_appendix_dinowm.png": {
+      "path": "paper_a/figures/fig_mem_appendix_dinowm.png",
+      "sha256": "0072eb8dfa1a1ac4ca0e3dfa64e2cf6d8c02ae994f554f5de63e8871875d2cba",
+      "size": 104366
+    },
+    "fig_mem_appendix_endpoint.pdf": {
+      "path": "paper_a/figures/fig_mem_appendix_endpoint.pdf",
+      "sha256": "3852c54cd28331ba57175116d52ac65b4568dbf13d16203a2d3f11226e1da1d6",
+      "size": 38383
+    },
+    "fig_mem_appendix_endpoint.png": {
+      "path": "paper_a/figures/fig_mem_appendix_endpoint.png",
+      "sha256": "900dfbffb152927ffaf0574d60ab56829a8a9bdada8f76c8a92bf6597db418b8",
+      "size": 76830
+    },
+    "fig_mem_appendix_repair.pdf": {
+      "path": "paper_a/figures/fig_mem_appendix_repair.pdf",
+      "sha256": "7f902a029e42548af85a9080bd8e85cc09cb93be9d923274835c65b379e4c14b",
+      "size": 28745
+    },
+    "fig_mem_appendix_repair.png": {
+      "path": "paper_a/figures/fig_mem_appendix_repair.png",
+      "sha256": "e91e66d40021d51f4a2a62b07370472187a4f63fbe5b72bc1463211fadc6264e",
+      "size": 57817
+    },
+    "fig_mem_appendix_rollout.pdf": {
+      "path": "paper_a/figures/fig_mem_appendix_rollout.pdf",
+      "sha256": "cc11fde6e89f54ea5da4b7e5f452b87a7aabb46def70914b1a36b50172e6b527",
+      "size": 36505
+    },
+    "fig_mem_appendix_rollout.png": {
+      "path": "paper_a/figures/fig_mem_appendix_rollout.png",
+      "sha256": "b3f3befb820554a2cadf5db59c6a7a6c58cf27cae2100dadf3d5ef08e94f9e9f",
+      "size": 105573
+    },
+    "fig_mem_appendix_shell_gates.pdf": {
+      "path": "paper_a/figures/fig_mem_appendix_shell_gates.pdf",
+      "sha256": "8df37e50aa583745a2987dd4ed1540d3715eaaca200118f9b86c0d5cccba02f8",
+      "size": 26873
+    },
+    "fig_mem_appendix_shell_gates.png": {
+      "path": "paper_a/figures/fig_mem_appendix_shell_gates.png",
+      "sha256": "a2f324afd2ced961dc8a896b8038c0ad13fd241b10e1b2e4c1feb2636b0d62cd",
+      "size": 114290
+    },
+    "fig_mem_architecture.pdf": {
+      "path": "paper_a/figures/fig_mem_architecture.pdf",
+      "sha256": "3eadff95794d3a87ebdeddd9ff27a85182a58621292008a97b901b9603c82769",
+      "size": 61742
+    },
+    "fig_mem_architecture.png": {
+      "path": "paper_a/figures/fig_mem_architecture.png",
+      "sha256": "b5a6af62ff69b4bdcdd01200c9f42a6e688fb43ae100af1b6e7b43258b11d4cd",
+      "size": 202790
+    },
+    "fig_mem_cue_age.pdf": {
+      "path": "paper_a/figures/fig_mem_cue_age.pdf",
+      "sha256": "5a9dbd5671dce2d87a26eacf3ae1ad4ca48bc93ceec0d81a3363aa831ebbfb24",
+      "size": 36093
+    },
+    "fig_mem_cue_age.png": {
+      "path": "paper_a/figures/fig_mem_cue_age.png",
+      "sha256": "e925a6257c857666053148e9eda090a2d3b16828f44923bbb41910210628d790",
+      "size": 132481
+    },
+    "fig_mem_diagnosis.pdf": {
+      "path": "paper_a/figures/fig_mem_diagnosis.pdf",
+      "sha256": "a494f1dbf0fee7844348a9b81c91ba937663c41ac53f5ef15237b57c85554ce3",
+      "size": 41693
+    },
+    "fig_mem_diagnosis.png": {
+      "path": "paper_a/figures/fig_mem_diagnosis.png",
+      "sha256": "ddcbaf0a7036d37192a669876770865854b8fdcd143408eb6ba0643b78b8d4ac",
+      "size": 143279
+    },
+    "fig_mem_dinowm_carrier.pdf": {
+      "path": "paper_a/figures/fig_mem_dinowm_carrier.pdf",
+      "sha256": "c7b6712655554c400aeaf80a61cf1c2f54f2540b74ee77a5252ab7b3b3bbd920",
+      "size": 44252
+    },
+    "fig_mem_dinowm_carrier.png": {
+      "path": "paper_a/figures/fig_mem_dinowm_carrier.png",
+      "sha256": "047b8166342847326eec1f9461983b0dae67b4c2200470b3e4e58bd441a6384e",
+      "size": 164772
+    },
+    "fig_mem_matched.pdf": {
+      "path": "paper_a/figures/fig_mem_matched.pdf",
+      "sha256": "1c5b9c95f2c1f6fce2b2cdef5e705f331ab1e5ddc4c98fa89bd8fd33fac79bd9",
+      "size": 39531
+    },
+    "fig_mem_matched.png": {
+      "path": "paper_a/figures/fig_mem_matched.png",
+      "sha256": "0a75a04b6b8d40c37d5c3ca6dcd0fedb15dd2e4ad7ad4cf7b861b04229a822c6",
+      "size": 149759
+    },
+    "fig_mem_pointmaze.pdf": {
+      "path": "paper_a/figures/fig_mem_pointmaze.pdf",
+      "sha256": "6b7e61bac2bf21430d380a95f7f422ce696c7f1fd95010a10de0ddf37cbdd838",
+      "size": 45678
+    },
+    "fig_mem_pointmaze.png": {
+      "path": "paper_a/figures/fig_mem_pointmaze.png",
+      "sha256": "87b406261831d0fb5d300f80edfebbea547961ce6b0aa3eaca288022ceb07b77",
+      "size": 161844
+    },
+    "fig_mem_retention.pdf": {
+      "path": "paper_a/figures/fig_mem_retention.pdf",
+      "sha256": "799c221c20d51b51a8a83850ad62d495c053d136669eb93423436c93001bb484",
+      "size": 44381
+    },
+    "fig_mem_retention.png": {
+      "path": "paper_a/figures/fig_mem_retention.png",
+      "sha256": "18ad1354eb588662b4b7401e18ba887eb5d4b704babc99d00d1ff8b892f4ba68",
+      "size": 149410
+    },
+    "fig_mem_tasks.pdf": {
+      "path": "paper_a/figures/fig_mem_tasks.pdf",
+      "sha256": "fa0c379edcd285644517816a0253ed9166cbeea1b474a8a8ad07701ca5e1785a",
+      "size": 93450
+    },
+    "fig_mem_tasks.png": {
+      "path": "paper_a/figures/fig_mem_tasks.png",
+      "sha256": "b860d849110f2e3c5850727663f47a1a531be64914013b501b1c87c6bcdf3c2f",
+      "size": 124792
+    }
+  },
+  "audit_receipts": {
+    "completion": {
+      "path": "outputs/paper_a_cross_wave_completion/receipt.json",
+      "sha256": "6b6b58e7d373be07c0815d0fa15f594442811fbf95c6af5565eb2ec8ca2d545d"
+    },
+    "statistics": {
+      "path": "outputs/paper_a_statistics_independent/receipt.json",
+      "sha256": "885c722bee8bb0317ee6ed9680590fa8c6b541fc8bd5891bd27c396ecafce7a3"
+    }
+  },
+  "generator": {
+    "path": "scripts/plot_paper_a_strengthened.py",
+    "sha256": "05d2147a4b06e0e2044445836a2e89d54230bd32e0215366df92dd0808ece8e9"
+  },
+  "schema": "paper_a_figure_manifest_v1",
+  "status": "complete",
+  "summaries": {
+    "matched": {
+      "path": "outputs/paper_a_matched_color_v1_1/summary.json",
+      "sha256": "8642eefd3c70ce4cabf302139d132fca50e4183b659d85593371b2ee9f872803"
+    },
+    "pointmaze": {
+      "path": "outputs/dinowm_pointmaze_wave3/formal/summary.json",
+      "sha256": "c8080da2f308b38433497764a155456b17d22415c7f22e0f5c2d3860bd92e2ae"
+    },
+    "pointmaze_carrier": {
+      "path": "outputs/dinowm_pointmaze_wave3/formal/carrier_summary.json",
+      "sha256": "593e2fccca0cddbc53b2a3fce7d0e932244053b11a9106ee98f64d0bea03d542"
+    },
+    "pointmaze_use": {
+      "path": "outputs/dinowm_pointmaze_wave3/formal/external_use_summary.json",
+      "sha256": "07e24eb5413538abf528e191c1ff6028ab6a6dc5415b0ead20a282a9207f51f4"
+    },
+    "pusht": {
+      "path": "outputs/dinowm_wave2_spatial_carrier_v1_1/formal/summary.json",
+      "sha256": "02d9eaf5b0f62bba873a888d9fb0e01b80bef57349ab6d172ea52c7195a4072b"
+    }
+  }
+}

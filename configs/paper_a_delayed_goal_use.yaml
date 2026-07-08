@@ -1,0 +1,202 @@
+# Locked consumer-use study on the completed frozen Reacher carrier cohort.
+# This is a post-expansion strengthening study and never modifies its parent.
+schema_version: 1
+study: paper-a-delayed-goal-use-v1
+
+parent:
+  root: outputs/paper_a_expansion
+  config:
+    path: configs/paper_a_expansion.yaml
+    sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+  summary:
+    path: outputs/paper_a_expansion/summary.json
+    sha256: 71ad6b346d6bf43b0f9e3f50df4be71a43dc10c1d766d76bb18b8cfd72b344da
+  official_weights:
+    path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+    sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  cache_root: outputs/paper_a_expansion/cache
+  checkpoint_root: outputs/paper_a_expansion/frozen_swap
+  train_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/train.npz
+      sha256: af2d0326e6aad51835183e9ac9b034489b0f77c02576d191734920f7c6d894d5
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/train.npz
+      sha256: 047a3b7ea5eaf41ce5730fa58a0cb8f23b374d911c5314b049a3ba51bb9e1e25
+  validation_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/val.npz
+      sha256: 9c542ff7054c597ea7e2c12ad0265ef79b4204a3ca4f99e5822cb07b43bae214
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/val.npz
+      sha256: 8dfad1407b59d8500eecc3f3ef867627c3351db6495c5c26be9aa75cc0725373
+
+output:
+  root: outputs/paper_a_delayed_goal_use_v1
+  repairs: outputs/paper_a_delayed_goal_use_v1/repairs
+  evaluations: outputs/paper_a_delayed_goal_use_v1/evaluations
+  summary: outputs/paper_a_delayed_goal_use_v1/summary.json
+  logs: outputs/paper_a_delayed_goal_use_v1/logs
+
+tasks:
+  t1:
+    name: Transient-marker recall
+    slug: transient-marker-recall
+    classes: 4
+  t3:
+    name: Drifting-color recall
+    slug: drifting-color-recall
+    classes: 4
+
+checkpoint_seeds: [0, 1, 2, 3, 4]
+
+representation_sources:
+  - id: none
+    name: No persistent carrier
+    slug: no-persistent-carrier
+    kind: carrier
+  - id: gru
+    name: Action-conditioned GRU
+    slug: action-conditioned-gru
+    kind: carrier
+  - id: ssm
+    name: Diagonal state-space carrier
+    slug: diagonal-state-space-carrier
+    kind: carrier
+  - id: fixed_trust
+    name: Fixed-trust predict-correct memory
+    slug: fixed-trust-predict-correct
+    kind: carrier
+  - id: gru_objective_off
+    name: GRU continued-training control
+    slug: gru-continued-training-control
+    kind: repair_control
+  - id: gru_cue_repair
+    name: GRU with delayed cue-latent repair
+    slug: gru-delayed-cue-latent-repair
+    kind: repair
+  - id: ssm_objective_off
+    name: SSM continued-training control
+    slug: ssm-continued-training-control
+    kind: repair_control
+  - id: ssm_cue_repair
+    name: SSM with delayed cue-latent repair
+    slug: ssm-delayed-cue-latent-repair
+    kind: repair
+  - id: long_context_56
+    name: Raw 56-latent context
+    slug: raw-56-latent-context
+    kind: upper_bound
+  - id: cue_window
+    name: Cue-window representation
+    slug: cue-window-representation
+    kind: upper_bound
+
+consumer:
+  scope: one arm-blind consumer per task and checkpoint seed
+  fit_split: parent training bank only
+  fitting_sources: [none, gru, ssm, fixed_trust, gru_objective_off, gru_cue_repair, ssm_objective_off, ssm_cue_repair, long_context_56, cue_window]
+  source_weighting: equal by duplicating every training episode once per source
+  labels_available_during_fit: true
+  validation_labels_available_during_fit: false
+  model: StandardScaler+LogisticRegression
+  logistic_c: 1.0
+  solver: lbfgs
+  max_iter: 2000
+  random_state: 0
+  interface_dimension: 768
+  carrier_interface: concatenate z[q-3:q] and pre-observation prior[q]
+  long_context_interface: split z[q-56:q] into four contiguous blocks and concatenate block means
+  cue_interface: four evenly-spaced cue-window latents
+  decision_index: 63
+  class_decision: argmax probability
+
+executed_choice:
+  role: external downstream delayed-goal choice task
+  environment: dm_control/reacher/easy
+  initialization: cached endo_state at decision_index
+  state_assumption: endo_state stores Reacher joint position then velocity in dm_control physics-state order
+  executed_horizon: 80
+  action_policy: clipped joint-space PD
+  proportional_gain: 1.5
+  derivative_gain: 0.25
+  joint_goals:
+    - [-1.2, -0.6]
+    - [-0.4, 1.2]
+    - [0.4, -1.2]
+    - [1.2, 0.6]
+  goal_assignment: categorical class 0 through 3 indexes the registered joint-goal list
+  distance: root-mean-square wrapped joint-angle error to the true class goal
+  success_tolerance_radians: 0.35
+  return: exp(-0.5*(distance/0.50)^2)
+  return_scale_radians: 0.50
+  oracle: execute the true class goal with the identical choice policy
+  oracle_success_min: 0.90
+
+controls:
+  label_shuffle:
+    enabled: true
+    method: one fixed training-episode permutation shared across duplicated sources
+    seed_base: 99100
+  action_time_shortcut:
+    enabled: true
+    inputs: action-prefix mean,sum,last plus normalized cue-on,cue-off,decision-time
+    padded_interface_dimension: 768
+  shortcut_accuracy_max: 0.35
+
+endpoints:
+  primary:
+    - executed_success_rate
+    - regret_to_label_oracle
+  diagnostics:
+    - goal_decision_accuracy
+    - mean_executed_return
+  paired_contrasts:
+    - GRU minus no-carrier success; no-carrier minus GRU regret
+    - SSM minus no-carrier success; no-carrier minus SSM regret
+    - fixed-trust minus no-carrier success; no-carrier minus fixed-trust regret
+    - cue-repaired GRU minus equal-training objective-off GRU
+    - cue-repaired SSM minus equal-training objective-off SSM
+  use_success_rule: both 95% paired-bootstrap lower bounds exceed zero
+  bootstrap:
+    draws: 20000
+    seed: 20260707
+    method: crossed paired checkpoint-seed and validation-episode percentile bootstrap
+
+claim_boundary:
+  establishes: retained information is usable by a common train-only consumer to alter an executed Reacher choice with a physical cost and regret
+  does_not_establish:
+    - the released LeWM predictor natively consumes carrier state
+    - end-to-end memory-conditioned control
+    - policy optimality
+    - model-predictive control
+    - task or checkpoint generalization
+
+repair:
+  status: registered_label_free_isolation
+  implemented: true
+  eligible_arms: [gru, ssm]
+  conditions: [objective_off, cue_repair]
+  initialization: authenticated parent carrier checkpoint
+  epochs: 20
+  batch_size: 64
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  next_latent_weight: 1.0
+  cue_repair_weight:
+    objective_off: 0.0
+    cue_repair: 1.0
+  repair_head: Linear(192,768)
+  target: concatenate four evenly-spaced frozen latent vectors from cue_on through cue_off-1
+  target_normalization: per-coordinate training-bank mean and standard deviation
+  target_gradient: stop_gradient
+  read: prior_read[:,63] computed before consuming z[:,63]
+  repair_objective_forbidden_inputs: [xi, "z[:,63]", validation data]
+  pairing: conditions share parent state, repair-head initialization, batch order, sampled next-latent windows, optimizer, and schedule
+  interpretation: cue_repair minus objective_off isolates the delayed self-supervised retention incentive after equal continued training
+
+execution:
+  allowed_devices: [cuda:1, cuda:2]
+  forbidden_devices: [cuda:0, cuda:3]
+  default_device: cuda:1
+  require_explicit_execute: true

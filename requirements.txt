@@ -1,6 +1,8 @@
 torch>=2.0
 torchvision>=0.15
+transformers>=4.46,<5
 numpy
+PyYAML
 matplotlib
 tqdm
 gymnasium
@@ -8,6 +10,8 @@ opencv-python
 scikit-learn
 scipy
 imageio
+h5py>=3.8
+hdf5plugin>=5,<6
 tensorboard
 wandb
 popgym-arcade  # optional: POPGym Arcade benchmark (pulls jax)

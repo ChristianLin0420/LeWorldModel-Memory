@@ -1,0 +1,191 @@
+# Locked native portability audit for the original official DINO-WM PushT host.
+# This fallback includes proprioception and is never identified as dinowm_noprop.
+schema_version: 1
+study: Native DINO-WM PushT memory-transport portability audit
+protocol_status: locked_before_metrics
+locked_date: 2026-07-06
+
+requested_missing_release:
+  display_name: LeWM dinowm_noprop PushT
+  official_repo: https://github.com/lucas-maes/le-wm
+  official_drive_url: https://drive.google.com/drive/folders/1r31os0d4-rR0mdHc7OlY_e5nh3XT4r4e
+  status: unavailable_http_404
+  status_receipt: outputs/dinowm_native_pusht_audit_v1/receipts/dinowm_noprop_drive_status.txt
+  policy: Never substitute silently or label fallback results dinowm_noprop.
+
+fallback_checkpoint:
+  display_name: Original official DINO-WM PushT (proprioceptive)
+  project_url: https://github.com/gaoyuezhou/dino_wm
+  osf_node: https://osf.io/bmw48/
+  osf_download_url: https://osf.io/download/xvzs4/
+  archive_path: outputs/dinowm_native_pusht_audit_v1/downloads/outputs.zip
+  archive_identity:
+    size: 953204628
+    sha256: 425b0d8c2a4194d3ec996b553575f69409aa5714176b063d8401789db9179482
+  weights_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/model_latest.pth
+  weights_identity:
+    size: 377929744
+    sha256: e909f0cec958fc0b49a79f2e85730ae6b5f83dee61a224705f91883eb3bb74c5
+  config_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/hydra.yaml
+  config_identity:
+    size: 2021
+    sha256: e4d7f21b85c778ab8b83c0bb83bc7625fdfb193a6a0619fef25f4a2afd7f8049
+  includes_proprioception: true
+  checkpoint_epoch_field: 2
+
+fallback_source:
+  repo_url: https://github.com/gaoyuezhou/dino_wm.git
+  repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dino_wm
+  revision: 0a9492fa12044b852ae9e001cc74604b79c8bb0c
+  source_tree_sha256: 706fd4c82facb059ec97009a19efe6ab6bc396fb358b07ef9c358dd3464b856a
+
+dino_encoder:
+  name: dinov2_vits14
+  feature_key: x_norm_patchtokens
+  repo_url: https://github.com/facebookresearch/dinov2.git
+  repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dinov2
+  revision: 7764ea0f912e53c92e82eb78a2a1631e92725fc8
+  source_tree_sha256: db1fc7271b4d8072561be692e1c7764dd38b5a423f836f6a0755856f7c55b6a4
+  weights_url: https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth
+  weights_path: outputs/dinowm_native_pusht_audit_v1/torch_home/hub/checkpoints/dinov2_vits14_pretrain.pth
+  weights_identity:
+    size: 88283115
+    sha256: b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9
+  torch_home: outputs/dinowm_native_pusht_audit_v1/torch_home
+
+dataset:
+  display_name: Released LeWM PushT expert HDF5 used by the same paper audit
+  path: outputs/paper_a_strengthening/data/pusht_expert_train.h5
+  size: 46300921856
+  sha256: b6ebd9ac94bbe9e383f6e7a9cd92d74e9aa665ea57b758ed3717b0ee7df8d4fb
+  rows: 2336736
+  episodes: 18685
+  pixels: [224, 224, 3]
+  rule: Reference in place; never duplicate the 46 GB HDF5.
+
+preprocessing:
+  pixels:
+    input: uint8 RGB 224x224
+    dataset_transform:
+      - divide_by_255
+      - resize_short_edge_224_bilinear_antialias
+      - center_crop_224
+      - normalize_mean_0.5_std_0.5
+    model_encoder_transform: resize_196x196_bilinear_antialias
+    patches: 196
+    patch_grid: [14, 14]
+    feature_dim: 384
+  action:
+    source: five exact 2-D controls after each sampled observation
+    alignment: action[t] controls observation t to t+1 at frame skip 5
+    raw_mean: [-0.0087, 0.0068]
+    raw_std: [0.2019, 0.2002]
+    operation: normalize each 2-D control then flatten time-major to 10-D
+  proprio:
+    coordinates: [agent_x, agent_y, agent_vx, agent_vy]
+    mean: [236.6155, 264.5674, -2.93032027, 2.54307914]
+    std: [101.1202, 87.0112, 74.84556075, 74.14009094]
+  probe_pooling:
+    name: fixed spatial-pyramid patch pooling
+    levels: [1, 2, 4]
+    binning: integer adaptive boundaries on native 14x14 grid
+    cue_time_reduction: mean over cue frames 1, 2, 3
+    output_dim: 8064
+
+same_bank_distribution_gate:
+  mean_shift_std_units_max: 0.25
+  std_ratio_min: 0.75
+  std_ratio_max: 1.25
+  policy: Stop before model metrics if action or proprio distribution fails.
+
+tasks:
+  - key: transient-visual-token-recall
+    semantic_name: PushT transient visual-token recall
+    classes: 4
+    label_seed: 461103
+  - key: multi-item-visual-binding-recall
+    semantic_name: PushT multi-item visual-binding recall
+    classes: 6
+    label_seed: 461203
+
+sequence:
+  num_frames: 20
+  frame_skip: 5
+  cue_start: 1
+  cue_length: 3
+  last_cue_frame: 3
+  cue_anchor_context: [1, 2, 3]
+  teacher_forced_context: [16, 17, 18]
+  teacher_forced_endpoint: 19
+  decision_observation_excluded: true
+  native_context: 3
+  native_rollout_horizons: 16
+
+selection:
+  train_episodes: 1200
+  validation_episodes: 480
+  split_seed: 461001
+  start_seed: 461002
+  one_sequence_per_episode: true
+  train_validation_episode_disjoint: true
+
+admission:
+  cue_accuracy_min: 0.75
+  shortcut_margin_above_chance: 0.05
+  required_no_shortcuts:
+    - observed real context frames 16-18
+    - native teacher-forced prediction of frame 19
+    - action blocks 15-18
+    - proprioception frames 16-18
+  policy: Every task gate and global rollout health must pass before open-loop memory metrics.
+
+rollout_health:
+  episodes: 120
+  shuffle_seed: 9072
+  batch_size: 4
+  horizons: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+  target: frozen DINOv2 x_norm_patchtokens on clean real observations
+  baselines: [copy-last, episode-permuted-action]
+  one_step_copy_ratio_max: 1.0
+  integrated_copy_ratio_max: 1.0
+  integrated_action_advantage_min: 0.0
+  gate_definition:
+    - native one-step mean MSE must be below copy-last
+    - mean native MSE over horizons 1-16 must be below mean copy-last MSE
+    - mean native MSE over horizons 1-16 must be below shuffled-action MSE
+  policy: Fail closed with no post-hoc adaptation.
+
+evaluation:
+  evidence_ages: [1, 4, 8, 15]
+  endpoint_frames: [4, 7, 11, 18]
+  counterfactual_episodes: 120
+  open_loop_probe: StandardScaler+LogisticRegression(C=1,solver=lbfgs,max_iter=3000,random_state=0)
+  paired_separation: within-episode all-label pair mean RMS in full 196x384 visual feature tensor
+  transport_ratio: mean age separation divided by mean cue separation
+  carrier_injection: false
+  persistent_state_retention: not_applicable
+  downstream_use: not_applicable
+
+bootstrap:
+  unit: episode
+  draws: 10000
+  confidence: 0.95
+  seed: 9071
+
+execution:
+  device: cuda:2
+  isolated_python: outputs/dinowm_native_pusht_audit_v1/venv/bin/python
+  unpickle_shim: outputs/dinowm_native_pusht_audit_v1/shims
+  world_model_training: false
+  frame_batch_size: 64
+  teacher_batch_size: 12
+  cue_batch_size: 12
+  rollout_batch_size: 6
+  counterfactual_episode_batch_size: 2
+  deterministic_algorithms: true
+  tf32: false
+
+artifacts:
+  root: outputs/dinowm_native_pusht_audit_v1/formal
+  preserve_per_episode_arrays: true
+  paper_edits: false

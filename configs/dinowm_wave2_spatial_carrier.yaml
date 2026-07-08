@@ -1,0 +1,206 @@
+# Wave 2: persistent spatial-token carriers inside the frozen official DINO-WM
+# PushT predictor.  This is an adaptive extension on the already-open V2R2
+# native bank, not a fresh confirmatory dataset and not a LeWM-matched bank.
+schema_version: 1
+study: Frozen official DINO-WM spatial-token persistent-carrier audit
+protocol_status: locked_before_formal_metrics
+locked_date: 2026-07-07
+
+scope:
+  status: adaptive_cross_family_extension
+  prior_study: configs/dinowm_native_pusht_audit_v2r2.yaml
+  prior_verification: outputs/dinowm_native_pusht_audit_v2r2/formal/verification.json
+  bank_matched_to_lewm: false
+  paper_edits: false
+  allowed_claim: persistent-carrier and protocol portability to one frozen official DINO-WM host
+  prohibited_claims:
+    - released DINO-WM contains persistent memory
+    - numerical comparison against LeWM carrier scores
+    - bank-matched cross-family superiority
+    - native-planner downstream use
+    - fresh confirmatory task evidence
+
+dataset:
+  display_name: Original DINO-WM OSF pusht_noise
+  root: outputs/dinowm_native_pusht_audit_v2/data/pusht_noise
+  manifest_path: outputs/dinowm_native_pusht_audit_v2/data/extracted_manifest.json
+  manifest_identity:
+    size: 3239312
+    sha256: 77aa1adc9fd493889e8ac67987f9c722c1b5061d3b327c3b6d0a6ecafbade33a
+  archive_path: outputs/dinowm_native_pusht_audit_v2/downloads/pusht_noise.zip
+  archive_identity:
+    size: 2785304515
+    sha256: 442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08
+  source_split: train
+  train_episodes: 1200
+  validation_episodes: 480
+  split_seed: 561001
+  start_seed: 561002
+  one_sequence_per_episode: true
+  train_validation_episode_disjoint: true
+
+checkpoint:
+  display_name: Original official DINO-WM PushT (proprioceptive)
+  weights_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/model_latest.pth
+  weights_identity:
+    size: 377929744
+    sha256: e909f0cec958fc0b49a79f2e85730ae6b5f83dee61a224705f91883eb3bb74c5
+  config_path: outputs/dinowm_native_pusht_audit_v1/checkpoint/hydra.yaml
+  config_identity:
+    size: 2021
+    sha256: e4d7f21b85c778ab8b83c0bb83bc7625fdfb193a6a0619fef25f4a2afd7f8049
+  frozen_modules: [dinov2_encoder, predictor, action_encoder, proprio_encoder]
+  checkpoint_epoch_field: 2
+
+source:
+  dino_wm:
+    repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dino_wm
+    revision: 0a9492fa12044b852ae9e001cc74604b79c8bb0c
+    git_archive_sha256: 706fd4c82facb059ec97009a19efe6ab6bc396fb358b07ef9c358dd3464b856a
+  dinov2:
+    repo_path: outputs/dinowm_native_pusht_audit_v1/vendor/dinov2
+    revision: 7764ea0f912e53c92e82eb78a2a1631e92725fc8
+    git_archive_sha256: db1fc7271b4d8072561be692e1c7764dd38b5a423f836f6a0755856f7c55b6a4
+    weights_path: outputs/dinowm_native_pusht_audit_v1/torch_home/hub/checkpoints/dinov2_vits14_pretrain.pth
+    weights_identity:
+      size: 88283115
+      sha256: b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9
+    torch_home: outputs/dinowm_native_pusht_audit_v1/torch_home
+
+tasks:
+  - key: transient-visual-token-recall
+    semantic_name: PushT transient visual-token recall
+    classes: 4
+    label_seed: 561103
+  - key: multi-item-visual-binding-recall
+    semantic_name: PushT multi-item visual-binding recall
+    classes: 6
+    label_seed: 561203
+
+sequence:
+  num_frames: 20
+  frame_skip: 5
+  cue_start: 1
+  cue_length: 3
+  last_cue_frame: 3
+  predictor_context: 3
+  evidence_ages: [4, 8, 15]
+  endpoint_frames: [7, 11, 18]
+  predictor_contexts: [[4, 5, 6], [8, 9, 10], [15, 16, 17]]
+  action_alignment: action[t] is the normalized five-control block after observation t and before observation t+1
+  endpoint_observation_excluded: true
+
+adapter:
+  visual_shape: [196, 384]
+  native_token_dim: 404
+  native_token_layout: [visual_384, proprio_10, action_10]
+  carrier_scope: one parameter-shared carrier independently applied to all 196 patch trajectories
+  carrier_input_dim: 384
+  carrier_action_dim: 10
+  injection: residual fused visual replaces only native visual channels before the frozen predictor
+  cross_patch_mixing: frozen official predictor attention only
+  full_episode_recurrence_before_window_sampling: true
+  reset_ablation: reinitialize the same carrier at the first frame of each legal three-frame predictor context
+  primary_read: frozen predictor final visual output from full-episode carrier state
+  secondary_read: carrier pre-observation prior at the endpoint frame
+  zero_init_native_equivalence_required: true
+
+objective:
+  labels_used_for_training: false
+  name: frozen-native shifted next-feature MSE
+  source: three consecutive carrier-fused visual frames plus frozen native proprio/action embeddings
+  target: all three one-step-shifted frozen visual and proprioceptive features
+  supervised_channels: [visual_384, proprio_10]
+  excluded_channels: [action_10]
+  predictor_parameters_trainable: false
+  encoder_parameters_trainable: false
+
+training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 20
+  batch_size: 8
+  windows_per_batch: 2
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  scheduler: cosine_to_zero
+  gradient_clip_norm: 1.0
+  common_schedule_seed_base: 772000
+  mixed_precision: bfloat16_predictor_float32_carrier
+  checkpoint_selection: final_epoch_no_early_stopping
+  convergence_report: final_five_epoch_relative_change
+
+evaluation:
+  spatial_pool_levels: [1, 2, 4]
+  readout: StandardScaler+LogisticRegression(C=1,solver=lbfgs,max_iter=4000,random_state=0)
+  batch_size: 8
+  primary_metric: held-out balanced accuracy of full-state frozen-predictor output
+  contrasts:
+    - each trainable arm minus no persistent carrier
+    - full episode state minus three-frame reset state within arm
+  validation_predictions_preserved: true
+  next_feature_mse_preserved: true
+
+inference:
+  method: matched-seed x class-stratified held-out-episode bootstrap
+  paired: true
+  draws: 20000
+  confidence: 0.95
+  seed: 907300
+  no_carrier_effective_independent_models: 1
+
+admission:
+  reuse_exact_v2r2_task_admissions: true
+  reuse_exact_v2r2_rollout_health: true
+  require_all_prior_gates: true
+  require_none_spatial_prediction_equivalence: true
+  require_host_hash_unchanged_each_cell: true
+  host_hash_scope: frozen module state dictionaries plus all six unregistered native attention masks
+  policy: fail closed before carrier outcomes
+
+cache:
+  dtype: float32
+  base_visual: cache/base_visual.npy
+  cue_template: cache/{task}_cue_visual.npy
+  metadata: cache/metadata.npz
+  manifest: cache/manifest.json
+  build_episode_batch: 8
+  frame_batch_size: 64
+
+execution:
+  isolated_python: outputs/dinowm_native_pusht_audit_v2/venv/bin/python
+  dependency_manifest_path: outputs/dinowm_native_pusht_audit_v2/deps_manifest.json
+  dependency_manifest_identity:
+    size: 17435
+    sha256: 7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153
+  physical_gpu: 1
+  required_cuda_visible_devices: "1"
+  logical_device: cuda:0
+  deterministic_algorithms: true
+  tf32: false
+  never_gpu3: true
+  explicit_execute_required: true
+
+artifacts:
+  root: outputs/dinowm_wave2_spatial_carrier
+  smoke: smoke
+  formal: formal
+  paper_edits: false
+
+lock:
+  source_paths:
+    - scripts/run_dinowm_wave2_spatial_carrier.py
+    - scripts/verify_dinowm_wave2_spatial_carrier.py
+    - lewm/official_tasks/dinowm_spatial_carrier.py
+    - lewm/models/frozen_swap_carriers.py
+    - lewm/models/v19_carriers.py
+    - lewm/official_tasks/dinowm_native_audit.py
+    - lewm/official_tasks/pusht_memory.py
+    - scripts/run_dinowm_native_pusht_audit_v1.py
+    - scripts/run_dinowm_native_pusht_audit_v2.py
+    - tests/test_dinowm_spatial_carrier.py
+    - configs/dinowm_native_pusht_audit_v2r2.yaml
+    - configs/dinowm_native_pusht_audit_v2r2.lock.json
+    - outputs/dinowm_native_pusht_audit_v2r2/formal/verification.json
+    - outputs/dinowm_native_pusht_audit_v2/deps_manifest.json
+    - outputs/dinowm_native_pusht_audit_v2/venv/lib/python3.12/site-packages/dinowm_v2_paths.pth

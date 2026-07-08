@@ -1,0 +1,22 @@
+{
+  "schema": "dinowm_native_pusht_audit_lock_v1",
+  "locked_before_metrics": true,
+  "locked_date": "2026-07-06",
+  "protocol_sha256": "d81ad56f56337f25a41f1345ef4174b766c8735716d93b9cd6b74191131decf1",
+  "code_sha256": {
+    "scripts/run_dinowm_native_pusht_audit_v1.py": "39253963969c749ad86bbb44e61c6d517918975bd27d297d73d813adbfbecead",
+    "lewm/official_tasks/dinowm_native_audit.py": "3cd30b3c7059f59f252d1e8d75c5a200014166a63da43b682250a5290c56c8ad",
+    "tests/test_dinowm_native_audit.py": "748b1d8ebf3a07446ac3482fa7bc07054375cf0c53daa247e62b93a58dd3e9be",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/__init__.py": "77c9af305f9bfbf08571c318b4b2f28ada196c4b44ccb34d5ff761ecd7eed823",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/optimizer.py": "6a89e77bef8952378972f42cfa773beaf397a049395f9841684aef4c06516a06",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/state.py": "c25a82a4fc5c2eaa906f4a313e5a907bf21a00956085f981cd4067898dc91e62",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/__init__.py": "63c00a13ae22241bbf66d40bceeda271b6b855bc4dc39b908071a6ff4c773489",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/dataclasses.py": "8e4fe5f29fe0ade87ab6a379facca6ec181569d32f2ef872aa240c56199ee311",
+    "outputs/dinowm_native_pusht_audit_v1/venv/lib/python3.12/site-packages/lewm_root_venv.pth": "964d41a7b0a19b9227b1760bf1cd882db0a77f049c907ce95b182bb81e292e39"
+  },
+  "pre_metric_checks": {
+    "unit_and_contract_tests": "34 passed",
+    "synthetic_gpu2_model_schema": "passed",
+    "task_bank_metrics_seen": false
+  }
+}

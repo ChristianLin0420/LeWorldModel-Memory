@@ -1,0 +1,232 @@
+# Wave-1 matched-host causal audit.  The implementation lock and SHA sidecar
+# are created only after all producers and tests pass and before any formal
+# cue/admission/carrier outcome is generated.
+schema_version: 1
+study: paper-a-matched-host-v1
+protocol_status: locked-before-formal-outcomes
+implementation_lock: configs/paper_a_matched_host_v1.lock.json
+
+hosts: [reacher, pusht, tworoom]
+targets: [color, location]
+ages: [4, 8, 15]
+arms: [none, gru, lstm, ssm, fixed_trust]
+seeds: [0, 1, 2, 3, 4]
+
+execution:
+  allowed_devices: ["cuda:0"]
+  default_device: "cuda:0"
+  explicit_execute_required: true
+  deterministic_algorithms: true
+  forbid_cuda3: true
+  initial_physical_gpu: 0
+
+inputs:
+  reacher:
+    kind: fresh-dm-control-reacher-easy
+    repo_id: quentinll/lewm-reacher
+    model_revision: 62adae4b71dc474ddf8f794c476ebfe737a743ca
+    identity_records: [weights]
+    weights:
+      path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+      size: 72290849
+      sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+    train_base_seed: 20260741
+    validation_base_seed: 20260742
+    raw_frame_size: 64
+    target_alpha_zero: true
+  pusht:
+    kind: official-root-hdf5
+    repo_id: quentinll/lewm-pusht
+    model_revision: 22b330c28c27ead4bfd1888615af1340e3fe9052
+    dataset_revision: 655cd446b9929369d7d406001da85c15d1457850
+    identity_records: [config, weights, dataset]
+    bundle_path: outputs/paper_a_strengthening/pretrained/lewm-pusht
+    config:
+      path: outputs/paper_a_strengthening/pretrained/lewm-pusht/config.json
+      size: 1313
+      sha256: 2564086e961e7b5c7c04dffc451091115b389a590645ff19653c64fd0bc16e09
+    weights:
+      path: outputs/paper_a_strengthening/pretrained/lewm-pusht/weights.pt
+      size: 72290721
+      sha256: 48938400ae3464c9680731287f583a9cb516f55a8ec64ea13a91be47fb15b607
+    dataset:
+      path: outputs/paper_a_strengthening/data/pusht_expert_train.h5
+      size: 46300921856
+      sha256: b6ebd9ac94bbe9e383f6e7a9cd92d74e9aa665ea57b758ed3717b0ee7df8d4fb
+    state_key: state
+    split_seed: 20260751
+    start_seed: 20260752
+  tworoom:
+    kind: official-root-hdf5
+    repo_id: quentinll/lewm-tworooms
+    model_revision: 77adaae0bc31deab21c93740d1f8bb947cd0bdec
+    dataset_revision: 6903a2de048b13819d812da0b4dd661290bc01e4
+    identity_records: [config, weights, archive, dataset]
+    bundle_path: outputs/paper_a_wave1_inputs/lewm-tworooms
+    config:
+      path: outputs/paper_a_wave1_inputs/lewm-tworooms/config.json
+      size: 1313
+      sha256: 2564086e961e7b5c7c04dffc451091115b389a590645ff19653c64fd0bc16e09
+    weights:
+      path: outputs/paper_a_wave1_inputs/lewm-tworooms/weights.pt
+      size: 72290849
+      sha256: 566f223624ea4bfb39dbfe6ae731198dd6ea73b7b8919fed6b1ecafca810f7dd
+    archive:
+      path: outputs/paper_a_wave1_inputs/downloads/tworoom.tar.zst
+      size: 3425937909
+      sha256: 494b1a02f0765cd9a0d9daf1786c419ced1009977fc45d01e3158932f8d080ca
+    dataset:
+      path: /dev/shm/paper_a_matched_host_v1/tworoom.h5
+      external_tmpfs: true
+      size: 12775849984
+      sha256: 129a36aa93ea0de488d2bcc876e396de9e3907bf66c6aae6394e542ef6a6d623
+    state_key: observation
+    split_seed: 20260761
+    start_seed: 20260762
+    release_paper_history_discrepancy:
+      authenticated_config_history: 3
+      paper_appendix_history: 1
+      executable_truth: authenticated released config and weights
+
+sequence:
+  num_frames: 20
+  frame_skip: 5
+  decision_index: 19
+  cue_length: 3
+  cue_intervals:
+    age-4: [12, 15]
+    age-8: [8, 11]
+    age-15: [1, 4]
+  predictor_history: 3
+  endpoint_history: 3
+  endpoint_feature: concat(z[16],z[17],z[18],prior_read[19])
+  current_observation_excluded: true
+
+selection:
+  train_episodes: 1200
+  validation_episodes: 480
+  one_sequence_per_episode: true
+  episode_disjoint_splits: true
+  train_label_seed: 20260731
+  validation_label_seed: 20260732
+
+cue:
+  colors: 4
+  locations: 4
+  rgb_palette:
+    - [230, 57, 70]
+    - [40, 160, 84]
+    - [45, 108, 223]
+    - [239, 174, 45]
+  normalized_centers:
+    - [0.18, 0.18]
+    - [0.82, 0.18]
+    - [0.18, 0.82]
+    - [0.82, 0.82]
+  square_side_fraction: 0.20
+  all_16_combinations_exactly_balanced: true
+  same_rendered_episode_for_both_targets: true
+  labels_independent_of_base_episode: true
+  offcue_bytes_identical: true
+
+action_normalization:
+  source: all finite raw two-dimensional training-source actions per host
+  ddof: 1
+  order: normalize each raw 2-D action then time-major flatten five actions to 10-D
+
+admission:
+  chance: 0.25
+  cue_balanced_accuracy_min: 0.75
+  cue_min_class_recall_min: 0.70
+  shortcut_margin_above_chance: 0.05
+  shortcut_features:
+    final_context_latent: concat(z[16],z[17],z[18])
+    final_action: concat(a[15],a[16],a[17],a[18])
+    final_state: state[19]
+  all_hosts_targets_ages_must_pass: true
+  no_carrier_training_if_any_gate_fails: true
+  frozen_host_hash_required: true
+
+carrier_training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  scheduler: cosine-annealing
+  gradient_clip_norm: 1.0
+  windows_per_episode: 8
+  training_rng_offset: 571000
+  age_balanced_mixture: true
+  frozen_encoder: true
+  frozen_predictor: true
+
+readout:
+  model: StandardScaler+LogisticRegression
+  logistic_c: 1.0
+  solver: lbfgs
+  max_iter: 4000
+  random_state: 0
+  metric: balanced_accuracy
+  separate_readout_per_target_age: true
+
+statistics:
+  bootstrap_draws: 20000
+  bootstrap_seed: 20260721
+  confidence: 0.95
+  interval: percentile
+  seed_resampling: jointly resample carrier seed indices across hosts
+  episode_resampling: independently by host and stratified by 16-way joint label
+  preserve_pairing: targets, ages, and arms within host
+  equivalence_margin: 0.05
+  primary_interaction: age-15 PushT-minus-Reacher difference in fixed-trust-minus-SSM, equally averaged over color and location
+  no_pooled_host_memory_score: true
+
+tworoom_use:
+  enabled_only_if_all_matched_admissions_pass: true
+  target: location
+  heldout_episodes: 480
+  reset_seed: 20260781
+  physics_seed: 0
+  label_seed: 20260782
+  cue_age: 15
+  cue_length: 3
+  prefix_model_frames: 20
+  raw_steps_per_model_frame: 5
+  shared_prefix_target: [128.0, 49.0]
+  initial_x: 40.0
+  initial_y_range: [28.0, 196.0]
+  goal_waypoints:
+    - [154.0, 40.0]
+    - [196.0, 40.0]
+    - [154.0, 174.0]
+    - [196.0, 174.0]
+  consumer: arm-blind StandardScaler+multinomial LogisticRegression
+  controller: pinned deterministic TwoRoom ExpertPolicy
+  fixed_physics_across_arms_and_episodes: true
+  max_execution_steps: 64
+  success_radius: 16.0
+  oracle_success_min: 0.90
+  oracle_per_class_success_min: 0.90
+  off_diagonal_false_success_max: 0.05
+  replay_fidelity_min: 0.99
+  realized_random_goal_baseline: true
+  claim_boundary: external memory-conditioned navigation execution, not native LeWM planning
+  upstream_environment:
+    path: outputs/pusht_downstream_use_v1/vendor/stable-worldmodel/stable_worldmodel/envs/two_room/env.py
+    sha256: 5e1d392de5b02472062dbe872aded67fd465fcc8f7eaa1c02a753b2fc31c61f0
+    revision: 0ef3856875e70a1283e637fcd2ab936eae6c4e6f
+  upstream_controller:
+    path: outputs/pusht_downstream_use_v1/vendor/stable-worldmodel/stable_worldmodel/envs/two_room/expert_policy.py
+    sha256: 5939318d2a671ce00abf46be74ae22cf2452ea48426eb9dc651d04514849e4f4
+
+cache:
+  frame_batch_size: 128
+  compression_level: 1
+  store_base_and_cue_separately: true
+
+outputs:
+  root: outputs/paper_a_matched_host_v1
+  cache: outputs/paper_a_matched_host_v1/cache
+  carriers: outputs/paper_a_matched_host_v1/carriers
+  logs: outputs/paper_a_matched_host_v1/logs
+  use: outputs/paper_a_matched_host_v1/use

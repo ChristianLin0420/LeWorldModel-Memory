@@ -1,0 +1,171 @@
+# Immutable V2 protocol: a pre-formal cue-salience amendment to the failed V1
+# frozen-encoder admission.  No V1 threshold, semantic contract, or carrier
+# definition is changed.
+schema_version: 2
+study: Official frozen LeWM shell-game capacity audit — cue-salience V2
+protocol_status: locked_before_v2_development_and_formal_run
+
+amendment:
+  kind: pre-formal_salience_amendment
+  threshold_changed_from_v1: false
+  semantic_capacity_contract_changed_from_v1: false
+  carrier_definitions_changed_from_v1: false
+  rationale: V1 failed only frozen cue initial-slot availability; V2 increases slot-specific cue area before a new formal run.
+  parent_v1:
+    spec_path: configs/official_shell_game_capacity.yaml
+    spec_sha256: 957b696af7972fc3632e7ff0e522b270db6b14cc54e6b5199f8b28c43c1e1024
+    lock_path: configs/official_shell_game_capacity.lock.json
+    lock_sha256: db97969ddd0537b8c5e28e499073f69a65a41d972149e5576d5400717912a46c
+    output_root: outputs/official_shell_game_capacity
+    failed_gate: cue_initial_slot_availability
+    unchanged_threshold: 0.75
+    all_other_gates_passed: true
+    evidence:
+      single-item:
+        path: outputs/official_shell_game_capacity/cache/single-item/admission.json
+        sha256: 011298dfbad85db99a8059e44b59bea08609727d4ad2e17c1fe1bf868b344c96
+        admitted: false
+        cue_gate_pass: false
+        per_item_accuracy: [0.6375]
+        other_gate_pass:
+          paired_counterfactual_construction: true
+          swap_pair_visibility: true
+          post_shuffle_target_leakage: true
+          final_context_target_leakage: true
+      two-item:
+        path: outputs/official_shell_game_capacity/cache/two-item/admission.json
+        sha256: cbe8bfcab5dda405c6d04f47c17e427f63228dbe01a2df402fed34048c099745
+        admitted: false
+        cue_gate_pass: false
+        per_item_accuracy: [0.6375, 0.6458333333333334]
+        other_gate_pass:
+          paired_counterfactual_construction: true
+          swap_pair_visibility: true
+          post_shuffle_target_leakage: true
+          final_context_target_leakage: true
+      four-item:
+        path: outputs/official_shell_game_capacity/cache/four-item/admission.json
+        sha256: 2ec1275dce6f132689048261a15df517488c875808e2e9f5e7c5499a17077ba2
+        admitted: false
+        cue_gate_pass: false
+        per_item_accuracy: [0.6375, 0.6458333333333334, 0.6, 0.5958333333333333]
+        other_gate_pass:
+          paired_counterfactual_construction: true
+          swap_pair_visibility: true
+          post_shuffle_target_leakage: true
+          final_context_target_leakage: true
+
+official_host:
+  source: quentinll/lewm-reacher
+  source_commit: 62adae4b71dc474ddf8f794c476ebfe737a743ca
+  weights_path: outputs/paper_a_expansion/pretrained/lewm-reacher/weights.pt
+  weights_sha256: eb70b1fd5409f8f81875d62f5ee5a20dd220a3128a477de66b5760f475f0f469
+  frozen_encoder: true
+  frozen_predictor: true
+  latent_dim: 192
+  observation_length: 64
+  context: 3
+  action_block_dim: 10
+
+semantic_stages:
+  - key: single-item
+    display_name: Single-item shell-game recall
+    capacity: 1
+  - key: two-item
+    display_name: Two-item shell-game recall
+    capacity: 2
+  - key: four-item
+    display_name: Four-item shell-game recall
+    capacity: 4
+
+task_contract:
+  num_slots: 3
+  decision_index: 63
+  decision_observation_excluded: true
+  final_context_indices: [60, 61, 62]
+  cue_start: 4
+  cue_frames: 3
+  cue_stride: 4
+  swap_times: [24, 32, 40, 48]
+  swap_frames: 4
+  shuffle_off: 52
+  items_may_share_slot: true
+  capacity_stages_nested_by_seed: true
+  target: ordered final slot for every cued item
+
+cue_salience:
+  schema: official_shell_game_cue_salience_v2
+  cued_cup_fill: item_color
+  ball_radius: 6
+  other_cups: unchanged_neutral_identical
+  border_pixels: 2
+  off_cue_pixels: byte_identical_to_v1
+  selection_candidates: 1
+  selection_policy: development-only pass/fail; a failed candidate requires a new version
+
+development_selection:
+  split: development
+  fit_episodes: 240
+  check_episodes: 240
+  criterion: minimum per-item frozen cue initial-slot accuracy
+  threshold: 0.75
+  threshold_changed_from_v1: false
+  formal_data_must_not_be_collected_before_pass: true
+  action_if_failed: stop and create a newly locked version; never tune on formal train or validation
+
+data:
+  development:
+    episodes: 480
+    base_seed: 482600
+    counterfactual_seed: 492600
+  train:
+    episodes: 1200
+    base_seed: 482701
+    counterfactual_seed: 492701
+  validation:
+    episodes: 240
+    base_seed: 482702
+    counterfactual_seed: 492702
+  frame_skip: 5
+  raw_action_dim: 2
+  source_stream: clean
+  compression_level: 1
+
+admission:
+  cue_probe_frames: 3
+  post_shuffle_probe_frames: 4
+  cue_initial_slot_accuracy_min: 0.75
+  swap_pair_accuracy_min: 0.75
+  leakage_margin_above_chance: 0.05
+  policy: Every exact counterfactual and frozen-representation gate must pass before carrier training.
+
+carrier_training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  windows_per_episode: 8
+  primary_metrics:
+    - mean per-item balanced accuracy
+    - per-item balanced accuracy
+    - exact-set accuracy
+    - per-item chance
+    - exact-set chance
+  frozen_host_hash_must_match: true
+
+artifacts:
+  root: outputs/official_shell_game_capacity_v2
+  base: base
+  stages: stages
+  development_cache: development-cache
+  cache: cache
+  carriers: carriers
+  logs: logs
+
+launcher:
+  allowed_devices: ["cuda:1", "cuda:2"]
+  preview_by_default: true
+  explicit_execute_required: true
+  jobs_per_gpu: 1

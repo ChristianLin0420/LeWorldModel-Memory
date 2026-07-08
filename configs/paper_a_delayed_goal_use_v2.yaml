@@ -1,0 +1,172 @@
+# Controller-health-only amendment after the sealed V1 oracle gate failure.
+# V2 may change only the executed-choice PD horizon/gains selected on training data.
+schema_version: 1
+study: paper-a-delayed-goal-use-v2-controller-health-amendment
+amendment_scope: controller-health-only
+
+v1:
+  spec:
+    path: configs/paper_a_delayed_goal_use.yaml
+    sha256: 3e2f6f27bcb5c2a5e5d442ab7770467a5fb1bf9001197857b14b1da351931946
+  provenance_manifest:
+    path: configs/paper_a_delayed_goal_v2_v1_provenance.json
+    sha256: becf08e895ce00603d7508c5befc547a5cfbd628e591f6aaf0fc29526a1f3b1d
+  output_root: outputs/paper_a_delayed_goal_use_v1
+  reuse_all_v1_repairs: true
+  repair_retraining_permitted: false
+
+parent:
+  checkpoint_root: outputs/paper_a_expansion/frozen_swap
+  config:
+    path: configs/paper_a_expansion.yaml
+    sha256: adbc13bcb0bee1e0108a17c59b80108bad1d42058343182cc29471dca2fe2bdb
+  train_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/train.npz
+      sha256: af2d0326e6aad51835183e9ac9b034489b0f77c02576d191734920f7c6d894d5
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/train.npz
+      sha256: 047a3b7ea5eaf41ce5730fa58a0cb8f23b374d911c5314b049a3ba51bb9e1e25
+  validation_caches:
+    t1:
+      path: outputs/paper_a_expansion/cache/t1/val.npz
+      sha256: 9c542ff7054c597ea7e2c12ad0265ef79b4204a3ca4f99e5822cb07b43bae214
+    t3:
+      path: outputs/paper_a_expansion/cache/t3/val.npz
+      sha256: 8dfad1407b59d8500eecc3f3ef867627c3351db6495c5c26be9aa75cc0725373
+
+output:
+  root: outputs/paper_a_delayed_goal_use_v2
+  controller_selection: outputs/paper_a_delayed_goal_use_v2/controller-selection
+  evaluations: outputs/paper_a_delayed_goal_use_v2/evaluations
+  summary: outputs/paper_a_delayed_goal_use_v2/summary.json
+  logs: outputs/paper_a_delayed_goal_use_v2/logs
+
+tasks:
+  t1:
+    name: Transient-marker recall
+    slug: transient-marker-recall
+    classes: 4
+  t3:
+    name: Drifting-color recall
+    slug: drifting-color-recall
+    classes: 4
+
+checkpoint_seeds: [0, 1, 2, 3, 4]
+
+representation_sources:
+  - {id: none, name: No persistent carrier, slug: no-persistent-carrier, kind: carrier}
+  - {id: gru, name: Action-conditioned GRU, slug: action-conditioned-gru, kind: carrier}
+  - {id: ssm, name: Diagonal state-space carrier, slug: diagonal-state-space-carrier, kind: carrier}
+  - {id: fixed_trust, name: Fixed-trust predict-correct memory, slug: fixed-trust-predict-correct, kind: carrier}
+  - {id: gru_objective_off, name: GRU continued-training control, slug: gru-continued-training-control, kind: repair_control}
+  - {id: gru_cue_repair, name: GRU with delayed cue-latent repair, slug: gru-delayed-cue-latent-repair, kind: repair}
+  - {id: ssm_objective_off, name: SSM continued-training control, slug: ssm-continued-training-control, kind: repair_control}
+  - {id: ssm_cue_repair, name: SSM with delayed cue-latent repair, slug: ssm-delayed-cue-latent-repair, kind: repair}
+  - {id: long_context_56, name: Raw 56-latent context, slug: raw-56-latent-context, kind: upper_bound}
+  - {id: cue_window, name: Cue-window representation, slug: cue-window-representation, kind: upper_bound}
+
+consumer:
+  protocol: inherited byte-for-byte from locked V1
+  shared_across_sources: true
+  fit_split: parent training bank only
+  validation_labels_available_during_fit: false
+
+development:
+  source_split: parent training bank only
+  validation_data_permitted: false
+  selection_seed_base: 20260708
+  selection_algorithm: independently permute each class with PCG64 and take 60, then sort indices
+  episodes_per_class: 60
+  episodes_per_task: 240
+  index_sha256:
+    t1: 208f8e23980aa667f65e872650d82b4acf176e444597a6b7651cc878a76d0cb3
+    t3: 5612a107fd04b508a6f3a6bb6c3614d3cb7287554b3848a55473285a7024a200
+
+executed_choice:
+  fixed:
+    environment: dm_control/reacher/easy
+    initialization: cached endo_state at decision_index
+    decision_index: 63
+    action_policy: clipped joint-space PD
+    joint_goals:
+      - [-1.2, -0.6]
+      - [-0.4, 1.2]
+      - [0.4, -1.2]
+      - [1.2, 0.6]
+    goal_assignment: categorical class 0 through 3 indexes the fixed joint-goal list
+    distance: root-mean-square wrapped joint-angle error to the true class goal
+    success_tolerance_radians: 0.35
+    return: exp(-0.5*(distance/0.50)^2)
+    return_scale_radians: 0.50
+    oracle: execute the true class goal with the identical choice policy
+  v1_reference:
+    executed_horizon: 80
+    proportional_gain: 1.5
+    derivative_gain: 0.25
+  candidates:
+    - id: unchanged-gains-horizon-120
+      priority: 1
+      executed_horizon: 120
+      proportional_gain: 1.5
+      derivative_gain: 0.25
+    - id: unchanged-gains-horizon-160
+      priority: 2
+      executed_horizon: 160
+      proportional_gain: 1.5
+      derivative_gain: 0.25
+    - id: unchanged-gains-horizon-200
+      priority: 3
+      executed_horizon: 200
+      proportional_gain: 1.5
+      derivative_gain: 0.25
+    - id: damped-gains-horizon-160
+      priority: 4
+      executed_horizon: 160
+      proportional_gain: 1.25
+      derivative_gain: 0.35
+  development_selection:
+    per_task_oracle_success_min: 0.925
+    per_class_oracle_success_min: 0.85
+    rule: select first priority-ordered candidate passing every task and class gate; otherwise stop without validation
+  lock:
+    path: outputs/paper_a_delayed_goal_use_v2/controller-selection/controller.lock.json
+    sha256_path: outputs/paper_a_delayed_goal_use_v2/controller-selection/controller.lock.sha256
+    must_precede_validation: true
+    refuse_overwrite: true
+  validation_oracle_success_min: 0.90
+
+controls:
+  label_shuffle:
+    enabled: true
+    method: inherited V1 training-episode permutation per checkpoint seed
+    seed_base: 99100
+  action_time_shortcut:
+    enabled: true
+    inputs: inherited V1 action/time interface
+  shortcut_accuracy_max: 0.35
+
+endpoints:
+  primary: [executed_success_rate, regret_to_label_oracle]
+  diagnostics: [goal_decision_accuracy, mean_executed_return]
+  use_success_rule: both 95% paired-bootstrap lower bounds exceed zero
+  bootstrap:
+    draws: 20000
+    seed: 20260709
+    method: crossed paired checkpoint-seed and validation-episode percentile bootstrap
+
+claim_boundary:
+  establishes: retained information is usable by one common external consumer to alter an executed Reacher choice, only when all V2 gates pass
+  does_not_establish:
+    - native use by the released LeWM predictor
+    - model-predictive control
+    - end-to-end memory-conditioned control
+    - policy optimality
+    - task or checkpoint generalization
+
+execution:
+  allowed_devices: ["cuda:1", "cuda:2"]
+  forbidden_devices: ["cuda:0", "cuda:3"]
+  default_device: "cuda:1"
+  require_explicit_execute: true
+  controller_selection_gl_backend: glfw

@@ -1,0 +1,25 @@
+{
+  "immutable": true,
+  "producer_sha256": {
+    "lewm/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lewm/models/__init__.py": "8813af66e21f8dc40a18214e17370d63924fcc2083ac7b1880563e59a38e1077",
+    "lewm/models/encoder.py": "379e0382b35369d82a955d577837e757d3abe8d6ac4f499c1425cef2f3f10ee8",
+    "lewm/models/frozen_swap_carriers.py": "dbcd2c40318ebc97063d22d59de76c36b304e775f43550b7fe33df66f168e3aa",
+    "lewm/models/leworldmodel.py": "06fe86fecffc7d9d7e38507e54dfc514f2cb3a8c29d46e642e22661a7e966054",
+    "lewm/models/official_lewm.py": "10744dc4bc8bfea0dacda8f79dfd9d171c3442f2bdbeea40764c27d2ffcc940b",
+    "lewm/models/sigreg.py": "9367a9c2ded58c7fbf6b7517257497b600817074eb70ce4b815f7e7a04a73b74",
+    "lewm/models/v19_carriers.py": "aeb386ad2c391b6f44388801912a1dd3b2b879cf72ef931660f807c3d12eebfe",
+    "scripts/aggregate_delayed_repair_residual_v2.py": "10bd927088a0a202911c375008511de3b81d6ec3872eb76fdcee0a748598378f",
+    "scripts/audit_delayed_repair_residual_v2_development.py": "b9ab260b0b110d785ac959dbeb84d9bdb548956e515128c3952c232213b0de2f",
+    "scripts/delayed_repair_residual_v2_objective.py": "079fdcc12d72d97a7e263602c4211498c5797c03fc7de18746ea0a0c27aa3b67",
+    "scripts/delayed_repair_residual_v2_spec.py": "38d2acd8e34a06a27472135214fe608a26f793dcba9b7ccd029b2f19ff7bac5d",
+    "scripts/launch_delayed_repair_residual_v2.py": "98ffb7312eeb4702baa7b6f0f72d16ea0d7e751b6aed6770ca3bcb4798103f06",
+    "scripts/paper_a_robustness_spec.py": "d95e951e5f5d80911f8e1dd65a868bbde534e396e7b6da46325f1bc62198c373",
+    "scripts/reevaluate_frozen_official_probes.py": "55b662fb2ebe64919c9a5f9294c4706068b13326a19f22c74150b5b12c4a6d32",
+    "scripts/train_delayed_repair_residual_v2.py": "89f022a3ddc323b5efe98ecad55d71f416ed3e3763f68b616bcc27d3cb1cf251",
+    "scripts/train_frozen_official_swap.py": "497fb713e2271b69fb5e29dc01e7bff9257c09840b961cd64c8e117ec2fbee48"
+  },
+  "schema": "paper_a_delayed_repair_residual_lock_v2",
+  "spec_path": "configs/paper_a_delayed_repair_residual_v2.yaml",
+  "spec_sha256": "c7a60d16bd0a4568cbd0256d40cfb9d6cbcdad9ffb1a1b1363c1b165e11d6961"
+}

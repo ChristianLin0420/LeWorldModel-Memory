@@ -1,0 +1,41 @@
+{
+  "schema": "dinowm_native_distribution_audit_lock_v2r2",
+  "locked_before_metrics": true,
+  "locked_date": "2026-07-06",
+  "protocol_sha256": "142240cb2e569d3e94ed028df174d6c62cb50aa5e9dc7c38d6a98127daae7efb",
+  "scientific_protocol_change_from_v2": "none",
+  "implementation_change_from_v2": "repository-root import path plus declared artifact-directory creation",
+  "code_sha256": {
+    "scripts/run_dinowm_native_pusht_audit_v2r2.py": "ca2c43a8bf13e01f2e797b7f727facb6e6d4cbc5980c6b2507132d7e043dc663",
+    "scripts/run_dinowm_native_pusht_audit_v2.py": "6792a2bafe07a07aa8254df3d7f5fcd9dcd562da1c20c415eadeb3e6fcda3e53",
+    "scripts/run_dinowm_native_pusht_audit_v1.py": "39253963969c749ad86bbb44e61c6d517918975bd27d297d73d813adbfbecead",
+    "lewm/official_tasks/dinowm_native_audit.py": "3cd30b3c7059f59f252d1e8d75c5a200014166a63da43b682250a5290c56c8ad",
+    "tests/test_dinowm_native_audit.py": "748b1d8ebf3a07446ac3482fa7bc07054375cf0c53daa247e62b93a58dd3e9be",
+    "tests/test_dinowm_native_audit_v2.py": "ce51b73d56fffce4095be7bfbd4a3adcb32529b62b58988ebe4bad1ea2e32245",
+    "scripts/make_dinowm_native_manifest_v2.py": "8d0697e0a8eb1c319268c34731a4e2b3f05c0abb83df491f3adee6f5197d2ea8",
+    "outputs/dinowm_native_pusht_audit_v2/venv/lib/python3.12/site-packages/dinowm_v2_paths.pth": "3137e64e2cd265834aa952709c261bd8c923f1c2d9c946ff3d95bd6154fd34d3",
+    "outputs/dinowm_native_pusht_audit_v2/deps_manifest.json": "7365c712755e4a49e73823d4d03606a5a77ec7a9dbf18c02b976f69cade16153",
+    "outputs/dinowm_native_pusht_audit_v2/formal/implementation_stop_receipt.json": "eb67f59f86a6512cd4e6a723e1dc728699866c60a119644721ae6cfb8c8a6e30",
+    "outputs/dinowm_native_pusht_audit_v2r/launch_stop_receipt.json": "09db8bbc8dbc927095861cbef3d67c750e81a92dd0b4aa4cc4b393fb580348db",
+    "outputs/dinowm_native_pusht_audit_v2r2/smoke_receipt.json": "d9ceaf90794794597ffa606e3e3237140a88211fba9657ec0e45c7e429c9f132",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/__init__.py": "77c9af305f9bfbf08571c318b4b2f28ada196c4b44ccb34d5ff761ecd7eed823",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/optimizer.py": "6a89e77bef8952378972f42cfa773beaf397a049395f9841684aef4c06516a06",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/state.py": "c25a82a4fc5c2eaa906f4a313e5a907bf21a00956085f981cd4067898dc91e62",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/__init__.py": "63c00a13ae22241bbf66d40bceeda271b6b855bc4dc39b908071a6ff4c773489",
+    "outputs/dinowm_native_pusht_audit_v1/shims/accelerate/utils/dataclasses.py": "8e4fe5f29fe0ade87ab6a379facca6ec181569d32f2ef872aa240c56199ee311"
+  },
+  "pre_metric_checks": {
+    "unit_and_contract_tests": "36 passed",
+    "scientific_config_equivalence": "passed",
+    "workspace_root_wrapper_import": "passed",
+    "declared_path_validation": "11 of 11 present",
+    "empty_smoke_output_directories": "passed",
+    "model_or_data_evaluation_during_smoke": false,
+    "task_metrics_observed_from_prior_attempts": false
+  },
+  "preserved_attempts": {
+    "v1": "stopped_same_bank_distribution_gate",
+    "v2": "stopped_implementation_error_no_task_metric_observed",
+    "v2r": "stopped_before_config_load_no_task_metric_observed"
+  }
+}

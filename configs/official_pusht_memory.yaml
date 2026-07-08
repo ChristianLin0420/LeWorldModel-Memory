@@ -1,0 +1,110 @@
+# Immutable formal protocol for memory overlays on the released PushT LeWM.
+schema_version: 1
+study: Official frozen PushT LeWM visual-memory audit
+protocol_status: locked_before_formal_run
+
+dataset:
+  repo_id: quentinll/lewm-pusht
+  revision: 655cd446b9929369d7d406001da85c15d1457850
+  archive_filename: pusht_expert_train.h5.zst
+  archive_sha256: 7cfbd6d90fa2f27876379a5ff169715a36ed82edbda64f9e5b5bfa34d212f318
+  archive_size: 13136247974
+  archive_file_commit: 6eebda9ccea0d55de7586c31145cac8dea60327b
+  hdf5_path: outputs/paper_a_strengthening/data/pusht_expert_train.h5
+  hdf5_sha256: b6ebd9ac94bbe9e383f6e7a9cd92d74e9aa665ea57b758ed3717b0ee7df8d4fb
+  hdf5_size: 46300921856
+  required_rows: 2336736
+  required_episodes: 18685
+  pixel_shape: [224, 224, 3]
+  pixel_filter_id: 32001
+
+official_host:
+  repo_id: quentinll/lewm-pusht
+  revision: 22b330c28c27ead4bfd1888615af1340e3fe9052
+  bundle_path: outputs/paper_a_strengthening/pretrained/lewm-pusht
+  config_sha256: 2564086e961e7b5c7c04dffc451091115b389a590645ff19653c64fd0bc16e09
+  weights_sha256: 48938400ae3464c9680731287f583a9cb516f55a8ec64ea13a91be47fb15b607
+  weights_size: 72290721
+  frozen_encoder: true
+  frozen_predictor: true
+  latent_dim: 192
+  image_size: 224
+  context: 3
+  action_block_dim: 10
+
+semantic_tasks:
+  - key: transient-visual-token-recall
+    display_name: PushT transient visual-token recall
+    classes: 4
+    label_seed: 461103
+  - key: multi-item-visual-binding-recall
+    display_name: PushT multi-item visual-binding recall
+    classes: 6
+    label_seed: 461203
+
+sequence:
+  num_frames: 20
+  frame_skip: 5
+  raw_action_dim: 2
+  cue_start: 1
+  cue_length: 3
+  decision_index: 19
+  decision_observation_excluded: true
+  final_context_indices: [16, 17, 18]
+  action_alignment: action[t] is the five raw controls after z[t] and before z[t+1]
+  context_cause_action_indices: [15, 16, 17]
+  decision_prior_action_index: 18
+  shortcut_action_indices: [15, 16, 17, 18]
+  base_frames_stored: false
+  task_cache_stores_only_cue_latents: true
+
+selection:
+  train:
+    episodes: 1200
+  validation:
+    episodes: 480
+  split_seed: 461001
+  start_seed: 461002
+  one_sequence_per_episode: true
+  train_validation_episode_disjoint: true
+
+normalization:
+  source: all finite raw actions in pinned official HDF5
+  raw_action_ddof: 1
+  order: normalize each raw 2-D action, then flatten each 5x2 block
+  statistics_must_be_computed_from_dataset: true
+
+admission:
+  cue_accuracy_min: 0.75
+  shortcut_margin_above_chance: 0.05
+  required_shortcuts: [final-context latent, final-context action, final-context state]
+  policy: Cue availability and every no-shortcut gate must pass before carrier training.
+
+carrier_training:
+  arms: [none, gru, lstm, ssm, fixed_trust]
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  windows_per_episode: 8
+  primary_metric: validation label balanced accuracy at the final legal context
+  frozen_host_hash_must_match: true
+
+cache:
+  frame_batch_size: 128
+  compression_level: 1
+
+artifacts:
+  root: outputs/official_pusht_memory
+  base_cache: cache/base
+  task_cache: cache/tasks
+  admissions: admissions
+  carriers: carriers
+  logs: logs
+
+launcher:
+  allowed_devices: ["cuda:1", "cuda:2"]
+  preview_by_default: true
+  explicit_execute_required: true
+  jobs_per_gpu: 1

@@ -1,170 +1,269 @@
-# Certify Before You Claim: Demand Certificates for Memory in Latent World Models
+# Beyond the Context Window: A Frozen-Host Audit of Persistent Memory in SIGReg LeWM
 
 ## Abstract
 
-Claims about memory in latent world models rest on three premises that are almost never checked: that the benchmark actually requires memory, that the encoder retained the evidence to be remembered, and that the probe used to read the memory out reflects what a decision-maker could use. We introduce a certification protocol that tests each premise before any architecture claim is made: a **two-sided memory-demand certificate** (a sighted probe must read the cue while an initial-observation integrator and a decision-time probe must not), a **salience-threshold instrument** $s^*$ that measures per (encoder, scene) pair which cues survive representation learning, and a **return-floor certificate** that restates memory demand in reward units. We validate the protocol on a preregistered case study — a derived Kalman-style carrier versus a sixteen-config fair envelope of learned recurrence, confirmed at pooled d = {{X1_POOLED_D}} (p = {{X1_P}}) on fresh seeds under a frozen gate, transferring to executed control at {{X2_RFIX_SUCCESS}} vs {{X2_ACGRU_SUCCESS}} success under belief-conditioned goal selection with oracle execution — and then take the instruments to a world we did not build. On first contact, the certificate catches a memoryless shortcut in an external memory benchmark: in MIKASA-Robo RememberColor, the cue is visible at $t{=}0$, so an integrator that stores its first observation decodes the answer at {{F1_FLOOR_MEAN}} (chance {{F1_CHANCE}}) — the task demands initial-state storage, not online filtering. The protocol also audits itself: a second-scene deconfound overturned our own single-scene attribution of encoder blindness, and probe-level rankings twice failed to predict control-level rankings. We release the certificates, the instrument, and a fully registered record including every negative result.
+Latent world models can predict local dynamics while forgetting evidence after it leaves their observation window. Using the released SIGReg LeWorldModel (LeWM) Reacher checkpoint, we audit representation availability, causal retention, finite-context access, and rollout competence. All released components remain frozen while parameter-matched GRU, LSTM, diagonal state-space, and fixed-trust predict--correct carriers are optimized through the next-latent loss. Transient-marker and drifting-color recall pass the representation criterion; occluded-target prediction reaches only $R^2={{OCCLUDED_AVAILABILITY_R2}}$ and is excluded at the pre-specified $.300$ threshold. Across the admitted tasks, fixed-trust trails the GRU by {{POOLED_FIXED_TRUST_GRU_DIFFERENCE}} accuracy (95\% CI $[{{POOLED_FIXED_TRUST_GRU_CI_LOW}},{{POOLED_FIXED_TRUST_GRU_CI_HIGH}}]$). {{ABSTRACT_CONTEXT_AND_ROLLOUT_FINDING}} These results isolate memory effects under a common official host; memory-conditioned control is outside their scope.
 
 ## 1. Introduction
 
-A memory study in latent world models typically proceeds: pick a partially observable benchmark, train an architecture with a recurrent state, probe or evaluate for retained information, and report the difference against a baseline. Every step of this recipe presupposes something the paper does not check. The benchmark is presumed to require memory — but if the identifying cue is still visible at decision time, or derivable from the initial observation plus the action history, a memoryless policy solves it. The encoder is presumed to have kept the evidence — but self-supervised objectives can delete low-salience factors before any memory module sees them. And the probe is presumed to speak for behavior — but a linear readout on a belief state answers a different question than a decision-maker consuming that belief.
+Joint-embedding world models learn dynamics without reconstructing every pixel. LeWM trains a visual encoder and an action-conditioned latent predictor end to end with SIGReg, while DINO-WM predicts over frozen DINOv2 features \citep{r_lewm,r_dinowm,r_dinov2}. V-JEPA 2-AC and recent controlled JEPA studies likewise show that compact latent prediction can support physical planning \citep{r_vjepa2,r_jepawm}. These systems have an attractive interface: encode a short history, predict future representations under candidate actions, and plan with a task-specific objective. That interface is not, by itself, persistent memory.
 
-![The two-sided memory-demand certificate on an episode timeline, annotated with our first external audit (§5.5): the sighted and leakage probes pass, but the integrator floor decodes $\xi$ far above chance because the cue is visible at $t{=}0$ — the task demands storage, not filtering.](figures/fig_a_protocol.png)
+The distinction matters whenever a decisive observation occurs before the predictor's left context boundary. A model may attain low one-step latent error because the visible scene is locally smooth, even though a cue that no longer affects pixels has become unrecoverable. Increasing the rollout horizon does not resolve this issue: a rollout trace extrapolates from the model's current input, whereas a persistent state must first preserve evidence across real observations. Conversely, adding recurrence does not prove that the recurrence stores the variable of interest or that the predictive objective has any incentive to store it.
 
-This paper makes the checking itself the contribution. We develop and validate three instruments — a **two-sided memory-demand certificate** (Figure 1), a **salience-threshold instrument** $s^*$ measured per (encoder, scene) pair, and a **return-floor certificate** that restates demand in reward units (§4) — and we bind them to every stage of a world-model memory pipeline (Figure 2). We validate the protocol on a preregistered architecture comparison (§5.2–5.4) whose result we state carefully: a derived filter with a slow fixed trust beats the best of sixteen fairly tuned learned-recurrence configurations on certified probe endpoints (pooled d = {{X1_POOLED_D}}, frozen gate, fresh seeds), and the advantage transfers to executed control under belief-conditioned goal selection with oracle dynamics ({{X2_RFIX_SUCCESS}} vs {{X2_ACGRU_SUCCESS}} vs ceiling {{X2_ORACLE_SUCCESS}}). We then take the instruments outside the worlds we built (§5.5–5.6): they audited an external benchmark on first contact and caught a memoryless shortcut its own framing misses, and they audited *us*, twice — a second-scene control withdrew our encoder-blindness mechanism claim, and probe rankings failed to predict control rankings within the learned-recurrence family.
+We isolate these questions in the released SIGReg LeWM Reacher model. Its 192-dimensional latent predictor consumes three observations and 10-dimensional blocks of five Reacher actions. During the carrier comparison, the encoder--projector, action encoder, predictor, and prediction projection remain byte-identical. Only a causal carrier is trained: it reads each real latent, exposes a pre-observation state read, and fuses its posterior read into the unchanged predictor. The intervention asks what each carrier makes linearly usable under one common host.
 
-We consider the negative and self-corrective results part of the contribution, and we report them in the main text: the return-level evaluation could not use the latent world model because the host cannot roll forward one useful step (a *rollout-competence* prerequisite we register as a third demand certificate, §5.3); the filter's delay advantage shrinks under extrapolation and is not rescued by re-deriving its spectrum for the horizon; per-decision uncertainty consumption was worth approximately nothing on our tasks.
+Before memory training, a fixed readout tests whether the encoder--projector makes each target available. The admitted categorical tasks then enter the carrier swap and a separate context-length control; a continuous future-location task that fails this criterion remains diagnostic only. Learned rollouts are evaluated independently against copy-last and shuffled-action references.
 
-## 2. Preliminaries
+Our contributions are an official-checkpoint frozen memory intervention with matched recurrent baselines, a context sweep that separates raw access from predictor exposure, and an action-sensitive rollout test. Together they locate failures under a specified host and legal readout rather than collapsing them into one score.
 
-An episode is a frame sequence $o_{0:L-1}$ with actions $a_{0:L-2}$ and an exogenous latent $\xi$ (categorical unless noted), rendered with a cue window $[t_{on}, t_{off}]$ inside which $\xi$ is visible. A bank is $E$ episodes from one (task, seed) cell. All probes are the registered family — logistic for categorical $\xi$, standardized-target RidgeCV over a registered regularization path for continuous $\xi$; §5.2 explains, with a cautionary tale, why the probe family must be registered.
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_a_arch.pdf}
+\caption{Frozen-host persistent-memory intervention. (a) Frames pass through the released SIGReg LeWM encoder--projector. Standardized raw 10-D action blocks branch directly to the carrier, while the frozen action encoder supplies action tokens to the frozen predictor and output projection (blue dashed blocks). Only the carrier is trainable (green); the cached raw next latent supplies the target, and gradients traverse the frozen prediction path to the carrier. (b) The carrier exposes a prior read before seeing the current latent, then corrects its episode state and supplies a residual posterior read to the frozen predictor. The episode state continues after evidence has left the three-token context.}
+\label{fig:architecture}
+\end{figure}
 
-**Testbed.** One DeepMind-Control reacher scene \citep{r_dmc} with exogenous cue overlays composited onto the pixels, three certified task families deep: **t1** (a transient cue flashes at one of four markers during a random early window; categorical $\xi$, chance 0.25), **t3** (a drifting distractor whose class must be recalled; three classes), and **t4** (an occluded target tracked through a gap; continuous $\xi$). Episodes are 64 frames; the cue is over by frame 22 and the registered probes read the belief in the post-cue window and at the final frame, so the bridged delay is roughly 50 steps. Hosts are VICReg-style pixel encoders \citep{r_vicreg} trained per task; carriers consume frozen encodings. A second scene (point-mass, same overlay family) and an external benchmark (MIKASA-Robo RememberColor9, frozen DINOv2 host \citep{r_dinov2}) enter in §5.5–5.6.
+## 2. Memory Claims in Finite-Context World Models
 
-**Carriers.** The candidate is a latent Kalman cell with a fixed log-spaced decay spectrum, an exact eigenvalue-1 hold channel, and slow fixed trust ("the filter," rfix). The learned envelope contains GRU variants (including a chrono-initialized slow-gate control), an action-conditioned SSM, and a parameter-matched action-conditioned gated delta-rule cell. We claim no novelty for either family; the comparison exists to exercise the certificates, and we state its scale honestly: about 1,200 training episodes, one scene family, both arms recovering under half the sighted ceiling.
+### 2.1 Context, rollout, and persistent state
 
-## 3. Related work
+A finite-context predictor reconstructs its state from the latest $H$ observations. A rollout instead extrapolates one candidate action sequence. Persistent state is updated across real observations and remains available after an event is absent from every other legal input.
 
-**Memory benchmarks.** POPGym \citep{r_popgym}, Memory Gym \citep{r_memgym}, and MIKASA-Robo \citep{r_mikasa} supply memory-labeled task suites; MIKASA-Robo's demand notion is sliding-window observability. Our certificate is stricter and two-sided: it grants the adversary the *entire* action history and the initial observation (the strongest memoryless policy that is causally legal), and separately verifies the evidence survived encoding. The MDP/POMDP twin design of POPGym Arcade \citep{r_arcade} is the closest antecedent of the demand side; the sighted/leakage sides and the per-encoder salience instrument are, to our knowledge, new. §5.5 shows the difference matters: a task that is memory-demanding under sliding-window observability certifies as storage-demanding, not filtering-demanding, under ours.
+LeWM and DINO-WM predict over bounded latent histories \citep{r_lewm,r_dinowm}; Fast-LeWM predicts action-prefix horizons in parallel without an episode state updated by later observations \citep{r_fastlewm}. DreamerV3, Recall to Imagine, and S4WM study recurrent or state-space dynamics, while PERSIST maintains an evolving geometric world state \citep{r_dreamerv3,r_r2i,r_s4wm,r_persist}. These interfaces are complementary, but feature prediction, state decodability, and causal use are distinct endpoints.
 
-**World models with memory.** Recurrent state-space models and their successors \citep{r_planet,r_dreamer,r_dreamerv3,r_tdmpc2,r_r2i} report return-level results with memory in imagination; pixel JEPA world models \citep{r_lewm,r_dinowm} supply the host family we study. We do not compete with these systems; we supply the audit layer they skip. Our return-level endpoint (§5.3) deliberately isolates the memory factor by planning with oracle dynamics after the host failed a rollout-competence check — which is itself a result those systems' evaluation protocols would not have surfaced, because multi-step training objectives are baked in rather than certified.
+### 2.2 Four clocks
 
-**Linear recurrence and derived filters.** The envelope's delta-rule cell follows the input-dependent-gain family \citep{r_gdn,r_mesanet}; the chrono control follows \citet{r_tallec}; the filter is HiPPO-adjacent in construction \citep{r_hippo} and RKN-lineage \citep{r_rkn}.
+We distinguish four temporal scales:
 
-**Probing and its limits.** Work on probing representations has long warned that decodability is not use \citep{r_belinkov,r_ravich}. We give this warning a quantitative instance in world models: two independent cases where probe-level and control-level measurements dissociate — the probe-selected envelope winner loses in control, and calibration damage that probes absorb costs a quarter of executed success — both in §5.4, and both found by an adversarial verification pass on our own program.
+1. The **observation clock** is one encoded frame; five simulator actions form each 10-D action block.
+2. The **context clock** is the number $H$ of real latent tokens; the released host uses $H=3$.
+3. The **evidence-age clock** counts observations since the informative event.
+4. The **imagination clock** is rollout horizon $K$ after prediction begins.
 
-## 4. Methodology
+Increasing $H$ postpones context expiry; increasing $K$ increases extrapolation. A carrier changes the evidence-age clock only when it is updated through real observations and read after the cue expires from the raw window.
 
-![The certification protocol bound to a world-model memory pipeline. Gray: the standard stack every memory study already has. Blue: the two readout levels. Green: the certificates — each gates the stage it points to, and each has caught at least one wrong claim (Appendix A).](figures/fig_a_arch.png)
+\begin{table}[!t]
+\centering
+\fontsize{7.2}{8.0}\selectfont
+\setlength{\tabcolsep}{2.0pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Temporal-interface checklist. A check denotes an explicit interface or experiment, not a cross-paper performance ranking.}
+\label{tab:interfaces}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}*{5}{>{\centering\arraybackslash}p{0.105\linewidth}}Y@{}}
+\toprule
+System & \shortstack{Bounded\\obs. context} & \shortstack{Episode\\state} & \shortstack{State carried\\beyond $H$} & \shortstack{Pre-frame\\read} & \shortstack{Frozen-host\\swap} & \shortstack{Multi-step\\imagination} \\
+\midrule
+LeWM \citep{r_lewm} & \TblPass & \TblNA & \TblNA & \TblNA & \TblNA & \TblPass \\
+\rowcolor{TableGray}
+Fast-LeWM \citep{r_fastlewm} & \TblPass & \TblNA & \TblNA & \TblNA & \TblNA & \TblPass \\
+DINO-WM \citep{r_dinowm} & \TblPass & \TblNA & \TblNA & \TblNA & \TblNA & \TblPass \\
+\rowcolor{TableGray}
+Recall to Imagine \citep{r_r2i} & \TblNA & \TblPass & \TblPass & \TblNA & \TblNA & \TblPass \\
+PERSIST \citep{r_persist} & \TblPart & \TblPass & \TblPass & \TblNA & \TblNA & \TblPart \\
+\midrule
+LeWM + persistent carrier (ours) & \TblPass & \TblPass & \TblPass & \TblPass & \TblPass & \TblNA \\
+\rowcolor{TableGray}
+LeWM predictor fine-tuning (ours) & \TblPass & \TblNA & \TblNA & \TblNA & \TblNA & \TblPass \\
+\bottomrule
+\end{tabularx}
+\vspace{1pt}
+\parbox{\linewidth}{\fontsize{6.8}{7.5}\selectfont Check marks denote explicit support; triangles denote a qualified, different state contract; dashes mean not reported. ``Carried'' denotes the interface, not verified target retention. Our predictor control freezes the encoder--projector, fine-tunes dynamics, and has no carrier.}
+\end{table}
 
-### 4.1 Two-sided memory demand
+### 2.3 Position within LeWM-style world models
 
-A bank is **memory-demanding at probe level** iff:
+The intervention complements, rather than replaces, existing world-model designs. Original LeWM jointly learns representations and action-conditioned dynamics with SIGReg; DINO-WM predicts over externally frozen visual features \citep{r_lewm,r_dinowm}. Our frozen host serves a different purpose: it fixes both the representation and consumer so that carrier variants share one causal environment. Fast-LeWM improves how future action prefixes are queried, but parallel prediction after a planning anchor cannot recover an event already absent from that anchor's context \citep{r_fastlewm}. Recall to Imagine and S4WM instead ask how recurrent or state-space dynamics affect end-to-end control \citep{r_r2i,r_s4wm}. PERSIST uses an explicit geometric state with a different observation and update contract \citep{r_persist}.
 
-1. *Sighted*: a probe on encoder features of eight frames spanning the cue window decodes $\xi$ at $\geq {{SIGHTED_GATE}}$. This certifies the evidence exists *after encoding* — the step almost every memory paper skips, and the step that failed silently in our own program's history (§5.6).
-2. *Integrator floor*: a probe on $[\mathrm{enc}(o_0);\, a_{0:L-2}]$ scores within {{FLOOR_MARGIN}} of chance. This adversary retains its first observation forever and integrates all controls — the strongest memoryless reference that requires no memory of *observations after* $t{=}0$.
-3. *No leakage*: a probe on decision-window frames scores within {{FLOOR_MARGIN}} of chance — $\xi$ must not be re-derivable at decision time.
+These distinctions determine the claim. A high downstream return can combine perception, memory, dynamics, and policy improvements; a decodable recurrent state can remain unused; and a long context can expose a cue without compressing it into the predictor output. We therefore compare interfaces in Table \ref{tab:interfaces} but compare scores only within the frozen LeWM experiment. The target is not a new benchmark-leading framework. It is an attribution test for whether an episode state adds information after LeWM's legal context has expired, and whether any observed limitation belongs upstream in representation, inside persistence, or downstream in learned dynamics.
 
-One side without the other licenses nothing: a failed sighted probe means the encoder deleted the evidence; a passing floor means the task never needed memory. The certificate is per-(task, encoder, seed) and fails closed: our pipeline refuses to score memory endpoints on banks that have not passed it.
+## 3. Fail-Closed Audit and Frozen Intervention
 
-### 4.2 The salience instrument $s^*$
+### 3.1 Claim ladder
 
-Fix a task family with a monotone salience knob (cue size, duration, border) and a probe gate. $s^*(\text{encoder}, \text{scene})$ is the lowest rung whose sighted certificate passes (majority over bank seeds). Two properties make it an instrument rather than a score: it is *comparable across encoders on a fixed scene* (same banks, same probe), and *diagnostic before training a single memory module* — if the cue you intend to test memory on sits below $s^*$, the study is unrunnable regardless of architecture.
+The audit asks four ordered questions. **Demand:** does the target require an earlier observation? **Availability:** can a fixed readout recover it from the frozen representation at evidence time? **Retention:** is it recoverable from a causal carrier read after leaving raw context? **Use:** can a matched consumer exploit that state? Learned control additionally requires competent dynamics. Failure at one stage stops downstream interpretation.
 
-### 4.3 Memory demand in reward units, and rollout competence
+If a cue disappears without affecting later pixels, next-latent loss can be minimized without retaining its class. A negative carrier result then diagnoses objective alignment under this host, not recurrent capacity. If longer raw context restores readout while its predictor output does not, the limitation lies after raw access.
 
-Attach a reward to the recalled factor (reach the marker the vanished cue indicated). The **return-floor certificate** requires: an oracle-$\xi$ policy achieves ceiling return; an integrator-features policy achieves floor return; and the gap clears a registered margin ({{X2_GAP}} $\gg$ {{X2_GAP_MIN}} here). The gap *is* the memory demand, in the units decisions are made in. Any behavior-level evaluation that plans through a learned model additionally presupposes the model can roll forward; we register **rollout competence** — decoded task state must survive $k$ predicted steps — as the corresponding prerequisite certificate, having failed it ourselves (§5.3).
+### 3.2 Common carrier contract
 
-## 5. Experimental results
+All carrier variants implement one interface. Let $E$ be the frozen encoder--projector and $P$ the frozen predictor plus output projection. With latent $z_t$, standardized action block $a_{t-1}$, and episode state $m_{t-1}$,
 
-### 5.1 Overview: seven registered questions, seven adjudicated answers
+$$
+\begin{aligned}
+z_t &= E(o_t), &
+(b_t,m_t,\widetilde z_t) &= C_\phi(m_{t-1},z_t,a_{t-1}), \\
+\widehat z_{t+1} &= P(\widetilde z_{t-H+1:t},a_{t-H+1:t}), &
+H &= 3.
+\end{aligned}
+$$
 
-Every endpoint below was registered — endpoint, bar, and falsified-clause — before execution; the released record carries the timestamps. Table 1 is the map of this section.
+The prior $b_t$ is read before consuming $z_t$; the corrected read is fused into $\widetilde z_t$. Zero-initialized read projections make every variant start as the unchanged host. Training uses only next-latent error against the raw cached target; labels never reach the carrier or predictor.
 
-| § | registered question | outcome |
-|---|---|---|
-| 5.2 | is the probe-level advantage robust to analysis choices? | confirmed (strengthens under exclusions) |
-| 5.2 | does it survive a fair envelope, fresh seeds, frozen gate? | **confirmed**, d = {{X1_POOLED_D}} |
-| 5.3 | does memory demand certify in reward units? | confirmed (gap {{X2_GAP}}) |
-| 5.3 | does the advantage transfer to executed control? | confirmed, n = 3, direction-only |
-| 5.4 | do uncertainty and calibration have decision value? | split: encode-time yes, per-decision no |
-| 5.5 | do the certificates work on an external benchmark? | yes — informative failure (shortcut caught) |
-| 5.6 | do the instruments port across encoders and scenes? | ported; our own mechanism claim withdrawn |
+Fixed-trust predict--correct memory maintains channelwise mean and uncertainty. Actions predict the next state; an input-independent learned trust controls correction by the current latent. A diagonal retention spectrum and residual projection return the read to LeWM space, following recurrent predict--correct estimators \citep{r_rkn}.
 
-Table: The registered questions of §5 and their adjudicated outcomes; every bar and falsified-clause was frozen before execution.
+Baselines are an action-conditioned GRU, LSTM, and diagonal state-space carrier. Their selected widths yield 75,924, 76,372, and 76,032 parameters, versus 76,032 for fixed-trust. Optimizer, updates, data, frozen host, injection point, read convention, and initialization are shared. The no-carrier contrast asks whether a recurrent path changes final information at all; cross-carrier contrasts compare learned update rules under approximately matched capacity. Both estimands are conditional on one released checkpoint and intentionally exclude end-to-end encoder--predictor co-adaptation.
 
-### 5.2 Probe-level: repairs, then a frozen confirmation gate
+## 4. Experimental Design
 
-**Repairs first (frozen checkpoints, no new data).** Excluding every (task, seed) cell that failed registered training-health gates *strengthens* the contrast: full grid {{W3_FULL}} → healthy-only {{X0_HEALTHY}} (p = {{X0_HEALTHY_P}}, {{X0_HEALTHY_WINS}}). And the hardest task's apparent pathology (ridge $R^2$ of {{T4_RFIX_LEGACY}} for the filter) was a readout artifact: under a scale-robust registered family, the filter *leads* on that task too ({{T4_RFIX_REPAIRED}} vs {{T4_ACGRU_REPAIRED}}); with the task rejoined, the pooled contrast is d = {{T4_POOLED_D}}. The lesson we register for the field: *the probe family is part of the claim* — an unregularized readout manufactured a −3 to −4 $R^2$ "collapse" that survived two program generations.
+### 4.1 Released SIGReg host and data contract
 
-**The envelope.** Sixteen parameter-matched configurations — a GRU lr×width sweep, a chrono-initialized slow-gate GRU (the filter's own "slow trust" diagnosis applied symmetrically to the baseline), an action-conditioned SSM, and an action-conditioned gated delta-rule cell — selected on dev banks by a rule registered before any sweep result existed. Winner: the delta cell ({{X0B_GDELTA_DEV}} pooled dev vs {{X0B_ACGRU_DEV}} for the best GRU; the chrono repair did **not** rescue the GRU, {{X0B_CHRONO_DEV}}).
+We use the released official LeWM Reacher checkpoint \citep{r_lewm}. A ViT-Tiny with 14-pixel patches at $224\times224$ projects its class token to 192 dimensions. Six conditional transformer blocks consume three latent/action tokens before the released prediction projection.
 
-**The gate.** Endpoint: pooled standardized paired d of (filter − envelope-winner) over three certified tasks under the repaired probe family, ten fresh seeds; confirmation iff bootstrap $p_{pos} < 0.05$ and $\geq 2/3$ tasks positive; the falsified clause ("fair tuning closes the gap") registered alongside. The gate script refuses artifacts predating the registration. **Result: confirmed** (Table 2) — pooled d = {{X1_POOLED_D}}, CI95 [{{X1_CI_LO}}, {{X1_CI_HI}}], $p_{pos}$ = {{X1_P}}.
+All tasks use DeepMind Control Suite Reacher \citep{r_dmc}: 64 rendered observations per episode, with five independently sampled 2-D actions flattened between frames and standardized on the training split. Each task has 1,200 training and 240 fixed validation episodes.
 
-| task | mean diff (filter − delta cell) | seed wins | paired d |
-|---|---|---|---|
-| t1 | {{X1_T1_DIFF}} | {{X1_T1_WINS}} | {{X1_T1_D}} |
-| t3 | {{X1_T3_DIFF}} | {{X1_T3_WINS}} | {{X1_T3_D}} |
-| t4 | {{X1_T4_DIFF}} | {{X1_T4_WINS}} | {{X1_T4_D}} |
+**Transient-marker recall** briefly fills one of four persistent marker outlines and adds a class-colored border. Post-cue overlays are class-independent; the target is marker identity at the final decision. **Drifting-color recall** flashes the class as the color of a stochastically moving sprite, which then continues in neutral gray. **Occluded-target prediction** repeats the last visible frame for 16--20 observations while a stochastic two-dimensional target continues moving; the target is its normalized location when observations resume.
 
-Table: The frozen confirmation gate, per task (ten fresh seeds, repaired probe family).
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_a_protocol.pdf}
+\caption{Memory tasks and frozen-representation admission. Categorical rows show the cue, class-independent delay, and last legal pre-decision frame; their evidence age is 43--53 frames. The continuous row shows the last pre-gap observation, a 16--20-frame frozen interval, and an evaluation-only outcome after the cutoff. Four cue-window latents yield categorical accuracy above $.750$; four pre-gap latents yield only $R^2={{OCCLUDED_AVAILABILITY_R2}}$ for the continuous target, below $.300$.}
+\label{fig:protocol}
+\end{figure}
 
-**Disclosure, unprompted.** A post-hoc audit found every envelope-winner training cell fails our registered representation-health gates (effective rank {{GDELTA_RANK_RANGE}} against a minimum of {{RANK_MIN}}) while the filter passes 27/30. Either the rank gate does not transfer to matrix-state cells — plausible: the delta cell's readout is a projection of a rank-limited state — or the confirmed rival is a degenerate trainee. We report the confirmation *with* this asymmetry attached and register a delta-cell-appropriate health criterion as a precondition for any future architecture-headline use of this result.
+### 4.2 Admission tests
 
-### 5.3 Control-level: the advantage transfers — stated exactly
+For categorical tasks, cue identity changes only cue-window overlays; post-cue overlays are class-independent, so the final three frames cannot reveal the class. Their cue-to-read evidence age is 43--53 frames. For the continuous task, a 16--20-frame repeated visual interval separates the last observed target from its later position.
 
-The reward-bearing variant (T1-act: reach the marker the vanished cue indicated) passes the return-floor certificate: ceiling {{X2_ORACLE_SUCCESS}}, floor {{X2_FLOOR_SUCCESS}}, gap {{X2_GAP}}. Evaluation is **belief-conditioned goal selection under oracle execution**: a frozen linear selector reads each carrier's belief at plan time, and an identical CEM planner executes under oracle physics. We name the substrate honestly because the registered latent-planning design died first: the host world model transports pose information for less than one predicted step (decode error {{ROLLOUT_REAL}} on real frames → {{ROLLOUT_1STEP}} after one predicted step → no information by four). We failed our own §4.3 prerequisite and isolate the memory factor with oracle dynamics — the only thing differing between arms is the belief. Table 3 gives every arm under the identical planner.
+Availability is measured before memory training. Multinomial logistic regression reads four frozen cue-window latents for categorical tasks, with $.750$ validation accuracy required against $.250$ chance. Target-standardized ridge regression reads the last four pre-gap latents for occluded-target prediction, with $R^2\ge .300$ required. The categorical tasks proceed to carrier evaluation; the continuous task is excluded because its frozen representation does not meet this predictive-sufficiency threshold.
 
-| arm (identical planner) | executed success | role |
-|---|---|---|
-| oracle-$\xi$ | {{X2_ORACLE_SUCCESS}} | ceiling |
-| **filter (rfix)** | **{{X2_RFIX_SUCCESS}}** | candidate |
-| filter, trust detuned $\times${{DETUNE_FACTOR}} | {{X2_DETUNED_SUCCESS}} | calibration ablation |
-| GRU | {{X2_ACGRU_SUCCESS}} | registered comparison |
-| delta cell (exploratory, post-registration) | {{X2_GDELTA_SUCCESS}} | envelope winner by probes |
-| no-carrier selector | {{X2_NONE_SUCCESS}} | = chance |
-| belief ablated (uniform weights) | {{X2_ABLATED_SUCCESS}} | causal check |
-| integrator floor | {{X2_FLOOR_SUCCESS}} | certificate floor |
+### 4.3 Training and statistics
 
-Table: Executed success under the identical oracle-execution planner; only the belief source differs between arms (mean of 3 checkpoint seeds, 120 episodes each).
+Carriers train for 100 AdamW epochs over five model/optimizer seeds. At held-out decision observation $q=63$, the evaluation probe concatenates $z_{60:62}$ with causal prior $b_q$; $z_q$ is excluded and no temporal pooling is used. A deterministic standardized logistic model is fit on the training split and evaluated on validation episodes without carrier gradients.
 
-The registered gate (filter > GRU, paired over checkpoint seeds) passes 3/3; we state its statistical weight honestly — n = 3 checkpoint seeds, direction and margin, no p-value — and note the margin ({{X2_MARGIN}} success) is the probe gap passed through the argmax, not a new information source. The causal checks hold in both directions: removing the carrier collapses to chance, ablating the belief collapses below it. (One further disclosure: a full-execution re-roll reads systematically higher than the planning-environment estimate by three to four points; reported, not corrected.)
+For $H\in\{3,16,32,56\}$, the encoder--projector stays frozen while positional embeddings are interpolated and the action encoder, predictor, and output projection train for 60 epochs. At cutoff $q$, a seed-independent **raw-access readout** uses the legal window's mean and last latent; a **predictor readout** uses one contextual prediction over three seeds. These feature maps are dimension-stable across $H$ but differ from the carrier probe.
 
-### 5.4 Probes do not rank what control ranks
+The same predictor components train for 60 epochs with one-step prediction or eight-step overshooting. From fixed anchor $t=24$, three seeds recursively predict targets at $K\in\{1,2,4,8,16\}$. We report variance-normalized latent MSE, its paired ratio to copy-last, and advantage over shuffled actions. Competence requires beating copy-last with positive action advantage at every horizon through eight.
 
-Two exploratory results, reported because they audit the field's default evaluation. (i) The envelope winner *by probe selection* loses *in control*: the delta cell's executed success is {{X2_GDELTA_SUCCESS}} — below the GRU ({{X2_ACGRU_SUCCESS}}) it beat on dev probes — with one seed's plan-time selector at chance ({{ENV_SEL_MIN}}). (ii) Miscalibrating the filter's trust costs {{X2_DETUNE_DROP}} success (Table 3) and is tracked by belief informativeness at plan time (selector accuracy {{SEL_CALIBRATED}} → {{SEL_DETUNED}}, persisted artifact), consistent with full mediation, while per-decision uncertainty consumption — hedging over goals by belief weights — is worth {{X2_HEDGE_CAL}} calibrated ({{X2_HEDGE_DET}} detuned). Calibration is priced at *encode time*, not read time, on these tasks; and probe-level rankings within an architecture family did not predict control-level rankings. Neither observation survives our own confirmatory bar; both are exactly the kind of observation the field's probe-only evaluations cannot make.
+Intervals are deterministic 95\% percentile bootstraps over seeds with 20,000 draws. Carrier contrasts pair seeds and weight tasks equally. The experiment matrix and analysis rules were fixed before formal aggregation and are released with the artifacts.
 
-### 5.5 First contact with an external benchmark: the certificate catches a shortcut
+## 5. Does Persistent State Add Information Beyond Three Frames?
 
-We ran MIKASA-Robo RememberColor9 (nine colors; cue cube shown, hidden, then nine candidates presented) through §4.1 with a frozen DINOv2 host, three bank seeds, xi-independent random actions ({{F1_EPISODES}} episodes total; Table 4).
+### 5.1 Representation availability establishes the admissible scope
 
-| certificate side | result (3 banks) | verdict |
-|---|---|---|
-| sighted (cue window) | {{F1_SIGHTED}} | PASS — cue perfectly encoded |
-| no-leakage (decision window) | {{F1_LEAKAGE_RANGE}} (chance {{F1_CHANCE}}) | PASS — decision phase clean |
-| integrator floor | **{{F1_FLOOR_RANGE}}** | **FAIL — memoryless shortcut** |
+Figure \ref{fig:protocol} admits only the two categorical tasks: transient-marker and drifting-color accuracy are {{MARKER_AVAILABILITY_ACC}} and {{DRIFTING_AVAILABILITY_ACC}}. Occluded-target prediction remains an availability diagnostic; its failure does not establish absence of the current pre-gap state.
 
-Table: The two-sided certificate on MIKASA-Robo RememberColor9 (frozen DINOv2 host): the evidence is encoded and the decision phase is clean, but a first-observation integrator decodes the answer — a storage task wearing a memory label.
+### 5.2 Frozen-host carrier swap
 
-The floor fails because the cue cube is visible at $t{=}0$ (Figure 1). Under MIKASA's sliding-window demand notion the task requires memory; under ours it requires *initial-observation storage*, not online filtering — an agent architecture with any $o_0$-conditioning (a goal encoder, a first-frame feature cache) has the information to bypass the intended difficulty. We report this not as a defect of MIKASA-Robo but as the demonstration the protocol exists for: **the two demand types are distinguishable only by certificate, and a benchmark's "memory" label can conflate them — as it does here.** (The task family is easily repaired — delay the cue onset — and the certificate verifies the repair.) An exploratory transfer of the §5.2 comparison to this family (carriers trained on frozen DINO features with a documented transfer recipe, n = 5, direction-only): filter {{F1_RFIX_MEAN}} (per-seed sd {{F1_RFIX_SD}}) vs delta cell {{F1_GDELTA_MEAN}} (sd {{F1_GDELTA_SD}}) — the direction replicates externally, and so does the delta cell's seed instability.
+Table \ref{tab:frozen-results} and Figure \ref{fig:memory-results}a report the carrier comparison. On transient-marker recall, no carrier obtains {{MARKER_NONE_ACC_WITH_CI}}, fixed-trust {{MARKER_FIXED_TRUST_ACC_WITH_CI}}, and GRU {{MARKER_GRU_ACC_WITH_CI}}. On drifting-color recall, they obtain {{DRIFTING_NONE_ACC_WITH_CI}}, {{DRIFTING_FIXED_TRUST_ACC_WITH_CI}}, and {{DRIFTING_GRU_ACC_WITH_CI}}, respectively.
 
-### 5.6 The instruments abroad: a self-correction and a scoped negative
+The pre-specified primary contrast is fixed-trust memory minus the parameter-matched GRU, paired by seed and weighted equally across tasks. Its mean is {{POOLED_FIXED_TRUST_GRU_DIFFERENCE}} with 95\% interval $[{{POOLED_FIXED_TRUST_GRU_CI_LOW}},{{POOLED_FIXED_TRUST_GRU_CI_HIGH}}]$ and {{POOLED_FIXED_TRUST_GRU_WINS}} positive seed--task pairs. The corresponding contrasts against LSTM and the diagonal state-space carrier are {{POOLED_FIXED_TRUST_LSTM_DIFFERENCE_WITH_CI}} and {{POOLED_FIXED_TRUST_SSM_DIFFERENCE_WITH_CI}}. {{FROZEN_SWAP_INTERPRETATION}}
 
-**Encoder deletion is scene-dependent — our own claim withdrawn.** Our program's prior generation reported "encoder blindness is acquired, not architectural": the task-trained VICReg encoder fails the sighted certificate at low salience ($s^* = $ {{SSTAR_VICREG}}; scores {{W0_VICREG_S1_SCORES}} at the rung below) where frozen DINOv2 passes everything. The claim was confounded — architecture, pretraining data, and objective all differed — so we registered a deconfound with the interpretation table frozen in advance: train the *identical* VICReg recipe on a second scene's version of the same salience ladder. **The correction branch fired** (Figure 3a): on the second scene, the task-trained recipe *passes* the rung it fails on the original scene ({{F2B_S0_SIGHTED}} / {{F2B_S1_SIGHTED}}, floors at chance, health gates passing). The deletion is **scene-dependent** — consistent with a registered variance-budget-competition hypothesis (§7), not yet a mechanism — and our attribution is withdrawn as registered. Meanwhile the DINOv2 ladder passes every rung on both scenes at $\geq {{DINO_MIN_SCORE}}$, including a two-pixel-radius cue lasting two to three frames, so $s^*(\mathrm{DINOv2})$ is reported as an *upper bound* ($\leq$ {{SSTAR_DINO_BOUND}}), not a threshold: the instrument bottoms out at the scene's render floor before the frozen backbone does. What survives is the instrument thesis in its strongest form: **whether an encoder deletes your cue is a property of the (encoder, scene) pair that cannot be predicted from the recipe — it must be certified per pair,** and the certificate that told us we were wrong is the same certificate we are proposing.
+Figure \ref{fig:memory-results}a makes the aggregation transparent. Fixed-trust is numerically positive against all learned comparators on transient-marker recall, but every task-specific interval crosses zero. On drifting-color recall all three contrasts are negative. Equal task weighting therefore prevents the marker task from hiding the color failure. {{MAIN_NO_CARRIER_ANALYSIS}}
 
-![Left: the $s^*$ instrument across two hosts and two scenes (mean over bank seeds, whiskers min–max) — the task-trained VICReg encoder fails the s1 rung on reacher yet passes it on point-mass, withdrawing our "acquired, not architectural" attribution, while frozen DINOv2 saturates both scenes. Right (exploratory): registered-probe accuracy vs episode length (frozen checkpoints, fresh banks; whiskers ± sd) — the filter leads at every delay, all carriers decay toward chance beyond the training length against the registered grows-with-delay expectation, and the registered repair (spectrum re-derived per horizon, dashed) recovers nothing: the decay is readout-limited, not retention-limited.](figures/fig_a_results.png)
+Next-latent error is reported beside accuracy because local prediction and remote retention need not agree. Host, data, context, loss, optimizer, and readout remain fixed while only recurrent state changes.
 
-**Delay scaling, and a negative on the obvious repair** (Figure 3b). The registered expectation — that the filter's advantage *grows* with delay — was **not met**: the advantage is positive at every tested cue-to-decision delay but narrows under extrapolation. We report the delay curves as exploratory scoping: {{DELAY_RFIX_64}} / {{DELAY_RFIX_96}} / {{DELAY_RFIX_128}} (filter) vs {{DELAY_ACGRU_64}} / {{DELAY_ACGRU_96}} / {{DELAY_ACGRU_128}} (GRU) vs {{DELAY_GDELTA_64}} / {{DELAY_GDELTA_96}} / {{DELAY_GDELTA_128}} (delta cell) at L = 64/96/128 (training length 64, chance 0.25). The natural repair — the filter's spectrum is a design knob, so re-derive its half-lives for the evaluated horizon on frozen weights — was registered with a confirmation bar and **failed it** ({{TAU_DELTA_128}} at L = 128; the L = 64 no-op sanity check returned {{TAU_DELTA_64}} exactly). The decay is not retention-limited (the cue rides an exact eigenvalue-1 hold channel); it is *readout*-limited — the learned weights are fit to length-64 statistics. We report the memory claim scoped to delays near the training regime, with the mechanism for why extrapolation fails attached.
+The loss ranking sharpens this point. The diagonal state-space carrier gives the lowest pooled next-latent MSE, followed by the GRU, LSTM, fixed-trust memory, and no carrier, yet all equal-task accuracies remain close to $.250$ chance. Thus reduced local loss does not establish persistent target information. {{MAIN_TRAJECTORY_ANALYSIS}}
 
-## 6. Conclusion
+\begin{table*}[!t]
+\centering
+\fontsize{7.2}{8.0}\selectfont
+\setlength{\tabcolsep}{4.0pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{Frozen-host carrier comparison. Entries are mean [95\% seed-bootstrap CI] over five paired seeds. The probe concatenates the final three legal raw latents with the pre-observation carrier read; no carrier is deterministic.}
+\label{tab:frozen-results}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.20\textwidth}>{\centering\arraybackslash}p{0.09\textwidth}*{3}{>{\centering\arraybackslash}p{0.145\textwidth}}Y@{}}
+\toprule
+Carrier & Trainable params & Transient-marker $\uparrow$ & Drifting-color $\uparrow$ & Equal-task mean $\uparrow$ & Next-latent MSE $\downarrow$ \\
+\midrule
+No persistent carrier & 0 & {{MARKER_NONE_ACC_WITH_CI}} & {{DRIFTING_NONE_ACC_WITH_CI}} & {{NONE_MEAN_ACC_WITH_CI}} & {{NONE_MEAN_NEXT_LATENT_MSE}} \\
+\rowcolor{TableGray}
+Action-conditioned GRU & 75,924 & {{MARKER_GRU_ACC_WITH_CI}} & {{DRIFTING_GRU_ACC_WITH_CI}} & {{GRU_MEAN_ACC_WITH_CI}} & {{GRU_MEAN_NEXT_LATENT_MSE}} \\
+Action-conditioned LSTM & 76,372 & {{MARKER_LSTM_ACC_WITH_CI}} & {{DRIFTING_LSTM_ACC_WITH_CI}} & {{LSTM_MEAN_ACC_WITH_CI}} & {{LSTM_MEAN_NEXT_LATENT_MSE}} \\
+\rowcolor{TableGray}
+Diagonal state-space carrier & 76,032 & {{MARKER_SSM_ACC_WITH_CI}} & {{DRIFTING_SSM_ACC_WITH_CI}} & {{SSM_MEAN_ACC_WITH_CI}} & {{SSM_MEAN_NEXT_LATENT_MSE}} \\
+\addlinespace[1pt]
+Fixed-trust predict--correct (ours) & 76,032 & {{MARKER_FIXED_TRUST_ACC_WITH_CI}} & {{DRIFTING_FIXED_TRUST_ACC_WITH_CI}} & {{FIXED_TRUST_MEAN_ACC_WITH_CI}} & {{FIXED_TRUST_MEAN_NEXT_LATENT_MSE}} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
 
-Before a memory claim, three questions: does the task demand memory (both sides certified)? did the encoder keep the evidence ($s^*$ for your pair)? does your readout speak for decisions (return-floor, not probes)? Our record shows each question, unasked, has produced a wrong published-grade claim — including two of our own, caught by our own instruments and corrected under frozen registrations in this paper. The certificates are cheap, the instrument is one ladder, and the alternative is a literature of memory results that may be storage results, encoder results, or readout results in disguise.
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_a_evidence.pdf}
+\caption{Persistent state versus finite context. (a) Paired fixed-trust-minus-comparator accuracy: translucent points are seed differences, colored markers are task means, diamonds are equal-task means, whiskers are 95\% intervals, and zero marks parity. (b) Accuracy versus context $H$: dashed curves read raw legal context; solid curves read a trained predictor output with 95\% intervals. The context sweep is a capability control, not a frozen-carrier intervention.}
+\label{fig:memory-results}
+\end{figure*}
 
-## 7. Limitations
+### 5.3 Longer context separates access from learned exposure
 
-All confirmatory results live on one scene family plus one external task; the second scene enters only through the $s^*$ grid. The control-level endpoint uses oracle dynamics by measured necessity, and its registered gate is n = 3, direction-only. The envelope's winner fails our representation-health gates (disclosed in §5.2); a delta-cell-appropriate criterion is registered before any architecture headline. $s^*(\mathrm{DINOv2})$ is censored at the render floor. The scene-dependence of encoder deletion is an observation with a registered hypothesis (variance-budget competition), not a mechanism. Forward registrations, frozen in the released record: the variance-relevant uncertainty test on a rollout-competent host; a scene-complexity sweep for the deletion hypothesis; Holm-corrected joint families for any future confirmatory wave.
+Figure \ref{fig:memory-results}b compares raw access with a predictor trained at each context. For transient-marker recall, raw accuracy changes from {{MARKER_RAW_CONTEXT_H3_ACC}} at $H=3$ to {{MARKER_RAW_CONTEXT_H56_ACC}} at $H=56$, while predictor accuracy changes from {{MARKER_PREDICTOR_H3_ACC_WITH_CI}} to {{MARKER_PREDICTOR_H56_ACC_WITH_CI}}. For drifting-color recall, raw accuracy moves from {{DRIFTING_RAW_CONTEXT_H3_ACC}} to {{DRIFTING_RAW_CONTEXT_H56_ACC}}, versus {{DRIFTING_PREDICTOR_H3_ACC_WITH_CI}} to {{DRIFTING_PREDICTOR_H56_ACC_WITH_CI}} for the predictor.
+
+The raw curve asks whether the event is readable once it re-enters legal context; the predictor curve asks whether next-latent training exposes it. {{LONG_CONTEXT_INTERPRETATION}} Because the predictor and readout are re-estimated at each $H$, this is a capability control rather than an isolated carrier effect. The pattern is consistent with, but does not prove, an objective or predictor bottleneck.
+
+Coverage receipts explain the discontinuity. Among the tested context lengths, at $H\in\{3,16,32\}$ no validation window contains a cue frame; at $H=56$, every validation episode contains some cue evidence, averaging about five cue frames. {{MAIN_CONTEXT_MSE_ANALYSIS}}
+
+## 6. Learned Rollout Competence
+
+Persistent memory and imagination solve different temporal problems. We evaluate learned dynamics separately before any memory-conditioned control claim.
+
+Figure \ref{fig:rollouts}a reports paired latent-MSE ratios to copy-last; values below one improve on repeating anchor $t=24$. Figure \ref{fig:rollouts}b reports variance-normalized shuffled-action MSE minus true-action MSE; positive values indicate useful action conditioning.
+
+At horizon eight, the one-step objective obtains MSE/copy-last ratios of {{MARKER_ONE_STEP_H8_MSE_RATIO}} on Transient-marker recall and {{DRIFTING_ONE_STEP_H8_MSE_RATIO}} on drifting-color recall. Eight-step overshooting obtains {{MARKER_OVERSHOOT_H8_MSE_RATIO}} and {{DRIFTING_OVERSHOOT_H8_MSE_RATIO}}, respectively. True-action advantages at the same horizon are {{MARKER_ONE_STEP_H8_ACTION_ADVANTAGE}} and {{DRIFTING_ONE_STEP_H8_ACTION_ADVANTAGE}} for one-step training, versus {{MARKER_OVERSHOOT_H8_ACTION_ADVANTAGE}} and {{DRIFTING_OVERSHOOT_H8_ACTION_ADVANTAGE}} for overshooting.
+
+The full horizon profile is more informative than a single endpoint. All error ratios stay below one through diagnostic $K=16$, and action advantage grows rather than collapsing toward zero. Overshooting sacrifices short-horizon accuracy, is tied with one-step training at $K=8$ for transient-marker recall, and helps drifting-color recall at longer horizons. {{MAIN_ROLLOUT_TRADEOFF}}
+
+{{ROLLOUT_GATE_INTERPRETATION}}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_a_results.pdf}
+\caption{Learned-rollout competence from fixed anchor $t=24$. (a) Paired normalized-MSE ratio to copy-last on a log scale; lower is better and one marks parity. (b) Variance-normalized true-action advantage over shuffled actions; positive is better. Colors identify tasks, line style identifies one-step versus eight-step overshooting, and ribbons are 95\% seed intervals.}
+\label{fig:rollouts}
+\end{figure*}
+
+## 7. What the Audit Localizes
+
+
+\begin{table}[!ht]
+\centering
+\fontsize{7.2}{8.0}\selectfont
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Cross-experiment localization matrix. Values are target accuracy unless marked otherwise; rollout entries show one-step / overshooting status with three seeds per status. The table aligns distinct estimands rather than treating them as directly comparable scores.}
+\label{tab:localization}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}*{3}{>{\centering\arraybackslash}p{0.17\linewidth}}Y@{}}
+\toprule
+Evidence stage & Transient-marker & Drifting-color & Occluded-target & Interpretation \\
+\midrule
+Cue-time frozen representation & {{MARKER_AVAILABILITY_ACC}} & {{DRIFTING_AVAILABILITY_ACC}} & $R^2={{OCCLUDED_AVAILABILITY_R2}}$ & Admission \\
+\rowcolor{TableGray}
+Final fixed-trust read & {{MARKER_FIXED_TRUST_ACC_WITH_CI}} & {{DRIFTING_FIXED_TRUST_ACC_WITH_CI}} & Excluded & Fixed-trust endpoint \\
+Raw context at $H=56$ & {{MARKER_RAW_CONTEXT_H56_ACC}} & {{DRIFTING_RAW_CONTEXT_H56_ACC}} & -- & Finite access \\
+\rowcolor{TableGray}
+Predictor output at $H=56$ & {{MARKER_PREDICTOR_H56_ACC_WITH_CI}} & {{DRIFTING_PREDICTOR_H56_ACC_WITH_CI}} & -- & Learned exposure \\
+Rollout gate (one-step / overshoot) & {{MARKER_ONE_STEP_GATE_PASSES}} / {{MARKER_OVERSHOOT_GATE_PASSES}} & {{DRIFTING_ONE_STEP_GATE_PASSES}} / {{DRIFTING_OVERSHOOT_GATE_PASSES}} & -- & Dynamics only \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The experiments give three counterexamples to common memory proxies. First, low next-latent loss does not imply final semantic retention. Once a class stops affecting future latents, the next-latent objective provides no predictive pressure to preserve it. {{PERSISTENCE_LOCALIZATION}} The trajectory-average diagnostic further separates aggregate post-cue decodability from a stable final read.
+
+Second, placing a cue inside legal context does not imply that the trained predictor exposes it. {{CONTEXT_CARRIER_LOCALIZATION}} The $H=56$ raw gain and near-chance predictor output separate finite access from learned compression, while the feature-map mismatch prevents a causal bottleneck claim.
+
+Third, rollout competence and memory retention use different evidence windows. {{DYNAMICS_LOCALIZATION}}
+
+{{MAIN_TASK_HETEROGENEITY}}
+
+For LeWM-style systems, expanding context, adding recurrence, and improving rollout objectives repair different interfaces. A stronger system may need delayed-evidence supervision, a consumer trained to use state, or end-to-end adaptation. Each changes the estimand and should be evaluated separately against this frozen diagnosis.
+
+## 8. Limitations and Reproducibility
+
+**Scope.** The study uses one Reacher checkpoint and three overlays in one rendered scene family. Its four-way tasks do not cover associative retrieval, spatial mapping, credit assignment, or capacity scaling; the continuous task yields no carrier ranking. Results are a controlled test of persistent cue information, not a benchmark-wide architecture ordering.
+
+**Task naturalism and capacity.** The categorical targets are synthetic overlays chosen to separate cue time from decision time. This gives precise control over leakage, but natural control tasks may couple memory variables to later observations in ways that supply richer predictive gradients. Each episode stores one four-way item; we do not vary the number of items, distractor density, cue order, or retrieval queries. The results therefore characterize persistence over delay, not memory capacity or interference.
+
+**Readout and estimand.** Availability and retention are relative to fixed linear readouts; linear failure is not information absence, and success is not consumer use \citep{r_belinkov,r_ravich}. Frozen swaps isolate recurrent paths but omit end-to-end co-adaptation. Context predictors and their readouts are re-estimated, the no-carrier reference has zero memory parameters, and inference cost is not matched across recurrent and transformer-context systems.
+
+**Optimization and endpoint.** Learned carriers share one schedule and approximately matched parameter counts, but they are not separately hyperparameter-tuned and their sequential compute differs. More importantly, training uses only the official next-latent objective. GRU and diagonal SSM yield small paired gains over no carrier on both tasks, but no tested carrier has a final-read interval clearly above chance on both; this endpoint ranks what the objective learns, not what each architecture could store under delayed supervision. Our primary probe reads $b_{63}$ before the decision observation and deliberately excludes temporal aggregation. Higher decodability from an exploratory trajectory-average feature is therefore not credited as persistent decision-time memory and does not alter the headline endpoint.
+
+**Replication.** Seeds reuse fixed splits, so intervals measure optimization and initialization variation rather than new environments. Five seeds evaluate carriers and three evaluate context and rollout models; only one rollout anchor is used. Future work should regenerate episodes, vary scenes and physics, test more checkpoints, and sample anchors. We verify exact checkpoint loading and frozen-host identity by hashes; figures and tables come from one validated seed-level aggregate.
+
+The study also does not equalize wall-clock cost. Recurrent carriers process all 64 observations sequentially, whereas context predictors attend over exact-$H$ windows whose count changes with $H$. The continuous task's failed admission can reflect stochastic future uncertainty as well as representation or readout limitations. Finally, rollout competence is measured in latent space against two references; without a memory-conditioned reward and executed policy, it cannot be converted into a control claim. These boundaries are why we report representation, retention, context, and rollout results separately rather than collapsing them into one aggregate score.
+
+## 9. Conclusion
+
+Persistent memory is not a longer window, a recurrent block, or a stable-looking rollout. In frozen SIGReg LeWM, GRU and diagonal SSM produce small paired improvements over no carrier on both tasks, but no tested carrier has a final-read interval clearly above four-way chance on both. At $H=56$, raw access returns while predictor output remains near chance. Learned dynamics nevertheless beat copy-last and use actions through $K=8$. Together these experiments distinguish representation, persistence, objective alignment, and dynamics under one official host. Joint training and memory-conditioned control remain future work.
 
 APPENDIXMARKER
 
-## What the certificates caught: a summary
-
-Across three program generations and one external benchmark, the protocol's catches — each of which would have shipped as a wrong or unscoped claim without it:
-
-| # | catch | certificate | consequence |
-|---|---|---|---|
-| 1 | tasks that never required memory (prior generation; released record) | integrator floor | benchmark rebuilt |
-| 2 | encoders that deleted the cue before memory saw it | sighted | host preflight now mandatory |
-| 3 | a −3 to −4 $R^2$ "pathology" that was the readout, not the model | registered probe family | hardest task rejoined the pool, sign unchanged |
-| 4 | a world model that cannot roll forward one step | rollout competence (new) | latent-planning claims blocked, substrate renamed |
-| 5 | probe rankings that do not predict control rankings (×2) | return-floor | probe-only memory evaluations flagged |
-| 6 | an external "memory" task solvable by storing frame 0 | integrator floor | demand-type taxonomy (storage vs filtering) |
-| 7 | our own encoder-blindness mechanism claim | second-scene $s^*$ | claim withdrawn, rescoped to per-pair certification |
-
-Table: Every catch the protocol made across three program generations and one external benchmark.
-
-## External-audit details
-
-RememberColor9 phase structure: the cued cube is visible at the scene center for steps $[0, 5)$, all cubes are hidden for $[5, 10)$, and all nine candidates are visible at shuffled positions from step 10 with the cued color unmarked. Banks: three seeds × (512 train + 256 eval) episodes at 60 steps, 64×64 frames, xi-independent uniform random actions. The dependency stack pins a `numpy` version without Python 3.12 wheels; the release scripts the dedicated-environment workaround that unblocked the arm after three prior registrations failed to run it. The exploratory carrier transfer trains each carrier on frozen DINOv2 features with a next-feature prediction objective (the feature-space form of the program's residual-read objective) and probes the belief with the registered family (delay-window mean plus decision-onset read).
-
-## Reproducibility statement
-
-Every number in this paper is injected from a hash-manifested artifact by the release renderer; the manuscript manifest binds artifact SHA-256s. The full program record — registrations (timestamped before execution), amendment trails, adversarial review, negative results, and the same-day corrections — ships as the supplement. All experiments ran on three consumer-grade GPUs.
+{{APPENDIX_BODY}}

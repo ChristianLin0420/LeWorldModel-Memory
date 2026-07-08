@@ -1,0 +1,29 @@
+My reviewer-style judgment: **promising idea, but not yet a strong ICLR main-conference submission in its current form**. I would likely rate it around **borderline / weak reject to borderline accept**, depending on whether the authors frame it as a **memory-claim protocol paper** rather than an algorithmic advance over LeWM.
+
+The core proposal is intellectually good: separating memory into **demand, encoded availability, causal retention, and decision use** is a valuable contribution for LeWM-style finite-context world models. The paper is also unusually honest about limitations. However, the current evidence is too bounded to support a strong “LeWM memory improvement” claim.
+
+The biggest issue is that this is **not actually evaluated on original LeWM**. The paper says the host is “LeWM-derived,” using a 128-dimensional VICReg-style encoder with H=3 and next-clean-latent prediction, and explicitly says it does **not** show improvement to the original SIGReg LeWM or isolate the carrier from encoder–predictor co-adaptation.  That makes the title and positioning somewhat risky for ICLR reviewers who expect a direct LeWM-family contribution.
+
+The second major issue is attribution. The main result is positive: the fixed-trust filter beats the selected delta-rule comparator with pooled effect **d = 0.996**, confidence interval **[0.637, 1.899]**, and all three task effects positive.  But the comparator is unhealthy: the delta model fails joint training health in **0/30** cells, while fixed trust passes **27/30**.  Reviewers may interpret the result as “the filter trains, the delta baseline collapses,” not as evidence that the filter is intrinsically a better persistent-memory carrier.
+
+The third issue is that the paper’s own certificate partially fails. T4 fails the later availability criterion, the learned planning waves fail, the delta system passes no joint training-health gate, and all arms co-train their encoders. The abstract already admits these limitations.  This honesty is good, but it weakens the submission unless the paper’s thesis is narrowed to “how to audit memory claims” rather than “we introduce a better memory module.”
+
+The fourth issue is planning. The oracle-physics planning result is interesting: fixed trust reaches **0.769** vs GRU **0.508**, with the direction holding across three checkpoint pairs.  But learned-model planning fails because pose information degrades after one predicted step and is uninformative by four.  For an ICLR world-model paper, that is a serious limitation. It means the paper cannot really claim improved learned-world-model control, only improved use under oracle dynamics.
+
+The best part of the paper is the **conceptual protocol**. The four-stage certificate is clean, useful, and likely publishable if presented as a diagnostic framework. The distinction between finite context, rollout traces, and persistent belief is also important. The page 2 diagram is effective: it shows the online encoder–carrier–H=3 predictor path, the fixed-trust filter update, and the frozen evaluation taps for probes and planning. That figure makes the paper’s systems contribution understandable.
+
+But as an ICLR submission, I would worry about **scope and evidence**. The limitation section itself states that the internal tasks share one rendered scene family, the confirmation cohort uses fixed episode banks, the comparator differs in parameter count and learning rate, every arm co-trains its encoder, T4 fails the later availability criterion, no-carrier and longer-context baselines were not rerun on the ten-seed confirmation cohort, and the reported planning outcome is oracle-physics and only three checkpoint pairs.  These are exactly the concerns reviewers will raise.
+
+My recommendation:
+
+**Submit only if the paper is reframed as a “memory certification protocol with a bounded LeWM-style case study.”** Do not sell it as a new superior memory architecture for LeWM. The current evidence is too narrow for that.
+
+For a stronger ICLR submission, I would require three additions before submission:
+
+1. **Add a clean carrier-isolation experiment.** Freeze one healthy encoder/predictor host, then swap carriers under matched optimization and roughly matched parameter budgets. The paper itself says this is needed. 
+
+2. **Add stronger baselines.** Include no-carrier H=3, longer finite-context H, GRU/LSTM/SSM carriers with healthy training, and ideally a parameter-matched recurrent baseline. Without the longer-context baseline, reviewers can say the result is just extra temporal capacity.
+
+3. **Either fix learned rollout competence or remove planning as a central claim.** If learned model rollouts fail, keep oracle planning as an auxiliary diagnostic, not as a major result.
+
+Overall: **the proposal is good and thoughtful, but the paper is currently more suitable for an ICLR workshop or a borderline main-conference submission.** It could become a solid main ICLR paper if the authors tighten the claim, add carrier-isolated experiments, and reduce the dependence on a failed/unhealthy comparator. 
