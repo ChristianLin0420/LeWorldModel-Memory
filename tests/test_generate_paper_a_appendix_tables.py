@@ -352,18 +352,23 @@ def test_execute_atomically_generates_dense_readable_tables(
     ledger = (output / "main_claim_ledger.tex").read_text()
     assert r"\label{tab:claim-ledger-v2}" in ledger
     assert all(name in ledger for name in (
-        "LeWM Reacher matched color", "LeWM PushT matched color",
+        "LeWM matched color (Reacher / PushT)",
         "DINO-WM PushT token", "DINO-WM PushT binding",
         "DINO-WM PointMaze goal"))
-    assert ("Study & Need & Cue & No shortcut & vs. none & vs. reset & "
-            "Execution") in ledger
-    assert "Necessity & Cue encoding & Shortcut exclusion" not in ledger
-    assert ledger.count("Verified") == 15
-    assert "Tested; age curve" in ledger and "Not tested" in ledger
+    assert ("Study & Gates & vs. no state & vs. reset & Executed use") \
+        in ledger
+    assert all(column not in ledger for column in (
+        "Need & Cue & No shortcut", "Necessity & Cue encoding",
+        "Shortcut exclusion"))
+    assert "Verified" not in ledger and "Not tested" not in ledger
+    assert ledger.count(r"\Pass") == 4 and ledger.count(r" & \NA") == 4
+    assert "Age curves (both hosts)" in ledger
     assert "State-space, Fixed-trust" in ledger
+    assert ledger.count("All learned") >= 2
     assert all(marker not in ledger for marker in (
-        r"\checkmark", r"\Pass", r"\Fail", r"\textsc{yes}"))
-    assert "no pooled score or cross-family ranking" in ledger
+        r"\checkmark", r"\Fail", r"\textsc{yes}"))
+    assert "None resolved" in ledger
+    assert "no pooled score or cross-family ranking" in ledger.lower()
     bundle = (output / "all_tables.tex").read_text()
     assert "tab:claim-ledger-v2" not in bundle
     assert all(f"\\long\\def\\{command}" in bundle
@@ -411,11 +416,13 @@ def test_main_claim_ledger_uses_strict_registered_resolution_rules() -> None:
         "pointmaze_carrier": carrier,
         "pointmaze_use": use,
     })[tables.MAIN_CLAIM_LEDGER_FILENAME]
-    assert ledger.count("No arm resolved") == 3
-    assert ("DINO-WM PushT token & Verified & Verified & Verified & "
-            "No arm resolved") in ledger
-    assert "No arm resolved & Not tested" in ledger
-    assert ledger.count("Tested; age curve") == 2
+    data_rows = [line for line in ledger.splitlines()
+                 if " & " in line and line.endswith(r"\\")]
+    assert sum(row.count("None resolved") for row in data_rows) == 3
+    assert (r"DINO-WM PushT token & \Pass\ 3/3 & None resolved") \
+        in ledger
+    assert r"None resolved & \NA" in ledger
+    assert ledger.count("Age curves (both hosts)") == 1
 
 
 def test_hash_tamper_and_protected_output_fail_without_writes(

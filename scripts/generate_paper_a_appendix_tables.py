@@ -760,7 +760,7 @@ def _resolved_stat_arms(records: Mapping[str, Mapping[str, Any]]) -> str:
         record = _stat(records[arm], f"claim-ledger {arm} contrast")
         if float(record["ci95"][0]) > 0.0:
             resolved.append(ARM_LABELS[arm])
-    return ", ".join(resolved) if resolved else "No arm resolved"
+    return ", ".join(resolved) if resolved else "None resolved"
 
 
 def _resolved_execution_arms(summary: Mapping[str, Any]) -> str:
@@ -768,7 +768,13 @@ def _resolved_execution_arms(summary: Mapping[str, Any]) -> str:
         ARM_LABELS[arm] for arm in ARMS
         if summary["arms"][arm]["resolved_execution_gain"] is True
     ]
-    return ", ".join(resolved) if resolved else "No arm resolved"
+    return ", ".join(resolved) if resolved else "None resolved"
+
+
+def _compact_all_learned(value: str) -> str:
+    all_learned = ", ".join(
+        ARM_LABELS[arm] for arm in ARMS if arm != "none")
+    return "All learned" if value == all_learned else value
 
 
 def render_main_claim_ledger(
@@ -776,12 +782,8 @@ def render_main_claim_ledger(
     """Render the neutral, task-level claim ledger used in the main paper."""
     rows = [
         (
-            "LeWM Reacher matched color", "Verified", "Verified", "Verified",
-            "Tested; age curve", "Not tested", "Not tested",
-        ),
-        (
-            "LeWM PushT matched color", "Verified", "Verified", "Verified",
-            "Tested; age curve", "Not tested", "Not tested",
+            "LeWM matched color (Reacher / PushT)", r"\Pass\ 3/3 each",
+            "Age curves (both hosts)", r"\NA", r"\NA",
         ),
     ]
     pusht = summaries["pusht"]["results"]
@@ -790,17 +792,19 @@ def render_main_claim_ledger(
             ("multi-item-visual-binding-recall", "DINO-WM PushT binding")):
         registered = pusht[task]["ages"]["15"]
         rows.append((
-            display, "Verified", "Verified", "Verified",
+            display, r"\Pass\ 3/3",
             _resolved_stat_arms(registered["paired_vs_none"]),
             _resolved_stat_arms(registered["full_vs_context_reset"]),
-            "Not tested",
+            r"\NA",
         ))
     pointmaze = summaries["pointmaze_carrier"]["results"]["15"]
     rows.append((
-        "DINO-WM PointMaze goal", "Verified", "Verified", "Verified",
-        _resolved_stat_arms(pointmaze["paired_vs_none"]),
-        _resolved_stat_arms(pointmaze["full_vs_context_reset"]),
-        _resolved_execution_arms(summaries["pointmaze_use"]),
+        "DINO-WM PointMaze goal", r"\Pass\ 3/3 + controller",
+        _compact_all_learned(_resolved_stat_arms(pointmaze["paired_vs_none"])),
+        _compact_all_learned(
+            _resolved_stat_arms(pointmaze["full_vs_context_reset"])),
+        _compact_all_learned(
+            _resolved_execution_arms(summaries["pointmaze_use"])),
     ))
 
     lines = [
@@ -809,22 +813,23 @@ def render_main_claim_ledger(
         r"\scriptsize",
         r"\setlength{\tabcolsep}{2.5pt}",
         r"\renewcommand{\arraystretch}{1.12}",
-        (r"\caption{Task-level claim ledger. ``Resolved'' lists carrier arms "
-         r"whose registered age-15 paired 95\% interval has lower bound above "
-         r"zero; executed use follows its registered joint resolution flag. "
-         r"Entries are task-specific: no pooled score or cross-family ranking "
-         r"is computed.}"),
+        (r"\caption{Task-level claim ledger. A check denotes passed requirement, "
+         r"cue-encoding, and shortcut gates; carrier cells list arms with a "
+         r"positive registered age-15 paired lower bound. ``None resolved'' "
+         r"means tested but unresolved; \NA\ means not tested. No pooled "
+         r"score or cross-family ranking is computed.}"),
         r"\label{tab:claim-ledger-v2}",
-        (r"\begin{tabularx}{\textwidth}{@{}p{0.20\textwidth}"
-         r"*{6}{>{\centering\arraybackslash}X}@{}}"),
+        (r"\begin{tabularx}{\textwidth}{@{}"
+         r">{\raggedright\arraybackslash}p{0.26\textwidth}"
+         r">{\centering\arraybackslash}p{0.16\textwidth}"
+         r"*{3}{>{\centering\arraybackslash}X}@{}}"),
         r"\toprule",
-        (r"Study & Need & Cue & No shortcut & vs. none & vs. reset & "
-         r"Execution \\"),
+        r"Study & Gates & vs. no state & vs. reset & Executed use \\",
         r"\midrule",
     ]
     for index, row in enumerate(rows):
         lines.append(" & ".join(row) + r" \\")
-        if index == 1:
+        if index == 0:
             lines.append(r"\addlinespace[1pt]")
     lines.extend([
         r"\bottomrule",

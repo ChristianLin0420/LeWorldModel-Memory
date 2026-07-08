@@ -333,10 +333,10 @@ def test_architecture_uses_concise_names_and_labeled_state_paths(
     figure = captured["figure"]
     assert isinstance(figure, plt.Figure)
     assert captured["stem"] == "fig_mem_architecture"
-    assert np.allclose(figure.get_size_inches(), [5.45, 2.56])
+    assert np.allclose(figure.get_size_inches(), [5.45, 2.18])
     labels = {text.get_text() for text in figure.axes[0].texts}
-    assert {"Label-free feature loss", "Legal pre-decision read",
-            "update state", "fuse/read"}.issubset(labels)
+    assert {"AUDITED CARRIER", "Frozen predictor", "pre-decision read",
+            "executed use"}.issubset(labels)
     assert "Predictive loss" not in labels
     assert "Host-specific legal read" not in labels
     plt.close(figure)
@@ -354,8 +354,8 @@ def test_task_cue_crops_are_enlarged_and_keep_square_axes() -> None:
         cue_score=1.0, shortcut_score=0.25, shaded=False)
     fig.canvas.draw()
 
-    assert len(axis.child_axes) == 5
-    crop_axes = axis.child_axes[-2:]
+    assert len(axis.child_axes) == 6
+    crop_axes = axis.child_axes[-3:]
     parent_width = axis.get_position().width
     crop_widths = [child.get_position().width / parent_width
                    for child in crop_axes]
@@ -377,14 +377,15 @@ def test_matched_forest_uses_full_names_without_micro_legend_sentence(
     figure = captured["figure"]
     assert isinstance(figure, plt.Figure)
     assert captured["stem"] == "fig_mem_matched"
-    forest = figure.axes[2]
-    assert [tick.get_text() for tick in forest.get_yticklabels()] == [
-        "Reacher: Fixed-trust\n− state-space",
-        "PushT: Fixed-trust\n− state-space",
-        "host interaction",
-    ]
-    assert not any("interaction whiskers" in text.get_text()
-                   for text in forest.texts)
+    assert len(figure.axes) == 4
+    gaps, interaction = figure.axes[2:]
+    assert [tick.get_text() for tick in gaps.get_yticklabels()] == [
+        "Reacher", "PushT"]
+    assert gaps.get_title(loc="left") == "(c) Same age-15 ordering"
+    assert interaction.get_title(loc="left") == "(d) Cross-host gap ≈ 0"
+    assert not interaction.get_yticks().size
+    assert any("TOST equivalent" in text.get_text()
+               for text in interaction.texts)
     plt.close(figure)
 
 
@@ -403,12 +404,12 @@ def test_dinowm_carrier_renders_complete_two_by_three_design(
     assert captured["stem"] == "fig_mem_dinowm_carrier"
     assert len(figure.axes) == 6
     expected_titles = [
-        "(a) Token · full state",
-        r"(b) Token · $\Delta$ no state",
-        r"(c) Token · $\Delta$ reset",
-        "(d) Binding · full state",
-        r"(e) Binding · $\Delta$ no state",
-        r"(f) Binding · $\Delta$ reset",
+        "(a) Token · host output",
+        "(b) Token · gain vs no state",
+        "(c) Token · gain vs reset",
+        "(d) Binding · host output",
+        "(e) Binding · gain vs no state",
+        "(f) Binding · gain vs reset",
     ]
     assert [axis.get_title(loc="left") for axis in figure.axes] \
         == expected_titles
@@ -453,7 +454,7 @@ def test_pointmaze_renders_compact_result_only_two_by_two_design(
     figure = captured["figure"]
     assert isinstance(figure, plt.Figure)
     assert captured["stem"] == "fig_mem_pointmaze"
-    assert np.allclose(figure.get_size_inches(), [5.45, 3.30])
+    assert np.allclose(figure.get_size_inches(), [5.45, 3.10])
     assert len(figure.axes) == 4
     axes_by_title = {
         axis.get_title(loc="left"): axis for axis in figure.axes
@@ -489,7 +490,7 @@ def test_pointmaze_renders_compact_result_only_two_by_two_design(
                for text in execution.texts)
     assert len(figure.legends) == 1
     assert [text.get_text() for text in figure.legends[0].get_texts()] == [
-        "No state (a,d)", *[plots.ARM_SHORT[arm] for arm in LEARNED]]
+        "No state", *[plots.ARM_SHORT[arm] for arm in LEARNED]]
     plt.close(figure)
 
 

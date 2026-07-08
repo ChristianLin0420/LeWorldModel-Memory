@@ -11,8 +11,8 @@
   },
   "generator": {
     "path": "scripts/generate_paper_a_appendix_tables.py",
-    "sha256": "feeb8f00e39fcd53cde2dfedd885b4bfbf929cd443bb5ca7381abde2c28ea835",
-    "size": 43170
+    "sha256": "ee50231f06f8dde9b6e274c74a6ba38f146a08eee1d10ed573986adf2cd540d0",
+    "size": 43348
   },
   "output_directory": "paper_a/generated_results",
   "read_only_sources": true,
@@ -60,8 +60,8 @@
       "sha256": "589a8481755a010a207ed8a892034b7354f25bfcc6e2868a9864106eeb4ff599"
     },
     "main_claim_ledger.tex": {
-      "bytes": 1252,
-      "sha256": "b218f835bb7c7f70b2507fcfa8ef3d39888eb228169f349d4ec2d10df55ebc8b"
+      "bytes": 1087,
+      "sha256": "c56b17e00525234d4bdc4fc89209fddd1b224a8d30a3c784af45dada4335b7b9"
     },
     "matched_color_results.tex": {
       "bytes": 1921,

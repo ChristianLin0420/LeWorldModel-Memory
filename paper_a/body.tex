@@ -12,21 +12,16 @@ Three common evaluations blur this distinction.  Longer context exposes more
 raw observations but is not persistent episode state.  Longer imagination
 extrapolates farther from its current anchor but cannot recover evidence absent
 from that anchor.  A probe can decode a state without showing that a decision
-uses it.  Recurrent and state-space models, retrieval, and geometric memories
+uses it \citep{r_belinkov,r_ravich}.  Recurrent and state-space models, retrieval, and geometric memories
 provide useful mechanisms \citep{r_dreamerv3,r_r2i,r_s4wm,r_memworld}; the
 interface alone does not show which old evidence survives or affects behavior.
 
-We introduce a controlled audit with separately predeclared, fail-closed
-branches that test four ordered claims.  First, the old cue must be necessary:
-paired episodes share their late observations and actions but require different
-answers.  Second, the frozen host must encode the cue while it is visible.
-Third, a small persistent state module attached to the frozen feature stream---a
-\emph{carrier}---must retain the cue after it leaves raw context.  Fourth, the
-same fixed consumer applied to every carrier arm must convert retained state
-into a changed executed outcome.  Each stronger test runs only after its
-prerequisites pass.  Before each branch begins, its thresholds, endpoints, seed
-grid, and bootstrap rule are locked; a failed branch stops instead of being
-resplit or relaxed.
+We introduce a controlled audit with four ordered, fail-closed claims:
+requirement, cue-time encoding, retention beyond raw context, and use by a fixed
+consumer.  Each stronger branch runs only after its prerequisites pass.  Its
+thresholds, endpoints, seed grid, and bootstrap rule are locked before outcomes;
+a failed branch stops instead of being resplit or relaxed.  Section~2 gives the
+operational tests for each rung.
 
 For each admitted branch, the intervention freezes a released LeWorldModel
 (LeWM) \citep{r_lewm} or DINO-WM \citep{r_dinowm} checkpoint and trains only a
@@ -41,12 +36,12 @@ isolation or its native planner.
 
 Our controlled LeWM study asks whether an earlier heterogeneous-task ranking
 reversal is reproduced when cue semantics and age are matched.  It is not: the
-age-15 fixed-trust-minus-state-space contrasts on Reacher and PushT meet the
-registered $\pm5$-percentage-point (pp) cross-host equivalence criterion, while
-every learned arm's linear-readout accuracy declines with cue age.  This result
-changes the ranking interpretation but does not identify which unmatched
-factor produced the earlier reversal; checkpoint, environment, and training
-distribution still differ.
+90\% interval for the specific age-15 fixed-trust-minus-state-space host
+interaction lies inside the registered $\pm5$-percentage-point (pp) equivalence
+region, while every learned arm's linear-readout accuracy declines with cue
+age.  This changes the interpretation of that contrast but does not identify
+which unmatched factor produced the earlier reversal; checkpoint, environment,
+and training distribution still differ.
 
 The DINO-WM studies show why the full ladder matters.  On PushT, state-space
 and fixed-trust carriers preserve highly decodable internal state, yet little
@@ -75,12 +70,12 @@ are not claims about native world-model planning.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_mem_architecture.pdf}
-\caption{Frozen-host memory intervention.  Every arm shares the released host,
-target, actions, and next-feature objective; learned arms train only the green
-carrier sidecar.  The state is read before the decision observation.  LeWM
-supplies vector latents, whereas DINO-WM applies one shared carrier to 196 patch
-trajectories and exposes the frozen predictor output.  Reset and prior reads
-are diagnostics; no evaluation label trains the host or carrier.}
+\caption{Our frozen-host intervention.  A real observation becomes either one
+LeWM vector or 196 DINO-WM patch trajectories.  Only the green carrier writes
+persistent episode state and a zero-initialized residual; the encoder,
+predictor, targets, actions, and next-feature objective are shared across arms.
+The lower strip separates the legal pre-decision retention read from executed
+use by a declared consumer.}
 \label{fig:architecture-v2}
 \end{figure}
 
@@ -112,28 +107,30 @@ sensitivity is not mistaken for competent control.
 \paragraph{Relation to world-model memory.}
 LeWM and DINO-WM predict from bounded latent histories
 \citep{r_lewm,r_dinowm}, while Fast-LeWM accelerates imagination without adding
-state updated by later real observations \citep{r_fastlewm}.  DreamerV3, Recall
-to Imagine, and S4WM maintain recurrent or structured dynamics
-\citep{r_dreamerv3,r_r2i,r_s4wm}; ``On Memory'' studies recalled content during
-imagination \citep{r_onmemory}; and Mem-World retrieves geometry-indexed visual
-history \citep{r_memworld}.  We do not introduce another memory family.  We
-instead compare carriers through one frozen-host intervention and one common
-endpoint.  RC-aux likewise shows that local predictive quality need not track
-planning reachability \citep{r_rcaux}; here the mismatch concerns evidence over
-real-observation time.
+state updated by later real observations \citep{r_fastlewm}.  End-to-end memory
+methods span recurrent or structured dynamics \citep{r_dreamerv3,r_r2i,r_s4wm},
+recall inside imagined trajectories \citep{r_onmemory}, geometry-indexed or 3D
+state \citep{r_memworld,r_persist}, and hybrid or event memories for long-horizon
+world-action models \citep{r_memorywam,r_dimwam}.  These works ask how to build
+better memory-enabled systems.  A complementary video benchmark treats camera
+motion as an intervention on hidden physical-state persistence
+\citep{r_statecore}.  Our object of study is different: whether old semantic
+evidence is required, stored, exposed, and used after leaving a frozen latent
+control host's input window.  RC-aux similarly shows that local predictive
+quality need not track planning reachability \citep{r_rcaux}; here the mismatch
+concerns evidence over real-observation time.
 
 \section{Controlled Audit Design}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_mem_tasks.pdf}
-\caption{Task schematic for the completed matched LeWM and PointMaze studies.
-Green borders mark the only label-dependent pixels; the
-cue-free delay and teal pre-decision frames are shared across labels.  Reacher
-and PushT use the same balanced color--location design, whereas PointMaze uses
-four transient mini-map goals.  Admission badges summarize cue and late-input
-diagnostics, not retention outcomes; DINO-WM PushT cue construction is specified
-in Appendix~\ref{app:dinowm-carrier}.}
+\caption{Paired counterfactuals and admission.  A and B share one trajectory but
+require different answers; only the orange cue pixels differ, as shown by the
+$\Delta$ mask, and the teal pre-decision input is identical.  Green cells give
+the direct prerequisite interpretation: the visible cue is decodable, legal
+late inputs cannot reveal the answer, and no pixels change outside the declared
+mask.  These are admission checks, not retention outcomes.}
 \label{fig:tasks-v2}
 \end{figure}
 
@@ -222,7 +219,9 @@ by the 16 color--location combinations.  The registered interaction is the
 PushT-minus-Reacher difference in the age-15 fixed-trust-minus-state-space
 contrast.  Equivalence uses a two-one-sided test with a $\pm5$-pp margin, hence
 the 90\% interval; the 95\% interval answers the distinct nonzero-effect
-question.
+question.  Operationally, this treats a cross-host change smaller than five
+balanced decisions per hundred as negligible for this one contrast; it is not a
+domain-wide indifference margin.
 
 DINO-WM PushT uses 1,200/480 native episodes and five seeds for each task
 and carrier; its paired bootstrap resamples matched seeds and class-stratified
@@ -245,38 +244,31 @@ A single age-balanced carrier is trained per host, arm, and seed.  All
 admissions are recomputed on fresh banks; metrics from the two stopped screens
 select the target but never enter this study's inference.
 
-Figure~\ref{fig:matched-v2} gives the complete result.  At age 4, state-space
-and fixed-trust readout accuracies are 81.9\% and 77.2\% on Reacher, and 49.6\%
-and 60.3\% on PushT.  By age 15 they fall to 35.9\%/42.1\% and
-28.1\%/34.2\%.  Every learned carrier has a positive, interval-resolved paired
-readout decline from age 4 to 15 on both hosts: Reacher declines range from
-3.63 pp (GRU) to 46.04 pp (state-space), and PushT declines from 5.29 pp (LSTM)
-to 26.13 pp (fixed-trust).  The no-state read is invariant by construction
-(23.1\% Reacher; 25.6\% PushT).
+Figure~\ref{fig:matched-v2} gives the complete curves.  Every learned carrier
+has an interval-resolved decline from the shortest to the longest cue age on
+both hosts, but the slopes and short-age ordering differ by arm and host.  The
+no-state read is invariant by construction.  Thus matching does not make the
+systems forget at a common rate; it makes the registered ranking comparison
+meaningful while exposing the information lost by a single terminal score.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_mem_matched.pdf}
-\caption{Matched LeWM result.  Top: held-out balanced accuracy for the same
-four-color task and cue ages on both hosts (95\% bootstrap intervals under the
-paired resampling design).  Bottom:
-the registered age-15 fixed-trust-minus-state-space contrasts and their host
-interaction.  Thin interaction whiskers are the 95\% interval; thick whiskers
-are the 90\% TOST interval used for the preregistered $\pm5$-pp equivalence
-test.}
+\caption{Matched LeWM result.  Top: the same four-color task forgets with cue
+age on both hosts.  Bottom left: fixed-trust has the same age-15 ordering over
+state-space on each host (95\% intervals).  Bottom right: only the cross-host
+difference is tested for equivalence; its thick 90\% interval lies inside the
+registered $\pm5$-pp region, while the thin whisker shows the 95\% interval.}
 \label{fig:matched-v2}
 \end{figure}
 
-The age-15 fixed-trust-minus-state-space contrast is $+6.25$ pp
-$[2.00,10.58]$ on Reacher and $+6.04$ pp $[2.54,9.63]$ on PushT.  Their
-registered cross-host interaction is $-0.21$ pp.  Its 90\% interval
-$[-4.83,4.42]$ pp lies wholly inside the $\pm5$-pp equivalence region, whereas
-its 95\% interval $[-5.75,5.29]$ pp overlaps both equivalence boundaries and
-zero.  Under the registered resampling model, this specific ranking contrast
-therefore meets the predeclared equivalence criterion; this is neither proof
-that the hosts are identical nor universal architecture equivalence.
-Per-location summaries retain the exact nuisance balance, and the appendix
-reports the weakest-location result for every cell.
+The quantitative anchor is the registered age-15 cross-host interaction,
+$-0.21$ pp.  Its 90\% interval lies inside the specified $\pm5$-pp equivalence
+region for this fixed-trust-minus-state-space
+estimand under the registered resampling model.  It does not imply that the
+hosts, carrier dynamics, or architectures are generally equivalent; the margin
+and conclusion apply only to this contrast.  Per-location summaries and the
+individual host intervals are retained in the appendix.
 
 The registered ranking interaction from the unmatched study is not reproduced
 after matching cue semantics and age.  This does not identify the cause of the
@@ -292,64 +284,54 @@ We next transfer the intervention from vector-latent LeWM to the original
 proprioceptive DINO-WM PushT checkpoint.  Figure~\ref{fig:dinowm-carrier}
 compares full state with no state and a legal-context reset as cue age grows.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_mem_dinowm_carrier.pdf}
-\caption{Persistent carriers on frozen DINO-WM PushT.  Left: balanced accuracy
-of the frozen-predictor output; dashed lines mark chance.  Middle/right: paired
-full-state gains over no state and legal-context reset.  Whiskers are 95\%
-matched-seed by class-stratified episode bootstrap intervals (20,000 draws).
-Positive intervals indicate total carrier effect or dependence on state before
-the reset context, respectively.}
+\caption{Persistent carriers on frozen DINO-WM PushT.  Host-output accuracy
+(left) and paired gains over no state/reset (middle/right) separate token recall
+from ordered binding.  Token advantages fade with age; for age-15 binding only
+state-space clears both controls.  The lower-row ordering reflects host
+exposure, not internal capacity: fixed-trust retains a highly decodable prior
+that this frozen predictor does not expose.  Whiskers are paired 95\%
+intervals.}
 \label{fig:dinowm-carrier}
 \end{figure}
 
-One parameter-shared carrier processes each of 196 patch trajectories; only the
-frozen predictor mixes patches.  The four learned arms have
-298,368--299,632 parameters and train without labels on 1,200 native episodes,
-with five seeds and 480 held-out episodes.  The primary read spatially pools
-the frozen predictor output.  Full minus no state measures total carrier
-effect; full minus a three-frame reset estimates dependence on state
-accumulated before the legal local context.
+Token recall shows a transition rather than a permanent winner
+(Figure~\ref{fig:dinowm-carrier}).  State-space and fixed-trust are clearly
+separated from both controls at short cue ages.  At the longest age they still
+improve on no state, but neither remains resolved against a carrier restarted
+at the legal context.  GRU and LSTM resolve against neither control.  The
+sidecar therefore changes the endpoint read, yet the long-age token result no
+longer attributes that change specifically to state preceding the reset window.
 
-Token recall separates the carriers sharply (Figure~\ref{fig:dinowm-carrier}).
-At age 4, fixed-trust and state-space reach 68.2\% and 53.5\%, versus 25.4\%
-without state; their paired gains over no state are $+42.7$ pp
-$[38.2,47.2]$ and $+28.1$ pp $[23.8,32.5]$, and both reset contrasts resolve.
-At age 8, their accuracies are 45.6\% and 37.4\%, with positive intervals
-against both controls.  By age 15 they fall to 29.3\% and 28.5\%.  Gains over
-no state remain resolved ($+6.0$ pp $[3.1,8.8]$ and $+5.1$ pp
-$[2.0,8.3]$), but neither reset interval excludes zero.  GRU and LSTM remain
-near chance and resolve positively against neither control at any token age.
+Six-way binding makes the exposure boundary sharper.  State-space and
+fixed-trust both clear the controls at shorter ages, but at age 15 only
+state-space remains positive against both.  Its absolute interval still overlaps chance, so the supported
+claim is paired sensitivity, not competent six-way recall.  Fixed-trust's
+no-state interval touches zero, and GRU is below reset rather than evidence of
+retention.
 
-Six-way binding is harder.  At age 4, state-space/fixed-trust reach
-30.9\%/28.1\% (chance 16.7\%) and beat no state by $+14.9$/$+12.0$ pp and
-reset by $+14.3$/$+11.4$ pp.  Both comparisons remain positive at age 8.
-At age 15, only state-space clears both contrasts: 20.3\%, $+4.7$ pp
-$[1.7,7.8]$ over no state, and $+4.0$ pp $[0.5,7.8]$ over reset.
-Fixed-trust's no-state interval touches zero, and GRU is resolved below reset,
-not evidence of retention.  The state-space absolute interval overlaps chance
-while its paired intervals are positive, illustrating the value of matched
-counterfactual comparisons.
-
-The secondary carrier-prior read localizes a linear-readout exposure gap.  At age 15, prior
-accuracy remains 99.2\%/81.2\% for fixed-trust/state-space on token recall and
-97.2\%/64.2\% on binding, far above the corresponding frozen outputs.
-Next-feature MSE spans only .0466--.0598 and does not rank semantic recall:
-GRU/LSTM often minimize it while showing no gain.  Thus cue identity can remain
-linearly accessible inside a carrier yet fail to appear in the frozen host read.  This
-native-bank extension supports protocol and carrier portability to one
-DINO-WM host; it is not a matched numerical comparison with LeWM, evidence for
-native-planner use, or a claim that the released checkpoint itself is
-persistent.
+The carrier-prior diagnostic explains why the lower row of
+Figure~\ref{fig:dinowm-carrier} is not an intrinsic-capacity ranking.
+Fixed-trust retains more linearly decodable binding information internally,
+yet state-space is the arm whose output is better exposed through the frozen
+predictor and clears both endpoint controls.  In other words, fixed-trust can
+keep the cue linearly decodable internally while state-space maps it more
+effectively into coordinates used by this host read.  Local next-feature error
+also fails to order semantic recall.  The protocol therefore evaluates a
+carrier--host composition, not a universal carrier winner.  This native-bank
+study covers one DINO-WM host and is neither a matched numerical comparison
+with LeWM nor evidence that a native planner uses persistent state.
 
 \section{Retained PointMaze Goals Drive External Navigation}
 
 PointMaze tests a different DINO-WM environment and MuJoCo execution.
 Figure~\ref{fig:pointmaze} connects the registered retention contrasts to a
-shared external goal consumer and fixed waypoint controller.
+shared external goal consumer and fixed waypoint controller from the pinned
+world-model platform \citep{r_stablewm}.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_mem_pointmaze.pdf}
 \caption{PointMaze retention and external use.  (a) Balanced accuracy of the
@@ -362,112 +344,91 @@ draws; oracle success lies off axis.}
 \label{fig:pointmaze}
 \end{figure}
 
-We repeat 300/120 disjoint native base windows under four cue-only mini-map
-goals, yielding 1,200/480 sequences with identical post-cue pixels, actions,
-proprioception, and simulator states.  Cue accuracy and minimum class recall
-are 100.0\%; visual, action-only, and proprio-only shortcuts are 25.0\%, below
-the .300 ceiling.  The controller gate also passes: 95.6\% oracle success,
-93.3\% for the weakest goal, zero off-diagonal false success, and exact reset
-replay.
+Each native base window is repeated under four cue-only mini-map goals while
+post-cue pixels, actions, proprioception, and simulator states remain fixed.
+All cue, shortcut, frozen-host, and controller prerequisites pass; their exact
+values are reported in the appendix.
 
-All four learned carriers resolve against no state and context reset at every age
-(Figure~\ref{fig:pointmaze}).  At ages 4/8/15, GRU reads
-53.0/39.2/35.2\%, LSTM 89.0/67.2/53.5\%, state-space
-99.8/95.2/76.0\%, and fixed-trust 100.0/98.8/86.6\%, while no state and
-the legal-context reset remain at 25.0\%.  Age-15 gains over no state are
-$+10.2$, $+28.5$, $+51.0$, and $+61.6$ pp; reset point estimates are the
-same.  Even the smallest reset gain, GRU's $+10.2$ pp $[7.6,13.0]$, is
-resolved.  The complete 24 learned-arm contrasts all exclude zero, although
-each arm still declines with age.  Reset is much more disruptive for
-state-space and fixed-trust: their reset/full next-visual-MSE ratios are
-31.4--38.7 and 32.8--39.1 across ages (versus 1.15--1.38 for GRU and
-1.85--2.40 for LSTM).  Full-minus-reset therefore identifies dependence under
-this intervention, not an unconfounded amount of memory.  Carrier-prior accuracy remains
-99.6--100.0\% at age 15, again separating internal retention from how much the
-frozen predictor exposes.
+All four learned carriers resolve against no state and context reset at every
+age (Figure~\ref{fig:pointmaze}), although every curve declines as the cue
+recedes.  State-space and fixed-trust remain substantially more durable than
+the recurrent cells.  Their reset counterfactual also produces a much larger
+feature-distribution shift, so full-minus-reset establishes dependence under
+that intervention rather than an unconfounded amount of memory.  Unlike PushT,
+however, the PointMaze host-facing output remains strongly readable as well as
+the carrier prior.  This contrast motivates an exposure hypothesis: the fixed
+spatial goal may align better with DINO-WM's spatial-pyramid read than PushT's
+token and relational binding variables.  Checkpoint, environment, cue
+semantics, and visual statistics co-vary, so the experiment localizes this
+difference to the host--task interface but does not identify its cause.
 
 For use, one shared arm-blind multinomial consumer per seed is fitted to pooled
-full-state training features from every arm.  At age 15 its goal accuracy is
-31.7/50.9/78.4/81.5\% for GRU/LSTM/state-space/fixed-trust.  Executing those
-goals with the released waypoint controller yields
-30.2/48.4/74.5/77.5\% success, versus 23.9\% with no state and 22.4\% for
-realized random goals.  Gains over no state are $+6.2$ pp $[4.1,8.5]$,
-$+24.5$ pp $[17.2,31.8]$, $+50.5$ pp $[44.2,56.0]$, and $+53.6$ pp
-$[49.5,57.4]$; all also resolve over random.  An independent implementation
-refits all five consumers and exactly reproduces their predictions.  This is
-external memory-conditioned goal selection under one frozen checkpoint and a
-fixed controller, not an executed-reset comparison or native DINO-WM planning.
+full-state features and its selected goal is executed by the same waypoint
+controller.  Every learned arm resolves over both no state and realized random
+goals; the largest gain is fixed-trust's $+53.6$ pp.  Goal
+selection and execution preserve the carrier ordering, indicating that the
+controller does not erase the representation difference.  An independent
+implementation refits all five consumers and reproduces their predictions.
+This establishes external, consumer-specific use under one frozen checkpoint,
+not an executed-reset comparison or native DINO-WM planning.
 
 \input{generated_results/main_claim_ledger.tex}
 
 \section{Cross-Study Analysis: Memory Is an Interface Property}
 
 \paragraph{Age changes both level and ranking.}
-Every task shows forgetting, but not at a common rate.  To compare shapes
-without pooling incompatible banks, consider within-task gain over that task's
-own no-state arm.  On DINO-WM PushT, fixed-trust token gain falls from 42.7 pp
-at age 4 to 6.0 pp at age 15; state-space falls from 28.1 to 5.1 pp.  Their
-binding gains fall from 12.0 to 2.0 pp and from 14.9 to 4.7 pp.  PointMaze is
-more durable under the same age schedule: fixed-trust retains 61.6 of its
-initial 75.0 pp gain, and state-space retains 51.0 of 74.8 pp.  LSTM and GRU
-retain 28.5 of 64.0 pp and 10.2 of 28.0 pp.  These are descriptive within-task
-ratios, not cross-bank effect estimates, but they show why one terminal delay
-is insufficient: an arm can lead early, converge later, or clear the reset
-control on one target but not another.
+Every task shows forgetting, but the curves diagnose different transitions.
+On PushT, carriers that clear both controls at short age can retain only a
+no-state advantage at long age; on PointMaze, the same interfaces remain
+resolved against reset.  The matched LeWM curves likewise change ordering and
+slope with age.  These within-task shapes are not cross-bank effect estimates,
+but they show why one terminal delay is insufficient: an arm can lead early,
+converge later, or lose evidence specifically at the host-exposure boundary.
 
 \paragraph{The carrier and frozen host form two memory stages.}
 The DINO protocols read both the carrier's pre-observation prior and the frozen
-predictor output.  Their separation is large and systematic.  At PushT age 15,
-fixed-trust retains 99.2\% token and 97.2\% binding accuracy internally, yet the
-host-exposed reads are 29.3\% and 17.6\%.  State-space shows the same pattern at
-81.2\%/64.2\% internally versus 28.5\%/20.3\% after the host.  PointMaze priors
-remain 99.6--100.0\% for every learned arm, while host-exposed accuracy spans
-35.2--86.6\%.  Thus a low endpoint can arise because state was not retained,
-because the frozen fusion/predictor does not expose it, or both.  The prior is
-not a substitute endpoint---a consumer attached there changes the interface---
-but it prevents these failure locations from being conflated.
+predictor output.  PushT often preserves a highly decodable prior while losing
+the cue after frozen host mixing; PointMaze exposes much more of the retained
+goal.  Thus a low endpoint can arise because state was not retained, because
+the fusion/predictor did not expose it, or both.  The prior is not a substitute
+endpoint---a consumer attached there changes the interface---but it prevents
+storage and exposure failures from being conflated.
 
 \paragraph{Local predictive fit does not order semantic memory.}
-On DINO-WM PushT, full-state next-feature MSE lies in a narrow
-.0466--.0598 range, and GRU/LSTM often attain the lowest values while their
-semantic output remains near chance.  The PointMaze ordering is similarly
-misaligned at age 15: GRU has lower mean visual MSE than state-space or
-fixed-trust, yet its goal read is 35.2\% rather than 76.0\% or 86.6\%.
-This is expected from the objective: cue identity can be irrelevant to local
-feature prediction after the cue disappears.  It also explains why we treat
-next-feature loss as a shared training contract and health diagnostic, not a
-memory metric.
+GRU and LSTM can minimize next-feature error while exposing little semantic
+memory, and on PointMaze GRU predicts locally better than carriers with much
+stronger goal reads.  This is expected from the objective: cue identity can be
+irrelevant to local prediction after the cue disappears.  Next-feature loss is
+therefore a shared training contract and health diagnostic, not a memory
+metric.
 
 \paragraph{Execution identifies a consumer-specific use link.}
-On the PointMaze deck, goal accuracy and executed success move together:
-31.7/50.9/78.4/81.5\% goal accuracy becomes
-30.2/48.4/74.5/77.5\% success.  The 1.5--4.0 pp conversion loss is much smaller
-than the 6.2--53.6 pp gains over no state, while the oracle controller reaches
-95.6\%.  For this fixed consumer and controller, retained goal information is
-therefore a major limiting factor and changing it changes behavior.  The result
-does not imply that a different consumer, native planner, or end-to-end system
-would use the same coordinates.  Together, the studies locate memory in the
-composition of target, carrier dynamics, frozen exposure interface, and
-consumer---not in an architecture name alone.
+On PointMaze, the ordering of goal selection survives conversion into simulated
+navigation success.  For this fixed consumer and controller, retained goal
+information is therefore behaviorally consequential rather than probe-only.
+The result does not imply that a different consumer, native planner, or
+end-to-end system would use the same coordinates.  Together, the studies locate
+memory in the composition of target, carrier dynamics, frozen exposure
+interface, and consumer---not in an architecture name alone.
 
 \section{What the Audit Can and Cannot Localize}
 
-The same intervention produces three qualitatively different diagnoses.  The
-matched LeWM ranking interaction is not reproduced, although every learned arm
-loses readable information with age.  On DINO-WM PushT, carrier priors remain
-highly decodable while frozen-predictor reads approach chance, and only
-state-space clears both age-15 contrasts on binding.  On PointMaze, every arm
-exceeds no state and a disruptive reset read, and the same external consumer
-converts full-state reads into simulated navigation success.  These outcomes are inconsistent with a universal
-carrier winner or with next-feature loss as a sufficient memory score.
+The audit localizes links in a chain rather than one scalar quantity of memory.
+Full-versus-reset estimates, under its specified intervention, the contribution
+of state accumulated before the native context rather than extra parameters
+acting only on the final three frames.  Prior-versus-output gaps localize a
+carrier-to-host exposure bottleneck.  External execution establishes that a
+fixed consumer can use the representation to change outcomes.  None proves
+that a released native planner contains or uses persistent memory, nor does the
+study isolate which host, task, or training factor explains the differences.
 
-Full-versus-reset estimates, under that intervention, the contribution of state
-accumulated before the native context rather than extra parameters acting only
-on the final three frames.  Prior-versus-output gaps localize a carrier-to-host
-exposure bottleneck.  External execution establishes that a fixed consumer can
-use the representation to change outcomes.  None proves that a released native
-planner contains or uses persistent memory, nor does the study isolate which
-host, task, or training factor explains the differences.
+The resulting failure signatures are distinct.  When full state and reset both
+track no state, the carrier supplies no accessible endpoint benefit.  When full
+state beats no state but not reset, the module helps without resolved dependence
+on state preceding the legal context.  A readable prior paired with a weak host
+output instead identifies exposure as the candidate bottleneck.  Finally, an
+execution gain establishes use only for the declared consumer.  These cases
+cannot be faithfully ordered by one memory score.
 
 Legacy controls sharpen this boundary.  On Reacher, a 56-observation raw
 context makes the cue readable while the trained predictor output stays near
@@ -480,37 +441,74 @@ auxiliary targets yet fail their registered support criteria
 (Appendix~\ref{app:repair}).  These are localization results, not evidence that
 one alternative objective would universally repair memory.
 
-\paragraph{Implications for memory design and evaluation.}
-The actionable result is a decomposition, not a carrier ranking.  Local loss
-can prefer lower MSE and worse recall, so retention needs an incentive for old
-task-relevant evidence.  Prior--output gaps show that the host also needs an
-exposure interface.  Fixed-endpoint age sweeps reveal transitions hidden by one
-delay, while use must name its consumer: PointMaze supports an external one,
-not a native planner.  We therefore report no-state, context-reset,
-internal-prior, host-output, and executed-use views instead of one pooled score.
+\paragraph{Diagnosis selects the intervention.}
+The decomposition is actionable because different signatures imply different
+engineering targets.  If full state, reset, and no state coincide and the prior
+is weak, the missing ingredient lies in the write dynamics or training
+incentive; changing the planner cannot recover information that was never
+stored.  If the prior is strong but the host output is weak, enlarging or
+replacing the carrier attacks the wrong boundary: the fusion and exposure path
+must preserve coordinates that a downstream read can access.  If the host
+output is readable but execution does not change, the unresolved link is the
+consumer rather than storage.  Finally, a disruptive reset can reveal state
+dependence without measuring a clean quantity of memory, so it should be read
+alongside no-state and executed-use contrasts rather than alone.
+
+\paragraph{Architecture comparisons require matched counterfactuals.}
+The earlier LeWM reversal illustrates why carrier rankings should be compared
+only after target semantics, cue age, endpoint, nuisance balance, host contract,
+and inference unit are declared.  A single terminal delay can reward one decay
+profile while hiding another; a pooled score can let an easy target mask a
+failed one.  Complete age curves show where rankings change, and equivalence
+tests should be attached to one practically defined contrast rather than cited
+as global architecture equivalence.  We therefore retain task-level no-state,
+context-reset, internal-prior, host-output, and executed-use views.  The result
+is more diagnostic than one winner label: it says whether to revise the memory
+objective, carrier--host interface, or consumer.
+
+\paragraph{The asymmetries generate falsifiable mechanism hypotheses.}
+Class count and visible-cue decodability do not explain the PointMaze advantage:
+PushT token recall is also four-way and both cues are perfectly readable while
+visible.  The separation opens after frozen host mixing.  The binding result is
+even more diagnostic: fixed-trust preserves more cue information in its prior,
+whereas state-space exposes the stronger endpoint read.  Together these patterns
+suggest that alignment between a carrier's read coordinates and the frozen
+fusion path can dominate raw storage capacity.  Two controlled tests would
+separate this account from task difficulty.  First, a within-checkpoint task
+swap can change the remembered relation while holding cue geometry,
+trajectories, and spatial readout fixed.  Second, a label-free low-rank exposure
+adapter can be trained after freezing the carrier; improved host output with an
+unchanged prior would support an exposure bottleneck, whereas a collapsing
+prior would return the diagnosis to storage.  These are prospective tests, not
+claims established by the present data.
 
 \section{Limitations}
 
 The study covers two LeWM checkpoints and two DINO-WM checkpoints, but its
 targets remain controlled categorical cues rather than naturally occurring
-long-horizon goals.  The matched LeWM banks do not hold checkpoint training
-distribution or environment fixed, and the native DINO-WM banks are not
-bank-matched to LeWM, so their absolute scores must not be pooled.  Parameter
-matching does not equal optimization matching, and freezing strengthens causal
-attribution while excluding end-to-end co-adaptation.  Linear readouts measure
-accessible information, not native use.  The PointMaze consumer is an external
-goal selector followed by a released controller; it neither tests an executed
-reset arm nor modifies the native DINO-WM planner.  Five carrier seeds and
-finite held-out banks leave some rankings unresolved, so intervals and seed
-arrays are retained rather than reduced to winner labels.
-The reset itself is a distributional intervention.  For state-space and
-fixed-trust, reset/full next-feature MSE reaches 3.85--8.25 on PushT and
-31.4--39.1 on PointMaze; a full-minus-reset contrast therefore identifies
-dependence on pre-context state under that reset, not an unconfounded quantity
-of memory.  The no-state and external-execution contrasts do not share this
-reset caveat.  Ages stop at 15 real observations; multiple simultaneous items,
-interference, retrieval after longer delays, and end-to-end learned consumers
-remain outside the present claim boundary.
+long-horizon goals.  It evaluates one frozen sidecar contract, not the native
+memory interfaces of DreamerV3, Recall to Imagine, S4WM, Mem-World, or other
+recurrent, retrieval, and geometric families; it therefore cannot rank those
+families or establish that the audit transfers unchanged to them.  The matched
+LeWM banks do not hold checkpoint training distribution or environment fixed,
+and the native DINO-WM banks are not bank-matched to LeWM, so their absolute
+scores must not be pooled.  In particular, the PointMaze exposure hypothesis
+is not identified because host, checkpoint, cue, and environment differ from
+PushT.
+
+Parameter matching does not equal optimization matching, and freezing
+strengthens causal attribution while excluding end-to-end co-adaptation.
+Linear readouts measure accessible information, not native use.  The PointMaze
+consumer is an external goal selector followed by a released controller; it
+neither tests an executed reset arm nor modifies the native DINO-WM planner.
+Five carrier seeds and finite held-out banks leave some rankings unresolved, so
+intervals and seed arrays are retained rather than reduced to winner labels.
+The reset itself shifts the feature distribution, especially for state-space
+and fixed-trust; full-minus-reset identifies dependence on pre-context state
+under that reset, not an unconfounded quantity of memory.  The no-state and
+external-execution contrasts do not share this reset caveat.  Ages stop at 15
+real observations; interference, longer delays, and end-to-end learned
+consumers remain outside the present claim boundary.
 
 \section{Reproducibility and Conclusion}
 
@@ -522,7 +520,8 @@ predictions.  The appendix reports every cell, stopped branch, amendment,
 bootstrap unit, and claim boundary.
 
 Memory is an empirical chain, not a consequence of recurrence or local fit.
-Matching removes the earlier LeWM ranking interaction; DINO-WM shows that
-linear exposure can bottleneck retained state, while PointMaze converts
-full-state reads into external success.  We therefore make bounded task-level
-claims, not a pooled memory score or universal architecture winner.
+The earlier LeWM ranking interaction is not reproduced after matching;
+DINO-WM shows that linear exposure can bottleneck retained state, while
+PointMaze converts full-state reads into external success.  We therefore make
+bounded task-level claims, not a pooled memory score or universal architecture
+winner.

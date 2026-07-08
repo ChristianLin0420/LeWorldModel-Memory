@@ -79,12 +79,12 @@ PNG_METADATA = {"Software": "plot_paper_a_strengthened.py"}
 plt.rcParams.update({
     "font.family": "STIXGeneral",
     "mathtext.fontset": "stix",
-    "font.size": 7.5,
-    "axes.titlesize": 8.4,
-    "axes.labelsize": 7.7,
-    "xtick.labelsize": 7.0,
-    "ytick.labelsize": 7.0,
-    "legend.fontsize": 7.0,
+    "font.size": 7.2,
+    "axes.titlesize": 8.0,
+    "axes.labelsize": 7.2,
+    "xtick.labelsize": 6.6,
+    "ytick.labelsize": 6.6,
+    "legend.fontsize": 6.3,
     "axes.edgecolor": MID,
     "axes.labelcolor": INK,
     "text.color": INK,
@@ -538,8 +538,8 @@ def _reacher_context_thumbnails() -> list[np.ndarray]:
 
 
 def figure_architecture() -> None:
-    """Frozen host, one swapped sidecar, and the legal pre-decision read."""
-    fig, ax = plt.subplots(figsize=(5.45, 2.56))
+    """Make the carrier insertion, tensors, and legal read visually explicit."""
+    fig, ax = plt.subplots(figsize=(5.45, 2.18))
     muted = "#50585E"
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -547,176 +547,109 @@ def figure_architecture() -> None:
 
     def node(x: float, y: float, width: float, height: float,
              title: str, subtitle: str, *, face: str, edge: str,
-             dashed: bool = False, title_size: float = 7.0,
-             subtitle_size: float = 6.0) -> None:
+             dashed: bool = False, title_size: float = 6.35,
+             subtitle_size: float = 5.45) -> None:
         patch = FancyBboxPatch(
             (x, y), width, height,
-            boxstyle="round,pad=0.006,rounding_size=0.003",
-            facecolor=face, edgecolor=edge, linewidth=1.0,
+            boxstyle="round,pad=0.005,rounding_size=0.003",
+            facecolor=face, edgecolor=edge, linewidth=0.9,
             linestyle=(0, (3, 2)) if dashed else "-", zorder=3)
         ax.add_patch(patch)
         center = x + width / 2
-        ax.text(center, y + 0.61 * height, title, ha="center", va="center",
+        ax.text(center, y + 0.63 * height, title, ha="center", va="center",
                 fontsize=title_size, fontweight="bold", zorder=4)
         if subtitle:
-            ax.text(center, y + 0.29 * height, subtitle, ha="center",
+            ax.text(center, y + 0.27 * height, subtitle, ha="center",
                     va="center", fontsize=subtitle_size, color=muted,
-                    linespacing=0.96, zorder=4)
+                    linespacing=0.94, zorder=4)
 
-    # Panel A: one semantic host group plus one trainable sidecar.
-    ax.text(0.01, 0.982, "(a) Freeze the released host; swap one persistent carrier",
-            fontsize=8.2, fontweight="bold", va="top")
-    key_y = 0.927
-    for x, face, edge, dashed, label in (
-            (0.632, BLUE_PALE, BLUE, True, "frozen host"),
-            (0.760, GREEN_PALE, GREEN_DARK, False, "carrier path"),
-            (0.902, PALE, MID, True, "evaluation only")):
-        ax.add_patch(Rectangle(
-            (x, key_y - 0.014), 0.018, 0.028, facecolor=face,
-            edgecolor=edge, linewidth=0.8,
-            linestyle=(0, (3, 2)) if dashed else "-"))
-        ax.text(x + 0.024, key_y, label, fontsize=5.9, color=MID,
-                va="center", ha="left")
+    ax.text(0.01, 0.976,
+            "Our intervention: add one persistent carrier to an otherwise frozen host",
+            fontsize=7.45, fontweight="bold", va="top")
+    ax.text(0.99, 0.976, "blue dashed = frozen  ·  green = trained",
+            fontsize=5.45, color=MID, ha="right", va="top")
 
     frame = _matched_reacher_visuals()[0][0]
-    inset = ax.inset_axes([0.015, 0.635, 0.090, 0.174])
+    inset = ax.inset_axes([0.015, 0.585, 0.075, 0.215])
     inset.imshow(frame, interpolation="nearest", aspect="equal")
     inset.set_xticks([])
     inset.set_yticks([])
     for spine in inset.spines.values():
         spine.set_visible(True)
         spine.set_color(BLUE)
-        spine.set_linewidth(0.85)
-    ax.text(0.060, 0.603, "real observation", fontsize=6.1,
-            ha="center", color=MID)
+        spine.set_linewidth(0.8)
+    ax.text(0.0525, 0.555, "$o_t$", fontsize=5.8, color=BLUE,
+            ha="center", fontweight="bold")
 
-    # The frozen checkpoint is deliberately a single grouped object.
-    host = FancyBboxPatch(
-        (0.145, 0.605), 0.445, 0.225,
-        boxstyle="round,pad=0.008,rounding_size=0.003",
-        facecolor=BLUE_PALE, edgecolor=BLUE, linewidth=1.05,
-        linestyle=(0, (3, 2)), zorder=2)
-    ax.add_patch(host)
-    ax.text(0.162, 0.797, "FROZEN RELEASED HOST", fontsize=6.1,
-            fontweight="bold", color=BLUE, va="center")
-    ax.text(0.162, 0.764, "same weights and short-context interface in every arm",
-            fontsize=5.9, color=muted, va="center")
-    ax.text(0.232, 0.689, "Image encoder", fontsize=7.0,
-            fontweight="bold", ha="center")
-    ax.text(0.232, 0.650, "vector or 196-patch grid", fontsize=5.9,
-            color=muted, ha="center")
-    _arrow(ax, (0.307, 0.690), (0.350, 0.690), color=BLUE, width=1.0)
-    ax.text(0.440, 0.689, "Short-context predictor", fontsize=7.0,
-            fontweight="bold", ha="center")
-    ax.text(0.440, 0.650, "actions; DINO-WM also uses proprio", fontsize=5.8,
-            color=muted, ha="center")
-    _arrow(ax, (0.105, 0.714), (0.145, 0.714), color=BLUE, width=1.0)
+    node(0.120, 0.590, 0.105, 0.195, "Frozen encoder", "$E(o_t)$",
+         face=BLUE_PALE, edge=BLUE, dashed=True)
+    node(0.265, 0.590, 0.105, 0.195, "Host latent", "$z_t$",
+         face=BLUE_PALE, edge=BLUE, dashed=True)
+    _arrow(ax, (0.090, 0.688), (0.120, 0.688), color=BLUE, width=0.9)
+    _arrow(ax, (0.225, 0.688), (0.265, 0.688), color=BLUE, width=0.9)
 
-    node(0.655, 0.625, 0.175, 0.175, "Label-free feature loss",
-         "frozen target; labels absent", face="#EDF7F5", edge=TEAL,
-         title_size=6.7, subtitle_size=5.9)
-    _arrow(ax, (0.590, 0.714), (0.655, 0.714), color=TEAL, width=1.0)
-    ax.text(0.852, 0.741, "next latent target", fontsize=6.0,
-            color=MID, ha="left")
-    _arrow(ax, (0.970, 0.714), (0.830, 0.714), color=TEAL, width=0.95)
-
-    node(0.245, 0.405, 0.310, 0.125, "Carrier arm (swapped)",
-         "None · GRU · LSTM · State-space · Fixed-trust",
-         face=GREEN_PALE, edge=GREEN_DARK, title_size=7.0,
-         subtitle_size=5.6)
-    node(0.015, 0.420, 0.135, 0.095, "Action block", "host-native",
-         face="#FBF2E8", edge=ORANGE, title_size=6.7,
-         subtitle_size=5.7)
-    _arrow(ax, (0.150, 0.468), (0.245, 0.468), color=ORANGE, width=1.0)
-    _arrow(ax, (0.270, 0.605), (0.315, 0.530), color=GREEN_DARK,
-           width=1.0)
-    _arrow(ax, (0.500, 0.530), (0.470, 0.605), color=GREEN_DARK,
-           width=1.0)
-    ax.text(0.270, 0.558, "update state", fontsize=5.4,
-            color=GREEN_DARK, ha="center", va="center",
-            bbox=dict(facecolor="white", edgecolor="none", pad=0.15))
-    ax.text(0.515, 0.558, "fuse/read", fontsize=5.4,
-            color=GREEN_DARK, ha="center", va="center",
-            bbox=dict(facecolor="white", edgecolor="none", pad=0.15))
-    _arrow(ax, (0.110, 0.515), (0.175, 0.605), color=ORANGE,
-           connectionstyle="arc3,rad=-0.10", width=0.95)
+    carrier = FancyBboxPatch(
+        (0.410, 0.525), 0.205, 0.310,
+        boxstyle="round,pad=0.006,rounding_size=0.004",
+        facecolor=GREEN_PALE, edgecolor=GREEN_DARK, linewidth=1.05, zorder=3)
+    ax.add_patch(carrier)
+    ax.text(0.5125, 0.793, "AUDITED CARRIER", fontsize=6.25,
+            color=GREEN_DARK, ha="center", fontweight="bold")
+    ax.text(0.5125, 0.746, "write  →  persistent state  →  read",
+            fontsize=5.55, ha="center", color=INK)
+    ax.text(0.5125, 0.660, "GRU  ·  LSTM  ·  SSM  ·  fixed-trust",
+            fontsize=5.25, ha="center", color=muted)
+    ax.text(0.5125, 0.584, "matched data · objective · timing · capacity",
+            fontsize=4.95, ha="center", color=muted)
+    _arrow(ax, (0.370, 0.688), (0.410, 0.688), color=GREEN_DARK, width=1.0)
     ax.add_patch(FancyArrowPatch(
-        (0.505, 0.410), (0.300, 0.410), arrowstyle="-|>",
-        mutation_scale=8.5, linewidth=0.95, color=GREEN_DARK,
-        connectionstyle="arc3,rad=-0.35", zorder=2))
-    ax.text(0.405, 0.372, "episode state persists", fontsize=6.0,
-            color=GREEN_DARK, ha="center")
-    ax.plot([0.625, 0.625], [0.405, 0.525], color=GREEN_DARK,
-            linewidth=1.3)
-    ax.text(0.640, 0.495, "LeWM: one vector stream", fontsize=5.9,
-            color=INK, ha="left")
-    ax.text(0.640, 0.448, "DINO-WM: one tied carrier × 196 patches",
-            fontsize=5.9, color=INK, ha="left")
+        (0.585, 0.530), (0.440, 0.530), arrowstyle="-|>",
+        mutation_scale=7.5, linewidth=0.9, color=GREEN_DARK,
+        connectionstyle="arc3,rad=-0.42", zorder=2))
+    ax.text(0.5125, 0.465, "$m_{t-1}$ persists across real observations",
+            fontsize=5.55, color=GREEN_DARK, ha="center")
 
-    ax.plot([0.01, 0.99], [0.345, 0.345], color=LIGHT, linewidth=0.9)
+    node(0.640, 0.625, 0.050, 0.125, "+", "fusion",
+         face="white", edge=GREEN_DARK, title_size=7.0, subtitle_size=4.7)
+    ax.text(0.665, 0.600, "zero-init read", fontsize=4.65,
+            color=MID, ha="center")
+    _arrow(ax, (0.615, 0.688), (0.640, 0.688), color=GREEN_DARK, width=1.0)
+    _arrow(ax, (0.690, 0.688), (0.708, 0.688), color=GREEN_DARK, width=1.0)
+    node(0.708, 0.590, 0.115, 0.195, "Frozen predictor", "context + actions",
+         face=BLUE_PALE, edge=BLUE, dashed=True)
+    node(0.865, 0.590, 0.120, 0.195, "Feature loss", "next frozen target",
+         face="#EDF7F5", edge=TEAL)
+    _arrow(ax, (0.823, 0.688), (0.865, 0.688), color=TEAL, width=0.9)
 
-    # Panel B: actual evidence timing and the evaluation boundary.
-    ax.text(0.01, 0.317, "(b) Read state before the decision observation; then evaluate",
-            fontsize=8.1, fontweight="bold", va="top")
-    cue_frames = _matched_reacher_visuals()[0]
-    cue_times = (2, 9, 18)
-    frame_x = (0.018, 0.132, 0.246)
-    frame_edges = (GREEN, MID, TEAL)
-    frame_labels = ("cue visible", "cue-free delay", "pre-decision")
-    for x, image_value, time, edge, label in zip(
-            frame_x, cue_frames, cue_times, frame_edges, frame_labels):
-        frame_ax = ax.inset_axes([x, 0.085, 0.082, 0.158])
-        frame_ax.imshow(image_value, interpolation="nearest", aspect="equal")
-        frame_ax.set_xticks([])
-        frame_ax.set_yticks([])
-        for spine in frame_ax.spines.values():
-            spine.set_visible(True)
-            spine.set_color(edge)
-            spine.set_linewidth(1.0 if edge != MID else 0.75)
-        ax.text(x + 0.041, 0.058, label, fontsize=5.8, color=edge,
-                ha="center", fontweight="bold" if edge != MID else "normal")
-        ax.text(x + 0.041, 0.031, f"$t={time}$", fontsize=5.6,
-                color=MID, ha="center")
-    _arrow(ax, (0.103, 0.165), (0.126, 0.165), color=GREEN_DARK,
-           width=0.85)
-    _arrow(ax, (0.217, 0.165), (0.240, 0.165), color=GREEN_DARK,
-           width=0.85)
-    ax.plot([0.338, 0.338], [0.075, 0.275], color=ORANGE,
-            linewidth=0.9, linestyle=(0, (2, 2)))
-    ax.text(0.345, 0.246, "state read", fontsize=6.0,
-            color=ORANGE, fontweight="bold", ha="left")
-    ax.text(0.345, 0.214, "decision observation\nexcluded", fontsize=5.4,
-            color=muted, ha="left", va="top", linespacing=0.94)
+    node(0.270, 0.355, 0.100, 0.095, "Actions", "host-native",
+         face="#FBF2E8", edge=ORANGE, title_size=5.9, subtitle_size=5.1)
+    _arrow(ax, (0.370, 0.402), (0.438, 0.525), color=ORANGE, width=0.85)
+    ax.text(0.055, 0.432, "Tensor contract", fontsize=5.8,
+            color=INK, fontweight="bold", ha="center")
+    ax.text(0.055, 0.374, "LeWM  ·  192-D vector", fontsize=5.35,
+            color=BLUE, ha="center")
+    ax.text(0.055, 0.325, "DINO-WM  ·  196×384 patches", fontsize=5.35,
+            color=TEAL, ha="center")
 
-    evaluation = FancyBboxPatch(
-        (0.475, 0.048), 0.515, 0.222,
-        boxstyle="round,pad=0.007,rounding_size=0.003",
-        facecolor=PALE, edgecolor=MID, linewidth=0.95,
-        linestyle=(0, (3, 2)), zorder=1)
-    ax.add_patch(evaluation)
-    ax.text(0.490, 0.251, "EVALUATION ONLY · NO TRAINING SIGNAL",
-            fontsize=6.0, color=MID, fontweight="bold", va="center")
-    node(0.485, 0.078, 0.190, 0.145, "Legal pre-decision read",
-         "LeWM: $H$ latents + prior\nDINO-WM: full-state output",
-         face="white", edge=MID, title_size=6.5, subtitle_size=5.8)
-    _arrow(ax, (0.405, 0.158), (0.492, 0.158), color=GREEN_DARK,
-           width=0.95)
-    node(0.715, 0.165, 0.145, 0.062, "Retention readout", "accuracy",
-         face="white", edge=MID, dashed=True, title_size=6.3,
-         subtitle_size=5.7)
-    node(0.715, 0.070, 0.145, 0.072, "Fixed consumer", "controller execution",
-         face="white", edge=MID, dashed=True, title_size=6.3,
-         subtitle_size=5.7)
-    _arrow(ax, (0.675, 0.151), (0.715, 0.196), color=MID, width=0.85)
-    _arrow(ax, (0.675, 0.151), (0.715, 0.106), color=MID, width=0.85)
-    _arrow(ax, (0.860, 0.196), (0.895, 0.196), color=MID, width=0.85)
-    _arrow(ax, (0.860, 0.106), (0.895, 0.106), color=MID, width=0.85)
-    ax.text(0.904, 0.196, "retained?", fontsize=6.2, color=INK,
-            va="center", fontweight="bold")
-    ax.text(0.904, 0.106, "used?", fontsize=6.2, color=INK,
-            va="center", fontweight="bold")
+    ax.plot([0.01, 0.99], [0.275, 0.275], color=LIGHT, linewidth=0.8)
+    ax.text(0.01, 0.245, "Legal evaluation timeline", fontsize=6.15,
+            fontweight="bold", va="top")
+    strip = (
+        (0.145, 0.060, 0.105, "cue ×3", "label differs", GREEN_PALE, GREEN_DARK),
+        (0.305, 0.060, 0.135, "age 4 / 8 / 15", "cue absent", PALE, MID),
+        (0.500, 0.060, 0.145, "pre-decision read", "decision frame excluded",
+         "#EDF7F5", TEAL),
+        (0.705, 0.060, 0.115, "retention", "fixed readout", "white", MID),
+        (0.875, 0.060, 0.110, "executed use", "shared consumer", "white", MID),
+    )
+    for x, y, width, title, subtitle, face, edge in strip:
+        node(x, y, width, 0.130, title, subtitle, face=face, edge=edge,
+             dashed=edge == MID, title_size=5.8, subtitle_size=4.95)
+    for start, end in ((0.250, 0.305), (0.440, 0.500),
+                       (0.645, 0.705), (0.820, 0.875)):
+        _arrow(ax, (start, 0.125), (end, 0.125), color=MID, width=0.75)
 
-    fig.subplots_adjust(left=0.005, right=0.995, top=0.995, bottom=0.005)
+    fig.subplots_adjust(left=0.004, right=0.996, top=0.995, bottom=0.005)
     save(fig, "fig_mem_architecture")
 
 
@@ -881,7 +814,9 @@ def _paired_cue_crops(pair: tuple[np.ndarray, np.ndarray]
     if not len(yy):
         raise RuntimeError("paired cue renders do not differ")
     span = max(int(np.ptp(yy)) + 1, int(np.ptp(xx)) + 1)
-    pad = max(6, int(round(0.90 * span)))
+    # Keep the controlled pixels legible.  Earlier figures padded by almost one
+    # full cue width and visually reduced the intervention to a few pixels.
+    pad = max(2, int(round(0.22 * span)))
     y0, y1 = max(0, int(yy.min()) - pad), min(len(values), int(yy.max()) + pad + 1)
     x0, x1 = max(0, int(xx.min()) - pad), min(values.shape[1], int(xx.max()) + pad + 1)
     return left[y0:y1, x0:x1].copy(), right[y0:y1, x0:x1].copy()
@@ -898,15 +833,19 @@ def _compact_task_row(ax: plt.Axes, *, host: str, task: str,
     if shaded:
         ax.add_patch(Rectangle((0.0, 0.02), 1.0, 0.96,
                                facecolor="#F7F8F8", edgecolor="none"))
-    ax.text(0.008, 0.64, host, fontsize=6.8, fontweight="bold",
+    host_size = 5.45 if "PointMaze" in host else 6.45
+    ax.text(0.008, 0.64, host, fontsize=host_size, fontweight="bold",
             color=BLUE if "DINO" not in host else TEAL, va="center")
-    ax.text(0.008, 0.32, task, fontsize=6.1, color=MID, va="center")
+    ax.text(0.008, 0.32, task, fontsize=5.75, color=MID, va="center")
 
-    positions = (0.195, 0.390, 0.585)
-    edges = (GREEN, MID, TEAL)
-    labels = ("$t=2$", "$t=9$", "$t=18$")
-    for image_value, x, edge, label in zip(frames, positions, edges, labels):
-        inset = ax.inset_axes([x, 0.13, 0.125, 0.76])
+    # The two cue frames are a paired counterfactual: only the declared cue
+    # pixels change.  The pre-decision frame is shared by construction.
+    full_frames = (difference[0], difference[1], frames[2])
+    positions = (0.155, 0.272, 0.430)
+    edges = (ORANGE, ORANGE, TEAL)
+    labels = ("A", "B", "age 4 · 8 · 15")
+    for image_value, x, edge, label in zip(full_frames, positions, edges, labels):
+        inset = ax.inset_axes([x, 0.15, 0.096, 0.70])
         interpolation = "nearest" if image_value.shape[0] <= 64 else "antialiased"
         inset.imshow(image_value, interpolation=interpolation, aspect="equal")
         inset.set_box_aspect(1)
@@ -915,16 +854,25 @@ def _compact_task_row(ax: plt.Axes, *, host: str, task: str,
         for spine in inset.spines.values():
             spine.set_visible(True)
             spine.set_color(edge)
-            spine.set_linewidth(1.15 if edge != MID else 0.75)
-        ax.text(x + 0.0625, 0.055, label, fontsize=5.7, color=MID,
-                ha="center", va="center")
-    _arrow(ax, (0.326, 0.52), (0.382, 0.52), color=MID, width=0.85)
-    _arrow(ax, (0.521, 0.52), (0.577, 0.52), color=MID, width=0.85)
+            spine.set_linewidth(0.9)
+        ax.text(x + 0.048, 0.070, label, fontsize=5.35,
+                color=edge if label in ("A", "B") else MID,
+                ha="center", va="center",
+                fontweight="bold" if label in ("A", "B") else "normal")
+    ax.text(0.257, 0.52, "≠", fontsize=7.0, color=ORANGE,
+            ha="center", va="center", fontweight="bold")
+    _arrow(ax, (0.372, 0.52), (0.423, 0.52), color=MID, width=0.8)
+    ax.text(0.397, 0.64, "identical\nafter cue", fontsize=4.9,
+            color=MID, ha="center", va="center", linespacing=0.88)
 
     cue_crops = _paired_cue_crops(difference)
-    crop_width = 0.050
-    for index, (x, crop) in enumerate(zip((0.738, 0.796), cue_crops)):
-        diff_ax = ax.inset_axes([x, 0.24, crop_width, 0.54])
+    crop_mask = np.any(cue_crops[0] != cue_crops[1], axis=-1)
+    mask_rgb = np.full((*crop_mask.shape, 3), 244, dtype=np.uint8)
+    mask_rgb[crop_mask] = np.asarray([201, 111, 45], dtype=np.uint8)
+    crop_width = 0.052
+    crop_values = (cue_crops[0], cue_crops[1], mask_rgb)
+    for index, (x, crop) in enumerate(zip((0.568, 0.626, 0.684), crop_values)):
+        diff_ax = ax.inset_axes([x, 0.23, crop_width, 0.56])
         diff_ax.imshow(crop, interpolation="nearest", aspect="equal")
         diff_ax.set_box_aspect(1)
         diff_ax.set_xticks([])
@@ -933,33 +881,31 @@ def _compact_task_row(ax: plt.Axes, *, host: str, task: str,
             spine.set_visible(True)
             spine.set_color(ORANGE)
             spine.set_linewidth(0.85)
-        ax.text(x + crop_width / 2, 0.190, "A" if index == 0 else "B",
-                fontsize=5.8, color=ORANGE, ha="center", va="center",
+        crop_label = ("A", "B", r"$\Delta$")[index]
+        ax.text(x + crop_width / 2, 0.175, crop_label,
+                fontsize=5.45, color=ORANGE, ha="center", va="center",
                 fontweight="bold")
 
-    receipt = FancyBboxPatch(
-        (0.855, 0.16), 0.133, 0.68,
-        boxstyle="round,pad=0.006,rounding_size=0.006",
-        facecolor=GREEN_PALE, edgecolor="#B7C99A", linewidth=0.7)
-    ax.add_patch(receipt)
-    cue_text = f"{cue_score:.3f}"
-    late_text = f"{shortcut_score:.3f}"
-    if cue_text.startswith("0."):
-        cue_text = cue_text[1:]
-    if late_text.startswith("0."):
-        late_text = late_text[1:]
-    ax.plot([0.870, 0.876, 0.888], [0.615, 0.595, 0.642],
-            color=GREEN_DARK, linewidth=1.35, solid_capstyle="round")
-    ax.text(0.897, 0.62, f"cue {cue_text}", fontsize=5.9,
-            color=GREEN_DARK,
-            ha="left", va="center", fontweight="bold")
-    ax.plot([0.870, 0.876, 0.888], [0.425, 0.405, 0.452],
-            color=GREEN_DARK, linewidth=1.35, solid_capstyle="round")
-    ax.text(0.897, 0.43, f"late {late_text} ≤ .300",
-            fontsize=5.6, color=GREEN_DARK,
-            ha="left", va="center", fontweight="bold")
-    ax.text(0.921, 0.25, "ages 4 · 8 · 15", fontsize=5.6, color=MID,
-            ha="center", va="center")
+    cue_text = f"{cue_score:.3f}".lstrip("0")
+    late_text = f"{shortcut_score:.3f}".lstrip("0")
+    cells = (
+        (0.755, cue_text, "≥ .75"),
+        (0.835, late_text, "≤ .30"),
+        (0.915, "0", "pixels"),
+    )
+    for x, value, criterion in cells:
+        cell = FancyBboxPatch(
+            (x, 0.17), 0.070, 0.66,
+            boxstyle="round,pad=0.004,rounding_size=0.004",
+            facecolor=GREEN_PALE, edgecolor="#B7C99A", linewidth=0.65)
+        ax.add_patch(cell)
+        ax.plot([x + 0.020, x + 0.029, x + 0.050],
+                [0.635, 0.610, 0.665], color=GREEN_DARK, linewidth=1.2,
+                solid_capstyle="round")
+        ax.text(x + 0.035, 0.45, value, fontsize=5.55, color=GREEN_DARK,
+                ha="center", va="center", fontweight="bold")
+        ax.text(x + 0.035, 0.29, criterion, fontsize=4.9, color=MID,
+                ha="center", va="center")
 
 
 def figure_tasks() -> None:
@@ -987,21 +933,23 @@ def figure_tasks() -> None:
         for source in age.values())
     maze_gates = (float(maze_admission["cue_encoding"]["balanced_accuracy"]),
                   maze_shortcut)
-    fig = plt.figure(figsize=(5.45, 2.70))
+    fig = plt.figure(figsize=(5.45, 2.60))
     grid = fig.add_gridspec(4, 1, height_ratios=(0.30, 1.0, 1.0, 1.0),
                             hspace=0.035)
     header = fig.add_subplot(grid[0])
     header.axis("off")
-    header.text(0.008, 0.58, "host · controlled target", fontsize=6.1,
+    header.text(0.008, 0.58, "host · controlled target", fontsize=5.9,
                 color=MID, va="center")
     for x, label, color in (
-            (0.2575, "cue only", GREEN_DARK),
-            (0.4525, "cue-free delay", MID),
-            (0.6475, "pre-decision", TEAL),
-            (0.791, "paired cue crop", ORANGE),
-            (0.921, "admission", GREEN_DARK)):
+            (0.203, "cue A", ORANGE),
+            (0.320, "cue B", ORANGE),
+            (0.478, "shared pre-decision", TEAL),
+            (0.646, "paired crop + Δ mask", ORANGE),
+            (0.790, "cue\nencoded", GREEN_DARK),
+            (0.870, "no late\nshortcut", GREEN_DARK),
+            (0.950, "outside\nmask", GREEN_DARK)):
         header.text(x, 0.58, label, ha="center", va="center",
-                    fontsize=6.15, color=color,
+                    fontsize=5.55, color=color, linespacing=0.88,
                     fontweight="bold" if color != MID else "normal")
     axes = [fig.add_subplot(grid[index]) for index in (1, 2, 3)]
     _compact_task_row(
@@ -1145,7 +1093,7 @@ def figure_retention() -> None:
 
 
 def figure_matched_lewm() -> None:
-    """Matched color/age result and the registered age-15 interaction."""
+    """Matched age curves, per-host carrier gaps, and a separate TOST gauge."""
     summary = load_json("outputs/paper_a_matched_color_v1_1/summary.json")
     ages = [int(value) for value in summary["ages"]]
     arms = ("none", "gru", "lstm", "ssm", "fixed_trust")
@@ -1156,11 +1104,12 @@ def figure_matched_lewm() -> None:
     line_width = {"none": 1.0, "gru": 0.95, "lstm": 0.95,
                   "ssm": 1.45, "fixed_trust": 1.45}
 
-    fig = plt.figure(figsize=(5.45, 3.02))
+    fig = plt.figure(figsize=(5.45, 2.88))
     grid = fig.add_gridspec(
-        2, 2, height_ratios=(1.52, 1.00), hspace=0.62, wspace=0.23)
+        2, 2, height_ratios=(1.52, 0.92), hspace=0.58, wspace=0.30)
     axes = (fig.add_subplot(grid[0, 0]), fig.add_subplot(grid[0, 1]))
-    forest = fig.add_subplot(grid[1, :])
+    gaps = fig.add_subplot(grid[1, 0])
+    interaction_ax = fig.add_subplot(grid[1, 1])
 
     for panel, (ax, host, title) in enumerate((
             (axes[0], "reacher", "Reacher · matched color"),
@@ -1173,7 +1122,7 @@ def figure_matched_lewm() -> None:
             high = np.asarray([float(value["ci95"][1]) for value in stats])
             color = ARM_COLORS[arm]
             alpha = 0.72 if arm in ("gru", "lstm") else 1.0
-            ax.plot(ages, mean, marker=markers[arm], markersize=3.9,
+            ax.plot(ages, mean, marker=markers[arm], markersize=3.25,
                     markerfacecolor="white" if arm in ("none", "lstm") else color,
                     markeredgecolor=color, markeredgewidth=0.9,
                     color=color, linewidth=line_width[arm], alpha=alpha,
@@ -1190,7 +1139,7 @@ def figure_matched_lewm() -> None:
         ax.set_ylim(0.18, 0.87)
         ax.grid(axis="both", color=LIGHT, linewidth=0.50)
         ax.set_axisbelow(True)
-        ax.set_xlabel("real observations since cue")
+        ax.set_xlabel("cue age (real observations)", labelpad=1.0)
         ax.set_title(f"({chr(ord('a') + panel)}) {title}", loc="left",
                      fontweight="bold", pad=3)
     axes[0].set_ylabel("balanced accuracy")
@@ -1203,34 +1152,39 @@ def figure_matched_lewm() -> None:
         linewidth=line_width[arm], linestyle=line_styles[arm],
         label=ARM_SHORT[arm]) for arm in arms)
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.995),
-               ncol=5, frameon=False, fontsize=6.4, handlelength=1.55,
-               columnspacing=0.82, handletextpad=0.32)
+               ncol=5, frameon=False, fontsize=6.0, handlelength=1.35,
+               columnspacing=0.70, handletextpad=0.26, markerscale=0.82)
 
-    forest.axvspan(-5.0, 5.0, color=GREEN_PALE, alpha=0.86, zorder=-3)
-    forest.axvline(0.0, color=INK, linewidth=0.85,
-                   linestyle=(0, (3, 2)), zorder=0)
-    forest.axvline(-5.0, color=GREEN_DARK, linewidth=0.6,
-                   linestyle=(0, (2, 2)), zorder=0)
-    forest.axvline(5.0, color=GREEN_DARK, linewidth=0.6,
-                   linestyle=(0, (2, 2)), zorder=0)
+    # Per-host carrier effects are ordinary superiority contrasts.  They do not
+    # use the equivalence margin, so they live on a separate, unshaded axis.
+    gaps.axvline(0.0, color=MID, linewidth=0.8,
+                 linestyle=(0, (3, 2)), zorder=0)
     rows = (
-        ("Reacher: Fixed-trust\n− state-space",
+        ("Reacher",
          summary["hosts"]["reacher"]["fixed_minus_ssm"]["age-15"]),
-        ("PushT: Fixed-trust\n− state-space",
+        ("PushT",
          summary["hosts"]["pusht"]["fixed_minus_ssm"]["age-15"]),
     )
-    y_positions = (2.0, 1.0)
+    y_positions = (1.0, 0.0)
     for (label, stat), y in zip(rows, y_positions):
         mean = 100.0 * float(stat["mean"])
         low, high = (100.0 * float(value) for value in stat["ci95"])
-        forest.errorbar(mean, y, xerr=[[mean - low], [high - mean]],
-                        fmt="D", markersize=4.5, markerfacecolor=GREEN,
-                        markeredgecolor=GREEN_DARK, markeredgewidth=0.9,
-                        color=GREEN_DARK, linewidth=1.15, capsize=2.1,
-                        zorder=4)
-        forest.text(14.8, y, f"{mean:+.2f} pp", fontsize=6.2,
-                    color=GREEN_DARK, ha="right", va="center",
-                    fontweight="bold")
+        gaps.errorbar(mean, y, xerr=[[mean - low], [high - mean]],
+                      fmt="D", markersize=3.8, markerfacecolor=GREEN,
+                      markeredgecolor=GREEN_DARK, markeredgewidth=0.8,
+                      color=GREEN_DARK, linewidth=1.0, capsize=1.8,
+                      zorder=4)
+        gaps.text(min(12.3, high + 0.45), y, f"{mean:+.1f}", fontsize=5.65,
+                  color=GREEN_DARK, ha="left", va="center",
+                  fontweight="bold")
+    gaps.set_yticks(y_positions, [value[0] for value in rows])
+    gaps.set_xlim(-1.0, 12.8)
+    gaps.set_ylim(-0.55, 1.55)
+    gaps.set_xlabel("fixed-trust − state-space (pp)", labelpad=1.0)
+    gaps.grid(axis="x", color=LIGHT, linewidth=0.50)
+    gaps.set_axisbelow(True)
+    gaps.set_title("(c) Same age-15 ordering", loc="left",
+                   fontweight="bold", pad=3)
 
     interaction = summary["primary_ranking_interaction"]
     if interaction.get("equivalent_within_margin") is not True:
@@ -1238,35 +1192,41 @@ def figure_matched_lewm() -> None:
             "refusing to label the registered host interaction equivalent")
     if float(interaction.get("equivalence_margin", -1.0)) != 0.05:
         raise RuntimeError("registered matched-host equivalence margin changed")
-    y = 0.0
     mean = 100.0 * float(interaction["mean"])
     low95, high95 = (100.0 * float(value) for value in interaction["ci95"])
     low90, high90 = (100.0 * float(value) for value in interaction["ci90"])
-    forest.errorbar(mean, y,
-                    xerr=[[mean - low95], [high95 - mean]], fmt="none",
-                    color=MID, linewidth=0.85, capsize=2.0, zorder=2)
-    forest.errorbar(mean, y,
-                    xerr=[[mean - low90], [high90 - mean]], fmt="D",
-                    markersize=4.7, markerfacecolor="white",
-                    markeredgecolor=GREEN_DARK, markeredgewidth=1.1,
-                    color=GREEN_DARK, linewidth=2.15, capsize=2.8,
-                    zorder=4)
-    forest.text(14.8, y, f"{mean:+.2f} pp · TOST equivalent", fontsize=6.1,
-                color=GREEN_DARK, ha="right", va="center",
-                fontweight="bold")
-    forest.text(0.0, 2.33, "±5 pp equivalence zone",
-                fontsize=5.8, color=GREEN_DARK, ha="center", va="center")
-    forest.set_yticks((2.0, 1.0, 0.0),
-                      (rows[0][0], rows[1][0], "host interaction"))
-    forest.set_xlim(-8.0, 15.5)
-    forest.set_ylim(-0.42, 2.72)
-    forest.set_xlabel("fixed-trust minus state-space (percentage points)")
-    forest.grid(axis="x", color=LIGHT, linewidth=0.50)
-    forest.set_axisbelow(True)
-    forest.set_title("(c) Registered age-15 ranking contrast",
-                     loc="left", fontweight="bold", pad=3)
+    interaction_ax.axvspan(-5.0, 5.0, color=GREEN_PALE, alpha=0.90, zorder=-3)
+    interaction_ax.axvline(0.0, color=INK, linewidth=0.8,
+                           linestyle=(0, (3, 2)), zorder=0)
+    for bound in (-5.0, 5.0):
+        interaction_ax.axvline(bound, color=GREEN_DARK, linewidth=0.55,
+                               linestyle=(0, (2, 2)), zorder=0)
+    interaction_ax.errorbar(
+        mean, 0.0, xerr=[[mean - low95], [high95 - mean]], fmt="none",
+        color=MID, linewidth=0.75, capsize=1.8, zorder=2)
+    interaction_ax.errorbar(
+        mean, 0.0, xerr=[[mean - low90], [high90 - mean]], fmt="D",
+        markersize=3.9, markerfacecolor="white",
+        markeredgecolor=GREEN_DARK, markeredgewidth=0.9,
+        color=GREEN_DARK, linewidth=1.8, capsize=2.2, zorder=4)
+    interaction_ax.text(0.0, 0.43, "registered ±5 pp zone", fontsize=5.35,
+                        color=GREEN_DARK, ha="center", va="center")
+    interaction_ax.text(mean, -0.38, "TOST equivalent", fontsize=5.7,
+                        color=GREEN_DARK, ha="center", va="center",
+                        fontweight="bold")
+    interaction_ax.text(0.98, 0.08, "thick: 90%  ·  thin: 95%",
+                        transform=interaction_ax.transAxes, fontsize=4.85,
+                        color=MID, ha="right", va="bottom")
+    interaction_ax.set_yticks([])
+    interaction_ax.set_xlim(-7.0, 7.0)
+    interaction_ax.set_ylim(-0.58, 0.68)
+    interaction_ax.set_xlabel("PushT gap − Reacher gap (pp)", labelpad=1.0)
+    interaction_ax.grid(axis="x", color=LIGHT, linewidth=0.50)
+    interaction_ax.set_axisbelow(True)
+    interaction_ax.set_title("(d) Cross-host gap ≈ 0", loc="left",
+                             fontweight="bold", pad=3)
 
-    fig.subplots_adjust(left=0.145, right=0.995, top=0.88, bottom=0.13)
+    fig.subplots_adjust(left=0.105, right=0.992, top=0.875, bottom=0.145)
     save(fig, "fig_mem_matched")
 
 
@@ -1277,7 +1237,7 @@ def _paired_curve(ax: plt.Axes, ages: list[int], records: list[Mapping[str, Any]
     mean = np.asarray([float(value["mean"]) for value in records])
     low = np.asarray([float(value["ci95"][0]) for value in records])
     high = np.asarray([float(value["ci95"][1]) for value in records])
-    ax.plot(ages, mean, color=color, marker=marker, markersize=3.6,
+    ax.plot(ages, mean, color=color, marker=marker, markersize=3.15,
             markeredgewidth=0.75, linewidth=linewidth, linestyle=linestyle,
             label=label, zorder=4)
     ax.errorbar(ages, mean, yerr=[mean - low, high - mean], fmt="none",
@@ -1297,9 +1257,9 @@ def figure_dinowm_carrier() -> None:
         ("multi-item-visual-binding-recall", "Visual binding"),
     )
     panels = (
-        ("absolute", "full state"),
-        ("paired_vs_none", r"$\Delta$ no state"),
-        ("full_vs_context_reset", r"$\Delta$ reset"),
+        ("absolute", "host output"),
+        ("paired_vs_none", "gain vs no state"),
+        ("full_vs_context_reset", "gain vs reset"),
     )
     limits: dict[tuple[str, str], float] = {}
     for task, _ in tasks:
@@ -1312,7 +1272,7 @@ def figure_dinowm_carrier() -> None:
                                          for value in records[arm]["ci95"]))
             limits[(task, key)] = max(0.04, 1.12 * bound)
 
-    fig, axes = plt.subplots(2, 3, figsize=(5.45, 3.10), sharex=True)
+    fig, axes = plt.subplots(2, 3, figsize=(5.45, 3.18), sharex=True)
     for row, (task, task_label) in enumerate(tasks):
         chance = float(summary["results"][task]["chance"])
         absolute_records = [
@@ -1366,7 +1326,7 @@ def figure_dinowm_carrier() -> None:
             if column == 0:
                 ax.set_ylabel("balanced accuracy")
             if row == 1:
-                ax.set_xlabel("cue age")
+                ax.set_xlabel("cue age", labelpad=1.0)
     handles = tuple(Line2D(
         [0], [0], color=ARM_COLORS[arm], marker=markers[arm],
         linewidth=1.15, linestyle=(0, (3, 2)) if arm == "none" else "-",
@@ -1374,8 +1334,12 @@ def figure_dinowm_carrier() -> None:
                else ARM_SHORT[arm])) for arm in all_arms)
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.995),
                ncol=5, frameon=False, fontsize=6.15, handlelength=1.35,
-               columnspacing=0.68, handletextpad=0.26)
-    fig.subplots_adjust(left=0.105, right=0.995, top=0.89, bottom=0.145,
+               columnspacing=0.68, handletextpad=0.26, markerscale=0.80)
+    fig.text(
+        0.55, 0.018,
+        "Binding diagnosis: fixed-trust retains the cue internally, but the frozen host exposes state-space more reliably.",
+        fontsize=5.25, color=MID, ha="center", va="bottom")
+    fig.subplots_adjust(left=0.105, right=0.995, top=0.89, bottom=0.195,
                         wspace=0.33, hspace=0.43)
     save(fig, "fig_mem_dinowm_carrier")
 
@@ -1387,9 +1351,9 @@ def figure_pointmaze_retention_use() -> None:
     arms = ("none", "gru", "lstm", "ssm", "fixed_trust")
     learned = arms[1:]
     markers = {"gru": "o", "lstm": "s", "ssm": "^", "fixed_trust": "D"}
-    fig = plt.figure(figsize=(5.45, 3.30))
+    fig = plt.figure(figsize=(5.45, 3.10))
     grid = fig.add_gridspec(
-        2, 2, width_ratios=(1.0, 1.04), hspace=0.50, wspace=0.36)
+        2, 2, width_ratios=(1.0, 1.04), hspace=0.40, wspace=0.36)
     absolute = fig.add_subplot(grid[0, 0])
     absolute_markers = {
         "none": "o", "gru": "o", "lstm": "s", "ssm": "^",
@@ -1416,7 +1380,6 @@ def figure_pointmaze_retention_use() -> None:
         max(0.0, min(chance, absolute_low) - 0.10 * absolute_span),
         min(1.0, absolute_high + 0.12 * absolute_span))
     absolute.set_xticks(ages)
-    absolute.set_xlabel("cue age")
     absolute.set_ylabel("balanced accuracy")
     absolute.set_title("(a) Full-state retention", loc="left",
                        fontweight="bold", pad=3)
@@ -1441,7 +1404,8 @@ def figure_pointmaze_retention_use() -> None:
     # negative range.  The two contrasts retain a shared scale.
     common_ymin = min(-0.04, 1.12 * common_low)
     common_ymax = max(0.04, 1.08 * common_high)
-    for ax, (key, title) in zip(contrast_axes, contrast_specs):
+    for contrast_index, (ax, (key, title)) in enumerate(
+            zip(contrast_axes, contrast_specs)):
         for arm in learned:
             records = [carrier["results"][str(age)][key][arm] for age in ages]
             _paired_curve(ax, ages, records, color=ARM_COLORS[arm],
@@ -1450,7 +1414,8 @@ def figure_pointmaze_retention_use() -> None:
                    linestyle=(0, (3, 2)), zorder=0)
         ax.set_ylim(common_ymin, common_ymax)
         ax.set_xticks(ages)
-        ax.set_xlabel("cue age")
+        if contrast_index == 1:
+            ax.set_xlabel("cue age", labelpad=0.5)
         ax.set_title(title, loc="left", fontweight="bold", pad=3)
         ax.grid(axis="both", color=LIGHT, linewidth=0.50)
         ax.set_axisbelow(True)
@@ -1480,7 +1445,7 @@ def figure_pointmaze_retention_use() -> None:
         execution.errorbar(mean, position,
                            xerr=[[mean - low], [high - mean]],
                            fmt="*" if resolved else "o",
-                           markersize=6.0 if resolved else 4.0,
+                           markersize=5.2 if resolved else 3.5,
                            markerfacecolor=ARM_COLORS[arm],
                            markeredgecolor=ARM_COLORS[arm],
                            color=ARM_COLORS[arm], linewidth=0.85,
@@ -1506,7 +1471,7 @@ def figure_pointmaze_retention_use() -> None:
     execution.set_xlim(max(0.0, data_low - padding),
                        min(1.0, data_high + padding))
     execution.set_ylim(-0.45, 4.45)
-    execution.set_xlabel("executed success")
+    execution.set_xlabel("executed success", labelpad=1.0)
     execution.set_title("(d) External execution · age 15", loc="left",
                         fontweight="bold", pad=3)
     execution.grid(axis="x", color=LIGHT, linewidth=0.50)
@@ -1527,12 +1492,12 @@ def figure_pointmaze_retention_use() -> None:
         [0], [0], color=ARM_COLORS[arm], marker=absolute_markers[arm],
         linewidth=1.15,
         linestyle=(0, (3, 2)) if arm == "none" else "-",
-        label=("No state (a,d)" if arm == "none" else ARM_SHORT[arm]))
+        label=("No state" if arm == "none" else ARM_SHORT[arm]))
         for arm in arms)
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.52, 0.995),
                ncol=5, frameon=False, fontsize=5.9, handlelength=1.25,
-               columnspacing=0.62, handletextpad=0.24)
-    fig.subplots_adjust(left=0.105, right=0.992, top=0.84, bottom=0.145)
+               columnspacing=0.62, handletextpad=0.24, markerscale=0.80)
+    fig.subplots_adjust(left=0.105, right=0.992, top=0.855, bottom=0.135)
     save(fig, "fig_mem_pointmaze")
 
 

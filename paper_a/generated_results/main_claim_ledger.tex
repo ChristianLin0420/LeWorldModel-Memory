@@ -3,18 +3,17 @@
 \scriptsize
 \setlength{\tabcolsep}{2.5pt}
 \renewcommand{\arraystretch}{1.12}
-\caption{Task-level claim ledger. ``Resolved'' lists carrier arms whose registered age-15 paired 95\% interval has lower bound above zero; executed use follows its registered joint resolution flag. Entries are task-specific: no pooled score or cross-family ranking is computed.}
+\caption{Task-level claim ledger. A check denotes passed requirement, cue-encoding, and shortcut gates; carrier cells list arms with a positive registered age-15 paired lower bound. ``None resolved'' means tested but unresolved; \NA\ means not tested. No pooled score or cross-family ranking is computed.}
 \label{tab:claim-ledger-v2}
-\begin{tabularx}{\textwidth}{@{}p{0.20\textwidth}*{6}{>{\centering\arraybackslash}X}@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.26\textwidth}>{\centering\arraybackslash}p{0.16\textwidth}*{3}{>{\centering\arraybackslash}X}@{}}
 \toprule
-Study & Need & Cue & No shortcut & vs. none & vs. reset & Execution \\
+Study & Gates & vs. no state & vs. reset & Executed use \\
 \midrule
-LeWM Reacher matched color & Verified & Verified & Verified & Tested; age curve & Not tested & Not tested \\
-LeWM PushT matched color & Verified & Verified & Verified & Tested; age curve & Not tested & Not tested \\
+LeWM matched color (Reacher / PushT) & \Pass\ 3/3 each & Age curves (both hosts) & \NA & \NA \\
 \addlinespace[1pt]
-DINO-WM PushT token & Verified & Verified & Verified & State-space, Fixed-trust & No arm resolved & Not tested \\
-DINO-WM PushT binding & Verified & Verified & Verified & State-space & State-space & Not tested \\
-DINO-WM PointMaze goal & Verified & Verified & Verified & GRU, LSTM, State-space, Fixed-trust & GRU, LSTM, State-space, Fixed-trust & GRU, LSTM, State-space, Fixed-trust \\
+DINO-WM PushT token & \Pass\ 3/3 & State-space, Fixed-trust & None resolved & \NA \\
+DINO-WM PushT binding & \Pass\ 3/3 & State-space & State-space & \NA \\
+DINO-WM PointMaze goal & \Pass\ 3/3 + controller & All learned & All learned & All learned \\
 \bottomrule
 \end{tabularx}
 \end{table*}
