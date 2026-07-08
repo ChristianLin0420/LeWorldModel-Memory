@@ -53,6 +53,12 @@ FORMAL_PENDING_MESSAGE = (
     "builders; development parent-TRAIN caches cannot be promoted to formal "
     "evidence"
 )
+# The registered effective batch remains 64.  Spatial hosts accumulate that
+# batch in memory-only chunks; 16 is conservative on the assigned 98 GB
+# Blackwell GPUs while avoiding the severe launch overhead of the original
+# chunk size of four.  Evaluation is gradient-free and can use a larger chunk.
+SPATIAL_TRAIN_MICRO_BATCH = 16
+SPATIAL_EVAL_BATCH = 32
 
 _COHORTS: dict[str, dict[str, Any]] = {
     "lewm_reacher_color": {
@@ -604,7 +610,11 @@ class SageMemV1HostAdapter:
         optimization = self.spec["optimization"]
         epochs = int(optimization["epochs"])
         effective_batch = int(optimization["batch_size"])
-        micro_batch = effective_batch if not bank.spatial else 4
+        micro_batch = (effective_batch if not bank.spatial else
+                       SPATIAL_TRAIN_MICRO_BATCH)
+        if effective_batch % micro_batch:
+            raise DevelopmentAdapterError(
+                "effective batch must be divisible by the spatial microbatch")
         optimizer = torch.optim.AdamW(
             carrier.parameters(), lr=float(optimization["learning_rate"]),
             weight_decay=float(optimization["weight_decay"]))
@@ -986,7 +996,7 @@ def _collect_features(
     values: dict[str, list[np.ndarray]] = {
         "host": [], "reset": [], "prior": [], "mse": [], "reset_mse": [],
     }
-    batch_size = 8 if bank.spatial else 64
+    batch_size = SPATIAL_EVAL_BATCH if bank.spatial else 64
     for offset in range(0, len(indices), batch_size):
         local = indices[offset:offset + batch_size]
         features = torch.from_numpy(bank.features(age, local)).to(device)

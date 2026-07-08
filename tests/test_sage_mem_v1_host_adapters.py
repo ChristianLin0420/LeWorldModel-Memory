@@ -18,6 +18,8 @@ from scripts.sage_mem_v1_host_adapters import (
     FORMAL_PENDING_MESSAGE,
     FormalIntegrationPending,
     SAGE_MEM_HOST_ADAPTER_API_VERSION,
+    SPATIAL_EVAL_BATCH,
+    SPATIAL_TRAIN_MICRO_BATCH,
     _carrier_forward,
     _objective_weights,
     _split_indices,
@@ -69,6 +71,14 @@ def test_host_contract_loads_and_all_five_adapters_describe_exactly(spec) -> Non
         assert description["cohort"] == cohort
         assert description["semantic_labels_for_training"] is False
         assert description["formal_status"] == "pending_fresh_bank_builder"
+
+
+def test_spatial_chunk_sizes_preserve_registered_effective_batch(spec) -> None:
+    effective_batch = int(spec["optimization"]["batch_size"])
+    assert SPATIAL_TRAIN_MICRO_BATCH == 16
+    assert SPATIAL_EVAL_BATCH == 32
+    assert effective_batch % SPATIAL_TRAIN_MICRO_BATCH == 0
+    assert SPATIAL_EVAL_BATCH <= effective_batch
 
 
 @pytest.mark.parametrize(
