@@ -75,7 +75,7 @@ def test_host_contract_loads_and_all_five_adapters_describe_exactly(spec) -> Non
 
 def test_spatial_chunk_sizes_preserve_registered_effective_batch(spec) -> None:
     effective_batch = int(spec["optimization"]["batch_size"])
-    assert SPATIAL_TRAIN_MICRO_BATCH == 16
+    assert SPATIAL_TRAIN_MICRO_BATCH == 32
     assert SPATIAL_EVAL_BATCH == 32
     assert effective_batch % SPATIAL_TRAIN_MICRO_BATCH == 0
     assert SPATIAL_EVAL_BATCH <= effective_batch

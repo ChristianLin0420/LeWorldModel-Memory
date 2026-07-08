@@ -54,10 +54,10 @@ FORMAL_PENDING_MESSAGE = (
     "evidence"
 )
 # The registered effective batch remains 64.  Spatial hosts accumulate that
-# batch in memory-only chunks; 16 is conservative on the assigned 98 GB
+# batch in memory-only chunks; 32 is conservative on the assigned 98 GB
 # Blackwell GPUs while avoiding the severe launch overhead of the original
 # chunk size of four.  Evaluation is gradient-free and can use a larger chunk.
-SPATIAL_TRAIN_MICRO_BATCH = 16
+SPATIAL_TRAIN_MICRO_BATCH = 32
 SPATIAL_EVAL_BATCH = 32
 
 _COHORTS: dict[str, dict[str, Any]] = {
