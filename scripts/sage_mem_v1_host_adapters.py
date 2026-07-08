@@ -1005,6 +1005,15 @@ def _collect_features(
         proprio = None if prop_np is None else torch.from_numpy(prop_np).to(device)
         full = _carrier_forward(
             carrier, features, actions, candidate_native=candidate_native)
+        # The causal reset is applied immediately after the cue leaves the
+        # observation stream, not at the beginning of the final predictor
+        # context.  DINO cohorts keep the cue at frames 1:4 and move the
+        # endpoint; matched LeWM cohorts keep endpoint 19 and move the cue.
+        reset_at = _cue_offset_reset_index(
+            spatial=bank.spatial, age=int(age), sequence_length=features.shape[1])
+        reset_full = _carrier_forward(
+            carrier, features[:, reset_at:], actions[:, reset_at:],
+            candidate_native=candidate_native)
         if bank.spatial:
             endpoint = 3 + int(age)
             start, stop = endpoint - 3, endpoint
@@ -1013,12 +1022,11 @@ def _collect_features(
                 host_prediction = host.predict(
                     full["fused"][:, start:stop], proprio[:, start:stop],
                     actions[:, start:stop])[:, -1, :, :384]
-            reset_output = _carrier_forward(
-                carrier, features[:, start:stop], actions[:, start:stop - 1],
-                candidate_native=candidate_native)
+            reset_context = reset_full["fused"][
+                :, start - reset_at:stop - reset_at]
             with _amp_context(device):
                 reset_prediction = host.predict(
-                    reset_output["fused"], proprio[:, start:stop],
+                    reset_context, proprio[:, start:stop],
                     actions[:, start:stop])[:, -1, :, :384]
             target = features[:, endpoint]
             mse_dimensions = (1, 2)
@@ -1028,12 +1036,11 @@ def _collect_features(
                 host_prediction = host.predict(
                     full["fused"][:, start:stop],
                     actions[:, start:stop])[:, -1]
-            reset_output = _carrier_forward(
-                carrier, features[:, start:stop], actions[:, start:stop - 1],
-                candidate_native=candidate_native)
+            reset_context = reset_full["fused"][
+                :, start - reset_at:stop - reset_at]
             with _amp_context(device):
                 reset_prediction = host.predict(
-                    reset_output["fused"], actions[:, start:stop])[:, -1]
+                    reset_context, actions[:, start:stop])[:, -1]
             target = features[:, endpoint]
             mse_dimensions = (1,)
         host_np = host_prediction.float().cpu().numpy()
@@ -1056,6 +1063,17 @@ def _collect_features(
             torch.square(reset_prediction.float() - target.float()),
             dim=mse_dimensions).cpu().numpy())
     return {name: np.concatenate(parts) for name, parts in values.items()}
+
+
+def _cue_offset_reset_index(*, spatial: bool, age: int,
+                            sequence_length: int = 20) -> int:
+    """Return the first post-cue observation for the registered timing design."""
+
+    reset_at = 4 if spatial else 19 - int(age)
+    if not 0 < reset_at < int(sequence_length):
+        raise DevelopmentAdapterError(
+            f"invalid cue-offset reset index {reset_at} for age {age}")
+    return reset_at
 
 
 def _fit_shared_readout(

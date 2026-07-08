@@ -564,22 +564,26 @@ def audit(spec: Mapping[str, Any]) -> dict[str, Any]:
         retention_reference = comparators["retention"]
         next_reference = comparators["next_feature"]
         execution_reference = comparators["execution"]
-        full_retention, strata = _aligned_metric(
-            arrays, cohort, "sage_mem_full", "retention_correct")
+        # Confirmatory exposure, reset, and mechanism-control gates operate on
+        # the frozen host output.  ``retention_correct`` is the carrier-prior
+        # diagnostic and cannot establish that the host exposed what the
+        # carrier stored.
+        full_exposure, strata = _aligned_metric(
+            arrays, cohort, "sage_mem_full", "exposure_correct")
         cluster_ids = arrays[(cohort, "sage_mem_full", FORMAL_SEEDS[0])][
             "episode_id"]
-        reference_retention, reference_strata = _aligned_metric(
-            arrays, cohort, retention_reference, "retention_correct")
+        reference_exposure, reference_strata = _aligned_metric(
+            arrays, cohort, retention_reference, "exposure_correct")
         if not np.array_equal(strata, reference_strata):
             raise SageMemAuditError(f"cross-arm pairing differs: {cohort}")
         exposure = paired_cluster_bootstrap(
-            full_retention, reference_retention, strata,
+            full_exposure, reference_exposure, strata,
             cluster_ids=cluster_ids, draws=draws,
             seed=base_seed + 100 * cohort_index)
         reset, _ = _aligned_metric(
             arrays, cohort, "sage_mem_full", "reset_correct")
         reset_effect = paired_cluster_bootstrap(
-            full_retention, reset, strata, cluster_ids=cluster_ids, draws=draws,
+            full_exposure, reset, strata, cluster_ids=cluster_ids, draws=draws,
             seed=base_seed + 100 * cohort_index + 1)
         full_mse, _ = _aligned_metric(
             arrays, cohort, "sage_mem_full", "next_feature_mse")
@@ -612,9 +616,9 @@ def audit(spec: Mapping[str, Any]) -> dict[str, Any]:
                 "sage_mem_exposure_only", "fixed_trust_aux", "ssm_aux"),
                 start=3):
             control, _ = _aligned_metric(
-                arrays, cohort, arm, "retention_correct")
+                arrays, cohort, arm, "exposure_correct")
             controls[arm] = paired_cluster_bootstrap(
-                full_retention, control, strata, cluster_ids=cluster_ids,
+                full_exposure, control, strata, cluster_ids=cluster_ids,
                 draws=draws,
                 seed=base_seed + 100 * cohort_index + offset)
         oracle, _ = _aligned_metric(

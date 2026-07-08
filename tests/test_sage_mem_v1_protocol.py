@@ -633,3 +633,60 @@ def test_formal_grid_rejects_cross_arm_episode_identity_drift(
     monkeypatch.setattr(audit_module, "_load_episode_arrays", arrays)
     with pytest.raises(SageMemAuditError, match="cross-arm/seed"):
         audit_module._grid(spec)
+
+
+def test_formal_exposure_reset_and_controls_use_frozen_host_output(
+        monkeypatch) -> None:
+    spec = _spec()
+    episode_id = np.arange(6, dtype=np.int64)
+    class_id = np.asarray([0, 1, 0, 1, 0, 1], dtype=np.int64)
+    evidence_age = np.asarray([4, 4, 8, 8, 15, 15], dtype=np.int64)
+    arrays = {}
+    for cohort in COHORTS:
+        for arm in ARMS:
+            for seed in FORMAL_SEEDS:
+                full = arm == "sage_mem_full"
+                arrays[(cohort, arm, seed)] = {
+                    "episode_id": episode_id,
+                    "class_id": class_id,
+                    "evidence_age": evidence_age,
+                    # Deliberately identical priors: using this field would
+                    # make every exposure/reset/control contrast zero.
+                    "retention_correct": np.zeros(6, dtype=np.int8),
+                    "reset_correct": np.zeros(6, dtype=np.int8),
+                    "exposure_correct": np.full(
+                        6, int(full), dtype=np.int8),
+                    "next_feature_mse": np.full(6, .1),
+                    "reset_next_feature_mse": np.full(6, .1),
+                    "oracle_success": np.ones(6, dtype=np.int8),
+                    "execution_success": np.full(
+                        6, int(full), dtype=np.int8),
+                }
+
+    monkeypatch.setattr(audit_module, "_grid", lambda unused: ({}, arrays))
+    monkeypatch.setattr(
+        audit_module, "_prepared_comparators",
+        lambda unused_spec, unused_cohort: {
+            "retention": "gru", "next_feature": "gru", "execution": "gru"})
+    monkeypatch.setattr(
+        audit_module, "_audit_resource_parity",
+        lambda unused_spec, unused_cohort, unused_manifests: {})
+
+    def exact_bootstrap(left, right, unused_strata, **unused_kwargs):
+        point = float(np.mean(np.asarray(left) - np.asarray(right)))
+        return {
+            "point": point, "lower": point, "upper": point,
+            "confidence": .95, "draws": 1, "seed": 0,
+            "resampling_unit": "test", "pairing_preserved": True,
+            "samples": np.asarray([point]),
+        }
+
+    monkeypatch.setattr(
+        audit_module, "paired_cluster_bootstrap", exact_bootstrap)
+    result = audit_module.audit(spec)
+    for cohort in COHORTS:
+        record = result["cohorts"][cohort]
+        assert record["host_output_exposure"]["point"] == pytest.approx(1.0)
+        assert record["reset_effect"]["point"] == pytest.approx(1.0)
+        assert all(value["point"] == pytest.approx(1.0)
+                   for value in record["mechanism_controls"].values())

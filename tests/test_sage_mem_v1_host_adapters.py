@@ -21,6 +21,7 @@ from scripts.sage_mem_v1_host_adapters import (
     SPATIAL_EVAL_BATCH,
     SPATIAL_TRAIN_MICRO_BATCH,
     _carrier_forward,
+    _cue_offset_reset_index,
     _objective_weights,
     _split_indices,
     _validate_episode_arrays,
@@ -79,6 +80,13 @@ def test_spatial_chunk_sizes_preserve_registered_effective_batch(spec) -> None:
     assert SPATIAL_EVAL_BATCH == 32
     assert effective_batch % SPATIAL_TRAIN_MICRO_BATCH == 0
     assert SPATIAL_EVAL_BATCH <= effective_batch
+
+
+def test_reset_index_is_the_actual_cue_offset_for_each_host_design() -> None:
+    assert [_cue_offset_reset_index(spatial=False, age=age)
+            for age in (4, 8, 15)] == [15, 11, 4]
+    assert [_cue_offset_reset_index(spatial=True, age=age)
+            for age in (4, 8, 15)] == [4, 4, 4]
 
 
 @pytest.mark.parametrize(
