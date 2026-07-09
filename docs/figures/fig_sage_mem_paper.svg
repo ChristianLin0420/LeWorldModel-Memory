@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="900"
+     viewBox="0 0 1536 900" role="img"
+     aria-labelledby="architectureTitle architectureDesc">
+  <title id="architectureTitle">SAGE-Mem carrier and frozen-host data flow</title>
+  <desc id="architectureDesc">Outcome-blind architecture diagram. Frames pass through a frozen encoder. Native latent features and preceding actions enter a SAGE-Mem sidecar. Fixed half-life decay and a trainable action map form a pre-observation prior. A trainable surprise correction produces raw recurrent state. The same fixed spatial aggregation, fixed write-maturity confidence, and trainable diagonal read scale are applied to the state before and after the write. Only the post-write residual is fused into the frozen short-context predictor. Raw corrected state, not spatially aggregated state, recurs.</desc>
+  <defs>
+    <style><![CDATA[
+      .canvas{fill:#fff}.panel{fill:#fbfcfe;stroke:#c5ced8;stroke-width:2}
+      .host{fill:#eef1f4;stroke:#5f6b76;stroke-width:2.2}
+      .train{fill:#e8f2fb;stroke:#17649a;stroke-width:2.5}
+      .fixed{fill:url(#fixedHatch);stroke:#665a91;stroke-width:2.2}
+      .runtime{fill:#fff;stroke:#274c77;stroke-width:2.2}
+      .data{fill:#fff7e6;stroke:#a86200;stroke-width:2.2}
+      .audit{fill:#f0faf6;stroke:#13795f;stroke-width:2.2}
+      .locked{fill:url(#lockedHatch);stroke:#9a5a00;stroke-width:2.2}
+      .title{font:700 34px 'Noto Sans',Arial,sans-serif;fill:#131c24}
+      .subtitle{font:500 22px 'Noto Sans',Arial,sans-serif;fill:#4d5d6c}
+      .panel-title{font:700 28px 'Noto Sans',Arial,sans-serif;fill:#17212b}
+      .block-title{font:700 24px 'Noto Sans',Arial,sans-serif;fill:#17212b}
+      .body{font:500 22px 'Noto Sans',Arial,sans-serif;fill:#354554}
+      .small{font:500 20px 'Noto Sans',Arial,sans-serif;fill:#4d5d6c}
+      .badge{font:700 20px 'Noto Sans',Arial,sans-serif;letter-spacing:.4px}
+      .white{fill:#fff}.blue{fill:#17649a}.purple{fill:#665a91}.green{fill:#13795f}.orange{fill:#9a5a00}
+      .flow{fill:none;stroke:#34495e;stroke-width:3;marker-end:url(#arrow)}
+      .state{fill:none;stroke:#17649a;stroke-width:3.2;marker-end:url(#arrowBlue)}
+      .diag{fill:none;stroke:#13795f;stroke-width:2.8;stroke-dasharray:9 7;marker-end:url(#arrowGreen)}
+      .divider{stroke:#d3dae2;stroke-width:1.6}
+    ]]></style>
+    <pattern id="fixedHatch" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#f2eff8"/><path d="M-2 2L2-2M0 10L10 0M8 12L12 8" stroke="#d0c8e3" stroke-width="1.4"/>
+    </pattern>
+    <pattern id="lockedHatch" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#fff3dc"/><path d="M0 0L10 10M-3 7L3 13M7-3L13 3" stroke="#ead0a4" stroke-width="1.4"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34495e"/></marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#17649a"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#13795f"/></marker>
+  </defs>
+
+  <rect class="canvas" width="1536" height="900"/>
+  <text class="title" x="28" y="42">SAGE-Mem: prospective carrier computation, not an empirical result</text>
+  <text class="subtitle" x="28" y="73">The sidecar consumes frozen zₜ and preceding action aₜ₋₁; native proprioception remains on the host path.</text>
+
+  <!-- Key sits on its own row so it never collides with the title. -->
+  <g aria-label="visual encoding key">
+    <rect class="host" x="642" y="88" width="34" height="26" rx="4"/><text class="small" x="686" y="109">frozen host</text>
+    <rect class="train" x="816" y="88" width="34" height="26" rx="4"/><text class="small" x="860" y="109">trainable parameters</text>
+    <rect class="fixed" x="1064" y="88" width="34" height="26" rx="4"/><text class="small" x="1108" y="109">fixed operation</text>
+    <rect class="locked" x="1280" y="88" width="34" height="26" rx="4"/><text class="small" x="1324" y="109">locked evaluator</text>
+  </g>
+
+  <!-- Frozen host boundary and explicit inputs. -->
+  <rect class="panel" x="24" y="128" width="1488" height="220" rx="14"/>
+  <text class="panel-title" x="46" y="164">Frozen host with a residual sidecar</text>
+  <line class="divider" x1="46" y1="177" x2="1490" y2="177"/>
+  <rect class="data" x="48" y="195" width="142" height="82" rx="10"/>
+  <text class="block-title" x="74" y="228">Frames</text>
+  <path d="M71 260l18-18 17 12 21-26 34 32z" fill="#b9d5e3" stroke="#527d91" stroke-width="2"/><circle cx="151" cy="219" r="8" fill="#d55e00"/>
+  <path class="flow" d="M190 236H218"/>
+  <rect class="host" x="220" y="195" width="188" height="82" rx="10"/>
+  <text class="badge" x="263" y="219" fill="#5f6b76">FROZEN HOST</text><text class="block-title" x="247" y="255">Visual encoder</text>
+  <path class="flow" d="M408 236H436"/>
+  <rect class="runtime" x="438" y="195" width="126" height="82" rx="10"/>
+  <text class="block-title" x="465" y="227">Native</text><text class="body" x="461" y="258">latent zₜ</text>
+  <path class="flow" d="M564 236H592"/>
+  <rect class="train" x="594" y="187" width="224" height="98" rx="11"/>
+  <text class="badge blue" x="636" y="215">TRAINABLE SIDECAR</text><text class="block-title" x="650" y="250">SAGE-Mem</text>
+  <path class="flow" d="M818 236H846"/>
+  <rect class="runtime" x="848" y="195" width="190" height="82" rx="10"/>
+  <text class="block-title" x="876" y="226">Fused latent</text><text class="body" x="887" y="258">z̃ₜ = zₜ + rₜ</text>
+  <path class="flow" d="M1038 236H1066"/>
+  <rect class="host" x="1068" y="187" width="238" height="98" rx="11"/>
+  <text class="badge" x="1112" y="211" fill="#5f6b76">FROZEN HOST</text><text class="block-title" x="1101" y="240">Short-context</text><text class="block-title" x="1130" y="266">predictor</text>
+  <path class="flow" d="M1306 236H1334"/>
+  <rect class="runtime" x="1336" y="195" width="146" height="82" rx="10"/>
+  <text class="block-title" x="1371" y="227">Host</text><text class="block-title" x="1359" y="258">output yₜ</text>
+  <rect class="data" x="48" y="293" width="190" height="48" rx="9"/><text class="block-title" x="68" y="326">Action aₜ₋₁</text>
+  <rect class="data" x="250" y="293" width="190" height="48" rx="9"/><text class="body" x="270" y="325">native proprio</text>
+  <path class="flow" d="M238 309V286H706V285"/><path class="flow" d="M238 324V290H1174V285"/><path class="flow" d="M440 337H1200V285"/>
+
+  <!-- Exact causal state update. -->
+  <rect class="panel" x="24" y="370" width="970" height="506" rx="14"/>
+  <text class="panel-title" x="46" y="408">One causal update: prior first, observation write second</text>
+  <line class="divider" x1="46" y1="422" x2="972" y2="422"/>
+
+  <rect class="runtime" x="52" y="466" width="150" height="88" rx="10"/><text class="block-title" x="76" y="500">Raw state</text><text class="body" x="68" y="534">mₜ₋₁ , qₜ₋₁</text>
+  <text class="small" x="51" y="582">runtime value, not a parameter</text>
+  <path class="state" d="M202 510H228"/>
+  <rect class="fixed" x="230" y="440" width="230" height="150" rx="10"/>
+  <text class="badge purple" x="272" y="468">FIXED DECAY</text><text class="block-title" x="255" y="502">State half-lives</text><text class="body" x="266" y="534">τ = 4, 8, 16, 64</text><text class="small" x="277" y="568">q trace uses τ = 64</text>
+  <text class="small" x="233" y="617">decay scales; not retention guarantees</text>
+  <rect class="train" x="230" y="638" width="230" height="86" rx="10"/>
+  <text class="badge blue" x="272" y="666">TRAINABLE B</text><text class="block-title" x="274" y="703">m-only: B aₜ₋₁</text>
+
+  <path class="state" d="M460 510H482"/><path class="flow" d="M460 681H493V542"/>
+  <circle cx="505" cy="510" r="20" fill="#fff" stroke="#274c77" stroke-width="2.5"/><path d="M495 510h20M505 500v20" stroke="#274c77" stroke-width="3"/>
+  <path class="state" d="M525 510H548"/>
+  <rect class="runtime" x="550" y="466" width="148" height="88" rx="10"/><text class="block-title" x="574" y="500">Prior state</text><text class="body" x="579" y="534">mₜ⁻ , qₜ⁻</text>
+
+  <path class="state" d="M698 510H722"/>
+  <rect class="train" x="724" y="448" width="242" height="155" rx="10"/>
+  <text class="badge blue" x="754" y="476">TRAINABLE WRITE</text><text class="block-title" x="749" y="510">Surprise correction</text>
+  <text class="body" x="747" y="543">e = Wₓzₜ − mₜ⁻</text><text class="body" x="747" y="573">mₜ = mₜ⁻ + g ⊙ e</text><text class="small" x="747" y="596">qₜ = qₜ⁻ + mean(g)</text>
+  <rect class="data" x="550" y="620" width="160" height="52" rx="9"/><text class="body" x="567" y="653">current zₜ</text><path class="flow" d="M710 646H716V570H724"/>
+  <rect class="runtime" x="726" y="684" width="238" height="78" rx="10"/><text class="block-title" x="763" y="717">Corrected raw state</text><text class="body" x="795" y="749">mₜ , qₜ</text><path class="state" d="M845 603V684"/>
+
+  <!-- Raw state is the only recurrent state. -->
+  <path class="state" d="M845 762V790H127V554"/><text class="body" x="380" y="818">raw corrected state recurs in fp32</text>
+
+  <!-- Small, outcome-blind objective inset. -->
+  <rect x="52" y="826" width="914" height="38" rx="8" fill="#faf7fc" stroke="#665a91" stroke-width="2"/>
+  <text class="small purple" x="67" y="852">Label-free: next feature + age-balanced latent sketches (Δ=4,8,15) + exposure + reset health</text>
+
+  <!-- Shared read operator, with two separate lanes. -->
+  <rect class="panel" x="1016" y="370" width="496" height="506" rx="14"/>
+  <text class="panel-title" x="1038" y="408">One shared read R(m,q)</text><line class="divider" x1="1038" y1="422" x2="1490" y2="422"/>
+  <text class="body" x="1042" y="457">R(m,q) = c(q) · ρ ⊙ Agg(m)</text>
+  <rect class="fixed" x="1042" y="482" width="218" height="144" rx="10"/>
+  <text class="badge purple" x="1096" y="510">FIXED Agg</text><text class="body" x="1061" y="545">DINO: local + 2×2</text><text class="body" x="1081" y="576">+ global mixture</text><text class="small" x="1073" y="607">LeWM P=1: identity</text>
+  <rect class="fixed" x="1276" y="482" width="210" height="68" rx="10"/><text class="badge purple" x="1325" y="509">FIXED</text><text class="body" x="1302" y="539">maturity c(q)</text>
+  <rect class="train" x="1276" y="566" width="210" height="68" rx="10"/><text class="badge blue" x="1308" y="593">TRAINABLE</text><text class="body" x="1327" y="623">diagonal ρ</text>
+
+  <text class="block-title" x="1043" y="674">Pre-write lane</text><text class="body" x="1043" y="705">R(mₜ⁻,qₜ⁻) → rₜ⁻</text>
+  <rect class="audit" x="1283" y="652" width="203" height="66" rx="9"/><text class="body green" x="1300" y="681">diagnostic only</text><text class="small" x="1300" y="707">no feedback</text>
+  <path class="diag" d="M624 466V436H1002V686H1016"/>
+
+  <text class="block-title" x="1043" y="758">Post-write lane</text><text class="body" x="1043" y="789">R(mₜ,qₜ) → residual rₜ</text>
+  <rect class="runtime" x="1283" y="736" width="203" height="66" rx="9"/><text class="body" x="1302" y="765">to zₜ + rₜ</text><text class="small" x="1302" y="791">host fusion</text>
+  <path class="state" d="M964 723H1002V770H1016"/>
+  <text class="small" x="1043" y="838">ρ is zero-initialized: native identity before training</text>
+</svg>

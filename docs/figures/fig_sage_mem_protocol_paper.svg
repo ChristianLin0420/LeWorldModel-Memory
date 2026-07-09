@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="970"
+     viewBox="0 0 1536 970" role="img"
+     aria-labelledby="protocolTitle protocolDesc">
+  <title id="protocolTitle">Outcome-blind SAGE-Mem audit protocol</title>
+  <desc id="protocolDesc">Paired cue-only episodes at legal cue ages four, eight, and fifteen. Audit labels are sealed away from training and revealed only after formal predictions are locked. Five preregistered host-task cohorts use separate carrier-prior and frozen-host-output measurement lanes. An active locked consumer and controller form the executed-use path. A fail-closed ladder separates requirement, cue-time encoding, post-context retention, and executed use.</desc>
+  <defs>
+    <style><![CDATA[
+      .canvas{fill:#fff}.panel{fill:#fbfcfe;stroke:#c5ced8;stroke-width:2}
+      .host{fill:#eef1f4;stroke:#5f6b76;stroke-width:2.2}.train{fill:#e8f2fb;stroke:#17649a;stroke-width:2.5}
+      .fixed{fill:url(#fixedHatch);stroke:#665a91;stroke-width:2.2}.locked{fill:url(#lockedHatch);stroke:#9a5a00;stroke-width:2.2}
+      .data{fill:#fff7e6;stroke:#a86200;stroke-width:2.2}.audit{fill:#f0faf6;stroke:#13795f;stroke-width:2.2}.stop{fill:#fff1ef;stroke:#b33a2b;stroke-width:2.2}
+      .title{font:700 34px 'Noto Sans',Arial,sans-serif;fill:#131c24}.subtitle{font:500 22px 'Noto Sans',Arial,sans-serif;fill:#4d5d6c}
+      .panel-title{font:700 28px 'Noto Sans',Arial,sans-serif;fill:#17212b}.block-title{font:700 24px 'Noto Sans',Arial,sans-serif;fill:#17212b}
+      .body{font:500 22px 'Noto Sans',Arial,sans-serif;fill:#354554}.small{font:500 20px 'Noto Sans',Arial,sans-serif;fill:#4d5d6c}.badge{font:700 20px 'Noto Sans',Arial,sans-serif;letter-spacing:.4px}
+      .white{fill:#fff}.green{fill:#13795f}.orange{fill:#9a5a00}.red{fill:#b33a2b}
+      .flow{fill:none;stroke:#34495e;stroke-width:3;marker-end:url(#arrow)}.diag{fill:none;stroke:#13795f;stroke-width:2.8;stroke-dasharray:9 7;marker-end:url(#arrowGreen)}
+      .active{fill:none;stroke:#9a5a00;stroke-width:3.4;marker-end:url(#arrowOrange)}.seal{fill:none;stroke:#b33a2b;stroke-width:2.8;stroke-dasharray:7 6;marker-end:url(#arrowRed)}
+      .divider{stroke:#d3dae2;stroke-width:1.6}
+    ]]></style>
+    <pattern id="fixedHatch" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#f2eff8"/><path d="M-2 2L2-2M0 10L10 0M8 12L12 8" stroke="#d0c8e3" stroke-width="1.4"/></pattern>
+    <pattern id="lockedHatch" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#fff3dc"/><path d="M0 0L10 10M-3 7L3 13M7-3L13 3" stroke="#ead0a4" stroke-width="1.4"/></pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34495e"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#13795f"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#9a5a00"/></marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b33a2b"/></marker>
+  </defs>
+
+  <rect class="canvas" width="1536" height="970"/>
+  <text class="title" x="28" y="42">SAGE-Mem protocol: labels are withheld from training and used only for the final audit</text>
+  <text class="subtitle" x="28" y="73">Fresh paired banks, legal context, preregistered gates, and task-level reporting in every cohort.</text>
+
+  <!-- A: paired episode -->
+  <rect class="panel" x="24" y="96" width="598" height="456" rx="14"/>
+  <text class="panel-title" x="46" y="134">A  Paired cue-only episode</text><line class="divider" x1="46" y1="147" x2="600" y2="147"/>
+  <text class="body" x="48" y="181">Only declared cue pixels vary across paired classes.</text>
+  <g aria-label="accessible class keys; symbols are not extra experiment pixels">
+    <rect class="data" x="50" y="199" width="122" height="66" rx="9"/><circle cx="79" cy="232" r="13" fill="#0072b2"/><text class="block-title" x="104" y="240">C1 ●</text>
+    <rect class="data" x="184" y="199" width="122" height="66" rx="9"/><path d="M211 246l15-27 15 27z" fill="#d55e00"/><text class="block-title" x="246" y="240">C2 ▲</text>
+    <rect class="data" x="318" y="199" width="122" height="66" rx="9"/><rect x="338" y="219" width="26" height="26" fill="#009e73"/><text class="block-title" x="376" y="240">C3 ■</text>
+    <rect class="data" x="452" y="199" width="122" height="66" rx="9"/><path d="M481 215l18 17-18 17-18-17z" fill="#cc79a7"/><text class="block-title" x="510" y="240">C4 ◆</text>
+  </g>
+  <text class="small" x="51" y="289">Representative keys; class count is cohort-specific.</text>
+  <text class="small" x="51" y="314">Symbols are figure-only; they are never added to frames.</text>
+  <text class="block-title" x="50" y="350">One cue per episode at Δ ∈ {4, 8, 15}</text>
+  <line x1="72" y1="397" x2="574" y2="397" stroke="#758594" stroke-width="3"/>
+  <circle cx="122" cy="397" r="11" fill="#d55e00" stroke="#fff" stroke-width="3"/><circle cx="230" cy="397" r="11" fill="#d55e00" stroke="#fff" stroke-width="3"/><circle cx="338" cy="397" r="11" fill="#d55e00" stroke="#fff" stroke-width="3"/><circle cx="558" cy="397" r="12" fill="#17649a" stroke="#fff" stroke-width="3"/>
+  <text class="body" x="98" y="434">Δ=15</text><text class="body" x="210" y="434">Δ=8</text><text class="body" x="320" y="434">Δ=4</text><text class="body" x="510" y="434">decision</text>
+  <path d="M391 461H575" stroke="#17649a" stroke-width="7" stroke-linecap="round"/><path d="M391 452v18M575 452v18" stroke="#17649a" stroke-width="3"/>
+  <text class="body" x="407" y="499">legal raw context</text><text class="small" x="50" y="534">Trajectory, actions, physics, and endpoint stay fixed.</text>
+
+  <!-- B: distinct interfaces -->
+  <rect class="panel" x="646" y="96" width="438" height="456" rx="14"/>
+  <text class="panel-title" x="668" y="134">B  Three distinct interfaces</text><line class="divider" x1="668" y1="147" x2="1062" y2="147"/>
+  <rect class="train" x="670" y="174" width="176" height="86" rx="10"/><text class="block-title" x="704" y="209">Carrier</text><text class="body" x="696" y="242">state + read</text>
+  <rect class="host" x="874" y="174" width="184" height="86" rx="10"/><text class="block-title" x="905" y="209">Frozen host</text><text class="body" x="914" y="242">predictor</text><path class="flow" d="M846 217H874"/>
+  <path class="diag" d="M758 260V291H694"/>
+  <rect class="audit" x="670" y="293" width="364" height="94" rx="10"/><text class="block-title" x="694" y="326">1  Carrier prior rₜ⁻</text><text class="body" x="694" y="357">storage diagnostic</text><text class="small" x="694" y="380">read-only; no feedback</text>
+  <path class="diag" d="M966 260V401H1018"/>
+  <rect class="audit" x="670" y="403" width="364" height="94" rx="10"/><text class="block-title" x="694" y="436">2  Frozen-host output yₜ</text><text class="body" x="694" y="468">primary retention endpoint</text>
+  <path class="active" d="M966 497V536H850V574"/>
+
+  <!-- C: claim ladder -->
+  <rect class="panel" x="1108" y="96" width="404" height="456" rx="14"/>
+  <text class="panel-title" x="1130" y="134">C  Fail-closed claim ladder</text><line class="divider" x1="1130" y1="147" x2="1490" y2="147"/>
+  <rect class="audit" x="1134" y="174" width="352" height="70" rx="10"/><circle cx="1163" cy="209" r="18" fill="#13795f"/><text class="block-title white" x="1156" y="217">1</text><text class="block-title" x="1193" y="202">Required</text><text class="body" x="1193" y="232">old cue changes the target</text><path class="diag" d="M1310 244V263"/>
+  <rect class="audit" x="1134" y="265" width="352" height="70" rx="10"/><circle cx="1163" cy="300" r="18" fill="#13795f"/><text class="block-title white" x="1156" y="308">2</text><text class="block-title" x="1193" y="293">Encoded</text><text class="body" x="1193" y="323">readable while cue is visible</text><path class="diag" d="M1310 335V354"/>
+  <rect class="audit" x="1134" y="356" width="352" height="70" rx="10"/><circle cx="1163" cy="391" r="18" fill="#13795f"/><text class="block-title white" x="1156" y="399">3</text><text class="block-title" x="1193" y="384">Retained</text><text class="body" x="1193" y="414">after raw context expires</text><path class="active" d="M1310 426V445"/>
+  <rect class="locked" x="1134" y="447" width="352" height="70" rx="10"/><circle cx="1163" cy="482" r="18" fill="#9a5a00"/><text class="block-title white" x="1156" y="490">4</text><text class="block-title" x="1193" y="475">Used</text><text class="body" x="1193" y="505">changes executed decisions</text>
+
+  <!-- Bottom: input contract, active use, stopping rule. -->
+  <rect class="data" x="24" y="574" width="598" height="124" rx="14"/>
+  <text class="block-title" x="46" y="608">May enter label-free training</text>
+  <rect class="train" x="48" y="624" width="258" height="54" rx="9"/><text class="small" x="67" y="657">sidecar: frozen zₜ + action</text>
+  <rect class="host" x="320" y="624" width="272" height="54" rx="9"/><text class="small" x="344" y="657">host-only: native proprio</text>
+  <path class="flow" d="M306 651V706H630V217H670"/>
+
+  <rect class="stop" x="24" y="716" width="598" height="100" rx="14"/>
+  <text class="block-title red" x="46" y="751">SEALED FROM TRAINING</text><text class="body" x="46" y="783">cue class, goal ID, reward, and audit labels</text><text class="small red" x="46" y="808">revealed only after formal predictions are locked</text>
+  <path class="seal" d="M622 766H640V522H670"/>
+  <text class="small red" x="680" y="541">final scoring only</text>
+
+  <rect class="locked" x="646" y="574" width="438" height="242" rx="14"/>
+  <text class="badge orange" x="668" y="609">3  ACTIVE LOCKED USE — ELIGIBLE ONLY</text>
+  <rect class="locked" x="670" y="631" width="166" height="58" rx="8"/><text class="body" x="687" y="667">consumer</text>
+  <path class="active" d="M836 660H868"/><rect class="locked" x="870" y="631" width="166" height="58" rx="8"/><text class="body" x="889" y="667">controller</text>
+  <path class="active" d="M953 689V727"/><rect class="data" x="730" y="729" width="270" height="58" rx="9"/><text class="body" x="761" y="765">environment execution</text>
+  <text class="small orange" x="669" y="807">Active execution path; not a diagnostic tap.</text>
+
+  <rect class="stop" x="1108" y="574" width="404" height="242" rx="14"/>
+  <text class="block-title red" x="1130" y="610">STOP if a prerequisite fails</text>
+  <text class="body" x="1130" y="649">No pooled memory score.</text><text class="body" x="1130" y="684">No partial success from failed gates.</text>
+  <text class="body" x="1130" y="719">Each positive supports one rung.</text><text class="small" x="1130" y="760">Diagnostic prior ≠ exposed output</text><text class="small" x="1130" y="790">≠ executed use.</text>
+
+  <!-- Dedicated cohort row. -->
+  <text class="panel-title" x="28" y="870">Five preregistered cohorts</text>
+  <g aria-label="five preregistered host-task cohorts">
+    <rect class="host" x="326" y="890" width="214" height="60" rx="9"/><text class="small" x="349" y="927">LeWM Reacher color</text>
+    <rect class="host" x="552" y="890" width="204" height="60" rx="9"/><text class="small" x="575" y="927">LeWM PushT color</text>
+    <rect class="host" x="768" y="890" width="218" height="60" rx="9"/><text class="small" x="789" y="927">DINO PushT token</text>
+    <rect class="host" x="998" y="890" width="226" height="60" rx="9"/><text class="small" x="1018" y="927">DINO PushT binding</text>
+    <rect class="host" x="1236" y="890" width="276" height="60" rx="9"/><text class="small" x="1258" y="927">DINO PointMaze goal</text>
+  </g>
+</svg>

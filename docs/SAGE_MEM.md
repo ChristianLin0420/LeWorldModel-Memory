@@ -20,9 +20,16 @@ by Paper A:
 2. retained evidence must be mapped into coordinates exposed by the frozen host
    and a declared consumer.
 
-![SAGE-Mem architecture and data flow](figures/fig_sage_mem.svg)
+![SAGE-Mem carrier and frozen-host data flow](figures/fig_sage_mem_paper.svg)
 
-The editable source above is [fig_sage_mem.svg](figures/fig_sage_mem.svg).
+The architecture source above is
+[fig_sage_mem_paper.svg](figures/fig_sage_mem_paper.svg). The outcome-blind
+paired-data and audit protocol is shown separately below.
+
+![SAGE-Mem paired-data and audit protocol](figures/fig_sage_mem_protocol_paper.svg)
+
+Its editable source is
+[fig_sage_mem_protocol_paper.svg](figures/fig_sage_mem_protocol_paper.svg).
 
 ## 1. Why this design follows from the audit
 
@@ -492,7 +499,7 @@ a weaker “mostly successful” retention claim.
 
 The formal model graph exposes three reads and two mechanism ablations:
 
-- **Prior read:** `rho ⊙ Agg(m_t^-)`, before the current observation. This diagnoses
+- **Prior read:** `c(q_t^-) rho ⊙ Agg(m_t^-)`, before the current observation. This diagnoses
   internal storage but is never the primary success endpoint.
 - **Output read:** the frozen predictor output after SAGE-Mem fusion. This is the
   primary retention endpoint.
@@ -502,7 +509,7 @@ The formal model graph exposes three reads and two mechanism ablations:
   accumulated before the legal context. It tests whether the multiscale causal
   state, rather than an extra local transformation, is needed.
 - **Exposure ablation:** preserves and audits the state/prior but blocks the
-  `rho ⊙ Agg(m_t)` residual from the host. It tests whether gains require the
+  `c(q_t) rho ⊙ Agg(m_t)` residual from the host. It tests whether gains require the
   proposed carrier-to-host path.
 
 The exact ablation construction and any parameter-balancing dummy tensors are
