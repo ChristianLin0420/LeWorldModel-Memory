@@ -5,7 +5,8 @@ This utility is intentionally separate from the sealed experiment runner.  It
 does not import experiment code, open measurement artifacts, or interpret any
 experimental outcome.  It only observes process identity, resource headroom,
 artifact *completion metadata*, and the existence of registered cell
-manifests.
+manifests.  A metadata-complete report only stops this operational monitor; it
+is never an authorization to update the paper or make a scientific claim.
 
 The initial supervisor PID and tmux session are supplied explicitly.  Every
 automatic restart is launched in a new tmux session and then rebound to an
@@ -39,6 +40,8 @@ from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 STUDY_ROOT = ROOT / "outputs/sage_mem_v1"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 REPORT_SCHEMA = "sage_mem_v1_formal_evidence_audit_v1"
 REPORT_STUDY = "sage-mem-v1"
@@ -47,6 +50,7 @@ REPORT_STATUS = "complete"
 FORMAL_CELL_COUNT = 600
 FINALIZER_SCHEMA = "sage_mem_v1_formal_finalizer_v1"
 PHASE_A_SCHEMA = "sage_mem_v1_phase_a_cell_v1"
+RECOVERY_STATE_SCHEMA = "sage_mem_v1_closeout_state_v1"
 
 REPORT_KEYS = {
     "schema", "study", "stage", "status", "phase_a_cells_verified",
@@ -111,6 +115,17 @@ def _positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
+def _has_symlink_component(path: Path) -> bool:
+    lexical = Path(os.path.abspath(path))
+    for component in [*reversed(lexical.parents), lexical]:
+        try:
+            if component.is_symlink():
+                return True
+        except OSError:
+            return True
+    return False
+
+
 class EventLog:
     """Append one fsync-backed JSON object per watchdog event."""
 
@@ -119,7 +134,11 @@ class EventLog:
 
     def emit(self, event: str, **fields: Any) -> None:
         record = {"timestamp_utc": _utc_timestamp(), "event": event, **fields}
+        if _has_symlink_component(self.path):
+            raise WatchdogError("watchdog event-log path contains a symlink")
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if _has_symlink_component(self.path):
+            raise WatchdogError("watchdog event-log path contains a symlink")
         existed = self.path.exists() or self.path.is_symlink()
         flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_CLOEXEC
         if hasattr(os, "O_NOFOLLOW"):
@@ -153,7 +172,9 @@ class EventLog:
 
 
 @dataclass(frozen=True)
-class CompletionCheck:
+class CompletionMetadataCheck:
+    """Outcome-blind operational metadata status, never paper authorization."""
+
     state: str
     reason: str | None = None
     phase_a_grid_sha256: str | None = None
@@ -166,17 +187,30 @@ def _read_metadata_json(path: Path, label: str) -> tuple[dict[str, Any] | None,
     path = Path(path)
     if not path.exists() and not path.is_symlink():
         return None, f"{label}-absent"
-    if not path.is_file() or path.is_symlink():
+    if not path.is_file() or path.is_symlink() \
+            or _has_symlink_component(path):
         return None, f"{label}-is-not-a-regular-file"
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = item
+        return result
     try:
+        payload = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8", errors="strict"),
+            object_pairs_hook=unique_object,
             parse_constant=lambda token: (_ for _ in ()).throw(
                 ValueError(f"non-finite JSON token: {token}")))
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         return None, f"{label}-is-not-valid-json"
     if not isinstance(value, dict):
         return None, f"{label}-is-not-a-mapping"
+    expected = (_canonical_json(value) + "\n").encode("utf-8")
+    if payload != expected:
+        return None, f"{label}-is-not-canonical-json"
     return value, None
 
 
@@ -205,6 +239,8 @@ def _validate_exact_cell_inventory(root: Path, label: str) -> str | None:
 
 
 def _sha256_file(path: Path) -> str:
+    if _has_symlink_component(path):
+        raise WatchdogError(f"identity path contains symlink: {path}")
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -261,17 +297,24 @@ def _validate_cross_bound_cells(study_root: Path, grid_hash: str) -> str | None:
     return None
 
 
-def validate_completion_report(path: Path, study_root: Path) -> CompletionCheck:
-    """Cross-bind the audit report to the exact current finalized grid."""
+def validate_completion_metadata(
+        path: Path, study_root: Path) -> CompletionMetadataCheck:
+    """Cross-bind only completion metadata to the current finalized grid.
+
+    This deliberately does not interpret effects or gates and cannot authorize
+    manuscript text.  Publication requires the independent result and paper
+    binding audits outside this watchdog.
+    """
 
     path = Path(path)
     if not path.exists() and not path.is_symlink():
-        return CompletionCheck("absent")
+        return CompletionMetadataCheck("absent")
     value, error = _read_metadata_json(path, "report")
     if error is not None or value is None:
-        return CompletionCheck("invalid", error)
+        return CompletionMetadataCheck("invalid", error)
     if set(value) != REPORT_KEYS:
-        return CompletionCheck("invalid", "report-top-level-keys-mismatch")
+        return CompletionMetadataCheck(
+            "invalid", "report-top-level-keys-mismatch")
     expected = {
         "schema": REPORT_SCHEMA,
         "study": REPORT_STUDY,
@@ -284,28 +327,30 @@ def validate_completion_report(path: Path, study_root: Path) -> CompletionCheck:
         observed = value.get(key)
         if observed != wanted or (key.endswith("cells_verified")
                                   and isinstance(observed, bool)):
-            return CompletionCheck("invalid", f"report-{key}-mismatch")
+            return CompletionMetadataCheck(
+                "invalid", f"report-{key}-mismatch")
     grid_hash = value.get("phase_a_grid_sha256")
     identity_hash = value.get("identity_ledger_sha256")
     if not _is_sha256(grid_hash) or not _is_sha256(identity_hash):
-        return CompletionCheck("invalid", "report-identity-hash-malformed")
+        return CompletionMetadataCheck(
+            "invalid", "report-identity-hash-malformed")
 
     root = Path(study_root)
     inventory_error = _validate_exact_cell_inventory(
         root / "cells", "phase-a")
     if inventory_error is not None:
-        return CompletionCheck("invalid", inventory_error)
+        return CompletionMetadataCheck("invalid", inventory_error)
     inventory_error = _validate_exact_cell_inventory(
         root / "formal_finalized" / "cells", "finalized")
     if inventory_error is not None:
-        return CompletionCheck("invalid", inventory_error)
+        return CompletionMetadataCheck("invalid", inventory_error)
 
     summary, error = _read_metadata_json(
         root / "formal_finalized" / "summary.json", "finalizer-summary")
     if error is not None or summary is None:
-        return CompletionCheck("invalid", error)
+        return CompletionMetadataCheck("invalid", error)
     if set(summary) != FINALIZER_SUMMARY_KEYS:
-        return CompletionCheck(
+        return CompletionMetadataCheck(
             "invalid", "finalizer-summary-top-level-keys-mismatch")
     summary_expected = {
         "schema": FINALIZER_SCHEMA,
@@ -319,24 +364,75 @@ def validate_completion_report(path: Path, study_root: Path) -> CompletionCheck:
         observed = summary.get(key)
         if observed != wanted or (key.endswith("cells")
                                   and isinstance(observed, bool)):
-            return CompletionCheck(
+            return CompletionMetadataCheck(
                 "invalid", f"finalizer-summary-{key}-mismatch")
     summary_grid_hash = summary.get("phase_a_grid_sha256")
     if not _is_sha256(summary_grid_hash) \
             or summary_grid_hash != grid_hash:
-        return CompletionCheck(
+        return CompletionMetadataCheck(
             "invalid", "report-finalizer-grid-hash-mismatch")
     for key in ("label_reveal_receipt_sha256", "label_registry_sha256",
                 "finalized_cells_sha256"):
         if not _is_sha256(summary.get(key)):
-            return CompletionCheck(
+            return CompletionMetadataCheck(
                 "invalid", f"finalizer-summary-{key}-malformed")
     cross_binding_error = _validate_cross_bound_cells(
         root, str(summary_grid_hash))
     if cross_binding_error is not None:
-        return CompletionCheck("invalid", cross_binding_error)
-    return CompletionCheck(
+        return CompletionMetadataCheck("invalid", cross_binding_error)
+    return CompletionMetadataCheck(
         "complete", phase_a_grid_sha256=str(grid_hash))
+
+
+def validate_recovery_metadata_state(
+        study_root: Path, report_path: Path) -> CompletionMetadataCheck:
+    """Authenticate the recovery wrapper's metadata-only terminal state."""
+
+    root = Path(study_root)
+    path = root / "receipts" / "closeout" / "recovery_state.json"
+    value, error = _read_metadata_json(path, "closeout-recovery-state")
+    if error == "closeout-recovery-state-absent":
+        return CompletionMetadataCheck("absent")
+    if error is not None or value is None:
+        return CompletionMetadataCheck("invalid", error)
+    expected_keys = {
+        "schema", "study", "stage", "status", "updated_utc",
+        "paper_authorization", "hooks_injected", "mode", "formal_audit_report",
+        "recovery_receipt", "reveal_receipt",
+    }
+    if set(value) != expected_keys \
+            or value.get("schema") != RECOVERY_STATE_SCHEMA \
+            or value.get("study") != REPORT_STUDY \
+            or value.get("stage") != "closeout-recovery" \
+            or value.get("status") != "metadata-audit-complete" \
+            or value.get("paper_authorization") is not False \
+            or value.get("hooks_injected") is not False \
+            or not isinstance(value.get("updated_utc"), str) \
+            or not value["updated_utc"] \
+            or not isinstance(value.get("mode"), str) or not value["mode"]:
+        return CompletionMetadataCheck(
+            "invalid", "closeout-recovery-state-identity-mismatch")
+    expected_paths = {
+        "formal_audit_report": Path(report_path),
+        "recovery_receipt": (
+            root / "receipts/closeout/recovery_receipt.json"),
+        "reveal_receipt": (
+            root / "receipts/closeout/label_reveal_receipt.original.json"),
+    }
+    for key, expected_path in expected_paths.items():
+        record = value.get(key)
+        if not isinstance(record, dict) or set(record) != {
+                "path", "sha256", "size"}:
+            return CompletionMetadataCheck(
+                "invalid", f"closeout-recovery-{key}-handle-malformed")
+        expected = Path(os.path.abspath(expected_path))
+        if not expected.is_file() or expected.is_symlink() \
+                or record.get("path") != str(expected.resolve()) \
+                or record.get("sha256") != _sha256_file(expected) \
+                or record.get("size") != expected.stat().st_size:
+            return CompletionMetadataCheck(
+                "invalid", f"closeout-recovery-{key}-handle-mismatch")
+    return CompletionMetadataCheck("complete")
 
 
 def _absolute_lexical(path: str, cwd: Path) -> Path:
@@ -604,7 +700,56 @@ def is_full_pipeline_process(process: ProcessIdentity,
 
     if is_exact_full_launcher(process, repo_root):
         return True
-    return is_exact_full_worker(process, repo_root)
+    if is_exact_full_worker(process, repo_root):
+        return True
+    repo = Path(os.path.abspath(repo_root))
+    if process.uid != os.geteuid() or process.cwd != repo \
+            or len(process.argv) < 2:
+        return False
+    script = _absolute_lexical(process.argv[1], process.cwd)
+    return script in {
+        repo / "scripts/run_sage_mem_v1_campaign.py",
+        repo / "scripts/launch_sage_mem_v1.py",
+        repo / "scripts/run_sage_mem_v1.py",
+        repo / "scripts/sage_mem_v1_formal_finalizer.py",
+        repo / "scripts/audit_sage_mem_v1.py",
+        repo / "scripts/audit_sage_mem_v1_formal.py",
+        repo / "scripts/recover_sage_mem_v1_closeout.py",
+    }
+
+
+def closeout_recovery_argv(repo_root: Path, study_root: Path,
+                           stop_sentinel: Path) -> tuple[str, ...]:
+    """Return the sole production argv accepted for closeout recovery."""
+
+    repo = Path(os.path.abspath(repo_root))
+    study = Path(os.path.abspath(study_root))
+    stop = Path(os.path.abspath(stop_sentinel))
+    return (
+        str(_expected_python(repo)),
+        "scripts/recover_sage_mem_v1_closeout.py",
+        "--recover", "--repo-root", str(repo),
+        "--study-root", str(study),
+        "--spec", str(repo / "configs/sage_mem_v1.yaml"),
+        "--stop-sentinel", str(stop),
+        "--execute",
+    )
+
+
+def is_exact_closeout_recovery(
+        process: ProcessIdentity, repo_root: Path, study_root: Path,
+        stop_sentinel: Path) -> bool:
+    """Recognize one exact same-user closeout recovery kernel process."""
+
+    repo = Path(os.path.abspath(repo_root))
+    if process.uid != os.geteuid() or process.cwd != repo or not process.argv:
+        return False
+    normalized = (
+        str(_absolute_lexical(process.argv[0], process.cwd)),
+        *process.argv[1:],
+    )
+    return tuple(normalized) == closeout_recovery_argv(
+        repo, study_root, stop_sentinel)
 
 
 @dataclass(frozen=True)
@@ -651,7 +796,12 @@ class TmuxClient:
 
     def launch(self, session: str, repo_root: Path, command: Sequence[str],
                log_path: Path) -> bool:
+        if _has_symlink_component(log_path):
+            raise WatchdogError("tmux log path contains a symlink")
         log_path.parent.mkdir(parents=True, exist_ok=True)
+        if _has_symlink_component(log_path) \
+                or (log_path.exists() and not log_path.is_file()):
+            raise WatchdogError("tmux log path is unsafe")
         shell = (
             "exec env PYTHONUNBUFFERED=1 " + shlex.join(command)
             + " >>" + shlex.quote(str(log_path)) + " 2>&1")
@@ -666,6 +816,24 @@ class TmuxClient:
             self.kill(session)
             return False
         return True
+
+
+def preflight_bootstrap_identity(
+        *, repo_root: Path, supervisor_pid: int, tmux_session: str,
+        campaign_poll_seconds: float, inspector: ProcessInspector,
+        tmux: TmuxClient) -> ProcessIdentity:
+    """Authenticate the supplied supervisor/session before any state mutation."""
+
+    repo = Path(os.path.abspath(repo_root))
+    process = inspector.read(supervisor_pid)
+    if process is None or not process.live \
+            or not is_exact_supervisor(
+                process, repo, campaign_poll_seconds):
+        raise WatchdogError("bootstrap supervisor identity differs")
+    pane = tmux.pane(tmux_session)
+    if pane is None or pane.dead or pane.pid != supervisor_pid:
+        raise WatchdogError("bootstrap tmux session does not own supervisor")
+    return process
 
 
 @dataclass(frozen=True)
@@ -741,8 +909,16 @@ def progress_token(study_root: Path) -> tuple[int, int]:
 
 
 def campaign_lock_is_available(path: Path) -> bool:
+    if _has_symlink_component(path):
+        raise WatchdogError("campaign lock path contains a symlink")
     path.parent.mkdir(parents=True, exist_ok=True)
-    stream = path.open("a+", encoding="utf-8")
+    if _has_symlink_component(path):
+        raise WatchdogError("campaign lock path contains a symlink")
+    flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(path, flags, 0o640)
+    stream = os.fdopen(descriptor, "a+", encoding="utf-8")
     try:
         try:
             fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -758,7 +934,11 @@ def acquire_watchdog_lock(path: Path) -> int:
     """Hold a same-host singleton lock for the watchdog's whole lifetime."""
 
     path = Path(path)
+    if _has_symlink_component(path):
+        raise WatchdogError("watchdog lock path contains a symlink")
     path.parent.mkdir(parents=True, exist_ok=True)
+    if _has_symlink_component(path):
+        raise WatchdogError("watchdog lock path contains a symlink")
     flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -789,6 +969,7 @@ class TrackedCampaign:
     session: str
     launched_monotonic: float
     progress_at_launch: tuple[int, int]
+    kind: str = "campaign"
 
 
 @dataclass(frozen=True)
@@ -808,6 +989,9 @@ class CampaignWatchdog:
             resource_reader: Callable[[Path], ResourceSnapshot] = read_resources,
             gpu_reader: Callable[[], Mapping[int, int]] = read_gpu_temperatures,
             progress_reader: Callable[[Path], tuple[int, int]] = progress_token,
+            closeout_guard_validator: Callable[[], None] = lambda: None,
+            pre_reveal_interlock_validator: Callable[[], None] = lambda: None,
+            closeout_recovery_command: Sequence[str] | None = None,
             monotonic: Callable[[], float] = time.monotonic,
             sleeper: Callable[[float], None] = time.sleep,
             campaign_poll_seconds: float = 30.0,
@@ -834,6 +1018,12 @@ class CampaignWatchdog:
         self.resource_reader = resource_reader
         self.gpu_reader = gpu_reader
         self.progress_reader = progress_reader
+        self.closeout_guard_validator = closeout_guard_validator
+        self.pre_reveal_interlock_validator = \
+            pre_reveal_interlock_validator
+        self.closeout_recovery_command = tuple(
+            closeout_recovery_command or closeout_recovery_argv(
+                self.repo_root, self.study_root, self.stop_sentinel))
         self.monotonic = monotonic
         self.sleeper = sleeper
         self.campaign_poll_seconds = float(campaign_poll_seconds)
@@ -863,16 +1053,15 @@ class CampaignWatchdog:
                 and self.launch_verify_seconds > 0
                 and self.term_grace_seconds >= 0
                 and self.kill_grace_seconds >= 0
-                and self.termination_poll_seconds > 0):
+                and self.termination_poll_seconds > 0
+                and self.closeout_recovery_command == closeout_recovery_argv(
+                    self.repo_root, self.study_root, self.stop_sentinel)):
             raise WatchdogError("invalid watchdog configuration")
-        process = inspector.read(supervisor_pid)
-        if process is None or not process.live \
-                or not is_exact_supervisor(
-                    process, self.repo_root, self.campaign_poll_seconds):
-            raise WatchdogError("bootstrap supervisor identity differs")
-        pane = tmux.pane(tmux_session)
-        if pane is None or pane.dead or pane.pid != supervisor_pid:
-            raise WatchdogError("bootstrap tmux session does not own supervisor")
+        process = preflight_bootstrap_identity(
+            repo_root=self.repo_root, supervisor_pid=supervisor_pid,
+            tmux_session=tmux_session,
+            campaign_poll_seconds=self.campaign_poll_seconds,
+            inspector=inspector, tmux=tmux)
         now = self.monotonic()
         self.tracked: TrackedCampaign | None = TrackedCampaign(
             process=process, session=tmux_session, launched_monotonic=now,
@@ -980,6 +1169,27 @@ class CampaignWatchdog:
             self.tracked or self.orphaned_campaign or self.restart_candidate,
             reason=reason)
 
+    def _cleanup_created_session(
+            self, session: str, candidate: TrackedCampaign | None, *,
+            reason: str) -> bool:
+        """Terminate every watchdog-created session, even before argv binds."""
+
+        if candidate is not None:
+            return self._terminate_campaign(candidate, reason=reason)
+        pane = self.tmux.pane(session)
+        if pane is None or pane.dead:
+            return True
+        self.tmux.kill(session)
+        deadline = self.monotonic() + self.kill_grace_seconds
+        while self.monotonic() <= deadline:
+            observed = self.tmux.pane(session)
+            if observed is None or observed.dead:
+                return True
+            self.sleeper(min(
+                self.termination_poll_seconds,
+                max(0.0, deadline - self.monotonic())))
+        return False
+
     def _pipeline_processes(self) -> tuple[list[ProcessIdentity],
                                            list[ProcessIdentity]]:
         supervisors: list[ProcessIdentity] = []
@@ -989,6 +1199,10 @@ class CampaignWatchdog:
                     process, self.repo_root, self.campaign_poll_seconds):
                 supervisors.append(process)
             elif is_full_pipeline_process(process, self.repo_root):
+                orphans.append(process)
+            elif is_exact_closeout_recovery(
+                    process, self.repo_root, self.study_root,
+                    self.stop_sentinel):
                 orphans.append(process)
         return supervisors, orphans
 
@@ -1022,8 +1236,7 @@ class CampaignWatchdog:
                         and process.uid == os.geteuid() \
                         and process.pid == pane.pid \
                         and process.session == process.pid \
-                        and process.pgrp == process.pid \
-                        and process.cwd == self.repo_root:
+                        and process.pgrp == process.pid:
                     candidate = TrackedCampaign(
                         process=process, session=session,
                         launched_monotonic=now,
@@ -1077,11 +1290,99 @@ class CampaignWatchdog:
                 self.restart_candidate = None
                 return False
             self.sleeper(min(1.0, self.poll_seconds))
-        terminated = (self._terminate_campaign(
-            candidate, reason="restart-verification-timeout")
-            if candidate is not None else pane is None or pane.dead)
+        terminated = self._cleanup_created_session(
+            session, candidate, reason="restart-verification-timeout")
         self.logger.emit(
             "restart-launch-failed", attempt=self.restart_attempts,
+            tmux_session=session, reason="exact-process-verification-timeout",
+            terminated_and_verified=terminated)
+        self.restart_candidate = None
+        return False
+
+    def _launch_closeout_recovery(self, now: float) -> bool:
+        """Launch and identity-bind the sole registered recovery command."""
+
+        if self._stop_is_requested():
+            return False
+        self.restart_attempts += 1
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        session = (
+            f"sage-mem-v1-closeout-{stamp}-a{self.restart_attempts}")
+        log_path = self.study_root / "logs" / (
+            f"closeout-recovery-{stamp}-a{self.restart_attempts}.log")
+        self.logger.emit(
+            "closeout-recovery-launch", attempt=self.restart_attempts,
+            tmux_session=session, recovery_log=str(log_path),
+            paper_authorization=False)
+        if not self.tmux.launch(
+                session, self.repo_root, self.closeout_recovery_command,
+                log_path):
+            self.logger.emit(
+                "closeout-recovery-launch-failed",
+                attempt=self.restart_attempts, tmux_session=session,
+                reason="tmux-create-or-option-failed")
+            return False
+        deadline = self.monotonic() + self.launch_verify_seconds
+        candidate: TrackedCampaign | None = None
+        pane: PaneIdentity | None = None
+        while self.monotonic() <= deadline:
+            pane = self.tmux.pane(session)
+            if pane is not None and not pane.dead:
+                process = self.inspector.read(pane.pid)
+                if process is not None and process.live \
+                        and process.uid == os.geteuid() \
+                        and process.pid == pane.pid \
+                        and process.session == process.pid \
+                        and process.pgrp == process.pid:
+                    candidate = TrackedCampaign(
+                        process=process, session=session,
+                        launched_monotonic=now,
+                        progress_at_launch=self.progress_reader(
+                            self.study_root), kind="recovery")
+                    self.restart_candidate = candidate
+                if candidate is not None and is_exact_closeout_recovery(
+                        candidate.process, self.repo_root, self.study_root,
+                        self.stop_sentinel):
+                    if self._stop_is_requested():
+                        terminated = self._terminate_campaign(
+                            candidate, reason="stop-during-closeout-recovery")
+                        self.logger.emit(
+                            "closeout-recovery-aborted",
+                            attempt=self.restart_attempts,
+                            tmux_session=session,
+                            reason="stop-during-closeout-recovery",
+                            terminated_and_verified=terminated)
+                        self.restart_candidate = None
+                        return False
+                    self.tracked = candidate
+                    self.restart_candidate = None
+                    self.orphaned_campaign = None
+                    self.orphan_first_seen = None
+                    self.orphan_termination_attempted = None
+                    self.logger.emit(
+                        "closeout-recovery-verified",
+                        attempt=self.restart_attempts,
+                        recovery_pid=process.pid,
+                        recovery_start_ticks=process.start_ticks,
+                        tmux_session=session,
+                        paper_authorization=False)
+                    return True
+            if self._stop_is_requested() and candidate is not None:
+                terminated = self._terminate_campaign(
+                    candidate, reason="stop-during-closeout-recovery")
+                self.logger.emit(
+                    "closeout-recovery-aborted",
+                    attempt=self.restart_attempts, tmux_session=session,
+                    reason="stop-during-closeout-recovery",
+                    terminated_and_verified=terminated)
+                self.restart_candidate = None
+                return False
+            self.sleeper(min(1.0, self.poll_seconds))
+        terminated = self._cleanup_created_session(
+            session, candidate,
+            reason="closeout-recovery-verification-timeout")
+        self.logger.emit(
+            "closeout-recovery-launch-failed", attempt=self.restart_attempts,
             tmux_session=session, reason="exact-process-verification-timeout",
             terminated_and_verified=terminated)
         self.restart_candidate = None
@@ -1090,21 +1391,82 @@ class CampaignWatchdog:
     def step(self) -> WatchdogDecision:
         now = self.monotonic()
         if self._stop_is_requested():
+            terminated_recovery = True
+            if self.tracked is not None and self.tracked.kind == "recovery":
+                terminated_recovery = self._terminate_campaign(
+                    self.tracked, reason="stop-during-closeout-recovery")
             self.logger.emit(
                 "watchdog-stop", reason=("signal" if self._stop_requested
                                           else "stop-sentinel"),
-                sentinel=str(self.stop_sentinel))
+                sentinel=str(self.stop_sentinel),
+                closeout_recovery_terminated=terminated_recovery)
             return WatchdogDecision("exit", 0)
 
-        completion = validate_completion_report(
+        try:
+            self.closeout_guard_validator()
+        except Exception as error:
+            terminated = self._kill_tracked("invalid-pre-reveal-custody")
+            self.logger.emit(
+                "watchdog-fail-closed",
+                reason="invalid-pre-reveal-closeout-custody",
+                detail=f"{type(error).__name__}: {error}",
+                tracked_process_terminated=terminated)
+            return WatchdogDecision("exit", 4)
+        validate_interlock = (
+            self.tracked is not None and self.tracked.kind == "campaign")
+        if self.tracked is None:
+            validate_interlock = (
+                self.progress_reader(self.study_root)[0] < FORMAL_CELL_COUNT)
+        if validate_interlock:
+            try:
+                self.pre_reveal_interlock_validator()
+            except Exception as error:
+                terminated = self._kill_tracked(
+                    "invalid-pre-reveal-interlock")
+                self.logger.emit(
+                    "watchdog-fail-closed",
+                    reason="invalid-pre-reveal-closeout-interlock",
+                    detail=f"{type(error).__name__}: {error}",
+                    tracked_process_terminated=terminated)
+                return WatchdogDecision("exit", 4)
+
+        completion = validate_completion_metadata(
             self.report_path, self.study_root)
         if completion.state == "complete":
-            self.logger.emit(
-                "formal-audit-complete",
-                phase_a_cells_verified=FORMAL_CELL_COUNT,
-                finalized_cells_verified=FORMAL_CELL_COUNT,
-                phase_a_grid_sha256=completion.phase_a_grid_sha256)
-            return WatchdogDecision("exit", 0)
+            recovery_state = validate_recovery_metadata_state(
+                self.study_root, self.report_path)
+            if recovery_state.state == "invalid":
+                terminated = self._kill_tracked(
+                    "invalid-closeout-recovery-state")
+                self.logger.emit(
+                    "watchdog-fail-closed",
+                    reason=recovery_state.reason,
+                    tracked_process_terminated=terminated)
+                return WatchdogDecision("exit", 4)
+            if recovery_state.state == "complete":
+                self.logger.emit(
+                    "formal-audit-metadata-complete",
+                    phase_a_cells_verified=FORMAL_CELL_COUNT,
+                    finalized_cells_verified=FORMAL_CELL_COUNT,
+                    phase_a_grid_sha256=completion.phase_a_grid_sha256,
+                    outcomes_interpreted=False, paper_authorization=False)
+                return WatchdogDecision("exit", 0)
+            if self.tracked is not None and self.tracked.kind == "recovery" \
+                    and self._tracked_alive():
+                self.logger.emit(
+                    "formal-audit-metadata-published-recovery-pending",
+                    recovery_pid=self.tracked.process.pid,
+                    paper_authorization=False)
+            else:
+                terminated = self._kill_tracked(
+                    "metadata-report-without-recovery-terminal-state")
+                self.logger.emit(
+                    "watchdog-fail-closed",
+                    reason="metadata-report-without-recovery-terminal-state",
+                    tracked_kind=(None if self.tracked is None
+                                  else self.tracked.kind),
+                    tracked_process_terminated=terminated)
+                return WatchdogDecision("exit", 4)
         if completion.state == "invalid":
             terminated = self._kill_tracked("invalid-completion-report")
             self.logger.emit(
@@ -1190,13 +1552,25 @@ class CampaignWatchdog:
                     tmux_session=self.tracked.session,
                     tracked_campaign_terminated=terminated)
                 return WatchdogDecision("exit", 4)
+            if self.tracked.kind == "recovery" \
+                    and not is_exact_closeout_recovery(
+                        self.tracked.process, self.repo_root,
+                        self.study_root, self.stop_sentinel):
+                terminated = self._kill_tracked(
+                    "tracked-closeout-recovery-identity-drift")
+                self.logger.emit(
+                    "watchdog-fail-closed",
+                    reason="tracked-closeout-recovery-identity-drift",
+                    tracked_process_terminated=terminated)
+                return WatchdogDecision("exit", 4)
             current_progress = self.progress_reader(self.study_root)
             if current_progress > self.last_progress:
                 self.logger.emit(
                     "campaign-progress", supervisor_pid=self.tracked.process.pid,
                     progress=list(current_progress))
                 self.last_progress = current_progress
-            if current_progress > self.tracked.progress_at_launch:
+            if self.tracked.kind == "campaign" \
+                    and current_progress > self.tracked.progress_at_launch:
                 if self.restart_attempts > 0 and (
                         now - self.tracked.launched_monotonic
                         >= self.healthy_reset_seconds):
@@ -1243,6 +1617,22 @@ class CampaignWatchdog:
                     pids=[item.pid for item in session_members])
                 self.orphaned_campaign = None
                 return WatchdogDecision("wait")
+            if previous.kind == "recovery":
+                pane = self.tmux.pane(previous.session)
+                if pane is not None and pane.dead \
+                        and pane.dead_status in {0, 2, 75}:
+                    reason = (
+                        "closeout-recovery-invariant-failure"
+                        if pane.dead_status == 2 else
+                        "closeout-recovery-stopped-without-watchdog-stop"
+                        if pane.dead_status == 75 else
+                        "closeout-recovery-exited-without-metadata-report")
+                    self.logger.emit(
+                        "watchdog-fail-closed", reason=reason,
+                        recovery_exit_status=pane.dead_status,
+                        tmux_session=previous.session)
+                    self.orphaned_campaign = None
+                    return WatchdogDecision("exit", 4)
             self.orphaned_campaign = None
         supervisors, orphans = self._pipeline_processes()
         if supervisors:
@@ -1273,7 +1663,17 @@ class CampaignWatchdog:
                 "watchdog-fail-closed", reason="restart-budget-exhausted",
                 consecutive_attempts=self.restart_attempts)
             return WatchdogDecision("exit", 3)
-        self._restart(now)
+        current_progress = self.progress_reader(self.study_root)
+        if current_progress[0] == FORMAL_CELL_COUNT:
+            self._launch_closeout_recovery(now)
+        elif current_progress[0] < FORMAL_CELL_COUNT:
+            self._restart(now)
+        else:
+            self.logger.emit(
+                "watchdog-fail-closed",
+                reason="formal-cell-count-exceeds-registered-grid",
+                progress=list(current_progress))
+            return WatchdogDecision("exit", 4)
         if self._stop_is_requested():
             self.logger.emit(
                 "watchdog-stop", reason=("signal" if self._stop_requested
@@ -1344,9 +1744,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ram-stop-gib", type=int, default=64)
     parser.add_argument("--gpu-warn-celsius", type=int, default=90)
     parser.add_argument(
-        "--gpu-stop-celsius", type=int,
-        help=("optional fail-closed temperature; disabled unless explicitly "
-              "configured"))
+        "--gpu-stop-celsius", type=int, default=95,
+        help=("fail-closed GPU temperature (production default: 95 C; "
+              "warning default: 90 C)"))
+    parser.add_argument(
+        "--disable-gpu-hard-stop", action="store_true",
+        help="explicitly disable the optional GPU temperature hard stop")
     parser.add_argument("--max-restarts", type=int, default=3)
     parser.add_argument("--healthy-reset-seconds", type=float, default=300.0)
     parser.add_argument("--orphan-grace-seconds", type=float, default=300.0)
@@ -1357,26 +1760,81 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def validate_production_cli_paths(args: argparse.Namespace,
+                                  repo_root: Path) -> None:
+    """Forbid a decoy study root or alternate watchdog singleton in production."""
+
+    repo = Path(os.path.abspath(repo_root))
+    expected = {
+        "study_root": STUDY_ROOT,
+        "report": STUDY_ROOT / "formal_audit/report.json",
+        "event_log": STUDY_ROOT / "logs/campaign-watchdog.jsonl",
+        "stop_sentinel": STUDY_ROOT / "STOP_CAMPAIGN_WATCHDOG",
+        "watchdog_lock": STUDY_ROOT / "logs/campaign-watchdog.lock",
+    }
+    for name, wanted in expected.items():
+        observed = Path(os.path.abspath(getattr(args, name)))
+        if observed != Path(os.path.abspath(wanted)):
+            raise WatchdogError(
+                f"production watchdog path override is forbidden: {name}")
+        try:
+            observed.relative_to(repo)
+        except ValueError as error:
+            raise WatchdogError(
+                f"production watchdog path leaves repository: {name}") \
+                from error
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     repo = Path(os.path.abspath(args.repo_root))
     if repo != ROOT or not (repo / "scripts/run_sage_mem_v1_campaign.py").is_file():
         raise WatchdogError("repo root differs from watchdog installation")
+    validate_production_cli_paths(args, repo)
     lock_descriptor = acquire_watchdog_lock(args.watchdog_lock)
     try:
+        inspector = ProcessInspector()
+        tmux = TmuxClient()
+        preflight_bootstrap_identity(
+            repo_root=repo, supervisor_pid=args.supervisor_pid,
+            tmux_session=args.tmux_session,
+            campaign_poll_seconds=args.campaign_poll_seconds,
+            inspector=inspector, tmux=tmux)
+        # The unchanged protocol-locked finalizer cannot enforce the new
+        # execution-registry custody receipt by itself.  Arm an empty
+        # pre-reveal interlock before supervision starts; the exactly tracked
+        # recovery process removes it only after re-authentication.
+        from scripts.recover_sage_mem_v1_closeout import (
+            CloseoutPaths, arm_pre_reveal_interlock,
+            seal_pre_reveal_custody, validate_pre_reveal_custody,
+            validate_pre_reveal_interlock,
+        )
+
+        closeout_paths = CloseoutPaths.production(
+            repo, args.study_root, repo / "configs/sage_mem_v1.yaml")
+        seal_pre_reveal_custody(closeout_paths)
+        arm_pre_reveal_interlock(closeout_paths)
+
         logger = EventLog(args.event_log)
         watchdog = CampaignWatchdog(
             repo_root=repo, study_root=args.study_root,
             report_path=args.report, stop_sentinel=args.stop_sentinel,
             supervisor_pid=args.supervisor_pid, tmux_session=args.tmux_session,
-            inspector=ProcessInspector(), tmux=TmuxClient(), logger=logger,
+            inspector=inspector, tmux=tmux, logger=logger,
+            closeout_guard_validator=lambda: validate_pre_reveal_custody(
+                closeout_paths, verify_raw_content=False),
+            pre_reveal_interlock_validator=lambda:
+                validate_pre_reveal_interlock(closeout_paths),
+            closeout_recovery_command=closeout_recovery_argv(
+                repo, args.study_root, args.stop_sentinel),
             campaign_poll_seconds=args.campaign_poll_seconds,
             poll_seconds=args.poll_seconds,
             disk_warn_bytes=args.disk_warn_gib * GIB,
             disk_stop_bytes=args.disk_stop_gib * GIB,
             ram_stop_bytes=args.ram_stop_gib * GIB,
             gpu_warn_celsius=args.gpu_warn_celsius,
-            gpu_stop_celsius=args.gpu_stop_celsius,
+            gpu_stop_celsius=(None if args.disable_gpu_hard_stop
+                              else args.gpu_stop_celsius),
             max_restarts=args.max_restarts,
             healthy_reset_seconds=args.healthy_reset_seconds,
             orphan_grace_seconds=args.orphan_grace_seconds,

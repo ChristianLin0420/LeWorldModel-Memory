@@ -9,6 +9,8 @@ import signal
 
 import pytest
 
+from scripts import recover_sage_mem_v1_closeout as closeout_module
+from scripts import watch_sage_mem_v1_campaign as watchdog_module
 from scripts.watch_sage_mem_v1_campaign import (
     ARMS,
     COHORTS,
@@ -20,7 +22,7 @@ from scripts.watch_sage_mem_v1_campaign import (
     REPORT_STATUS,
     REPORT_STUDY,
     CampaignWatchdog,
-    CompletionCheck,
+    CompletionMetadataCheck,
     EventLog,
     PaneIdentity,
     ProcessIdentity,
@@ -30,10 +32,22 @@ from scripts.watch_sage_mem_v1_campaign import (
     acquire_watchdog_lock,
     is_exact_full_launcher,
     is_exact_full_worker,
+    is_exact_closeout_recovery,
     is_exact_supervisor,
+    is_full_pipeline_process,
+    closeout_recovery_argv,
     supervisor_argv,
-    validate_completion_report,
+    parse_args,
+    validate_completion_metadata,
+    validate_production_cli_paths,
+    validate_recovery_metadata_state,
 )
+
+
+def _canonical_write(path: Path, value: object) -> None:
+    path.write_text(
+        json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8")
 
 
 class FakeClock:
@@ -185,14 +199,15 @@ def _valid_report() -> dict[str, object]:
     }
 
 
-def _write_completion_bundle(study: Path) -> Path:
+def _write_completion_bundle(study: Path, *,
+                             terminal_state: bool = True) -> Path:
     for cohort in COHORTS:
         for arm in ARMS:
             for seed in range(10):
                 phase_path = (study / "cells" / cohort / arm
                               / f"seed-{seed}" / "manifest.json")
                 phase_path.parent.mkdir(parents=True, exist_ok=True)
-                phase_path.write_text(json.dumps({
+                _canonical_write(phase_path, {
                     "schema": "sage_mem_v1_phase_a_cell_v1",
                     "study": REPORT_STUDY,
                     "stage": "formal-phase-a",
@@ -200,12 +215,12 @@ def _write_completion_bundle(study: Path) -> Path:
                     "cohort": cohort,
                     "arm": arm,
                     "seed": seed,
-                }), encoding="utf-8")
+                })
                 final_path = (study / "formal_finalized" / "cells" / cohort
                               / arm / f"seed-{seed}" / "manifest.json")
                 final_path.parent.mkdir(parents=True, exist_ok=True)
                 phase_hash = hashlib.sha256(phase_path.read_bytes()).hexdigest()
-                final_path.write_text(json.dumps({
+                _canonical_write(final_path, {
                     "schema": FINALIZER_SCHEMA,
                     "study": REPORT_STUDY,
                     "stage": "formal-finalized",
@@ -215,7 +230,7 @@ def _write_completion_bundle(study: Path) -> Path:
                     "seed": seed,
                     "phase_a_grid_sha256": "a" * 64,
                     "phase_a_manifest_sha256": phase_hash,
-                }), encoding="utf-8")
+                })
     summary = {
         "schema": FINALIZER_SCHEMA,
         "study": REPORT_STUDY,
@@ -234,10 +249,38 @@ def _write_completion_bundle(study: Path) -> Path:
         "finalized_cells": 600,
     }
     summary_path = study / "formal_finalized" / "summary.json"
-    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    _canonical_write(summary_path, summary)
     report = study / "formal_audit" / "report.json"
     report.parent.mkdir(parents=True, exist_ok=True)
-    report.write_text(json.dumps(_valid_report()), encoding="utf-8")
+    _canonical_write(report, _valid_report())
+    if terminal_state:
+        receipt_root = study / "receipts/closeout"
+        recovery = receipt_root / "recovery_receipt.json"
+        reveal = receipt_root / "label_reveal_receipt.original.json"
+        receipt_root.mkdir(parents=True, exist_ok=True)
+        _canonical_write(recovery, {"recovery": "synthetic"})
+        _canonical_write(reveal, {"reveal": "synthetic"})
+
+        def handle(path: Path) -> dict[str, object]:
+            return {
+                "path": str(path.resolve()),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "size": path.stat().st_size,
+            }
+
+        _canonical_write(receipt_root / "recovery_state.json", {
+            "schema": "sage_mem_v1_closeout_state_v1",
+            "study": REPORT_STUDY,
+            "stage": "closeout-recovery",
+            "status": "metadata-audit-complete",
+            "updated_utc": "2026-07-10T00:00:00+00:00",
+            "paper_authorization": False,
+            "hooks_injected": False,
+            "mode": "synthetic-test",
+            "formal_audit_report": handle(report),
+            "recovery_receipt": handle(recovery),
+            "reveal_receipt": handle(reveal),
+        })
     return report
 
 
@@ -256,24 +299,87 @@ def test_completion_report_requires_exact_identity_and_counts(
         tmp_path: Path, field: str, replacement: object) -> None:
     study = tmp_path / "study"
     report = _write_completion_bundle(study)
-    assert validate_completion_report(report, study).state == "complete"
+    assert validate_completion_metadata(report, study).state == "complete"
 
     value = _valid_report()
     value[field] = replacement
-    report.write_text(json.dumps(value), encoding="utf-8")
-    result = validate_completion_report(report, study)
+    _canonical_write(report, value)
+    result = validate_completion_metadata(report, study)
     assert result.state == "invalid"
 
 
 def test_completion_report_rejects_symlink_and_accepts_absence(
         tmp_path: Path) -> None:
     absent = tmp_path / "absent.json"
-    assert validate_completion_report(absent, tmp_path) == CompletionCheck("absent")
+    assert validate_completion_metadata(
+        absent, tmp_path) == CompletionMetadataCheck("absent")
     source = tmp_path / "source.json"
-    source.write_text(json.dumps(_valid_report()), encoding="utf-8")
+    _canonical_write(source, _valid_report())
     link = tmp_path / "link.json"
     link.symlink_to(source)
-    assert validate_completion_report(link, tmp_path).state == "invalid"
+    assert validate_completion_metadata(link, tmp_path).state == "invalid"
+
+
+def test_completion_metadata_rejects_duplicate_keys_and_symlink_ancestor(
+        tmp_path: Path) -> None:
+    study = tmp_path / "study"
+    report = _write_completion_bundle(study)
+    report.write_text(
+        '{"schema":"x","schema":"y"}\n', encoding="utf-8")
+    assert validate_completion_metadata(report, study).state == "invalid"
+
+    other = tmp_path / "other-audit"
+    other.mkdir()
+    moved = other / "report.json"
+    _canonical_write(moved, _valid_report())
+    audit_root = study / "formal_audit"
+    for item in audit_root.iterdir():
+        item.unlink()
+    audit_root.rmdir()
+    audit_root.symlink_to(other, target_is_directory=True)
+    assert validate_completion_metadata(
+        audit_root / "report.json", study).state == "invalid"
+
+
+def test_recovery_terminal_state_cross_binds_report_and_receipts(
+        tmp_path: Path) -> None:
+    study = tmp_path / "study"
+    report = study / "formal_audit/report.json"
+    recovery = study / "receipts/closeout/recovery_receipt.json"
+    reveal = study / "receipts/closeout/label_reveal_receipt.original.json"
+    for path, value in (
+            (report, {"report": "metadata-only"}),
+            (recovery, {"recovery": True}),
+            (reveal, {"reveal": True})):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _canonical_write(path, value)
+
+    def handle(path: Path) -> dict[str, object]:
+        return {
+            "path": str(path.resolve()),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "size": path.stat().st_size,
+        }
+
+    state = study / "receipts/closeout/recovery_state.json"
+    _canonical_write(state, {
+        "schema": "sage_mem_v1_closeout_state_v1",
+        "study": REPORT_STUDY,
+        "stage": "closeout-recovery",
+        "status": "metadata-audit-complete",
+        "updated_utc": "2026-07-10T00:00:00+00:00",
+        "paper_authorization": False,
+        "hooks_injected": False,
+        "mode": "post-reveal-reconstruction",
+        "formal_audit_report": handle(report),
+        "recovery_receipt": handle(recovery),
+        "reveal_receipt": handle(reveal),
+    })
+    assert validate_recovery_metadata_state(
+        study, report).state == "complete"
+    _canonical_write(report, {"report": "tampered"})
+    assert validate_recovery_metadata_state(
+        study, report).state == "invalid"
 
 
 def test_process_predicates_require_exact_repo_and_argv(tmp_path: Path) -> None:
@@ -290,8 +396,25 @@ def test_process_predicates_require_exact_repo_and_argv(tmp_path: Path) -> None:
         replace(launcher, argv=(*launcher.argv, "--extra")), repo)
     assert not is_exact_full_worker(
         replace(worker, argv=(*worker.argv[:-1], "--not-resume")), repo)
+    assert is_full_pipeline_process(
+        replace(worker, argv=(*worker.argv, "--unexpected")), repo)
+    assert is_full_pipeline_process(
+        replace(supervisor, argv=(*supervisor.argv, "--unexpected")), repo)
+    assert is_full_pipeline_process(
+        replace(launcher, argv=(*launcher.argv, "--unexpected")), repo)
     assert not is_exact_supervisor(
         replace(supervisor, uid=os.geteuid() + 1), repo)
+
+    recovery = ProcessIdentity(
+        pid=400, uid=os.geteuid(), ppid=1, pgrp=400, session=400,
+        start_ticks=4444, state="R", cwd=repo,
+        argv=closeout_recovery_argv(
+            repo, repo / "outputs/sage_mem_v1", repo / "STOP"))
+    assert is_exact_closeout_recovery(
+        recovery, repo, repo / "outputs/sage_mem_v1", repo / "STOP")
+    assert not is_exact_closeout_recovery(
+        replace(recovery, argv=(*recovery.argv, "--extra")),
+        repo, repo / "outputs/sage_mem_v1", repo / "STOP")
 
 
 def test_completion_report_cross_binds_summary_and_exact_inventories(
@@ -301,17 +424,17 @@ def test_completion_report_cross_binds_summary_and_exact_inventories(
     summary_path = study / "formal_finalized" / "summary.json"
     summary = json.loads(summary_path.read_text())
     summary["phase_a_grid_sha256"] = "9" * 64
-    summary_path.write_text(json.dumps(summary), encoding="utf-8")
-    result = validate_completion_report(report, study)
-    assert result == CompletionCheck(
+    _canonical_write(summary_path, summary)
+    result = validate_completion_metadata(report, study)
+    assert result == CompletionMetadataCheck(
         "invalid", "report-finalizer-grid-hash-mismatch")
 
     summary["phase_a_grid_sha256"] = "a" * 64
-    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    _canonical_write(summary_path, summary)
     extra = study / "cells" / "unregistered" / "manifest.json"
     extra.parent.mkdir(parents=True)
     extra.write_text("{}", encoding="utf-8")
-    assert validate_completion_report(report, study) == CompletionCheck(
+    assert validate_completion_metadata(report, study) == CompletionMetadataCheck(
         "invalid", "phase-a-manifest-inventory-mismatch")
 
 
@@ -320,8 +443,8 @@ def test_completion_report_rejects_extra_report_metadata(tmp_path: Path) -> None
     report = _write_completion_bundle(study)
     value = json.loads(report.read_text())
     value["unexpected"] = "stale-or-unregistered"
-    report.write_text(json.dumps(value), encoding="utf-8")
-    assert validate_completion_report(report, study) == CompletionCheck(
+    _canonical_write(report, value)
+    assert validate_completion_metadata(report, study) == CompletionMetadataCheck(
         "invalid", "report-top-level-keys-mismatch")
 
 
@@ -333,8 +456,8 @@ def test_completion_report_rejects_cell_changed_after_finalization(
              / "manifest.json")
     value = json.loads(phase.read_text())
     value["post_finalization_tamper"] = True
-    phase.write_text(json.dumps(value), encoding="utf-8")
-    assert validate_completion_report(report, study) == CompletionCheck(
+    _canonical_write(phase, value)
+    assert validate_completion_metadata(report, study) == CompletionMetadataCheck(
         "invalid", "finalized-manifest-cross-binding-mismatch")
 
 
@@ -494,6 +617,23 @@ def test_unrecognized_finalizer_descendant_is_cleaned_before_restart(
     assert len(tmux.launched) == 1
 
 
+def test_out_of_session_finalizer_helper_blocks_any_restart(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, _ = _watchdog(tmp_path)
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    helper = ProcessIdentity(
+        pid=778, uid=os.geteuid(), ppid=1, pgrp=778, session=778,
+        start_ticks=7788, state="S", cwd=watchdog.repo_root,
+        argv=(str(watchdog.repo_root / ".venv/bin/python"),
+              "scripts/sage_mem_v1_formal_finalizer.py", "--execute"))
+    inspector.processes[helper.pid] = helper
+    assert watchdog.step() == WatchdogDecision("exit", 3)
+    assert tmux.launched == []
+    assert any(event.get("reason") ==
+               "untracked-pipeline-process-outside-owned-session"
+               for event in logger.events)
+
+
 def test_restart_counter_resets_only_after_healthy_new_progress(
         tmp_path: Path) -> None:
     watchdog, inspector, tmux, _, clock, progress = _watchdog(
@@ -524,6 +664,27 @@ def test_tmux_launch_must_resolve_to_exact_supervisor_identity(
                for event in logger.events)
 
 
+def test_wrong_cwd_created_session_is_terminated_on_verification_timeout(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, _, _, _ = _watchdog(tmp_path)
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    original_launch = tmux.launch
+
+    def launch_wrong_cwd(*args: object, **kwargs: object) -> bool:
+        launched = original_launch(*args, **kwargs)
+        pane = tmux.panes[tmux.launched[-1]]
+        process = inspector.processes[pane.pid]
+        inspector.processes[pane.pid] = replace(
+            process, cwd=tmp_path / "wrong-cwd")
+        return launched
+
+    tmux.launch = launch_wrong_cwd  # type: ignore[method-assign]
+    assert watchdog.step() == WatchdogDecision("wait")
+    assert watchdog.tracked is None
+    assert inspector.processes == {}
+    assert tmux.launched[-1] in tmux.killed
+
+
 def test_signal_during_restart_aborts_and_terminates_new_session(
         tmp_path: Path) -> None:
     watchdog, inspector, tmux, logger, _, _ = _watchdog(tmp_path)
@@ -551,7 +712,13 @@ def test_operational_error_during_restart_terminates_launch_candidate(
     watchdog, inspector, tmux, _, _, _ = _watchdog(tmp_path)
     _make_tracked_process_disappear(watchdog, inspector, tmux)
 
+    calls = 0
+
     def fail_progress(_path: Path) -> tuple[int, int]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return (10, 0)
         raise OSError("progress filesystem failed")
 
     watchdog.progress_reader = fail_progress
@@ -559,6 +726,246 @@ def test_operational_error_during_restart_terminates_launch_candidate(
     assert inspector.processes == {}
     assert len(tmux.launched) == 1
     assert tmux.launched[0] in tmux.killed
+
+
+def test_exact_recovery_session_is_launched_after_complete_grid(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    assert watchdog.step() == WatchdogDecision("wait")
+    assert watchdog.tracked is not None
+    assert watchdog.tracked.kind == "recovery"
+    assert is_exact_closeout_recovery(
+        watchdog.tracked.process, watchdog.repo_root, watchdog.study_root,
+        watchdog.stop_sentinel)
+    assert any(event["event"] == "closeout-recovery-verified"
+               for event in logger.events)
+
+
+def test_missing_interlock_is_not_rejected_after_recovery_takes_ownership(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, _, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    assert watchdog.tracked.kind == "recovery"
+    calls = 0
+
+    def absent_interlock() -> None:
+        nonlocal calls
+        calls += 1
+        raise WatchdogError("interlock archived by recovery")
+
+    watchdog.pre_reveal_interlock_validator = absent_interlock
+    assert watchdog.step() == WatchdogDecision("wait")
+    assert calls == 0
+    assert watchdog.tracked is not None
+    assert inspector.same_process(watchdog.tracked.process)
+
+
+def test_campaign_interlock_mutation_fails_closed(tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, _ = _watchdog(tmp_path)
+
+    def invalid_interlock() -> None:
+        raise WatchdogError("interlock changed")
+
+    watchdog.pre_reveal_interlock_validator = invalid_interlock
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+    assert inspector.processes == {}
+    assert tmux.killed == ["initial"]
+    assert any(event.get("reason") ==
+               "invalid-pre-reveal-closeout-interlock"
+               for event in logger.events)
+
+
+def test_stop_during_recovery_terminates_exact_recovery_session(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, _, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery_session = watchdog.tracked.session
+    watchdog.stop_sentinel.touch()
+    assert watchdog.step() == WatchdogDecision("exit", 0)
+    assert recovery_session in tmux.killed
+    assert inspector.processes == {}
+
+
+def test_report_does_not_abandon_live_recovery_without_terminal_state(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery = watchdog.tracked
+    _write_completion_bundle(watchdog.study_root, terminal_state=False)
+    assert watchdog.step() == WatchdogDecision("wait")
+    assert inspector.same_process(recovery.process)
+    assert any(event["event"] ==
+               "formal-audit-metadata-published-recovery-pending"
+               for event in logger.events)
+
+    inspector.processes.pop(recovery.process.pid)
+    tmux.panes[recovery.session] = PaneIdentity(
+        recovery.process.pid, True, 0)
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+
+
+def test_report_pending_recovery_still_enforces_resource_hard_stop(
+        tmp_path: Path) -> None:
+    resources = [ResourceSnapshot(400 * GIB, 400 * GIB)]
+    watchdog, inspector, tmux, _, _, progress = _watchdog(
+        tmp_path, resources=resources)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery_session = watchdog.tracked.session
+    _write_completion_bundle(watchdog.study_root, terminal_state=False)
+    resources.append(ResourceSnapshot(199 * GIB, 400 * GIB))
+    assert watchdog.step() == WatchdogDecision("exit", 2)
+    assert recovery_session in tmux.killed
+
+
+def test_report_plus_unclean_recovery_exit_fails_closed(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, _, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery = watchdog.tracked
+    _write_completion_bundle(watchdog.study_root, terminal_state=False)
+    inspector.processes.pop(recovery.process.pid)
+    tmux.panes[recovery.session] = PaneIdentity(
+        recovery.process.pid, True, 2)
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+
+
+def test_invariant_exit_from_recovery_stops_without_retry(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery = watchdog.tracked
+    inspector.processes.pop(recovery.process.pid)
+    tmux.panes[recovery.session] = PaneIdentity(
+        recovery.process.pid, True, 2)
+    launches = len(tmux.launched)
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+    assert len(tmux.launched) == launches
+    assert any(event.get("reason") ==
+               "closeout-recovery-invariant-failure"
+               for event in logger.events)
+
+
+def test_crashed_recovery_without_terminal_status_is_relaunched(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, _, _, progress = _watchdog(tmp_path)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery = watchdog.tracked
+    inspector.processes.pop(recovery.process.pid)
+    tmux.panes[recovery.session] = PaneIdentity(
+        recovery.process.pid, True, 1)
+    launches = len(tmux.launched)
+    assert watchdog.step() == WatchdogDecision("wait")
+    assert len(tmux.launched) == launches + 1
+    assert watchdog.tracked is not None and watchdog.tracked.kind == "recovery"
+
+
+def test_resource_stop_during_recovery_kills_recovery_session(
+        tmp_path: Path) -> None:
+    resources = [ResourceSnapshot(400 * GIB, 400 * GIB)]
+    watchdog, inspector, tmux, _, _, progress = _watchdog(
+        tmp_path, resources=resources)
+    progress.append((600, 0))
+    _make_tracked_process_disappear(watchdog, inspector, tmux)
+    watchdog.step()
+    assert watchdog.tracked is not None
+    recovery_session = watchdog.tracked.session
+    resources.append(ResourceSnapshot(199 * GIB, 400 * GIB))
+    assert watchdog.step() == WatchdogDecision("exit", 2)
+    assert recovery_session in tmux.killed
+    assert inspector.processes == {}
+
+
+def test_changed_closeout_custody_stops_before_reveal(tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, _ = _watchdog(tmp_path)
+
+    def invalid_custody() -> None:
+        raise WatchdogError("execution registry changed")
+
+    watchdog.closeout_guard_validator = invalid_custody
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+    assert inspector.processes == {}
+    assert tmux.killed == ["initial"]
+    assert any(event.get("reason") ==
+               "invalid-pre-reveal-closeout-custody"
+               for event in logger.events)
+
+
+def test_production_gpu_stop_defaults_to_95_with_warning_at_90() -> None:
+    args = parse_args(["--supervisor-pid", "1", "--tmux-session", "x"])
+    assert args.gpu_warn_celsius == 90
+    assert args.gpu_stop_celsius == 95
+    assert args.disable_gpu_hard_stop is False
+
+
+def test_main_validates_bootstrap_before_sealing_or_arming_closeout(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    class MissingInspector:
+        def read(self, _pid: int) -> None:
+            return None
+
+    class EmptyTmux:
+        def pane(self, _session: str) -> None:
+            return None
+
+    monkeypatch.setattr(watchdog_module, "ProcessInspector", MissingInspector)
+    monkeypatch.setattr(watchdog_module, "TmuxClient", EmptyTmux)
+    monkeypatch.setattr(
+        watchdog_module, "validate_production_cli_paths",
+        lambda _args, _repo: None)
+    monkeypatch.setattr(
+        closeout_module, "seal_pre_reveal_custody",
+        lambda _paths: calls.append("seal"))
+    monkeypatch.setattr(
+        closeout_module, "arm_pre_reveal_interlock",
+        lambda _paths: calls.append("arm"))
+    with pytest.raises(WatchdogError, match="bootstrap supervisor identity"):
+        watchdog_module.main([
+            "--supervisor-pid", "999999", "--tmux-session", "missing",
+            "--repo-root", str(watchdog_module.ROOT),
+            "--study-root", str(tmp_path / "study"),
+            "--watchdog-lock", str(tmp_path / "watchdog.lock"),
+        ])
+    assert calls == []
+    assert not (tmp_path / "study").exists()
+
+
+@pytest.mark.parametrize("option", [
+    "--study-root", "--report", "--event-log", "--stop-sentinel",
+    "--watchdog-lock",
+])
+def test_production_watchdog_rejects_every_path_override(
+        tmp_path: Path, option: str) -> None:
+    args = parse_args([
+        "--supervisor-pid", "1", "--tmux-session", "x",
+        option, str(tmp_path / "decoy"),
+    ])
+    with pytest.raises(WatchdogError, match="path override is forbidden"):
+        validate_production_cli_paths(args, watchdog_module.ROOT)
 
 
 def test_gpu_temperature_warning_is_noninvasive_by_default(
@@ -636,13 +1043,26 @@ def test_valid_completion_exits_without_resource_or_process_mutation(
     assert tmux.launched == []
 
 
+def test_campaign_cannot_bypass_recovery_terminal_state(
+        tmp_path: Path) -> None:
+    watchdog, inspector, tmux, logger, _, _ = _watchdog(tmp_path)
+    _write_completion_bundle(
+        watchdog.study_root, terminal_state=False)
+    assert watchdog.step() == WatchdogDecision("exit", 4)
+    assert inspector.processes == {}
+    assert tmux.killed == ["initial"]
+    assert any(event.get("reason") ==
+               "metadata-report-without-recovery-terminal-state"
+               for event in logger.events)
+
+
 def test_invalid_completion_report_stops_tracked_campaign(
         tmp_path: Path) -> None:
     watchdog, _, tmux, logger, _, _ = _watchdog(tmp_path)
     _write_completion_bundle(watchdog.study_root)
     value = _valid_report()
     value["finalized_cells_verified"] = 599
-    watchdog.report_path.write_text(json.dumps(value), encoding="utf-8")
+    _canonical_write(watchdog.report_path, value)
     assert watchdog.step() == WatchdogDecision("exit", 4)
     assert tmux.killed == ["initial"]
     assert any(event.get("reason") ==
