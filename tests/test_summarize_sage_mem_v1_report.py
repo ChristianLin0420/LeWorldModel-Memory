@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -354,7 +355,8 @@ def _execute(tmp_path: Path, report: dict[str, object],
         ])
     assert adapter.main(
         arguments,
-        recompute_formal_audit=lambda _spec: copy.deepcopy(report)) == 0
+        recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+        publication_root=tmp_path) == 0
     return report_path, json_path, tex_path
 
 
@@ -433,8 +435,16 @@ def test_execute_preserves_all_rows_and_separates_integrity_from_science(
 
     tex = tex_path.read_text()
     assert r"\newcommand{\SageMemClaimLedgerTable}" in tex
+    table_tex = tex.split(
+        r"\newcommand{\SageMemClaimLedgerTable}", 1)[1]
     for label in adapter.COHORT_LABELS.values():
-        assert tex.count(label.replace("_", r"\_")) == 3
+        assert table_tex.count(label.replace("_", r"\_")) == 3
+    assert r"\label{sage-mem-v1:complete-claim-ledger}" in table_tex
+    assert r"\newcommand{\SageMemPrimaryResultSummary}" in tex
+    assert r"\newcommand{\SageMemExecutionResultSummary}" in tex
+    assert r"\newcommand{\SageMemClaimBoundary}" in tex
+    assert r"\newcommand{\SageMemPrimaryPassList}" in tex
+    assert r"\newcommand{\SageMemExecutionPassList}" in tex
     assert tex.count(r"\SageMemGatePass") > 15
     assert hashlib.sha256(tex.encode()).hexdigest() == \
         ledger["publication_artifacts"]["tex"]["sha256"]
@@ -460,10 +470,12 @@ def test_refuses_overwrite_and_resume_requires_byte_identical_outputs(
     with pytest.raises(adapter.SageMemReportAdapterError, match="overwrite"):
         adapter.main(
             command,
-            recompute_formal_audit=lambda _spec: copy.deepcopy(report))
+            recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+            publication_root=tmp_path)
     assert adapter.main(
         [*command, "--resume"],
-        recompute_formal_audit=lambda _spec: copy.deepcopy(report)) == 0
+        recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+        publication_root=tmp_path) == 0
     resumed = json.loads(capsys.readouterr().out)
     assert resumed["publication"] == "validated-existing"
 
@@ -477,7 +489,8 @@ def test_refuses_overwrite_and_resume_requires_byte_identical_outputs(
                        match="differs from authenticated report"):
         adapter.main(
             [*changed_command, "--resume"],
-            recompute_formal_audit=lambda _spec: copy.deepcopy(changed))
+            recompute_formal_audit=lambda _spec: copy.deepcopy(changed),
+            publication_root=tmp_path)
     assert json_path.read_bytes() == original_json
     assert tex_path.read_bytes() == original_tex
 
@@ -537,7 +550,8 @@ def test_execute_requires_hash_and_independent_audit_equality(
                        match="expected-report-sha256 is required"):
         adapter.main(
             arguments,
-            recompute_formal_audit=lambda _spec: copy.deepcopy(report))
+            recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+            publication_root=tmp_path)
 
     recomputed = copy.deepcopy(report)
     recomputed["identity_ledger_sha256"] = "9" * 64
@@ -546,7 +560,8 @@ def test_execute_requires_hash_and_independent_audit_equality(
         adapter.main(
             [*arguments, "--expected-report-sha256",
              hashlib.sha256(payload).hexdigest()],
-            recompute_formal_audit=lambda _spec: recomputed)
+            recompute_formal_audit=lambda _spec: recomputed,
+            publication_root=tmp_path)
     assert not (tmp_path / "ledger.json").exists()
     assert not (tmp_path / "ledger.tex").exists()
 
@@ -667,7 +682,8 @@ def test_resume_repairs_only_an_authentic_half_pair(
     ]
     assert adapter.main(
         command,
-        recompute_formal_audit=lambda _spec: copy.deepcopy(report)) == 0
+        recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+        publication_root=tmp_path) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["publication"] == "repaired-missing"
     assert tex_path.read_bytes() == expected_tex
@@ -678,8 +694,45 @@ def test_resume_repairs_only_an_authentic_half_pair(
                        match="differs from authenticated report"):
         adapter.main(
             command,
-            recompute_formal_audit=lambda _spec: copy.deepcopy(report))
+            recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+            publication_root=tmp_path)
     assert not tex_path.exists()
+
+
+def test_execute_rejects_outputs_outside_or_through_symlinked_publication_root(
+        tmp_path: Path, _synthetic_sealed_lock: None) -> None:
+    report = _report()
+    _materialize_comparator_receipts(tmp_path, report)
+    report_path = tmp_path / "report.json"
+    report_payload = _write_report(report_path, report)
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
+    base = [
+        "--report", str(report_path), "--spec", str(DEFAULT_SPEC),
+        "--execute", "--expected-report-sha256",
+        hashlib.sha256(report_payload).hexdigest(),
+    ]
+    with pytest.raises(adapter.SageMemReportAdapterError,
+                       match="must remain inside the publication root"):
+        adapter.main([
+            *base, "--json-output", str(outside / "ledger.json"),
+            "--tex-output", str(allowed / "ledger.tex"),
+        ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+           publication_root=allowed)
+    assert not (outside / "ledger.json").exists()
+
+    linked = allowed / "linked"
+    linked.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(adapter.SageMemReportAdapterError,
+                       match="symlink component"):
+        adapter.main([
+            *base, "--json-output", str(linked / "ledger.json"),
+            "--tex-output", str(allowed / "ledger.tex"),
+        ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+           publication_root=allowed)
+    assert not (outside / "ledger.json").exists()
 
 
 def test_generated_tex_has_balanced_structure_and_compiles_when_available(
@@ -696,7 +749,12 @@ def test_generated_tex_has_balanced_structure_and_compiles_when_available(
     assert sum(label in line for label in adapter.COHORT_LABELS.values()
                for line in table_rows[1:]) == 15
 
-    pdflatex = shutil.which("pdflatex")
+    pdflatex_value = shutil.which("pdflatex")
+    tinytex_pdflatex = (
+        Path.home() / ".TinyTeX/bin/x86_64-linux/pdflatex")
+    pdflatex = (Path(pdflatex_value) if pdflatex_value
+                else tinytex_pdflatex if tinytex_pdflatex.is_file()
+                else None)
     if pdflatex is None:
         return
     wrapper = tmp_path / "compile-generated.tex"
@@ -709,7 +767,11 @@ def test_generated_tex_has_balanced_structure_and_compiles_when_available(
         "\\end{table*}\n"
         "\\end{document}\n")
     completed = subprocess.run(
-        [pdflatex, "-halt-on-error", "-interaction=nonstopmode",
+        [str(pdflatex), "-halt-on-error", "-interaction=nonstopmode",
          wrapper.name], cwd=tmp_path, text=True,
+        env={
+            **os.environ,
+            "PATH": f"{pdflatex.parent}:{os.environ.get('PATH', '')}",
+        },
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     assert completed.returncode == 0, completed.stdout
