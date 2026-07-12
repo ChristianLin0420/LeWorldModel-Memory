@@ -48,16 +48,35 @@ SCHEMA = "paper_a_sage_mem_binding_audit_v1"
 REPORT_SCHEMA = "sage_mem_v1_formal_evidence_audit_v1"
 LEDGER_SCHEMA = "sage_mem_v1_paper_claim_ledger_v1"
 FIGURE_MANIFEST_SCHEMA = "sage_mem_v1_plot_manifest_v1"
+PHASE_B_SCHEMA = "sage_mem_v1_phase_b_reproduction_v1"
 
 DEFAULT_REPORT = Path("outputs/sage_mem_v1/formal_audit/report.json")
 DEFAULT_LEDGER_JSON = Path(
     "paper_a/generated_results/sage_mem_v1_claim_ledger.json")
 DEFAULT_LEDGER_TEX = Path(
     "paper_a/generated_results/sage_mem_v1_claim_ledger.tex")
+DEFAULT_PHASE_B_RECEIPT = Path(
+    "outputs/sage_mem_v1/receipts/phase_b/reproduction_receipt.json")
 DEFAULT_MAIN_TEX = Path("paper_a/main.tex")
 DEFAULT_RECEIPT = Path("outputs/paper_a_sage_mem_binding/receipt.json")
 CANONICAL_MAIN_TEX = Path("paper_a/main.tex")
 PLOTTER_SOURCE = Path("scripts/plot_sage_mem_v1_claims.py")
+PHASE_B_VERIFIER_SOURCE = Path(
+    "scripts/audit_sage_mem_v1_phase_b_reproduction.py")
+TRUSTED_LOCAL_TEX_SUPPORT = {
+    Path("paper_a/iclr2026_conference.sty"):
+        "a4852f68e080d6c5245057ca2039100b409e31727898aa93c03d78ddb84374a3",
+    Path("paper_a/natbib.sty"):
+        "88bc70c0e48461934cab5b2accef06b74a8b3ac45ad03ccd3f2a6b7e0d6d530d",
+}
+TEX_SEARCH_ENV_KEYS = {
+    "TEXINPUTS", "BIBINPUTS", "BSTINPUTS", "TEXMFCNF", "TEXMFHOME",
+    "TEXMFLOCAL", "TEXMFCONFIG", "TEXMFVAR", "TEXMFSYSCONFIG",
+    "TEXMFSYSVAR", "TEXFORMATS", "TEXPOOL", "TEXFONTMAPS",
+    "VARTEXFONTS", "LUAINPUTS", "MFINPUTS", "MPINPUTS",
+    "TEXMFOUTPUT", "TEXMFDBS", "TEXMFCASEFOLDSEARCH", "LATEXMKRC",
+    "openout_any", "openin_any", "shell_escape",
+}
 LEDGER_SENTINEL = "sage-mem-v1:complete-claim-ledger"
 PUBLICATION_RECOMPUTATION_KEYS = {
     "report_payload", "ledger_payload", "ledger_tex_payload",
@@ -77,7 +96,8 @@ RESULT_MACROS = {
 BOUNDARY_MACROS = {
     "SageMemClaimBoundary", "SageMemIntegrityStatus",
     "SageMemIntegrityMeaning", "SageMemReportSHA",
-    "SageMemProtocolFingerprint",
+    "SageMemProtocolFingerprint", "SageMemPhaseBReceiptSHA",
+    "SageMemPhaseBVerifierSHA",
 }
 STRUCTURAL_MACROS = {"SageMemClaimLedgerTable"}
 ALLOWED_MANUSCRIPT_MACROS = (
@@ -128,6 +148,51 @@ ROW_REPORT_FIELDS = (
     "prior_diagnostic", "raw_context_reference", "execution",
 )
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+PHASE_B_OPERATOR_PIN_KEYS = {
+    "verifier_source_sha256", "protocol_lock_sha256",
+    "phase_a_grid_sha256", "raw_context_summary_sha256",
+    "label_registry_sha256", "execution_registry_sha256",
+    "finalizer_summary_sha256", "finalized_cells_sha256",
+    "formal_report_sha256",
+}
+PHASE_B_RECEIPT_KEYS = {
+    "schema", "study", "stage", "status",
+    "production_contract_verified", "report_reproducer_injected",
+    "verifier_source_injected", "contract_identity",
+    "contract_identity_sha256", "registered_contract_sha256",
+    "outcome_values_emitted", "finalizer_prediction_helpers_called",
+    "operator_pins", "authenticated_inventories",
+    "independent_reproduction", "semantic_digests", "claim_boundary",
+}
+PHASE_B_CONTRACT_IDENTITY = {
+    "cohorts": list(COHORTS),
+    "arms": [
+        "none", "gru", "lstm", "ssm", "fixed_trust", "gdelta",
+        "fixed_trust_aux", "ssm_aux", "sage_mem_full",
+        "sage_mem_next_only", "sage_mem_no_exposure",
+        "sage_mem_exposure_only"],
+    "seeds": list(range(10)), "ages": [4, 8, 15],
+    "classes": {
+        "lewm_reacher_color": 4, "lewm_pusht_color": 4,
+        "dinowm_pusht_token": 4, "dinowm_pusht_binding": 6,
+        "dinowm_pointmaze_goal": 4},
+    "formal_rows": {
+        "lewm_reacher_color": 720, "lewm_pusht_color": 720,
+        "dinowm_pusht_token": 960, "dinowm_pusht_binding": 960,
+        "dinowm_pointmaze_goal": 1440},
+    "consumer_rows": {
+        "lewm_reacher_color": 480, "lewm_pusht_color": 480,
+        "dinowm_pusht_token": 600, "dinowm_pusht_binding": 600,
+        "dinowm_pointmaze_goal": 960},
+    "variants": {
+        "lewm_reacher_color": 1, "lewm_pusht_color": 1,
+        "dinowm_pusht_token": 1, "dinowm_pusht_binding": 1,
+        "dinowm_pointmaze_goal": 4},
+    "physical_gpus": {
+        "lewm_reacher_color": 0, "lewm_pusht_color": 0,
+        "dinowm_pusht_token": 1, "dinowm_pusht_binding": 1,
+        "dinowm_pointmaze_goal": 2},
+}
 
 
 class SageMemBindingAuditError(RuntimeError):
@@ -267,7 +332,8 @@ def read_canonical_json(path: Path, label: str) \
 
 def recompute_authenticated_publication(
         root: Path, report_path: Path, ledger_path: Path,
-        ledger_tex_path: Path) -> dict[str, bytes]:
+        ledger_tex_path: Path,
+        phase_b_binding: Mapping[str, Any]) -> dict[str, bytes]:
     """Re-run the sealed audit and adapter over canonical production roots."""
 
     root = _lexical_absolute(root)
@@ -285,6 +351,7 @@ def recompute_authenticated_publication(
             report, spec=spec, report_path=report_path,
             report_bytes=report_payload, spec_path=spec_path,
             protocol_lock_binding=protocol_binding,
+            phase_b_binding=phase_b_binding,
             independent_recomputation_verified=True,
             expected_report_sha256=report_sha256)
         ledger_tex_payload = adapter.render_tex(ledger).encode("utf-8")
@@ -373,6 +440,294 @@ def authenticate_identity(
         "size": len(payload),
         "sha256": expected,
     }
+
+
+def _sha256_json_value(value: Any) -> str:
+    payload = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+        allow_nan=False).encode("utf-8")
+    return sha256_bytes(payload)
+
+
+def authenticate_phase_b_receipt(
+        root: Path, receipt_path: Path, *, expected_sha256: str,
+        report_path: Path, report_payload: bytes,
+        report_value: Mapping[str, Any],
+        nonproduction_test_fixture: bool) -> tuple[dict[str, Any], bytes]:
+    """Authenticate the committed, value-free Phase-B receipt and pins."""
+
+    expected = _digest(expected_sha256, "expected Phase-B receipt SHA-256")
+    receipt, payload = read_canonical_json(
+        receipt_path, "Phase-B reproduction receipt")
+    require(sha256_bytes(payload) == expected,
+            "Phase-B reproduction receipt SHA-256 differs from expected")
+    _mapping(receipt, "Phase-B reproduction receipt",
+             keys=PHASE_B_RECEIPT_KEYS)
+    require(receipt["schema"] == PHASE_B_SCHEMA
+            and receipt["study"] == "sage-mem-v1"
+            and receipt["stage"] == "phase-b-independent-reproduction"
+            and receipt["status"] == "complete",
+            "Phase-B receipt identity/status differs or is incomplete")
+    require(receipt["production_contract_verified"] is True
+            and receipt["report_reproducer_injected"] is False
+            and receipt["verifier_source_injected"] is False
+            and receipt["outcome_values_emitted"] is False
+            and receipt["finalizer_prediction_helpers_called"] is False,
+            "Phase-B receipt lost its production/no-injection boundary")
+    contract_digest = _sha256_json_value(PHASE_B_CONTRACT_IDENTITY)
+    require(receipt["contract_identity"] == PHASE_B_CONTRACT_IDENTITY
+            and receipt["contract_identity_sha256"] == contract_digest
+            and receipt["registered_contract_sha256"] == contract_digest,
+            "Phase-B receipt registered contract differs")
+    pins = _mapping(receipt["operator_pins"], "Phase-B operator pins",
+                    keys=PHASE_B_OPERATOR_PIN_KEYS)
+    normalized_pins = {
+        key: _digest(value, f"Phase-B operator pin {key}")
+        for key, value in pins.items()
+    }
+    report_hash = sha256_bytes(report_payload)
+    require(normalized_pins["formal_report_sha256"] == report_hash,
+            "Phase-B receipt does not bind the selected formal report")
+    require(normalized_pins["phase_a_grid_sha256"] ==
+            report_value.get("phase_a_grid_sha256"),
+            "Phase-B receipt does not bind the formal report Phase-A grid")
+
+    inventories = _mapping(
+        receipt["authenticated_inventories"],
+        "Phase-B authenticated inventories", keys={
+            "verifier_source", "bound_input_files",
+            "numerical_environment", "locked_producers_sha256",
+            "phase_a_artifacts_sha256",
+            "normalized_label_artifacts_sha256", "phase_a_cells",
+            "raw_context_references", "finalized_cells",
+            "execution_registry_status_sha256", "formal_report_sha256",
+            "replayed_formal_report_sha256"})
+    require(inventories["phase_a_cells"] == 600
+            and inventories["raw_context_references"] == 50
+            and inventories["finalized_cells"] == 600,
+            "Phase-B authenticated inventory is incomplete")
+    for key in (
+            "locked_producers_sha256", "phase_a_artifacts_sha256",
+            "normalized_label_artifacts_sha256",
+            "execution_registry_status_sha256", "formal_report_sha256",
+            "replayed_formal_report_sha256"):
+        _digest(inventories[key], f"Phase-B inventory {key}")
+    require(inventories["formal_report_sha256"] == report_hash
+            and inventories["replayed_formal_report_sha256"] == report_hash,
+            "Phase-B report replay identity differs")
+    _mapping(inventories["numerical_environment"],
+             "Phase-B numerical environment")
+
+    verifier_path = repository_path(root, PHASE_B_VERIFIER_SOURCE)
+    verifier = authenticate_identity(
+        root, inventories["verifier_source"], "Phase-B verifier source",
+        expected_path=verifier_path, require_size=True)
+    require(verifier["sha256"] ==
+            normalized_pins["verifier_source_sha256"],
+            "Phase-B verifier source differs from its operator pin")
+
+    expected_paths = {
+        "protocol_lock": Path("outputs/sage_mem_v1/protocol_lock.json"),
+        "raw_context_summary": Path(
+            "outputs/sage_mem_v1/raw_context_phase_a/summary.json"),
+        "label_registry": Path(
+            "outputs/sage_mem_v1/formal_preparation/custody/registry.json"),
+        "execution_registry": Path(
+            "outputs/sage_mem_v1/formal_preparation/"
+            "execution_decks/registry.json"),
+        "finalizer_summary": Path(
+            "outputs/sage_mem_v1/formal_finalized/summary.json"),
+        "formal_report": report_path,
+    }
+    pin_names = {
+        "protocol_lock": "protocol_lock_sha256",
+        "raw_context_summary": "raw_context_summary_sha256",
+        "label_registry": "label_registry_sha256",
+        "execution_registry": "execution_registry_sha256",
+        "finalizer_summary": "finalizer_summary_sha256",
+        "formal_report": "formal_report_sha256",
+    }
+    bound = _mapping(
+        inventories["bound_input_files"], "Phase-B bound inputs",
+        keys=set(expected_paths))
+    normalized_inputs: dict[str, Any] = {}
+    for name, relative in expected_paths.items():
+        expected_path = (relative if Path(relative).is_absolute()
+                         else repository_path(root, relative))
+        identity = authenticate_identity(
+            root, bound[name], f"Phase-B bound input {name}",
+            expected_path=expected_path, require_size=True)
+        require(identity["sha256"] == normalized_pins[pin_names[name]],
+                f"Phase-B bound input {name} differs from operator pin")
+        normalized_inputs[name] = identity
+    require(normalized_inputs["formal_report"]["sha256"] == report_hash,
+            "Phase-B formal-report input identity differs")
+
+    finalizer, _ = read_canonical_json(
+        repository_path(root, expected_paths["finalizer_summary"]),
+        "Phase-B finalizer summary")
+    require(finalizer.get("schema") == "sage_mem_v1_formal_finalizer_v1"
+            and finalizer.get("study") == "sage-mem-v1"
+            and finalizer.get("stage") == "formal-finalizer"
+            and finalizer.get("status") == "complete"
+            and finalizer.get("phase_a_cells") == 600
+            and finalizer.get("finalized_cells") == 600
+            and finalizer.get("phase_a_grid_sha256") ==
+            normalized_pins["phase_a_grid_sha256"]
+            and finalizer.get("label_registry_sha256") ==
+            normalized_pins["label_registry_sha256"]
+            and finalizer.get("finalized_cells_sha256") ==
+            normalized_pins["finalized_cells_sha256"],
+            "Phase-B finalizer summary cross-binding differs")
+
+    reproduction = _mapping(
+        receipt["independent_reproduction"],
+        "Phase-B independent reproduction", keys={
+            "registered_consumer", "carrier_streams_reproduced",
+            "raw_context_streams_reproduced",
+            "eligible_execution_arrays_recomputed", "all_arrays_exact",
+            "formal_report_byte_exact", "report_timestamp_normalization"})
+    consumer = _mapping(
+        reproduction["registered_consumer"],
+        "Phase-B registered consumer", keys={
+            "estimator", "alpha", "solver", "tol", "max_iter",
+            "standardization", "carrier_models_refit",
+            "raw_context_models_refit"})
+    require(consumer == {
+        "estimator": "sklearn.linear_model.RidgeClassifier",
+        "alpha": 1e-3, "solver": "lsqr", "tol": 1e-6,
+        "max_iter": 5000,
+        "standardization": "StandardScaler(mean=True,std=True)",
+        "carrier_models_refit": 150, "raw_context_models_refit": 50,
+    } and reproduction["carrier_streams_reproduced"] ==
+        ["full", "reset", "prior"]
+        and reproduction["raw_context_streams_reproduced"] ==
+        ["short-3", "long-16"]
+        and reproduction["eligible_execution_arrays_recomputed"] is True
+        and reproduction["all_arrays_exact"] is True
+        and reproduction["formal_report_byte_exact"] is True
+        and isinstance(reproduction["report_timestamp_normalization"], str)
+        and bool(reproduction["report_timestamp_normalization"]),
+        "Phase-B independent reproduction contract differs")
+    semantics = _mapping(
+        receipt["semantic_digests"], "Phase-B semantic digests", keys={
+            "revealed_labels_sha256", "raw_phase_a_sha256",
+            "execution_decks_sha256", "execution_receipts_sha256",
+            "carrier_models_sha256", "carrier_predictions_sha256",
+            "carrier_correctness_and_execution_sha256",
+            "raw_predictions_and_correctness_sha256"})
+    for key, value in semantics.items():
+        _digest(value, f"Phase-B semantic digest {key}")
+    require(receipt["claim_boundary"] == (
+        "provenance-and-reproduction-only; this receipt contains no "
+        "accuracy, effect, interval, gate, or universal-success claim"),
+        "Phase-B claim boundary differs")
+
+    binding = {
+        "receipt": {
+            "path": display_path(root, receipt_path),
+            "size": len(payload), "sha256": expected,
+            "schema": PHASE_B_SCHEMA,
+            "expected_sha256_verified": True,
+        },
+        "verifier": verifier,
+        "registered_contract_sha256": contract_digest,
+        "production_contract_verified": True,
+        "report_reproducer_injected": False,
+        "verifier_source_injected": False,
+        "outcome_values_emitted": False,
+        "operator_pins": normalized_pins,
+        "exact_reproduction_verified": True,
+        "nonproduction_test_fixture": bool(nonproduction_test_fixture),
+    }
+    return binding, payload
+
+
+def replay_phase_b_receipt(
+        root: Path, receipt: Mapping[str, Any], *,
+        recomputer: Callable[[Path, Mapping[str, Any]], bytes] | None = None
+        ) -> bytes:
+    """Re-run the committed verifier in a symlink-free temporary output."""
+
+    if recomputer is not None:
+        require(_lexical_absolute(root) != _lexical_absolute(ROOT),
+                "production ROOT cannot inject a Phase-B recomputer")
+        replayed = recomputer(root, receipt)
+        require(isinstance(replayed, bytes),
+                "injected Phase-B recomputer did not return bytes")
+        return replayed
+
+    verifier_path = repository_path(root, PHASE_B_VERIFIER_SOURCE)
+    pins = receipt["operator_pins"]
+    require(sha256_file(verifier_path, "committed Phase-B verifier") ==
+            pins["verifier_source_sha256"],
+            "committed Phase-B verifier source changed before replay")
+    interpreter = _lexical_absolute(sys.executable)
+    require(interpreter.is_file(), "Python replay interpreter is missing")
+    with tempfile.TemporaryDirectory(
+            prefix=".phase-b-publication-replay-", dir=root) as directory:
+        temporary = _lexical_absolute(directory)
+        _reject_symlink_components(temporary, label="Phase-B replay output")
+        output = temporary / "reproduction_receipt.json"
+        command = [
+            str(interpreter), "-I", str(verifier_path),
+            "--workspace", str(root),
+            "--protocol-lock", "outputs/sage_mem_v1/protocol_lock.json",
+            "--phase-a-root", "outputs/sage_mem_v1",
+            "--raw-context-root",
+            "outputs/sage_mem_v1/raw_context_phase_a",
+            "--label-registry",
+            "outputs/sage_mem_v1/formal_preparation/custody/registry.json",
+            "--execution-registry",
+            ("outputs/sage_mem_v1/formal_preparation/"
+             "execution_decks/registry.json"),
+            "--finalized-root", "outputs/sage_mem_v1/formal_finalized",
+            "--prepare-root", "outputs/sage_mem_v1/formal_preparation",
+            "--formal-report", "outputs/sage_mem_v1/formal_audit/report.json",
+            "--output", str(output),
+            "--expected-verifier-source-sha256",
+            pins["verifier_source_sha256"],
+            "--expected-protocol-lock-sha256",
+            pins["protocol_lock_sha256"],
+            "--expected-phase-a-grid-sha256",
+            pins["phase_a_grid_sha256"],
+            "--expected-raw-context-summary-sha256",
+            pins["raw_context_summary_sha256"],
+            "--expected-label-registry-sha256",
+            pins["label_registry_sha256"],
+            "--expected-execution-registry-sha256",
+            pins["execution_registry_sha256"],
+            "--expected-finalizer-summary-sha256",
+            pins["finalizer_summary_sha256"],
+            "--expected-finalized-cells-sha256",
+            pins["finalized_cells_sha256"],
+            "--expected-formal-report-sha256",
+            pins["formal_report_sha256"],
+            "--execute",
+        ]
+        environment = {
+            key: value for key, value in os.environ.items()
+            if key not in {
+                "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
+                "PYTHONINSPECT"}
+        }
+        environment["PYTHONNOUSERSITE"] = "1"
+        try:
+            completed = subprocess.run(
+                command, cwd=root, env=environment, text=True,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, check=False)
+        except OSError as error:
+            raise SageMemBindingAuditError(
+                "cannot launch isolated committed Phase-B verifier") \
+                from error
+        require(completed.returncode == 0,
+                "isolated committed Phase-B verifier replay failed: "
+                + completed.stdout[-2000:])
+        require(sha256_file(verifier_path, "committed Phase-B verifier") ==
+                pins["verifier_source_sha256"],
+                "committed Phase-B verifier source changed during replay")
+        return read_stable_bytes(output, "replayed Phase-B receipt")
 
 
 def authenticate_report(report: Mapping[str, Any]) \
@@ -619,10 +974,12 @@ def authenticate_ledger(
 def authenticate_source_chain(
         root: Path, ledger: Mapping[str, Any], *, report_path: Path,
         report_payload: bytes, ledger_tex_path: Path,
-        ledger_tex_payload: bytes) -> dict[str, Any]:
+        ledger_tex_payload: bytes,
+        phase_b_binding: Mapping[str, Any]) -> dict[str, Any]:
     source = _mapping(
         ledger["source_binding"], "ledger source binding",
-        keys={"report", "protocol", "formal_auditor", "adapter"})
+        keys={"report", "protocol", "formal_auditor", "adapter",
+              "phase_b_reproduction"})
     report_identity = _mapping(source.get("report"), "bound formal report")
     report_verified = authenticate_identity(
         root, report_identity, "bound formal report",
@@ -668,6 +1025,16 @@ def authenticate_source_chain(
     require(Path(adapter_verified["path"]).name
             == "summarize_sage_mem_v1_report.py",
             "claim ledger names an unexpected report adapter")
+    bound_phase_b = _mapping(
+        source.get("phase_b_reproduction"),
+        "bound Phase-B reproduction")
+    require(dict(bound_phase_b) == dict(phase_b_binding),
+            "claim ledger Phase-B receipt/verifier binding differs")
+    require(bound_phase_b["operator_pins"]["formal_report_sha256"] ==
+            report_verified["sha256"]
+            and bound_phase_b["operator_pins"]["protocol_lock_sha256"] ==
+            lock["sha256"],
+            "claim ledger Phase-B pins do not cross-bind report/protocol")
 
     publication = _mapping(ledger["publication_artifacts"],
                            "publication artifacts")
@@ -689,6 +1056,7 @@ def authenticate_source_chain(
         "formal_amendment": amendment,
         "formal_auditor": auditor_verified,
         "report_adapter": adapter_verified,
+        "phase_b_reproduction": dict(bound_phase_b),
         "ledger_tex": tex_verified,
     }
 
@@ -767,6 +1135,10 @@ def render_expected_ledger_tex(ledger: Mapping[str, Any]) -> str:
         f"% report-sha256: {source['report']['sha256']}",
         f"% protocol-fingerprint: {source['protocol']['fingerprint']}",
         f"% adapter-sha256: {source['adapter']['sha256']}",
+        ("% phase-b-receipt-sha256: "
+         f"{source['phase_b_reproduction']['receipt']['sha256']}"),
+        ("% phase-b-verifier-sha256: "
+         f"{source['phase_b_reproduction']['verifier']['sha256']}"),
         r"\newcommand{\SageMemGatePass}{\textsc{Pass}}",
         r"\newcommand{\SageMemGateFail}{\textsc{Fail}}",
         r"\newcommand{\SageMemGateNA}{\textemdash}",
@@ -801,6 +1173,10 @@ def render_expected_ledger_tex(ledger: Mapping[str, Any]) -> str:
          f"{source['report']['sha256']}}}}}"),
         (r"\newcommand{\SageMemProtocolFingerprint}{\texttt{"
          f"{source['protocol']['fingerprint']}}}}}"),
+        (r"\newcommand{\SageMemPhaseBReceiptSHA}{\texttt{"
+         f"{source['phase_b_reproduction']['receipt']['sha256']}}}}}"),
+        (r"\newcommand{\SageMemPhaseBVerifierSHA}{\texttt{"
+         f"{source['phase_b_reproduction']['verifier']['sha256']}}}}}"),
         r"\newcommand{\SageMemClaimLedgerTable}{%",
         rf"\label{{{LEDGER_SENTINEL}}}%",
         r"\begin{tabular}{llccccccc}",
@@ -928,12 +1304,108 @@ def read_tex_graph(root: Path, main_tex: Path) -> dict[str, Any]:
         return current
 
     visit(main_tex, "main")
+
+    # Local style/class files are executable TeX, so accepting any file found
+    # through the TeX search path would defeat the prose audit.  Resolve local
+    # package dependencies recursively and require an explicit source pin.
+    support_paths: set[Path] = set()
+    scanned_support: set[Path] = set()
+    while True:
+        local_candidates: set[Path] = set()
+        for phase in ("main", "appendix"):
+            for _source, fragment in fragments[phase]:
+                for match in re.finditer(
+                        r"\\(?:usepackage|RequirePackage)"
+                        r"(?:\[[^]]*\])?\{([^}]+)\}", fragment):
+                    for package in match.group(1).split(","):
+                        value = Path(package.strip())
+                        require(not value.is_absolute()
+                                and ".." not in value.parts,
+                                "local TeX package name is unsafe")
+                        candidate = _lexical_absolute(
+                            paper_root / value.with_suffix(".sty"))
+                        if candidate.is_file():
+                            local_candidates.add(candidate)
+                for match in re.finditer(
+                        r"\\(?:documentclass|LoadClass)"
+                        r"(?:\[[^]]*\])?\{([^}]+)\}", fragment):
+                    value = Path(match.group(1).strip())
+                    require(not value.is_absolute() and ".." not in value.parts,
+                            "local TeX class name is unsafe")
+                    candidate = _lexical_absolute(
+                        paper_root / value.with_suffix(".cls"))
+                    if candidate.is_file():
+                        local_candidates.add(candidate)
+        pending = local_candidates - scanned_support
+        if not pending:
+            break
+        for path in sorted(pending):
+            scanned_support.add(path)
+            relative = path.relative_to(root)
+            require(relative in TRUSTED_LOCAL_TEX_SUPPORT,
+                    f"unregistered local TeX support input: {relative}")
+            payload = read_stable_bytes(path, "trusted local TeX support")
+            expected = TRUSTED_LOCAL_TEX_SUPPORT[relative]
+            require(sha256_bytes(payload) == expected,
+                    f"trusted local TeX support hash differs: {relative}")
+            try:
+                clean = strip_tex_comments(
+                    payload.decode("utf-8", errors="strict"))
+            except UnicodeError as error:
+                raise SageMemBindingAuditError(
+                    f"local TeX support is not UTF-8: {relative}") from error
+            identities[path] = {
+                "path": display_path(root, path),
+                "size": len(payload), "sha256": expected,
+            }
+            fragments["main"].append((path, clean))
+            support_paths.add(path)
+
+    # Resolve every static graphic before the build.  Result-bearing SAGE
+    # graphics are additionally constrained by their authenticated manifests;
+    # all other assets remain bound by this exact pre/post content identity.
+    graphic_directories: list[Path] = []
+    for phase in ("main", "appendix"):
+        for source, fragment in fragments[phase]:
+            for declaration in re.finditer(
+                    r"\\graphicspath\{((?:\{[^}]+\})+)\}", fragment):
+                for raw_directory in re.findall(
+                        r"\{([^}]+)\}", declaration.group(1)):
+                    for base in (source.parent, paper_root):
+                        candidate = _lexical_absolute(base / raw_directory)
+                        try:
+                            candidate.relative_to(root)
+                        except ValueError:
+                            continue
+                        _reject_symlink_components(
+                            candidate, label="graphic search path")
+                        if candidate.is_dir() \
+                                and candidate not in graphic_directories:
+                            graphic_directories.append(candidate)
+    graphic_paths: set[Path] = set()
+    for phase in ("main", "appendix"):
+        for source, fragment in fragments[phase]:
+            for match in _GRAPHIC_RE.finditer(fragment):
+                graphic = _resolve_graphic(
+                    root, paper_root, source, match.group(1),
+                    graphic_directories)
+                payload = read_stable_bytes(graphic, "paper graphic")
+                identities[graphic] = {
+                    "path": display_path(root, graphic),
+                    "size": len(payload), "sha256": sha256_bytes(payload),
+                }
+                graphic_paths.add(graphic)
     return {
         "fragments": fragments,
         "identities": [identities[path] for path in sorted(
             identities, key=lambda item: display_path(root, item))],
         "include_events": include_events,
         "reachable_paths": set(identities),
+        "tex_reachable_paths": {
+            path for path in identities
+            if path not in support_paths and path not in graphic_paths},
+        "support_paths": support_paths,
+        "graphic_paths": graphic_paths,
         "paper_root": paper_root,
     }
 
@@ -1001,6 +1473,9 @@ def authenticate_figure_manifests(
                            "figure source binding", keys={
                                "claim_ledger", "formal_report_sha256",
                                "protocol_fingerprint", "plotting_script",
+                               "phase_b_receipt_sha256",
+                               "phase_b_verifier_sha256",
+                               "phase_b_registered_contract_sha256",
                            })
         ledger_record = _mapping(
             binding.get("claim_ledger"), "figure-bound claim ledger",
@@ -1028,6 +1503,19 @@ def authenticate_figure_manifests(
                             "figure-bound protocol fingerprint")
                 == protocol_fingerprint
                 and ledger_identity["sha256"] == ledger_sha256
+                and _digest(binding.get("phase_b_receipt_sha256"),
+                            "figure-bound Phase-B receipt SHA-256") ==
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["receipt"]["sha256"]
+                and _digest(binding.get("phase_b_verifier_sha256"),
+                            "figure-bound Phase-B verifier SHA-256") ==
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["verifier"]["sha256"]
+                and _digest(
+                    binding.get("phase_b_registered_contract_sha256"),
+                    "figure-bound Phase-B contract SHA-256") ==
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["registered_contract_sha256"]
                 and ledger_record.get("schema") == LEDGER_SCHEMA
                 and ledger_record.get(
                     "expected_sha256_verified") is True,
@@ -1273,6 +1761,53 @@ def discover_latexmk() -> Path | None:
     return None
 
 
+def _generated_build_paths(main_tex: Path) -> dict[str, Path]:
+    """Exact build-state allowlist; never glob or remove arbitrary files."""
+
+    stem = main_tex.with_suffix("")
+    suffixes = (
+        "aux", "out", "toc", "bbl", "bcf", "run.xml", "lof", "lot",
+        "fls", "fdb_latexmk", "log", "synctex.gz", "pdf",
+    )
+    return {suffix: Path(f"{stem}.{suffix}") for suffix in suffixes}
+
+
+def _trusted_tex_distribution(latexmk: Path) -> tuple[list[Path], list[Path]]:
+    """Tie accepted external recorder inputs to the selected TinyTeX tree."""
+
+    lexical = _lexical_absolute(latexmk)
+    tinytex = next(
+        (parent for parent in (lexical, *lexical.parents)
+         if parent.name == ".TinyTeX"), None)
+    require(tinytex is not None,
+            "selected latexmk is not inside the authenticated TinyTeX tree")
+    roots = [tinytex / "texmf-dist", tinytex / "texmf-var"]
+    files = [tinytex / "texmf.cnf"]
+    for path in (*roots, *files):
+        _reject_symlink_components(path, label="trusted TeX distribution")
+        require(path.is_dir() if path in roots else path.is_file(),
+                f"trusted TeX distribution path is missing: {path}")
+    return roots, files
+
+
+def _sanitized_tex_environment(latexmk: Path) -> tuple[dict[str, str],
+                                                        list[Path],
+                                                        list[Path]]:
+    environment = {
+        key: value for key, value in os.environ.items()
+        if key not in TEX_SEARCH_ENV_KEYS
+        and key.upper() not in TEX_SEARCH_ENV_KEYS
+        and not key.upper().startswith("TEXMF")
+    }
+    environment["PATH"] = (
+        f"{latexmk.parent}{os.pathsep}{environment.get('PATH', '')}")
+    environment["SOURCE_DATE_EPOCH"] = "946684800"
+    environment["FORCE_SOURCE_DATE"] = "1"
+    environment["TZ"] = "UTC"
+    roots, files = _trusted_tex_distribution(latexmk)
+    return environment, roots, files
+
+
 def run_canonical_paper_build(root: Path, main_tex: Path) -> dict[str, Any]:
     """Force a fresh recorder-enabled canonical paper build."""
 
@@ -1285,26 +1820,71 @@ def run_canonical_paper_build(root: Path, main_tex: Path) -> dict[str, Any]:
     require(latexmk is not None,
             "latexmk/TinyTeX is unavailable for mandatory paper rebuild")
     command = [
-        str(latexmk), "-g", "-pdf", "-interaction=nonstopmode",
+        str(latexmk), "-norc", "-g", "-pdf",
+        "-pdflatex=pdflatex -no-shell-escape %O %S",
+        "-interaction=nonstopmode",
         "-halt-on-error", "-file-line-error", "-recorder", main_tex.name,
     ]
-    environment = dict(os.environ)
-    environment["PATH"] = (
-        f"{latexmk.parent}{os.pathsep}{environment.get('PATH', '')}")
-    # Make repeated authenticated builds byte-reproducible, including the PDF
-    # metadata emitted by pdfTeX/TinyTeX.
-    environment["SOURCE_DATE_EPOCH"] = "946684800"
-    environment["FORCE_SOURCE_DATE"] = "1"
-    environment["TZ"] = "UTC"
-    started_ns = time.time_ns()
-    completed = subprocess.run(
-        command, cwd=main_tex.parent, env=environment,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, check=False)
-    completed_ns = time.time_ns()
-    require(completed.returncode == 0,
-            "mandatory canonical paper rebuild failed:\n"
-            + completed.stdout[-4000:])
+    environment, trusted_roots, trusted_files = \
+        _sanitized_tex_environment(latexmk)
+    generated = _generated_build_paths(main_tex)
+    previous: dict[Path, tuple[bytes, int]] = {}
+    for path in generated.values():
+        _reject_symlink_components(path, label="paper build-state path")
+        require(not path.is_symlink(),
+                f"paper build-state path is a symlink: {path}")
+        if path.exists():
+            require(path.is_file(),
+                    f"paper build-state path is not a file: {path}")
+            previous[path] = (
+                read_stable_bytes(path, "previous paper build state"),
+                path.stat().st_mode & 0o777)
+    try:
+        for path in generated.values():
+            if path.exists():
+                path.unlink()
+        require(not any(path.exists() or path.is_symlink()
+                        for path in generated.values()),
+                "paper build state was not cleared before compilation")
+        directory_fd = os.open(main_tex.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+        started_ns = time.time_ns()
+        completed = subprocess.run(
+            command, cwd=main_tex.parent, env=environment,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, check=False)
+        completed_ns = time.time_ns()
+        require(completed.returncode == 0,
+                "mandatory canonical paper rebuild failed:\n"
+                + completed.stdout[-4000:])
+    except BaseException:
+        # A failed audit must not destroy the user's last complete PDF/build
+        # state.  Restore only the exact enumerated files captured above.
+        for path in generated.values():
+            if path.exists() and path.is_file() and not path.is_symlink():
+                path.unlink()
+        for path, (payload, mode) in previous.items():
+            descriptor, temporary = tempfile.mkstemp(
+                prefix=f".{path.name}.", suffix=".restore", dir=path.parent)
+            temporary_path = Path(temporary)
+            try:
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.chmod(temporary_path, mode)
+                os.replace(temporary_path, path)
+            finally:
+                temporary_path.unlink(missing_ok=True)
+        directory_fd = os.open(main_tex.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+        raise
     engine_source = latexmk.resolve()
     return {
         "engine": str(latexmk),
@@ -1313,13 +1893,20 @@ def run_canonical_paper_build(root: Path, main_tex: Path) -> dict[str, Any]:
         "started_ns": started_ns,
         "completed_ns": completed_ns,
         "returncode": completed.returncode,
+        "trusted_external_roots": [str(path) for path in trusted_roots],
+        "trusted_external_files": [str(path) for path in trusted_files],
+        "tex_search_environment_sanitized": True,
+        "shell_escape_disabled": True,
+        "fresh_build_state_verified": True,
     }
 
 
 def _authenticate_build_receipt(value: Any) -> dict[str, Any]:
     record = _mapping(value, "paper build receipt", keys={
         "engine", "engine_sha256", "command", "started_ns",
-        "completed_ns", "returncode",
+        "completed_ns", "returncode", "trusted_external_roots",
+        "trusted_external_files", "tex_search_environment_sanitized",
+        "shell_escape_disabled", "fresh_build_state_verified",
     })
     require(isinstance(record["engine"], str) and record["engine"],
             "paper build engine is missing")
@@ -1334,6 +1921,14 @@ def _authenticate_build_receipt(value: Any) -> dict[str, Any]:
         record["completed_ns"], "paper build completion", minimum=started)
     require(record["returncode"] == 0,
             "paper build runner did not report success")
+    roots = record["trusted_external_roots"]
+    files = record["trusted_external_files"]
+    require(isinstance(roots, list) and isinstance(files, list)
+            and all(isinstance(path, str) and path for path in (*roots, *files))
+            and record["tex_search_environment_sanitized"] is True
+            and record["shell_escape_disabled"] is True
+            and record["fresh_build_state_verified"] is True,
+            "paper build environment/trust boundary is incomplete")
     return {
         "engine": record["engine"],
         "engine_sha256": engine_sha256,
@@ -1341,6 +1936,11 @@ def _authenticate_build_receipt(value: Any) -> dict[str, Any]:
         "started_ns": started,
         "completed_ns": completed,
         "returncode": 0,
+        "trusted_external_roots": list(roots),
+        "trusted_external_files": list(files),
+        "tex_search_environment_sanitized": True,
+        "shell_escape_disabled": True,
+        "fresh_build_state_verified": True,
     }
 
 
@@ -1384,23 +1984,114 @@ def authenticate_compiled_paper(
                 else _lexical_absolute(compile_pwd / raw))
         recorded_inputs.add(path)
 
-    required_inputs = {
+    root_absolute = _lexical_absolute(root)
+    expected_static = {
         _lexical_absolute(path) for path in graph["reachable_paths"]
-    } | {
-        _lexical_absolute(path) for path in included_figures
     }
-    missing = sorted(
-        display_path(root, path)
-        for path in required_inputs if path not in recorded_inputs)
-    require(not missing,
-            f"compiled recorder omits audited paper inputs: {missing}")
+    # All result graphics must already be members of the static inventory;
+    # manifest authentication is an additional, not substitutive, boundary.
+    require({_lexical_absolute(path) for path in included_figures}
+            .issubset(expected_static),
+            "manifest-authenticated result graphic is absent from the "
+            "pre-build static inventory")
+    generated_paths = _generated_build_paths(main_tex)
+    allowed_generated = {
+        generated_paths[name] for name in (
+            "aux", "out", "toc", "bbl", "bcf", "run.xml", "lof", "lot")
+    }
+    local_inputs: set[Path] = set()
+    external_inputs: set[Path] = set()
+    for path in recorded_inputs:
+        try:
+            path.relative_to(root_absolute)
+        except ValueError:
+            external_inputs.add(path)
+        else:
+            local_inputs.add(path)
+    observed_generated = local_inputs & allowed_generated
+    observed_static = local_inputs - observed_generated
+    missing = sorted(display_path(root, path)
+                     for path in expected_static - observed_static)
+    unexpected = sorted(display_path(root, path)
+                        for path in observed_static - expected_static)
+    require(not missing and not unexpected,
+            "compiled recorder repository-local static input set differs: "
+            f"missing={missing}, unexpected={unexpected}")
+
+    prebuild_identities = {
+        repository_path(root, record["path"]): record
+        for record in graph["identities"]
+    }
+    static_receipts: list[dict[str, Any]] = []
+    for path in sorted(expected_static):
+        _reject_symlink_components(path, label="static paper compile input")
+        payload = read_stable_bytes(path, "static paper compile input")
+        before = prebuild_identities.get(path)
+        require(before is not None
+                and before["size"] == len(payload)
+                and before["sha256"] == sha256_bytes(payload),
+                f"static paper input changed during build: {path}")
+        role = ("trusted-local-tex-support"
+                if path in graph["support_paths"] else
+                "graphic" if path in graph["graphic_paths"] else
+                "tex-graph")
+        static_receipts.append({
+            "path": display_path(root, path), "size": len(payload),
+            "sha256": sha256_bytes(payload), "role": role,
+        })
+
+    generated_receipts: list[dict[str, Any]] = []
+    for path in sorted(observed_generated):
+        _reject_symlink_components(path, label="generated TeX input")
+        payload = read_stable_bytes(path, "generated TeX input")
+        require(path.stat().st_mtime_ns >= build["started_ns"],
+                f"generated TeX input predates fresh build: {path}")
+        generated_receipts.append({
+            "path": display_path(root, path), "size": len(payload),
+            "sha256": sha256_bytes(payload), "role": "fresh-generated",
+        })
+
+    trusted_roots = [_lexical_absolute(path)
+                     for path in build["trusted_external_roots"]]
+    trusted_files = {_lexical_absolute(path)
+                     for path in build["trusted_external_files"]}
+    if root_absolute == _lexical_absolute(ROOT):
+        engine = _lexical_absolute(build["engine"])
+        require(engine.is_file()
+                and sha256_file(engine.resolve(), "paper build engine") ==
+                build["engine_sha256"],
+                "paper build engine identity differs")
+        expected_roots, expected_files = _trusted_tex_distribution(engine)
+        require(trusted_roots == expected_roots
+                and trusted_files == set(expected_files),
+                "paper build trusted TeX distribution boundary differs")
+    external_receipts: list[dict[str, Any]] = []
+    for path in sorted(external_inputs):
+        _reject_symlink_components(path, label="external TeX input")
+        trusted = path in trusted_files
+        if not trusted:
+            for trusted_root in trusted_roots:
+                try:
+                    path.relative_to(trusted_root)
+                except ValueError:
+                    continue
+                trusted = True
+                break
+        require(trusted,
+                f"compiled recorder contains untrusted external input: {path}")
+        payload = read_stable_bytes(path, "trusted external TeX input")
+        external_receipts.append({
+            "path": str(path), "size": len(payload),
+            "sha256": sha256_bytes(payload),
+            "role": "trusted-tex-distribution",
+        })
     if require_ledger_sentinel:
         sentinel = rf"\newlabel{{{LEDGER_SENTINEL}}}"
         require(sentinel in aux_text,
                 "compiled AUX does not prove the complete ledger table was "
                 "rendered")
 
-    newest_input = max(path.stat().st_mtime_ns for path in required_inputs)
+    newest_input = max(path.stat().st_mtime_ns for path in expected_static)
     for path in (aux_path, fls_path, pdf_path):
         modified = path.stat().st_mtime_ns
         require(modified >= newest_input
@@ -1414,6 +2105,11 @@ def authenticate_compiled_paper(
                               or rf"\newlabel{{{LEDGER_SENTINEL}}}"
                               in aux_text),
         "all_audited_inputs_recorded": True,
+        "repository_local_static_set_equal": True,
+        "untrusted_external_inputs": 0,
+        "static_inputs": static_receipts,
+        "generated_inputs": generated_receipts,
+        "external_inputs": external_receipts,
         "freshness_verified": True,
         "build": {
             "engine": build["engine"],
@@ -1422,6 +2118,9 @@ def authenticate_compiled_paper(
             "returncode": 0,
             "fresh_rebuild_verified": True,
             "source_date_epoch": 946684800,
+            "tex_search_environment_sanitized": True,
+            "shell_escape_disabled": True,
+            "fresh_build_state_verified": True,
         },
         "artifacts": {
             name: {
@@ -1575,12 +2274,16 @@ def inspect_manuscript_integration(
 
 def audit_binding(
         root: Path, *, report: Path, ledger_json: Path, ledger_tex: Path,
-        main_tex: Path, expected_report_sha256: str,
+        phase_b_receipt: Path, main_tex: Path, expected_report_sha256: str,
+        expected_phase_b_receipt_sha256: str,
         expected_ledger_sha256: str,
         figure_manifests: Sequence[Path] = (),
         expected_figure_manifest_sha256: Sequence[str] = (),
         publication_recomputer: Callable[
-            [Path, Path, Path, Path], Mapping[str, bytes]] | None = None,
+            [Path, Path, Path, Path, Mapping[str, Any]],
+            Mapping[str, bytes]] | None = None,
+        phase_b_recomputer: Callable[
+            [Path, Mapping[str, Any]], bytes] | None = None,
         compiler_runner: Callable[
             [Path, Path], Mapping[str, Any]] | None = None) \
         -> dict[str, Any]:
@@ -1592,9 +2295,16 @@ def audit_binding(
                 "recomputation")
         require(compiler_runner is None,
                 "production ROOT cannot override the canonical paper build")
+        require(phase_b_recomputer is None,
+                "production ROOT cannot override committed Phase-B replay")
     report_path = repository_path(root, report)
     ledger_path = repository_path(root, ledger_json)
     ledger_tex_path = repository_path(root, ledger_tex)
+    phase_b_receipt_path = repository_path(root, phase_b_receipt)
+    if root == _lexical_absolute(ROOT):
+        require(phase_b_receipt_path == repository_path(
+                    root, DEFAULT_PHASE_B_RECEIPT),
+                "production ROOT requires the canonical Phase-B receipt")
     main_tex_path = repository_path(root, main_tex)
     canonical_main = repository_path(root, CANONICAL_MAIN_TEX)
     require(main_tex_path == canonical_main,
@@ -1609,6 +2319,19 @@ def audit_binding(
     require(sha256_bytes(report_payload) == expected_report,
             "formal report SHA-256 differs from expected")
     report_rows = authenticate_report(report_value)
+    phase_b_binding, phase_b_payload = authenticate_phase_b_receipt(
+        root, phase_b_receipt_path,
+        expected_sha256=expected_phase_b_receipt_sha256,
+        report_path=report_path, report_payload=report_payload,
+        report_value=report_value,
+        nonproduction_test_fixture=(root != _lexical_absolute(ROOT)))
+    phase_b_value = decode_strict_json(
+        phase_b_payload, "Phase-B reproduction receipt")
+    replayed_phase_b = replay_phase_b_receipt(
+        root, phase_b_value, recomputer=phase_b_recomputer)
+    require(replayed_phase_b == phase_b_payload,
+            "committed Phase-B verifier replay differs from canonical "
+            "receipt bytes")
     ledger_value, ledger_payload = read_canonical_json(
         ledger_path, "claim-ledger JSON")
     require(sha256_bytes(ledger_payload) == expected_ledger,
@@ -1617,7 +2340,7 @@ def audit_binding(
         ledger_tex_path, "claim-ledger TeX")
     recompute = publication_recomputer or recompute_authenticated_publication
     recomputed_publication = recompute(
-        root, report_path, ledger_path, ledger_tex_path)
+        root, report_path, ledger_path, ledger_tex_path, phase_b_binding)
     authenticate_publication_recomputation(
         recomputed_publication, report_payload=report_payload,
         ledger_payload=ledger_payload,
@@ -1627,7 +2350,8 @@ def audit_binding(
     source_chain = authenticate_source_chain(
         root, ledger_value, report_path=report_path,
         report_payload=report_payload, ledger_tex_path=ledger_tex_path,
-        ledger_tex_payload=ledger_tex_payload)
+        ledger_tex_payload=ledger_tex_payload,
+        phase_b_binding=phase_b_binding)
     authenticate_ledger_tex(ledger_tex_payload, ledger_value)
 
     manifest_paths = [repository_path(root, path) for path in figure_manifests]
@@ -1671,6 +2395,11 @@ def audit_binding(
         "experiment_artifacts_read": True,
         "formal_outcomes_recomputed": True,
         "sealed_publication_chain_recomputed": True,
+        "phase_b_receipt_replayed": True,
+        "phase_b_recomputer_injected": phase_b_recomputer is not None,
+        "publication_recomputer_injected":
+            publication_recomputer is not None,
+        "compiler_runner_injected": compiler_runner is not None,
         "coverage": {
             "registered_cohorts": list(COHORTS),
             "registered_ages": list(AGES),
@@ -1691,6 +2420,7 @@ def audit_binding(
                 "size": len(ledger_payload),
                 "sha256": expected_ledger,
             },
+            "phase_b_reproduction": phase_b_binding,
             "source_chain": source_chain,
             "figure_manifests": manifests,
             "paper_sources": graph["identities"],
@@ -1760,9 +2490,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ledger-tex", "--claim-ledger-tex",
                         dest="ledger_tex", type=Path,
                         default=DEFAULT_LEDGER_TEX)
+    parser.add_argument("--phase-b-receipt", type=Path,
+                        default=DEFAULT_PHASE_B_RECEIPT)
     parser.add_argument("--main-tex", type=Path, default=DEFAULT_MAIN_TEX)
     parser.add_argument("--figure-manifest", type=Path, action="append")
     parser.add_argument("--expected-report-sha256")
+    parser.add_argument("--expected-phase-b-receipt-sha256")
     parser.add_argument("--expected-ledger-sha256",
                         "--expected-claim-ledger-sha256",
                         dest="expected_ledger_sha256")
@@ -1781,6 +2514,7 @@ def _preview(args: argparse.Namespace) -> dict[str, Any]:
         "report": str(args.report),
         "ledger_json": str(args.ledger_json),
         "ledger_tex": str(args.ledger_tex),
+        "phase_b_receipt": str(args.phase_b_receipt),
         "main_tex": str(args.main_tex),
         "figure_manifests": [str(path)
                              for path in (args.figure_manifest or [])],
@@ -1811,13 +2545,19 @@ def main(argv: Iterable[str] | None = None) -> int:
                 "--expected-report-sha256 is required with --execute")
         require(args.expected_ledger_sha256 is not None,
                 "--expected-ledger-sha256 is required with --execute")
+        require(args.expected_phase_b_receipt_sha256 is not None,
+                "--expected-phase-b-receipt-sha256 is required with "
+                "--execute")
         manifests = tuple(args.figure_manifest or ())
         manifest_hashes = tuple(
             args.expected_figure_manifest_sha256 or ())
         payload = audit_binding(
             args.root, report=args.report, ledger_json=args.ledger_json,
-            ledger_tex=args.ledger_tex, main_tex=args.main_tex,
+            ledger_tex=args.ledger_tex,
+            phase_b_receipt=args.phase_b_receipt, main_tex=args.main_tex,
             expected_report_sha256=args.expected_report_sha256,
+            expected_phase_b_receipt_sha256=
+            args.expected_phase_b_receipt_sha256,
             expected_ledger_sha256=args.expected_ledger_sha256,
             figure_manifests=manifests,
             expected_figure_manifest_sha256=manifest_hashes)

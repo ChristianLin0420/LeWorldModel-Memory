@@ -330,6 +330,129 @@ def _write_report(path: Path, report: dict[str, object]) -> bytes:
     return payload
 
 
+def _write_canonical(path: Path, value: object) -> dict[str, object]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(adapter._canonical_json(value))
+    return _identity(path)
+
+
+def _materialize_phase_b_receipt(
+        tmp_path: Path, report_path: Path,
+        report: dict[str, object]) -> tuple[Path, str, Path]:
+    root = tmp_path / "phase-b-study"
+    raw = _write_canonical(
+        root / "raw_context_phase_a/summary.json", {"schema": "raw-test"})
+    labels = _write_canonical(
+        root / "formal_preparation/custody/registry.json",
+        {"schema": "labels-test"})
+    execution = _write_canonical(
+        root / "formal_preparation/execution_decks/registry.json",
+        {"schema": "execution-test"})
+    finalized_digest = "9" * 64
+    finalizer = _write_canonical(
+        root / "formal_finalized/summary.json", {
+            "schema": "sage_mem_v1_formal_finalizer_v1",
+            "study": "sage-mem-v1", "stage": "formal-finalizer",
+            "status": "complete", "phase_a_cells": 600,
+            "finalized_cells": 600,
+            "phase_a_grid_sha256": report["phase_a_grid_sha256"],
+            "label_registry_sha256": labels["sha256"],
+            "finalized_cells_sha256": finalized_digest,
+        })
+    report_identity = _identity(report_path)
+    verifier = _identity(adapter.PHASE_B_VERIFIER_SOURCE)
+    contract_digest = adapter._sha256_json_value(
+        adapter.PHASE_B_CONTRACT_IDENTITY)
+    pins = {
+        "verifier_source_sha256": verifier["sha256"],
+        "protocol_lock_sha256": "d" * 64,
+        "phase_a_grid_sha256": report["phase_a_grid_sha256"],
+        "raw_context_summary_sha256": raw["sha256"],
+        "label_registry_sha256": labels["sha256"],
+        "execution_registry_sha256": execution["sha256"],
+        "finalizer_summary_sha256": finalizer["sha256"],
+        "finalized_cells_sha256": finalized_digest,
+        "formal_report_sha256": report_identity["sha256"],
+    }
+    receipt = {
+        "schema": adapter.PHASE_B_SCHEMA,
+        "study": "sage-mem-v1",
+        "stage": "phase-b-independent-reproduction",
+        "status": "complete",
+        "production_contract_verified": True,
+        "report_reproducer_injected": False,
+        "verifier_source_injected": False,
+        "contract_identity": copy.deepcopy(adapter.PHASE_B_CONTRACT_IDENTITY),
+        "contract_identity_sha256": contract_digest,
+        "registered_contract_sha256": contract_digest,
+        "outcome_values_emitted": False,
+        "finalizer_prediction_helpers_called": False,
+        "operator_pins": pins,
+        "authenticated_inventories": {
+            "verifier_source": verifier,
+            "bound_input_files": {
+                "protocol_lock": {
+                    "path": str((root / "protocol_lock.json").resolve()),
+                    "size": 100, "sha256": "d" * 64,
+                },
+                "raw_context_summary": raw,
+                "label_registry": labels,
+                "execution_registry": execution,
+                "finalizer_summary": finalizer,
+                "formal_report": report_identity,
+            },
+            "numerical_environment": {"fixture": True},
+            "locked_producers_sha256": "1" * 64,
+            "phase_a_artifacts_sha256": "2" * 64,
+            "normalized_label_artifacts_sha256": "3" * 64,
+            "phase_a_cells": 600,
+            "raw_context_references": 50,
+            "finalized_cells": 600,
+            "execution_registry_status_sha256": "4" * 64,
+            "formal_report_sha256": report_identity["sha256"],
+            "replayed_formal_report_sha256": report_identity["sha256"],
+        },
+        "independent_reproduction": {
+            "registered_consumer": {
+                "estimator": "sklearn.linear_model.RidgeClassifier",
+                "alpha": 1e-3, "solver": "lsqr", "tol": 1e-6,
+                "max_iter": 5000,
+                "standardization": "StandardScaler(mean=True,std=True)",
+                "carrier_models_refit": 150,
+                "raw_context_models_refit": 50,
+            },
+            "carrier_streams_reproduced": ["full", "reset", "prior"],
+            "raw_context_streams_reproduced": ["short-3", "long-16"],
+            "eligible_execution_arrays_recomputed": True,
+            "all_arrays_exact": True,
+            "formal_report_byte_exact": True,
+            "report_timestamp_normalization": "none in fixture",
+        },
+        "semantic_digests": {
+            key: f"{index:x}" * 64
+            for index, key in enumerate(
+                sorted(adapter.PHASE_B_SEMANTIC_KEYS), start=5)
+        },
+        "claim_boundary": (
+            "provenance-and-reproduction-only; this receipt contains no "
+            "accuracy, effect, interval, gate, or universal-success claim"),
+    }
+    receipt_path = (
+        root / "receipts/phase_b/reproduction_receipt.json")
+    receipt_identity = _write_canonical(receipt_path, receipt)
+    return receipt_path, str(receipt_identity["sha256"]), root
+
+
+def _phase_b_cli(tmp_path: Path) -> tuple[list[str], Path]:
+    root = tmp_path / "phase-b-study"
+    receipt = root / "receipts/phase_b/reproduction_receipt.json"
+    return [
+        "--phase-b-receipt", str(receipt),
+        "--expected-phase-b-receipt-sha256",
+        hashlib.sha256(receipt.read_bytes()).hexdigest(),
+    ], root
+
+
 def _execute(tmp_path: Path, report: dict[str, object],
              *extra: str, materialize_receipts: bool = True
              ) -> tuple[Path, Path, Path]:
@@ -340,12 +463,16 @@ def _execute(tmp_path: Path, report: dict[str, object],
     json_path = tmp_path / "claim-ledger.json"
     tex_path = tmp_path / "claim-ledger.tex"
     report_payload = _write_report(report_path, report)
+    phase_b_path, phase_b_sha256, phase_b_root = \
+        _materialize_phase_b_receipt(tmp_path, report_path, report)
     arguments = [
         "--report", str(report_path),
         "--spec", str(DEFAULT_SPEC),
         "--json-output", str(json_path),
         "--tex-output", str(tex_path),
         "--execute",
+        "--phase-b-receipt", str(phase_b_path),
+        "--expected-phase-b-receipt-sha256", phase_b_sha256,
         *extra,
     ]
     if "--expected-report-sha256" not in arguments:
@@ -356,7 +483,8 @@ def _execute(tmp_path: Path, report: dict[str, object],
     assert adapter.main(
         arguments,
         recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-        publication_root=tmp_path) == 0
+        publication_root=tmp_path,
+        phase_b_study_root=phase_b_root) == 0
     return report_path, json_path, tex_path
 
 
@@ -458,6 +586,7 @@ def test_refuses_overwrite_and_resume_requires_byte_identical_outputs(
     capsys.readouterr()
     original_json = json_path.read_bytes()
     original_tex = tex_path.read_bytes()
+    phase_b_args, phase_b_root = _phase_b_cli(tmp_path)
     command = [
         "--report", str(report_path),
         "--spec", str(DEFAULT_SPEC),
@@ -466,31 +595,44 @@ def test_refuses_overwrite_and_resume_requires_byte_identical_outputs(
         "--execute",
         "--expected-report-sha256",
         hashlib.sha256(report_path.read_bytes()).hexdigest(),
+        *phase_b_args,
     ]
     with pytest.raises(adapter.SageMemReportAdapterError, match="overwrite"):
         adapter.main(
             command,
             recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-            publication_root=tmp_path)
+            publication_root=tmp_path,
+            phase_b_study_root=phase_b_root)
     assert adapter.main(
         [*command, "--resume"],
         recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-        publication_root=tmp_path) == 0
+        publication_root=tmp_path,
+        phase_b_study_root=phase_b_root) == 0
     resumed = json.loads(capsys.readouterr().out)
     assert resumed["publication"] == "validated-existing"
 
     changed = copy.deepcopy(report)
     changed["phase_a_grid_sha256"] = "9" * 64
     changed_payload = _write_report(report_path, changed)
+    _, _, changed_phase_b_root = _materialize_phase_b_receipt(
+        tmp_path, report_path, changed)
+    changed_phase_b_args, _ = _phase_b_cli(tmp_path)
     changed_command = [
-        *command[:-1], hashlib.sha256(changed_payload).hexdigest(),
+        "--report", str(report_path),
+        "--spec", str(DEFAULT_SPEC),
+        "--json-output", str(json_path),
+        "--tex-output", str(tex_path),
+        "--execute", "--expected-report-sha256",
+        hashlib.sha256(changed_payload).hexdigest(),
+        *changed_phase_b_args,
     ]
     with pytest.raises(adapter.SageMemReportAdapterError,
                        match="differs from authenticated report"):
         adapter.main(
             [*changed_command, "--resume"],
             recompute_formal_audit=lambda _spec: copy.deepcopy(changed),
-            publication_root=tmp_path)
+            publication_root=tmp_path,
+            phase_b_study_root=changed_phase_b_root)
     assert json_path.read_bytes() == original_json
     assert tex_path.read_bytes() == original_tex
 
@@ -533,25 +675,98 @@ def test_expected_report_and_protocol_identities_are_enforced(
             "--expected-protocol-fingerprint", "0" * 64)
 
 
+@pytest.mark.parametrize(
+    ("mutation", "message"), [
+        ("injected", "no-injection boundary"),
+        ("outcomes", "no-injection boundary"),
+        ("report-pin", "selected formal report/grid"),
+        ("verifier-pin", "verifier source.*differs"),
+    ])
+def test_phase_b_receipt_flags_and_pins_fail_closed(
+        tmp_path: Path, _synthetic_sealed_lock: None,
+        mutation: str, message: str) -> None:
+    report = _report()
+    _materialize_comparator_receipts(tmp_path, report)
+    report_path = tmp_path / "report.json"
+    report_payload = _write_report(report_path, report)
+    receipt_path, _, phase_b_root = _materialize_phase_b_receipt(
+        tmp_path, report_path, report)
+    receipt = json.loads(receipt_path.read_text())
+    if mutation == "injected":
+        receipt["report_reproducer_injected"] = True
+    elif mutation == "outcomes":
+        receipt["outcome_values_emitted"] = True
+    elif mutation == "report-pin":
+        receipt["operator_pins"]["formal_report_sha256"] = "0" * 64
+    else:
+        receipt["operator_pins"]["verifier_source_sha256"] = "0" * 64
+        receipt["authenticated_inventories"]["verifier_source"][
+            "sha256"] = "0" * 64
+    receipt_path.write_text(adapter._canonical_json(receipt))
+    with pytest.raises(adapter.SageMemReportAdapterError, match=message):
+        adapter.main([
+            "--report", str(report_path), "--spec", str(DEFAULT_SPEC),
+            "--json-output", str(tmp_path / "claim-ledger.json"),
+            "--tex-output", str(tmp_path / "claim-ledger.tex"),
+            "--execute", "--expected-report-sha256",
+            hashlib.sha256(report_payload).hexdigest(),
+            "--phase-b-receipt", str(receipt_path),
+            "--expected-phase-b-receipt-sha256",
+            hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
+        ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+            publication_root=tmp_path, phase_b_study_root=phase_b_root)
+
+
+def test_phase_b_receipt_rejects_symlinked_parent_component(
+        tmp_path: Path, _synthetic_sealed_lock: None) -> None:
+    report = _report()
+    _materialize_comparator_receipts(tmp_path, report)
+    report_path = tmp_path / "report.json"
+    report_payload = _write_report(report_path, report)
+    receipt_path, receipt_sha, phase_b_root = _materialize_phase_b_receipt(
+        tmp_path, report_path, report)
+    parent = receipt_path.parent
+    real_parent = parent.with_name("phase_b_real")
+    parent.rename(real_parent)
+    parent.symlink_to(real_parent.name, target_is_directory=True)
+    with pytest.raises(adapter.SageMemReportAdapterError,
+                       match="symlink component"):
+        adapter.main([
+            "--report", str(report_path), "--spec", str(DEFAULT_SPEC),
+            "--json-output", str(tmp_path / "claim-ledger.json"),
+            "--tex-output", str(tmp_path / "claim-ledger.tex"),
+            "--execute", "--expected-report-sha256",
+            hashlib.sha256(report_payload).hexdigest(),
+            "--phase-b-receipt", str(receipt_path),
+            "--expected-phase-b-receipt-sha256", receipt_sha,
+        ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
+            publication_root=tmp_path, phase_b_study_root=phase_b_root)
+
+
 def test_execute_requires_hash_and_independent_audit_equality(
         tmp_path: Path, _synthetic_sealed_lock: None) -> None:
     report = _report()
     _materialize_comparator_receipts(tmp_path, report)
     report_path = tmp_path / "report.json"
     payload = _write_report(report_path, report)
+    phase_b_path, phase_b_hash, phase_b_root = _materialize_phase_b_receipt(
+        tmp_path, report_path, report)
     arguments = [
         "--report", str(report_path),
         "--spec", str(DEFAULT_SPEC),
         "--json-output", str(tmp_path / "ledger.json"),
         "--tex-output", str(tmp_path / "ledger.tex"),
         "--execute",
+        "--phase-b-receipt", str(phase_b_path),
+        "--expected-phase-b-receipt-sha256", phase_b_hash,
     ]
     with pytest.raises(adapter.SageMemReportAdapterError,
                        match="expected-report-sha256 is required"):
         adapter.main(
             arguments,
             recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-            publication_root=tmp_path)
+            publication_root=tmp_path,
+            phase_b_study_root=phase_b_root)
 
     recomputed = copy.deepcopy(report)
     recomputed["identity_ledger_sha256"] = "9" * 64
@@ -561,7 +776,8 @@ def test_execute_requires_hash_and_independent_audit_equality(
             [*arguments, "--expected-report-sha256",
              hashlib.sha256(payload).hexdigest()],
             recompute_formal_audit=lambda _spec: recomputed,
-            publication_root=tmp_path)
+            publication_root=tmp_path,
+            phase_b_study_root=phase_b_root)
     assert not (tmp_path / "ledger.json").exists()
     assert not (tmp_path / "ledger.tex").exists()
 
@@ -671,6 +887,7 @@ def test_resume_repairs_only_an_authentic_half_pair(
     capsys.readouterr()
     expected_tex = tex_path.read_bytes()
     tex_path.unlink()
+    phase_b_args, phase_b_root = _phase_b_cli(tmp_path)
     command = [
         "--report", str(report_path),
         "--spec", str(DEFAULT_SPEC),
@@ -679,11 +896,13 @@ def test_resume_repairs_only_an_authentic_half_pair(
         "--execute", "--resume",
         "--expected-report-sha256",
         hashlib.sha256(report_path.read_bytes()).hexdigest(),
+        *phase_b_args,
     ]
     assert adapter.main(
         command,
         recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-        publication_root=tmp_path) == 0
+        publication_root=tmp_path,
+        phase_b_study_root=phase_b_root) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["publication"] == "repaired-missing"
     assert tex_path.read_bytes() == expected_tex
@@ -695,7 +914,8 @@ def test_resume_repairs_only_an_authentic_half_pair(
         adapter.main(
             command,
             recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-            publication_root=tmp_path)
+            publication_root=tmp_path,
+            phase_b_study_root=phase_b_root)
     assert not tex_path.exists()
 
 
@@ -705,6 +925,8 @@ def test_execute_rejects_outputs_outside_or_through_symlinked_publication_root(
     _materialize_comparator_receipts(tmp_path, report)
     report_path = tmp_path / "report.json"
     report_payload = _write_report(report_path, report)
+    phase_b_path, phase_b_hash, phase_b_root = _materialize_phase_b_receipt(
+        tmp_path, report_path, report)
     allowed = tmp_path / "allowed"
     outside = tmp_path / "outside"
     allowed.mkdir()
@@ -713,6 +935,8 @@ def test_execute_rejects_outputs_outside_or_through_symlinked_publication_root(
         "--report", str(report_path), "--spec", str(DEFAULT_SPEC),
         "--execute", "--expected-report-sha256",
         hashlib.sha256(report_payload).hexdigest(),
+        "--phase-b-receipt", str(phase_b_path),
+        "--expected-phase-b-receipt-sha256", phase_b_hash,
     ]
     with pytest.raises(adapter.SageMemReportAdapterError,
                        match="must remain inside the publication root"):
@@ -720,7 +944,7 @@ def test_execute_rejects_outputs_outside_or_through_symlinked_publication_root(
             *base, "--json-output", str(outside / "ledger.json"),
             "--tex-output", str(allowed / "ledger.tex"),
         ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-           publication_root=allowed)
+           publication_root=allowed, phase_b_study_root=phase_b_root)
     assert not (outside / "ledger.json").exists()
 
     linked = allowed / "linked"
@@ -731,7 +955,7 @@ def test_execute_rejects_outputs_outside_or_through_symlinked_publication_root(
             *base, "--json-output", str(linked / "ledger.json"),
             "--tex-output", str(allowed / "ledger.tex"),
         ], recompute_formal_audit=lambda _spec: copy.deepcopy(report),
-           publication_root=allowed)
+           publication_root=allowed, phase_b_study_root=phase_b_root)
     assert not (outside / "ledger.json").exists()
 
 

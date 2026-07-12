@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import types
 
 import pytest
 
@@ -48,7 +49,10 @@ def _write_compiled_evidence(
         if sentinel_rendered else "\\relax\n")
     fls.write_text(
         f"PWD {paper}\n" + "".join(
-            f"INPUT {path.relative_to(paper)}\n" for path in inputs))
+            "INPUT " + (
+                str(path.relative_to(paper))
+                if path.is_relative_to(paper) else str(path)) + "\n"
+            for path in inputs))
     pdf.write_bytes(b"%PDF-1.4\n% synthetic compiled fixture\n%%EOF\n")
     newest = max(path.stat().st_mtime_ns for path in inputs)
     fresh = newest + 1_000_000
@@ -163,12 +167,14 @@ def _build_fixture(
     for directory in (scripts, configs, outputs, generated):
         directory.mkdir(parents=True, exist_ok=True)
     formal_auditor = scripts / "audit_sage_mem_v1_formal.py"
+    phase_b_verifier = scripts / "audit_sage_mem_v1_phase_b_reproduction.py"
     adapter = scripts / "summarize_sage_mem_v1_report.py"
     plotter = scripts / "plot_sage_mem_v1_claims.py"
     protocol = configs / "sage_mem_v1.yaml"
     lock = outputs / "protocol_lock.json"
     amendment = configs / "sage_mem_v1_formal_amendment.yaml"
     formal_auditor.write_text("# sealed formal auditor\n")
+    phase_b_verifier.write_text("# committed Phase-B verifier\n")
     adapter.write_text("# authenticated report adapter\n")
     shutil.copyfile(Path(plotter_module.__file__), plotter)
     protocol.write_text("study: sage-mem-v1\n")
@@ -246,6 +252,126 @@ def _build_fixture(
     }
     report_path = outputs / "formal_audit/report.json"
     report_payload = _write_canonical(report_path, report)
+
+    raw_summary = outputs / "raw_context_phase_a/summary.json"
+    label_registry = outputs / "formal_preparation/custody/registry.json"
+    execution_registry = (
+        outputs / "formal_preparation/execution_decks/registry.json")
+    finalizer_summary = outputs / "formal_finalized/summary.json"
+    _write_canonical(raw_summary, {"schema": "raw-context-fixture"})
+    _write_canonical(label_registry, {"schema": "label-fixture"})
+    _write_canonical(execution_registry, {"schema": "execution-fixture"})
+    finalized_cells_sha = "9" * 64
+    _write_canonical(finalizer_summary, {
+        "schema": "sage_mem_v1_formal_finalizer_v1",
+        "study": "sage-mem-v1", "stage": "formal-finalizer",
+        "status": "complete", "phase_a_cells": 600,
+        "finalized_cells": 600, "phase_a_grid_sha256": "a" * 64,
+        "label_registry_sha256": _identity(
+            root, label_registry)["sha256"],
+        "finalized_cells_sha256": finalized_cells_sha,
+    })
+    contract_sha = audit._sha256_json_value(
+        audit.PHASE_B_CONTRACT_IDENTITY)
+    phase_b_pins = {
+        "verifier_source_sha256": _identity(
+            root, phase_b_verifier)["sha256"],
+        "protocol_lock_sha256": _identity(root, lock)["sha256"],
+        "phase_a_grid_sha256": "a" * 64,
+        "raw_context_summary_sha256": _identity(
+            root, raw_summary)["sha256"],
+        "label_registry_sha256": _identity(
+            root, label_registry)["sha256"],
+        "execution_registry_sha256": _identity(
+            root, execution_registry)["sha256"],
+        "finalizer_summary_sha256": _identity(
+            root, finalizer_summary)["sha256"],
+        "finalized_cells_sha256": finalized_cells_sha,
+        "formal_report_sha256": hashlib.sha256(report_payload).hexdigest(),
+    }
+    phase_b_value = {
+        "schema": audit.PHASE_B_SCHEMA,
+        "study": "sage-mem-v1",
+        "stage": "phase-b-independent-reproduction",
+        "status": "complete",
+        "production_contract_verified": True,
+        "report_reproducer_injected": False,
+        "verifier_source_injected": False,
+        "contract_identity": copy.deepcopy(audit.PHASE_B_CONTRACT_IDENTITY),
+        "contract_identity_sha256": contract_sha,
+        "registered_contract_sha256": contract_sha,
+        "outcome_values_emitted": False,
+        "finalizer_prediction_helpers_called": False,
+        "operator_pins": phase_b_pins,
+        "authenticated_inventories": {
+            "verifier_source": _identity(root, phase_b_verifier),
+            "bound_input_files": {
+                "protocol_lock": _identity(root, lock),
+                "raw_context_summary": _identity(root, raw_summary),
+                "label_registry": _identity(root, label_registry),
+                "execution_registry": _identity(root, execution_registry),
+                "finalizer_summary": _identity(root, finalizer_summary),
+                "formal_report": _identity(root, report_path),
+            },
+            "numerical_environment": {"fixture": True},
+            "locked_producers_sha256": "1" * 64,
+            "phase_a_artifacts_sha256": "2" * 64,
+            "normalized_label_artifacts_sha256": "3" * 64,
+            "phase_a_cells": 600, "raw_context_references": 50,
+            "finalized_cells": 600,
+            "execution_registry_status_sha256": "4" * 64,
+            "formal_report_sha256": hashlib.sha256(
+                report_payload).hexdigest(),
+            "replayed_formal_report_sha256": hashlib.sha256(
+                report_payload).hexdigest(),
+        },
+        "independent_reproduction": {
+            "registered_consumer": {
+                "estimator": "sklearn.linear_model.RidgeClassifier",
+                "alpha": 1e-3, "solver": "lsqr", "tol": 1e-6,
+                "max_iter": 5000,
+                "standardization": "StandardScaler(mean=True,std=True)",
+                "carrier_models_refit": 150,
+                "raw_context_models_refit": 50,
+            },
+            "carrier_streams_reproduced": ["full", "reset", "prior"],
+            "raw_context_streams_reproduced": ["short-3", "long-16"],
+            "eligible_execution_arrays_recomputed": True,
+            "all_arrays_exact": True, "formal_report_byte_exact": True,
+            "report_timestamp_normalization": "none in fixture",
+        },
+        "semantic_digests": {
+            key: f"{index:x}" * 64
+            for index, key in enumerate((
+                "revealed_labels_sha256", "raw_phase_a_sha256",
+                "execution_decks_sha256", "execution_receipts_sha256",
+                "carrier_models_sha256", "carrier_predictions_sha256",
+                "carrier_correctness_and_execution_sha256",
+                "raw_predictions_and_correctness_sha256"), start=5)
+        },
+        "claim_boundary": (
+            "provenance-and-reproduction-only; this receipt contains no "
+            "accuracy, effect, interval, gate, or universal-success claim"),
+    }
+    phase_b_path = (
+        outputs / "receipts/phase_b/reproduction_receipt.json")
+    phase_b_payload = _write_canonical(phase_b_path, phase_b_value)
+    phase_b_binding = {
+        "receipt": {
+            **_identity(root, phase_b_path),
+            "schema": audit.PHASE_B_SCHEMA,
+            "expected_sha256_verified": True,
+        },
+        "verifier": _identity(root, phase_b_verifier),
+        "registered_contract_sha256": contract_sha,
+        "production_contract_verified": True,
+        "report_reproducer_injected": False,
+        "verifier_source_injected": False,
+        "outcome_values_emitted": False,
+        "operator_pins": phase_b_pins,
+        "exact_reproduction_verified": True,
+        "nonproduction_test_fixture": True,
+    }
 
     claim_rows = []
     for cohort in audit.COHORTS:
@@ -366,6 +492,7 @@ def _build_fixture(
                 "path": str(adapter.relative_to(root)),
                 "sha256": hashlib.sha256(adapter.read_bytes()).hexdigest(),
             },
+            "phase_b_reproduction": phase_b_binding,
         },
         "publication_artifacts": {},
     }
@@ -413,6 +540,9 @@ def _build_fixture(
         "ledger": ledger_path.relative_to(root),
         "ledger_sha": hashlib.sha256(ledger_payload).hexdigest(),
         "ledger_tex": ledger_tex_path.relative_to(root),
+        "phase_b_receipt": phase_b_path.relative_to(root),
+        "phase_b_receipt_sha": hashlib.sha256(phase_b_payload).hexdigest(),
+        "phase_b_receipt_payload": phase_b_payload,
         "main": main.relative_to(root),
         "appendix": appendix,
         "ledger_value": ledger,
@@ -427,14 +557,19 @@ def _build_fixture(
 def _audit(fixture: dict[str, object], **kwargs: object) -> dict[str, object]:
     kwargs.setdefault(
         "publication_recomputer",
-        lambda _root, _report, _ledger, _tex:
+        lambda _root, _report, _ledger, _tex, _phase_b:
         copy.deepcopy(fixture["expected_publication"]))
+    kwargs.setdefault(
+        "phase_b_recomputer",
+        lambda _root, _receipt: fixture["phase_b_receipt_payload"])
     kwargs.setdefault("compiler_runner", _synthetic_compiler_runner)
     return audit.audit_binding(
         fixture["root"], report=fixture["report"],
         ledger_json=fixture["ledger"], ledger_tex=fixture["ledger_tex"],
+        phase_b_receipt=fixture["phase_b_receipt"],
         main_tex=fixture["main"],
         expected_report_sha256=fixture["report_sha"],
+        expected_phase_b_receipt_sha256=fixture["phase_b_receipt_sha"],
         expected_ledger_sha256=fixture["ledger_sha"], **kwargs)
 
 
@@ -453,6 +588,11 @@ def _synthetic_compiler_runner(root: Path, main: Path) -> dict[str, object]:
         "started_ns": started,
         "completed_ns": max(time.time_ns(), stamp),
         "returncode": 0,
+        "trusted_external_roots": [],
+        "trusted_external_files": [],
+        "tex_search_environment_sanitized": True,
+        "shell_escape_disabled": True,
+        "fresh_build_state_verified": True,
     }
 
 
@@ -468,6 +608,11 @@ def _non_building_compiler_runner(root: Path, main: Path) \
         "started_ns": started,
         "completed_ns": max(time.time_ns(), started),
         "returncode": 0,
+        "trusted_external_roots": [],
+        "trusted_external_files": [],
+        "tex_search_environment_sanitized": True,
+        "shell_escape_disabled": True,
+        "fresh_build_state_verified": True,
     }
 
 
@@ -511,7 +656,25 @@ def test_real_tinytex_canonical_build_smoke_when_installed(
     main.write_text(
         "\\documentclass{article}\n"
         "\\begin{document}binding smoke\\end{document}\n")
+    malicious = b"\\input{/tmp/forged-claim.tex}\n"
+    for suffix in (".aux", ".out", ".bbl"):
+        main.with_suffix(suffix).write_bytes(malicious)
+    graph = audit.read_tex_graph(tmp_path, main)
     receipt = audit.run_canonical_paper_build(tmp_path, main)
+    post_graph = audit.read_tex_graph(tmp_path, main)
+    assert post_graph == graph
+    compiled = audit.authenticate_compiled_paper(
+        tmp_path, post_graph, main_tex=main, ledger_tex_path=main,
+        included_figures=set(), require_ledger_sentinel=False,
+        build_receipt=receipt)
+    assert compiled["repository_local_static_set_equal"] is True
+    assert compiled["untrusted_external_inputs"] == 0
+    assert compiled["external_inputs"]
+    assert receipt["shell_escape_disabled"] is True
+    assert "-no-shell-escape" in " ".join(receipt["command"])
+    for suffix in (".aux", ".out", ".bbl"):
+        path = main.with_suffix(suffix)
+        assert not path.exists() or malicious not in path.read_bytes()
     first_pdf_sha = hashlib.sha256((paper / "main.pdf").read_bytes()).hexdigest()
     assert Path(receipt["engine"]) == latexmk
     assert receipt["returncode"] == 0
@@ -570,7 +733,8 @@ def test_exact_15_row_coverage_and_report_equality_are_fail_closed(
     payload = _write_canonical(ledger_path, ledger)
     fixture["ledger_sha"] = hashlib.sha256(payload).hexdigest()
     with pytest.raises(audit.SageMemBindingAuditError,
-                       match="independent sealed publication recomputation"):
+                       match=("Phase-B receipt does not bind|independent "
+                              "sealed publication recomputation")):
         _audit(fixture)
 
     fixture = _build_fixture(tmp_path / "tampered")
@@ -622,9 +786,123 @@ def test_self_consistent_forged_gate_fails_independent_recomputation(
     fixture["ledger_sha"] = hashlib.sha256(ledger_payload).hexdigest()
     _refresh_compile(fixture)
 
-    with pytest.raises(audit.SageMemBindingAuditError,
-                       match="independent sealed publication recomputation"):
+    with pytest.raises(
+            audit.SageMemBindingAuditError,
+            match=("Phase-B receipt does not bind|independent sealed "
+                   "publication recomputation")):
         _audit(fixture)
+
+
+def test_phase_b_receipt_forgery_and_replay_mismatch_fail_closed(
+        tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path / "forged")
+    receipt_path = fixture["root"] / fixture["phase_b_receipt"]
+    receipt = json.loads(receipt_path.read_text())
+    receipt["semantic_digests"]["carrier_models_sha256"] = "f" * 64
+    forged = _write_canonical(receipt_path, receipt)
+    fixture["phase_b_receipt_sha"] = hashlib.sha256(forged).hexdigest()
+    # The receipt is internally well-formed and operator-pinned, but the
+    # committed replay still emits the original bytes.
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="verifier replay differs"):
+        _audit(fixture)
+
+    fixture = _build_fixture(tmp_path / "mismatch")
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="verifier replay differs"):
+        _audit(fixture, phase_b_recomputer=lambda _root, _receipt: b"{}\n")
+
+
+def test_phase_b_stale_source_pin_and_injection_flags_are_rejected(
+        tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path / "source")
+    verifier = fixture["root"] / audit.PHASE_B_VERIFIER_SOURCE
+    verifier.write_text("# stale replacement\n")
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="verifier source (size|SHA-256) differs"):
+        _audit(fixture)
+
+    fixture = _build_fixture(tmp_path / "pin")
+    receipt_path = fixture["root"] / fixture["phase_b_receipt"]
+    receipt = json.loads(receipt_path.read_text())
+    receipt["operator_pins"]["phase_a_grid_sha256"] = "0" * 64
+    payload = _write_canonical(receipt_path, receipt)
+    fixture["phase_b_receipt_sha"] = hashlib.sha256(payload).hexdigest()
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="formal report Phase-A grid"):
+        _audit(fixture)
+
+    fixture = _build_fixture(tmp_path / "injection")
+    receipt_path = fixture["root"] / fixture["phase_b_receipt"]
+    receipt = json.loads(receipt_path.read_text())
+    receipt["report_reproducer_injected"] = True
+    payload = _write_canonical(receipt_path, receipt)
+    fixture["phase_b_receipt_sha"] = hashlib.sha256(payload).hexdigest()
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="no-injection boundary"):
+        _audit(fixture)
+
+
+def test_phase_b_symlink_and_production_hooks_are_rejected(
+        tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path / "symlink")
+    original = fixture["root"] / fixture["phase_b_receipt"]
+    linked = original.with_name("linked-reproduction-receipt.json")
+    linked.symlink_to(original.name)
+    fixture["phase_b_receipt"] = linked.relative_to(fixture["root"])
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="symlink component"):
+        _audit(fixture)
+
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="cannot override committed Phase-B replay"):
+        audit.audit_binding(
+            audit.ROOT, report=audit.DEFAULT_REPORT,
+            ledger_json=audit.DEFAULT_LEDGER_JSON,
+            ledger_tex=audit.DEFAULT_LEDGER_TEX,
+            phase_b_receipt=audit.DEFAULT_PHASE_B_RECEIPT,
+            main_tex=audit.DEFAULT_MAIN_TEX,
+            expected_report_sha256="0" * 64,
+            expected_phase_b_receipt_sha256="0" * 64,
+            expected_ledger_sha256="0" * 64,
+            phase_b_recomputer=lambda _root, _receipt: b"{}\n")
+
+
+def test_phase_b_replay_uses_isolated_exact_source_not_preloaded_module(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fixture = _build_fixture(tmp_path)
+    root = fixture["root"]
+    receipt = json.loads(
+        (root / fixture["phase_b_receipt"]).read_text())
+    spoof = types.ModuleType(
+        "scripts.audit_sage_mem_v1_phase_b_reproduction")
+
+    def poisoned(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("preloaded verifier object was executed")
+
+    spoof.audit_phase_b_reproduction = poisoned
+    monkeypatch.setitem(
+        sys.modules, "scripts.audit_sage_mem_v1_phase_b_reproduction", spoof)
+    observed: dict[str, object] = {}
+
+    def fake_run(command: list[str], **kwargs: object
+                 ) -> subprocess.CompletedProcess[str]:
+        observed["command"] = list(command)
+        observed["environment"] = dict(kwargs["env"])
+        output = Path(command[command.index("--output") + 1])
+        output.write_bytes(fixture["phase_b_receipt_payload"])
+        return subprocess.CompletedProcess(command, 0, stdout="ok")
+
+    monkeypatch.setattr(audit.subprocess, "run", fake_run)
+    replayed = audit.replay_phase_b_receipt(root, receipt)
+    assert replayed == fixture["phase_b_receipt_payload"]
+    command = observed["command"]
+    assert command[1] == "-I"
+    assert Path(command[2]) == root / audit.PHASE_B_VERIFIER_SOURCE
+    environment = observed["environment"]
+    assert "PYTHONPATH" not in environment
+    assert "PYTHONHOME" not in environment
+    assert environment["PYTHONNOUSERSITE"] == "1"
 
 
 def test_mixed_integration_requires_full_table_in_appendix(
@@ -706,6 +984,59 @@ def test_alternate_main_and_symlink_inputs_are_rejected(
     with pytest.raises(audit.SageMemBindingAuditError,
                        match="canonical root/paper_a/main.tex"):
         _audit(fixture)
+
+
+def test_unregistered_local_style_and_dynamic_tex_input_are_rejected(
+        tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path / "style")
+    root = fixture["root"]
+    evil = root / "paper_a/evil.sty"
+    evil.write_text(
+        "\\ProvidesPackage{evil}\n"
+        "\\AtBeginDocument{Our method universally outperforms every "
+        "carrier by 99 percent.}\n")
+    main = root / fixture["main"]
+    main.write_text("\\usepackage{evil}\n" + main.read_text())
+    _refresh_compile(fixture, extra_inputs=(evil,))
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="unregistered local TeX support input"):
+        _audit(fixture)
+
+    fixture = _build_fixture(tmp_path / "dynamic")
+    root = fixture["root"]
+    injected = root / "paper_a/dynamic-claim.tex"
+    injected.write_text("SAGE-Mem universally wins by 99 percent.\n")
+    # Simulate a macro-obfuscated \input that the literal source walker cannot
+    # see but TeX's recorder necessarily reports.
+    _refresh_compile(fixture, extra_inputs=(injected,))
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="static input set differs"):
+        _audit(fixture)
+
+
+def test_external_texinput_and_search_environment_are_rejected(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fixture = _build_fixture(tmp_path / "external")
+    external = tmp_path / "outside-claim.tex"
+    external.write_text("Our method dominates every carrier.\n")
+    _refresh_compile(fixture, extra_inputs=(external,))
+    with pytest.raises(audit.SageMemBindingAuditError,
+                       match="untrusted external input"):
+        _audit(fixture)
+
+    latexmk = audit.discover_latexmk()
+    if latexmk is not None:
+        monkeypatch.setenv("TEXINPUTS", f"{tmp_path}//:")
+        monkeypatch.setenv("BIBINPUTS", str(tmp_path))
+        monkeypatch.setenv("TEXMFCNF", str(tmp_path))
+        monkeypatch.setenv("TEXMFPROJECT", str(tmp_path))
+        monkeypatch.setenv("TEXMFROOT", str(tmp_path))
+        environment, _, _ = audit._sanitized_tex_environment(latexmk)
+        assert "TEXINPUTS" not in environment
+        assert "BIBINPUTS" not in environment
+        assert "TEXMFCNF" not in environment
+        assert "TEXMFPROJECT" not in environment
+        assert "TEXMFROOT" not in environment
 
     fixture = _build_fixture(tmp_path / "symlink")
     original = fixture["root"] / fixture["ledger"]
@@ -904,3 +1235,15 @@ def test_execute_requires_pinned_report_and_ledger_hashes(
     failure = json.loads(capsys.readouterr().out)
     assert "expected-report-sha256 is required" in failure["reason"]
     assert not (tmp_path / audit.DEFAULT_RECEIPT).exists()
+
+    assert audit.main([
+        "--root", str(tmp_path), "--report", str(fixture["report"]),
+        "--ledger-json", str(fixture["ledger"]),
+        "--ledger-tex", str(fixture["ledger_tex"]),
+        "--phase-b-receipt", str(fixture["phase_b_receipt"]),
+        "--main-tex", str(fixture["main"]), "--execute",
+        "--expected-report-sha256", str(fixture["report_sha"]),
+        "--expected-ledger-sha256", str(fixture["ledger_sha"]),
+    ]) == 1
+    failure = json.loads(capsys.readouterr().out)
+    assert "expected-phase-b-receipt-sha256 is required" in failure["reason"]

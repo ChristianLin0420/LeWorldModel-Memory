@@ -47,6 +47,7 @@ LEDGER_SCHEMA = "sage_mem_v1_paper_claim_ledger_v1"
 PLOT_DATA_SCHEMA = "sage_mem_v1_plot_data_v1"
 PLOT_MANIFEST_SCHEMA = "sage_mem_v1_plot_manifest_v1"
 REPORT_SCHEMA = "sage_mem_v1_formal_evidence_audit_v1"
+PHASE_B_SCHEMA = "sage_mem_v1_phase_b_reproduction_v1"
 DEFAULT_LEDGER = (
     ROOT / "paper_a/generated_results/sage_mem_v1_claim_ledger.json"
 )
@@ -86,6 +87,13 @@ COMPARATOR_KEYS = ("retention", "next_feature", "execution")
 BASELINE_ARMS = {
     "gru", "lstm", "ssm", "fixed_trust", "gdelta",
     "fixed_trust_aux", "ssm_aux",
+}
+PHASE_B_OPERATOR_PIN_KEYS = {
+    "verifier_source_sha256", "protocol_lock_sha256",
+    "phase_a_grid_sha256", "raw_context_summary_sha256",
+    "label_registry_sha256", "execution_registry_sha256",
+    "finalizer_summary_sha256", "finalized_cells_sha256",
+    "formal_report_sha256",
 }
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
@@ -137,7 +145,7 @@ CHANNEL_MARKERS = {
     "execution": "D",
 }
 
-plt.rcParams.update({
+PLOT_RC = {
     "font.family": "STIXGeneral",
     "mathtext.fontset": "stix",
     "font.size": 7.0,
@@ -156,7 +164,8 @@ plt.rcParams.update({
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
     "savefig.transparent": False,
-})
+}
+plt.rcParams.update(PLOT_RC)
 
 
 class SageMemPlotError(RuntimeError):
@@ -334,6 +343,7 @@ def _validate_identity(value: Any, label: str, *, status: str | None = None
 def _validate_source_binding(value: Any) -> dict[str, Any]:
     source = _mapping(value, "source_binding", {
         "report", "protocol", "formal_auditor", "adapter",
+        "phase_b_reproduction",
     })
     report = _mapping(source["report"], "source_binding.report", {
         "path", "size", "sha256", "schema", "expected_sha256_verified",
@@ -419,11 +429,88 @@ def _validate_source_binding(value: Any) -> dict[str, Any]:
         "sha256": _digest(adapter["sha256"],
                           "source_binding.adapter.sha256"),
     }
+    phase_b = _mapping(
+        source["phase_b_reproduction"],
+        "source_binding.phase_b_reproduction", {
+            "receipt", "verifier", "registered_contract_sha256",
+            "production_contract_verified", "report_reproducer_injected",
+            "verifier_source_injected", "outcome_values_emitted",
+            "operator_pins", "exact_reproduction_verified",
+            "nonproduction_test_fixture",
+        })
+    receipt = _mapping(
+        phase_b["receipt"], "source_binding.phase_b_reproduction.receipt", {
+            "path", "size", "sha256", "schema",
+            "expected_sha256_verified"})
+    verifier = _mapping(
+        phase_b["verifier"], "source_binding.phase_b_reproduction.verifier",
+        {"path", "size", "sha256"})
+    pins = _mapping(
+        phase_b["operator_pins"],
+        "source_binding.phase_b_reproduction.operator_pins",
+        PHASE_B_OPERATOR_PIN_KEYS)
+    _require(receipt["schema"] == PHASE_B_SCHEMA
+             and receipt["expected_sha256_verified"] is True
+             and phase_b["production_contract_verified"] is True
+             and phase_b["report_reproducer_injected"] is False
+             and phase_b["verifier_source_injected"] is False
+             and phase_b["outcome_values_emitted"] is False
+             and phase_b["exact_reproduction_verified"] is True
+             and isinstance(phase_b["nonproduction_test_fixture"], bool),
+             "Phase-B publication binding is not production-exact")
+    normalized_pins = {
+        key: _digest(pins[key],
+                     f"source_binding.phase_b_reproduction.{key}")
+        for key in sorted(PHASE_B_OPERATOR_PIN_KEYS)
+    }
+    phase_b_normalized = {
+        "receipt": {
+            "path": _string(
+                receipt["path"],
+                "source_binding.phase_b_reproduction.receipt.path"),
+            "size": _integer(
+                receipt["size"],
+                "source_binding.phase_b_reproduction.receipt.size", 1),
+            "sha256": _digest(
+                receipt["sha256"],
+                "source_binding.phase_b_reproduction.receipt.sha256"),
+            "schema": PHASE_B_SCHEMA,
+            "expected_sha256_verified": True,
+        },
+        "verifier": {
+            "path": _string(
+                verifier["path"],
+                "source_binding.phase_b_reproduction.verifier.path"),
+            "size": _integer(
+                verifier["size"],
+                "source_binding.phase_b_reproduction.verifier.size", 1),
+            "sha256": _digest(
+                verifier["sha256"],
+                "source_binding.phase_b_reproduction.verifier.sha256"),
+        },
+        "registered_contract_sha256": _digest(
+            phase_b["registered_contract_sha256"],
+            "source_binding.phase_b_reproduction.registered_contract_sha256"),
+        "production_contract_verified": True,
+        "report_reproducer_injected": False,
+        "verifier_source_injected": False,
+        "outcome_values_emitted": False,
+        "operator_pins": normalized_pins,
+        "exact_reproduction_verified": True,
+        "nonproduction_test_fixture":
+            phase_b["nonproduction_test_fixture"],
+    }
+    _require(normalized_pins["formal_report_sha256"] ==
+             report_normalized["sha256"]
+             and normalized_pins["protocol_lock_sha256"] ==
+             protocol_normalized["implementation_lock"]["sha256"],
+             "Phase-B pins do not cross-bind report/protocol")
     return {
         "report": report_normalized,
         "protocol": protocol_normalized,
         "formal_auditor": auditor_normalized,
         "adapter": adapter_normalized,
+        "phase_b_reproduction": phase_b_normalized,
     }
 
 
@@ -941,6 +1028,15 @@ def build_plot_data(ledger: Mapping[str, Any], *, ledger_sha256: str,
                 ledger["source_binding"]["protocol"]["fingerprint"],
             "report_adapter_sha256":
                 ledger["source_binding"]["adapter"]["sha256"],
+            "phase_b_receipt_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["receipt"]["sha256"],
+            "phase_b_verifier_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["verifier"]["sha256"],
+            "phase_b_registered_contract_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["registered_contract_sha256"],
             "plotting_script_sha256": script_sha256,
         },
         "selection_policy": {
@@ -1000,6 +1096,10 @@ def _figure_bytes(fig: plt.Figure, *, ledger_sha256: str,
 
 def render_claim_ladder(plot_data: Mapping[str, Any], *, ledger_sha256: str,
                         script_sha256: str) -> tuple[bytes, bytes]:
+    # Other paper tests may modify Matplotlib's process-global defaults.
+    # Reassert the authenticated renderer contract at every render so the
+    # CLI subprocess and in-process independent regeneration are byte exact.
+    plt.rcParams.update(PLOT_RC)
     rows = plot_data["claim_ladder_rows"]
     columns = (
         ("Host >\nlocked", "primary_gates", "host_vs_locked_comparator"),
@@ -1108,6 +1208,7 @@ def _channel_interval(row: Mapping[str, Any], channel: str
 
 def render_effects(plot_data: Mapping[str, Any], *, ledger_sha256: str,
                    script_sha256: str) -> tuple[bytes, bytes]:
+    plt.rcParams.update(PLOT_RC)
     rows = plot_data["effect_rows"]
     channels = (
         ("primary_host", "Frozen host", "vs locked"),
@@ -1413,6 +1514,15 @@ def main(argv: Iterable[str] | None = None) -> int:
                 ledger["source_binding"]["report"]["sha256"],
             "protocol_fingerprint":
                 ledger["source_binding"]["protocol"]["fingerprint"],
+            "phase_b_receipt_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["receipt"]["sha256"],
+            "phase_b_verifier_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["verifier"]["sha256"],
+            "phase_b_registered_contract_sha256":
+                ledger["source_binding"]["phase_b_reproduction"]
+                ["registered_contract_sha256"],
             "plotting_script": {
                 "path": _display_path(script_path),
                 "size": script_path.stat().st_size,

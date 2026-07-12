@@ -276,6 +276,42 @@ def _ledger() -> dict[str, object]:
                 "path": "scripts/summarize_sage_mem_v1_report.py",
                 "sha256": "7" * 64,
             },
+            "phase_b_reproduction": {
+                "receipt": {
+                    "path": (
+                        "outputs/sage_mem_v1/receipts/phase_b/"
+                        "reproduction_receipt.json"),
+                    "size": 900,
+                    "sha256": "8" * 64,
+                    "schema": plotter.PHASE_B_SCHEMA,
+                    "expected_sha256_verified": True,
+                },
+                "verifier": {
+                    "path": (
+                        "scripts/audit_sage_mem_v1_phase_b_"
+                        "reproduction.py"),
+                    "size": 800,
+                    "sha256": "9" * 64,
+                },
+                "registered_contract_sha256": "a" * 64,
+                "production_contract_verified": True,
+                "report_reproducer_injected": False,
+                "verifier_source_injected": False,
+                "outcome_values_emitted": False,
+                "operator_pins": {
+                    "verifier_source_sha256": "9" * 64,
+                    "protocol_lock_sha256": "4" * 64,
+                    "phase_a_grid_sha256": "b" * 64,
+                    "raw_context_summary_sha256": "c" * 64,
+                    "label_registry_sha256": "d" * 64,
+                    "execution_registry_sha256": "e" * 64,
+                    "finalizer_summary_sha256": "f" * 64,
+                    "finalized_cells_sha256": "0" * 64,
+                    "formal_report_sha256": "1" * 64,
+                },
+                "exact_reproduction_verified": True,
+                "nonproduction_test_fixture": False,
+            },
         },
         "publication_artifacts": {
             "tex": {
