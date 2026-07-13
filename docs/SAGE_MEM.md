@@ -1,14 +1,11 @@
 # SAGE-Mem v1: audit-derived design and preregistration contract
 
-**Status:** prospective design specification, 2026-07-08. The isolated carrier
-in [`lewm/models/sage_mem.py`](../lewm/models/sage_mem.py) is implemented and
-unit-tested, but SAGE-Mem has not been evaluated. The label-free objectives,
-host adapters, ablations, and formal runners described below remain an unsealed
-experimental contract. Nothing in this document is a model result or evidence
-that the proposed mechanism works. Development may select only choices marked
-**development-to-seal**. A scientific claim is prohibited until those choices,
-source hashes, data banks, seeds, comparator identities, host integration, and
-inference code are locked before fresh formal outcomes are opened.
+**Status:** formal audit completed, 2026-07-14. The isolated carrier in
+[`lewm/models/sage_mem.py`](../lewm/models/sage_mem.py) is implemented and was
+evaluated by the sealed SAGE-Mem v1 formal campaign. The preregistered evidence
+does **not** support SAGE-Mem v1 as a superior memory module, and it does not
+justify adding SAGE-Mem claims to Paper A. This document is therefore retained
+as the design/preregistration record plus the formal negative outcome.
 
 SAGE-Mem expands to **Surprise-gated, Age-balanced, Global,
 Exposure-calibrated Memory**. It is a parameter-matched, label-free sidecar for
@@ -30,6 +27,38 @@ paired-data and audit protocol is shown separately below.
 
 Its editable source is
 [fig_sage_mem_protocol_paper.svg](figures/fig_sage_mem_protocol_paper.svg).
+
+## 0. Formal v1 outcome
+
+The sealed formal audit completed successfully and verified all expected cells:
+600 phase-A cells, 600 finalized cells, 600 resource receipts, 50 raw-context
+references, and 5 locked comparators. The audit report is
+`outputs/sage_mem_v1/formal_audit/report.json` with SHA-256
+`f198c03585f4f5b0173602a24cf45ee24d0cd17f9d8203d160699d6adfb88122`.
+
+The result is negative for the proposed module. Across all five registered
+cohorts -- DINO-WM PointMaze goal, DINO-WM PushT binding, DINO-WM PushT token,
+LeWM PushT color, and LeWM Reacher color -- SAGE-Mem fails the registered
+primary frozen-host claim at cue ages 4, 8, and 15. The optional execution
+program is also not claim-permitted: only one cohort is eligible, while the
+program requires at least two eligible cohorts, and no per-age execution claim
+passes.
+
+The raw long-context references remain useful as task checks, not as evidence
+for SAGE-Mem. They resolve on the DINO-WM cohorts, including perfect long-context
+PointMaze goal recall, but they do not transfer into SAGE-Mem frozen-host
+success. They do not resolve on the LeWM color cohorts.
+
+The supported conclusion is therefore:
+
+- SAGE-Mem v1 should not be presented as a new module that surpasses GRU, LSTM,
+  state-space, or fixed-trust baselines.
+- The audit outcome strengthens the paper's methodological message: a readable
+  long context or carrier-side signal is insufficient unless the frozen host
+  exposes the information and a declared consumer can use it.
+- Paper A should not be modified to claim SAGE-Mem improvements from this
+  campaign. If SAGE-Mem is discussed at all, it should appear only as a stopped
+  negative branch or appendix-level falsification.
 
 ## 1. Why this design follows from the audit
 
