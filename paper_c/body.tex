@@ -1,0 +1,201 @@
+\section{Introduction}
+
+Finite-context latent world models are attractive because they compress a
+visual control stream into a short representation.  The same finite context
+creates a basic ambiguity: if a cue disappears from the recent frames, is the
+model able to keep and expose the cue later, or did the interface silently
+erase it?  A high-level memory claim must answer more than whether a recurrent
+state exists.  It must show that an old observation is demanded by the task,
+that the evidence survives after leaving the raw context window, that it is
+exposed through the frozen host interface, and that a later consumer can use it.
+
+This paper focuses on that controlled memory problem.  The setting is simple
+by design.  A rendered episode contains an early cue that determines a later
+target.  The legal prediction context is too short to include that cue at the
+decision point.  A memory module observes the causal stream and writes a compact
+state.  The frozen host and audit readout are then evaluated under matched
+conditions: full memory, reset memory at the context boundary, and no persistent
+state.  If full memory succeeds while the controls stay near chance, the result
+localizes old-evidence retention and exposure rather than a shortcut in the
+endpoint image or action sequence.
+
+We instantiate this interface with a masked-evidence JEPA objective and a
+structured slot-memory writer.  The method is intentionally non-manual.  It is
+not told which frame is important, does not receive cue labels during training,
+and does not crop the cue.  Instead, it mines salient frames and patch sets from
+the rendered stream, masks the selected target patches, and predicts fixed
+generic color/texture latents through a bottleneck of eight slots.  Labels
+enter only after training through the audit readout.
+
+The main experimental question is whether the slot structure matters.  We
+therefore compare it against three drop-in memory blocks: GRU, LSTM, and a
+plain PyTorch selective state-space baseline we call Mamba-lite.  All four
+methods share the same caches, target mining, patch target encoder, loss,
+readout, controlled ages, and seeds.  Only the memory block changes.
+
+\paragraph{Contributions.}
+First, we give a controlled old-evidence benchmark for finite-context
+world-model interfaces across 12 OGBench decks and evidence ages 4, 8, and 15.
+Second, we show that a compact slot-memory writer passes all 108 seed-level
+retention cells with controls at chance.  Third, we add architecture baselines
+under the same non-manual objective and show that GRU and Mamba-lite are strong
+but fail many long or multi-object rows, while LSTM degrades sharply with age.
+Fourth, we connect readout evidence to fixed-controller native use where a
+local audited controller exists, while keeping the limitation explicit for
+AntMaze and HumanoidMaze.
+
+\section{Problem setup}
+
+Let $x_{0:T}$ be a rendered observation stream, $a_{0:T-1}$ be actions, and
+$c$ be an early cue that determines a later target label $y$.  At evaluation
+time, the host can see only a fixed recent window ending at time $t$.  The cue
+is placed before that window, so the legal recent context cannot solve $y$.
+The memory writer receives the causal stream up to $t$ and returns a compact
+state $m_t$.  A frozen interface then exposes a representation $h_t$ from the
+recent context and memory state.  The audit asks whether $h_t$ linearly exposes
+$y$.
+
+We report three matched conditions.  The full condition uses the causal memory
+state.  The reset condition observes the same endpoint but clears memory at the
+context boundary.  The no-state condition removes persistent memory entirely.
+The gate is fail-closed: full balanced accuracy must be at least 0.750 and both
+controls must stay at most 0.350.  The exact threshold is less important than
+the contrast.  A passing cell must show that information outside the legal
+context changed the exposed representation.
+
+\section{Masked-evidence slot JEPA}
+
+Figure~\ref{fig:architecture} summarizes the model.  A frozen frame encoder
+maps each rendered frame into tokens.  Action and time embeddings are added to
+the frame token.  A causal slot memory updates eight compact slots.  The target
+side is a stop-gradient patch encoder: for each selected target patch, fixed
+average-pooled color, centered color, and saturation features are projected to
+a normalized latent.  The predictor maps memory slots to a set of target
+latents.  Training uses set InfoNCE, set cosine distance, and a small standard
+deviation regularizer.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_c_architecture.pdf}
+  \caption{Masked-evidence slot-memory interface.  The cue is not labeled or
+  cropped during training.  Salient target patches are mined from the rendered
+  stream, masked from the legal context, and predicted from a causal slot
+  memory state.  Semantic labels are used only after training by the audit
+  readout.}
+  \label{fig:architecture}
+\end{figure}
+
+\paragraph{Target mining without cue labels.}
+For each episode we choose target frames from generic temporal bins spanning
+the legal history.  Within each selected frame, high-saliency patches are mined
+from image statistics, not from cue metadata.  These patches are removed from
+the visible stream.  The model must predict the fixed patch latents from the
+remaining causal stream.  This converts the question ``which old frame matters''
+into a self-supervised prediction pressure: the same memory state must cover
+old, middle, and recent visual evidence.
+
+\paragraph{Slot memory.}
+The slot writer receives the time-ordered frame/action/time tokens and a valid
+mask.  It maintains a small set of normalized slots and predicts a set of
+target patch latents.  The set objective prevents the model from relying on a
+single manually indexed memory cell.  The audit then averages slot features and
+fits the same post-hoc classifier used for all baselines.
+
+\paragraph{Baselines.}
+GRU and LSTM baselines replace the slot writer with a recurrent sequence model.
+The last valid hidden state is projected into eight slots before the same
+target predictor.  Mamba-lite is a small selective diagonal recurrence with
+input-dependent gates and decay.  It is not the official Mamba kernel; it is a
+plain PyTorch state-space baseline intended to test whether a selective
+recurrence alone explains the gains.  The baselines share all non-memory
+components with the slot model.
+
+\section{Experiments}
+
+We evaluate 12 OGBench decks: PointMaze-medium, PointMaze-large,
+PointMaze-giant, PointMaze-teleport, AntMaze-large, AntMaze-giant,
+HumanoidMaze-large, Cube-single, Cube-double, Cube-triple, Puzzle-3x3, and
+Scene.  Each method is run at evidence ages 4, 8, and 15 with seeds 0, 1, and
+2, giving 108 seed-level cells per method.  The same render cache and target
+mining procedure are reused for all methods.
+
+\input{generated_results/main_comparison.tex}
+
+Table~\ref{tab:main-comparison} is the main result.  The slot-memory method
+passes all 108 seed-level cells and all 36 environment-age rows.  The controls
+stay at chance.  GRU and Mamba-lite are real competitors, not straw baselines:
+they reach 0.803 and 0.800 mean full-memory balanced accuracy, with controls
+near chance.  But both pass only 22/36 environment-age rows.  LSTM is weaker,
+especially as age grows, passing only 6/36 rows.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_c_baseline_comparison.pdf}
+  \caption{Architecture comparison under identical data, targets, loss, and
+  readout.  Slot memory has the highest mean readout, the highest long-age
+  readout, and the only complete environment-age pass matrix.}
+  \label{fig:baseline-comparison}
+\end{figure}
+
+\input{generated_results/age_comparison.tex}
+
+The controlled-age stress test in Table~\ref{tab:age-comparison} is the
+cleanest evidence for structured memory.  At age 15, slot memory reaches 0.962
+mean full balanced accuracy.  GRU and Mamba-lite drop to 0.669 and 0.683, while
+LSTM drops to 0.350.  This matters because age 15 is outside the short visual
+context and is the closest current proxy for a long-memory requirement.
+
+\paragraph{Hard rows.}
+The failures are also informative.  Puzzle and Scene are difficult for
+recurrent baselines because the relevant evidence is distributed across visual
+configuration rather than a single simple cue.  GRU reaches only 0.341 on
+Puzzle age 15 and 0.279 on Scene age 15.  Mamba-lite improves some navigation
+and manipulation rows but still reaches only 0.425 on Puzzle age 15 and 0.356
+on Scene age 15.  These rows are the main reason to prefer a structured
+patch-set memory objective over a generic recurrent state.
+
+\section{Native-use checks}
+
+Readout accuracy is not execution.  We therefore also report a fixed-controller
+native-use stage where a local audited controller exists.  The memory readout
+selects a target, and the fixed controller executes that target in the native
+environment.  This is not autonomous planning by the world model.  It is a
+bounded use check: if the exposed memory selects the wrong target, the fixed
+controller should fail.
+
+\input{generated_results/native_use.tex}
+
+The repaired native-use summary in Table~\ref{tab:native-use} scores 27/36
+environment-age rows.  Full memory reaches 0.957 mean executed success, with
+recent-only and random target selection near 0.279.  PointMaze-teleport is now
+included after adding a teleport-aware PointMaze controller gate.  AntMaze and
+HumanoidMaze remain unscored for native use because this repository contains
+the MuJoCo environment definitions but no audited low-level expert controller.
+
+\section{Discussion}
+
+The evidence supports a focused claim.  A structured slot-memory writer trained
+with non-manual masked-evidence targets can preserve and expose old visual
+evidence beyond a fixed context window.  The comparison is controlled enough to
+attribute the main gap to the memory block: GRU, LSTM, and Mamba-lite use the
+same data, target mining, loss, and readout.
+
+The evidence does not support broader claims.  First, the ages are manual
+stress tests.  The current model does not automatically infer how far back it
+should search; it is evaluated at prescribed delays.  Second, fixed-controller
+native use is not native world-model planning.  Third, AntMaze and HumanoidMaze
+native success are scope limits until an audited local low-level policy is
+added.  Fourth, Mamba-lite is a useful selective-SSM baseline but not a claim
+about every possible Mamba implementation.
+
+\section{Conclusion}
+
+Controlled old-evidence memory should be evaluated as an interface property,
+not as a module name.  Under identical masked-evidence training and readout,
+slot memory cleanly separates from GRU, LSTM, and Mamba-lite baselines across
+12 OGBench decks and three evidence ages.  The result is strong enough for a
+paper when stated precisely: structured slot memory improves non-manual
+retention and exposure beyond a fixed context window, and fixed-controller
+checks show that exposed memory can change native outcomes where controllers
+are available.  Automatic memory-age selection is the next experiment, not a
+completed claim.

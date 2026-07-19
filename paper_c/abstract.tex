@@ -1,0 +1,21 @@
+Finite-context world models can observe a decisive visual cue and later act as
+if it was never seen.  We study this failure as an interface problem: old
+evidence must be stored beyond the raw context window and must also be exposed
+through a frozen host representation in a form a later consumer can use.  We
+introduce a self-supervised masked-evidence JEPA objective with a compact
+slot-memory writer.  Training never receives cue labels, cue crops, or manual
+key-frame annotations.  Instead, salient target frames and patch sets are mined
+from the rendered stream, withheld from the legal context, and predicted from a
+causal memory state.  On twelve OGBench decks, three controlled evidence ages
+(4, 8, and 15), and three seeds, the slot-memory method passes every registered
+retention cell: mean full-memory balanced accuracy is 0.983, while reset and
+no-state controls remain at 0.250 and 0.248.  Under the same data, targets,
+loss, and readout, GRU, LSTM, and Mamba-lite baselines reach 0.803, 0.577, and
+0.800 mean full-memory balanced accuracy and pass 22/36, 6/36, and 22/36
+environment-age rows.  The age-15 stress test is the clearest separator:
+slot memory reaches 0.962, versus 0.669, 0.350, and 0.683 for the baselines.
+For supported environments, fixed-controller native-use checks score 27/36
+environment-age rows with 0.957 mean executed success.  We scope the claim
+carefully: this is evidence for structured old-evidence retention and exposure
+under controlled ages, not autonomous planning or automatic memory-age
+selection.

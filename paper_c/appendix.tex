@@ -1,0 +1,57 @@
+\section{Artifact map}
+
+The paper is generated from local JSON artifacts and does not hand-enter the
+main numbers.  The generator is \path{scripts/plot_paper_c.py}.  It writes
+figures to \path{paper_c/figures/} and tables plus a JSON snapshot to
+\path{paper_c/generated_results/}.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Primary local result sources used by Paper C.}
+\begin{tabularx}{\linewidth}{lY}
+\toprule
+Claim & Local source\\
+\midrule
+Slot-memory current method
+  & \path{outputs/multiview_patchset_color_jepa_native_v1/summary.json}\\
+GRU baseline
+  & \path{outputs/memory_arch_baselines_v1/gru/summary.json}\\
+LSTM baseline
+  & \path{outputs/memory_arch_baselines_v1/lstm/summary.json}\\
+Mamba-lite baseline
+  & \path{outputs/memory_arch_baselines_v1/mamba_lite/summary.json}\\
+Fixed-controller native use
+  & \path{outputs/native_use_repaired_combined_v2/stats.json}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Training details}
+
+All methods use the same rendered caches, validation split, target mining, and
+readout protocol.  Training uses 36 epochs, batch size 96, dimension 160,
+eight output slots, four attention heads for the slot method, AdamW with
+learning rate $3\times10^{-4}$, and weight decay $10^{-4}$.  The loss is the
+sum of set InfoNCE, a weighted set cosine term, and a small standard deviation
+regularizer.  The training loss never sees the cue label.  Labels are used only
+for post-hoc audit readouts.
+
+\section{Gate semantics}
+
+A seed-level cell passes when the full-memory balanced accuracy is at least
+0.750 and both reset and no-state controls are at most 0.350.  An
+environment-age row is counted as all-pass only when all three seeds pass.  We
+also report seed-pass counts because they show partial stability.
+
+\section{Automatic age extension plan}
+
+The present paper uses controlled ages 4, 8, and 15.  The next extension is an
+automatic age router.  Instead of training separate fixed-age cells, the data
+loader will sample cue delays from a range and attach a timestamp to each
+memory slot.  At inference, a query network will score stored slots by content
+match, timestamp, and confidence, then select the top-$k$ slots.  Evaluation
+will include the registered fixed ages plus unseen ages such as 6, 10, 20, and
+30.  We will report the maximum passing age found by a doubling and binary
+search protocol.  This extension is intentionally not claimed by the current
+paper.

@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Controlled-age retention and exposure on 12 OGBench decks, three ages, and three seeds. Full, reset, and no-state are balanced accuracies from the post-hoc audit readout.}
+\label{tab:main-comparison}
+\begin{tabular}{lccccc}
+\toprule
+Method & Full & Reset & No-state & Seed pass & Env-age pass\\
+\midrule
+Slot memory (ours) & 0.983 & 0.250 & 0.248 & 108/108 & 36/36\\
+GRU & 0.803 & 0.252 & 0.250 & 73/108 & 22/36\\
+LSTM & 0.577 & 0.248 & 0.250 & 26/108 & 6/36\\
+Mamba-lite & 0.800 & 0.255 & 0.253 & 71/108 & 22/36\\
+\bottomrule
+\end{tabular}
+\end{table}

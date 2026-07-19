@@ -1,0 +1,131 @@
+{
+  "methods": {
+    "gru": {
+      "age": {
+        "15": {
+          "mean_full": 0.6691657587532275,
+          "seed_count": 36,
+          "seed_pass": 14
+        },
+        "4": {
+          "mean_full": 0.8822741197584472,
+          "seed_count": 36,
+          "seed_pass": 29
+        },
+        "8": {
+          "mean_full": 0.8567938850729875,
+          "seed_count": 36,
+          "seed_pass": 30
+        }
+      },
+      "allpass_rows": 22,
+      "anypass_rows": 26,
+      "jobs": 108,
+      "mean_full": 0.802744587861554,
+      "mean_no_state": 0.24981942485480169,
+      "mean_reset": 0.25198568374940516,
+      "seed_pass": 73
+    },
+    "lstm": {
+      "age": {
+        "15": {
+          "mean_full": 0.3496310613089929,
+          "seed_count": 36,
+          "seed_pass": 0
+        },
+        "4": {
+          "mean_full": 0.7746709889611201,
+          "seed_count": 36,
+          "seed_pass": 20
+        },
+        "8": {
+          "mean_full": 0.6054094182506046,
+          "seed_count": 36,
+          "seed_pass": 6
+        }
+      },
+      "allpass_rows": 6,
+      "anypass_rows": 12,
+      "jobs": 108,
+      "mean_full": 0.5765704895069058,
+      "mean_no_state": 0.25049688995205976,
+      "mean_reset": 0.24808446880980056,
+      "seed_pass": 26
+    },
+    "mamba_lite": {
+      "age": {
+        "15": {
+          "mean_full": 0.6828535152811863,
+          "seed_count": 36,
+          "seed_pass": 14
+        },
+        "4": {
+          "mean_full": 0.9038313535833526,
+          "seed_count": 36,
+          "seed_pass": 29
+        },
+        "8": {
+          "mean_full": 0.8122927665835981,
+          "seed_count": 36,
+          "seed_pass": 28
+        }
+      },
+      "allpass_rows": 22,
+      "anypass_rows": 27,
+      "jobs": 108,
+      "mean_full": 0.7996592118160457,
+      "mean_no_state": 0.2531507345367948,
+      "mean_reset": 0.25463572598640133,
+      "seed_pass": 71
+    },
+    "slot_current": {
+      "age": {
+        "15": {
+          "mean_full": 0.9621996613226856,
+          "seed_count": 36,
+          "seed_pass": 36
+        },
+        "4": {
+          "mean_full": 0.9973552910331863,
+          "seed_count": 36,
+          "seed_pass": 36
+        },
+        "8": {
+          "mean_full": 0.9892527038998772,
+          "seed_count": 36,
+          "seed_pass": 36
+        }
+      },
+      "allpass_rows": 36,
+      "anypass_rows": 36,
+      "jobs": 108,
+      "mean_full": 0.982935885418583,
+      "mean_no_state": 0.24776186292787047,
+      "mean_reset": 0.24996091442472887,
+      "seed_pass": 108
+    }
+  },
+  "native_use": {
+    "cell_count": 81,
+    "completed_rows": 27,
+    "mean_full": 0.9574074074074074,
+    "mean_oracle": 0.9731481481481481,
+    "mean_random": 0.27870370370370373,
+    "mean_recent": 0.2792181069958848,
+    "total_env_age_rows": 36,
+    "unavailable_rows": 9,
+    "worst_full": 0.8277777777777778
+  },
+  "slot_better_than_best_baseline": 32,
+  "slot_ge_best_baseline": 36,
+  "sources": {
+    "gru": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/gru/summary.json",
+    "lstm": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/lstm/summary.json",
+    "mamba_lite": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/mamba_lite/summary.json",
+    "native_use": "/home/chrislin/projects/LeWorldModel-Memory/outputs/native_use_repaired_combined_v2/stats.json",
+    "slot_current": "/home/chrislin/projects/LeWorldModel-Memory/outputs/multiview_patchset_color_jepa_native_v1/summary.json"
+  },
+  "wins_by_env_age": {
+    "slot_current": 36
+  }
+}
