@@ -1,0 +1,85 @@
+{
+  "case_count": 6,
+  "cases": [
+    {
+      "case": "full_memory_success",
+      "env_name": "pointmaze-large-navigate-v0",
+      "final_distance": 0.9843764322837434,
+      "path": "docs/assets/ogbench_renders/pointmaze_large_navigate_v0_full_memory_success.gif",
+      "probe_success": true,
+      "reward_sum": 1.0,
+      "row_index": 0,
+      "selected_label": 0,
+      "steps": 260,
+      "success": true,
+      "true_label": 0
+    },
+    {
+      "case": "wrong_target_failure",
+      "env_name": "pointmaze-large-navigate-v0",
+      "final_distance": 36.095922346100494,
+      "path": "docs/assets/ogbench_renders/pointmaze_large_navigate_v0_wrong_target_failure.gif",
+      "probe_success": false,
+      "reward_sum": 0.0,
+      "row_index": 0,
+      "selected_label": 1,
+      "steps": 600,
+      "success": false,
+      "true_label": 0
+    },
+    {
+      "case": "full_memory_success",
+      "env_name": "pointmaze-teleport-navigate-v0",
+      "final_distance": 0.9027016714357073,
+      "path": "docs/assets/ogbench_renders/pointmaze_teleport_navigate_v0_full_memory_success.gif",
+      "probe_success": true,
+      "reward_sum": 1.0,
+      "row_index": 0,
+      "selected_label": 0,
+      "steps": 293,
+      "success": true,
+      "true_label": 0
+    },
+    {
+      "case": "wrong_target_failure",
+      "env_name": "pointmaze-teleport-navigate-v0",
+      "final_distance": 35.69758917662336,
+      "path": "docs/assets/ogbench_renders/pointmaze_teleport_navigate_v0_wrong_target_failure.gif",
+      "probe_success": false,
+      "reward_sum": 0.0,
+      "row_index": 0,
+      "selected_label": 1,
+      "steps": 600,
+      "success": false,
+      "true_label": 0
+    },
+    {
+      "case": "full_memory_success",
+      "env_name": "cube-single-play-v0",
+      "final_distance": 0.029016388953007132,
+      "path": "docs/assets/ogbench_renders/cube_single_play_v0_full_memory_success.gif",
+      "probe_success": true,
+      "reward_sum": 1.0,
+      "row_index": 0,
+      "selected_label": 0,
+      "steps": 41,
+      "success": true,
+      "true_label": 0
+    },
+    {
+      "case": "wrong_target_failure",
+      "env_name": "cube-single-play-v0",
+      "final_distance": 0.12978043927087,
+      "path": "docs/assets/ogbench_renders/cube_single_play_v0_wrong_target_failure.gif",
+      "probe_success": false,
+      "reward_sum": 0.0,
+      "row_index": 0,
+      "selected_label": 1,
+      "steps": 54,
+      "success": false,
+      "true_label": 0
+    }
+  ],
+  "claim_boundary": "Representative fixed-controller videos for qualitative inspection; not a substitute for aggregate native-use metrics.",
+  "schema": "ogbench_native_render_cases_v1"
+}

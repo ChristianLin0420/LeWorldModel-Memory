@@ -1,0 +1,28 @@
+\section{Generated all-env native-use repair monitor}
+\label{app:native-use-repaired-auto}
+
+This section is generated from \path{outputs/native_use_repaired_combined_v1/summary.json}.  It records the fixed-controller native-use sweep after the multi-object controller repair.  Rows without an audited local controller, or rows whose oracle-label controller gate fails, remain unscored scope limits.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4.2pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Repaired all-env fixed-controller native-use summary.  Full memory is the ME-JEPA memory-selected target; control is the stronger of recent-only and random selection, averaged over the listed rows.  The sweep scores 24/36 env-age rows, with mean full success 0.952, worst scored full success 0.828, and mean full-minus-control lifts 0.714 over recent-only and 0.708 over random.}
+\label{tab:native-use-repaired-allenv}
+\begin{tabular}{lccccc}
+\toprule
+Group & Rows & Full & Control & Oracle & Status\\
+\midrule
+PointMaze non-teleport & 9 & 0.993 & 0.252 & 1.000 & scored\\
+Cube-single & 3 & 1.000 & 0.246 & 1.000 & scored\\
+Cube-double & 3 & 0.944 & 0.281 & 0.944 & repaired\\
+Cube-triple & 3 & 0.911 & 0.222 & 0.911 & repaired\\
+Puzzle-3x3 & 3 & 0.928 & 0.254 & 1.000 & scored\\
+Scene & 3 & 0.854 & 0.239 & 0.903 & repaired\\
+PointMaze-teleport & 0 & \NA & \NA & 0.608--0.658 & gate failed\\
+Ant/Humanoid locomotion & 0 & \NA & \NA & \NA & no local controller\\
+\bottomrule
+\end{tabular}
+\end{table}
+

@@ -1,0 +1,246 @@
+\section{Artifact map}
+
+The paper is generated from current local artifacts rather than hand-entered
+plots.  The figure-generation script is
+\path{scripts/plot_paper_b.py}.  It writes figures to
+\path{paper_b/figures/} and a JSON snapshot to
+\path{paper_b/generated_results/result_snapshot.json}.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Primary local result sources used by this paper.}
+\begin{tabularx}{\linewidth}{lY}
+\toprule
+Claim & Local source\\
+\midrule
+PushT checkpointed downstream use
+  & \path{outputs/pusht_checkpointed_downstream_use_v1/summary.json}\\
+PointMaze carrier grid
+  & \path{outputs/dinowm_pointmaze_wave3/formal/carrier_summary.json}\\
+PointMaze external use
+  & \path{outputs/dinowm_pointmaze_wave3/formal/external_use_summary.json}\\
+Wall PCA-logistic confirmation
+  & \path{outputs/dinowm_wall_audit_v1/stage_h_logistic_readout/summary.json}\\
+Wall ridge screen
+  & \path{outputs/dinowm_wall_audit_v1/stage_h_carriers/summary.json}\\
+OGBench admission bridge
+  & \path{outputs/ogbench_mesmem_admission_v1/summary_all.json}\\
+OGBench feature-host capacity
+  & \path{outputs/ogbench_feature_host_stage_v1/summary.json}\\
+OGBench native-use success
+  & \path{outputs/ogbench_native_use_stage_v1/summary.json}\\
+OGBench repaired all-env native-use success
+  & \path{outputs/native_use_repaired_combined_v1/summary.json}\\
+Final non-manual OGBench patch-set JEPA
+  & \path{outputs/random_patchset_view_color_jepa_final_v1/summary.json}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\input{generated_results/native_use_repaired_allenv_auto.tex}
+\input{generated_results/nonmanual_breadth_auto.tex}
+
+\section{Detailed claim ledger}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Expanded ledger corresponding to Figure~\ref{fig:claim-ledger}.  The
+main paper uses the visual ledger; this table records the detailed boundary for
+each row.}
+\begin{tabularx}{\linewidth}{lYcccY}
+\toprule
+Environment & Host / task & Retention & Exposure & Use & Boundary\\
+\midrule
+PushT & DINO-WM and LeWM, six-way visual binding, age 15
+  & \Pass & \Pass & \Pass
+  & Cross-host use gate passes; host-native banks prevent a row-matched causal
+    comparison between host families.\\
+PointMaze & DINO-WM, four-goal transient cue
+  & \Pass & \Pass & \Pass
+  & Strong external consumer result; not native planner memory.\\
+Wall & DINO-WM, four-position transient wall cue
+  & \Pass & mixed & \NA
+  & Carrier-prior memory remains high; host-output exposure confirms only at
+    short cue age.\\
+OGBench & Seven admitted decks; repaired fixed-controller native use plus
+  two-deck non-manual patch-set JEPA
+  & \Pass & \Pass & \Pass
+  & Admission passes across seven decks.  The repaired native-use sweep scores
+    24/36 env-age rows under fixed controllers, and the non-manual patch-set
+    JEPA stage passes all 30 registered PointMaze-large/Cube-single retention
+    cells.  No native OGBench planner is claimed.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Quantitative result summary}
+
+\paragraph{PushT checkpointed use.}
+At age 15, both frozen host families support the same qualitative conclusion:
+full memory separates from reset and no-state controls in host readout and
+executed success.  DINO-WM full memory reaches balanced accuracy 0.988 and
+executed success 0.972, while reset/no-state execution remains near the
+six-way uninformed regime.  LeWM full memory reaches balanced accuracy 0.920
+and executed success 0.926 with the same control pattern.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{PushT binding use summary.}
+\begin{tabular}{lccc}
+\toprule
+Host & Full execution & Reset execution & No-state execution\\
+\midrule
+DINO-WM & 0.972 & 0.167 & 0.168\\
+LeWM    & 0.926 & 0.156 & 0.151\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{PointMaze external use.}
+The fixed consumer preserves the carrier ordering in navigation execution.  No
+state remains close to random-goal behavior; state-space and fixed-trust are
+the strongest arms.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{PointMaze external-use summary.}
+\begin{tabular}{lcc}
+\toprule
+Arm & Goal/read accuracy & Executed success\\
+\midrule
+No state & 0.250 & 0.239\\
+GRU & --- & 0.302\\
+LSTM & --- & 0.484\\
+State-space & 0.760 & 0.745\\
+Fixed-trust & 0.866 & 0.775\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Wall readout note.}
+The Wall carrier grid was first screened with a deterministic ridge readout.
+That screen suggested fixed-trust might clear host-output exposure at ages 4
+and 8.  The paper uses the stricter confirmation run instead:
+StandardScaler, PCA(256), and logistic regression fit only on the training
+split.  Under this confirmation fixed-trust clears only age 4, while
+state-space does not clear any age.  This is why Wall is described as exposure
+failure localization rather than a broad success result.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Wall confirmation: carrier prior remains high while host-output
+exposure decays.}
+\begin{tabular}{llccc}
+\toprule
+Arm & Readout & Age 4 & Age 8 & Age 15\\
+\midrule
+Fixed-trust & carrier prior & 1.000 & 1.000 & 1.000\\
+Fixed-trust & host output & 0.929 & 0.446 & 0.297\\
+State-space & carrier prior & 1.000 & 0.995 & 0.989\\
+State-space & host output & 0.565 & 0.301 & 0.272\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{OGBench claim boundary}
+
+The OGBench admission bridge checks only whether a controlled cue deck is
+valid: cue-time encoding must be high, endpoint/action/state shortcuts must be
+near chance, and counterfactual masks must not leak post-cue evidence.  It
+does not train a frozen OGBench world model and does not run downstream
+execution.
+
+The follow-up feature-host stage is one rung stronger but still bounded.  It
+uses admitted decks, DINOv2 pooled patch features as a frozen feature
+interface, and a sidecar that carries the old cue feature before writing a
+residual into the endpoint feature.  The writer loss is self-supervised against
+the cue feature, while labels are used only for the post-hoc readout.
+
+The native-use stage then asks whether the selected label changes final
+environment success.  Non-teleport PointMaze uses a BFS waypoint controller
+over native point-mass actions.  Cube variants use the OGBench
+CubeMarkovOracle with selected-label target metadata, Puzzle uses a lights-out
+solve with the button oracle, and Scene composes button, drawer, window, and
+cube Markov oracles.  The repaired sweep scores 24/36 env-age rows; the
+PointMaze-teleport controller gate remains below threshold, and
+AntMaze/HumanoidMaze remain unscored without local low-level controllers.
+These are fixed-controller use checks; they are not native OGBench world-model
+planning.
+
+The final non-manual stage then removes the explicit cue-feature handoff on
+PointMaze-large and Cube-single.  It mines salient target frames and patch
+sets without cue labels or cue-layout knowledge, predicts fixed generic
+color/texture patch latents through compact slots, and evaluates the learned
+state only after training.  This certifies autonomous old-evidence retention
+for the two core render-stage decks, but not yet broad OGBench-wide
+generalization or native planner memory.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{OGBench admission summary.  All rows pass cue-time readability,
+shortcut, and mask checks; all memory/use columns are intentionally unclaimed.}
+\begin{tabularx}{\linewidth}{lYccc}
+\toprule
+Deck & Family & Cue read & Max shortcut & Mask audit\\
+\midrule
+PointMaze-large-navigate & navigation & 1.000 & 0.250 & pass\\
+AntMaze-large-navigate & locomotion & 1.000 & 0.250 & pass\\
+HumanoidMaze-large-navigate & high-DoF locomotion & 1.000 & 0.250 & pass\\
+Cube-single-play & object manipulation & 1.000 & 0.250 & pass\\
+Cube-double-play & object manipulation & 1.000 & 0.250 & pass\\
+Scene-play & multi-object scene & 1.000 & 0.250 & pass\\
+Puzzle-3x3-play & combinatorial puzzle & 1.000 & 0.250 & pass\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{OGBench feature-host capacity summary.  Gate: full host-output
+balanced accuracy at least 0.750, reset and no-state controls at most 0.300.
+All rows use 200 train bases, 80 validation bases, and five seeds.}
+\begin{tabular}{lcccc}
+\toprule
+Deck & Age & Seeds passing & Full & Reset/no-state\\
+\midrule
+AntMaze-large-navigate & 4  & 5/5 & 1.000 & 0.250 / 0.250\\
+AntMaze-large-navigate & 8  & 5/5 & 1.000 & 0.250 / 0.250\\
+AntMaze-large-navigate & 15 & 5/5 & 1.000 & 0.250 / 0.250\\
+Cube-single-play       & 4  & 5/5 & 1.000 & 0.250 / 0.250\\
+Cube-single-play       & 8  & 5/5 & 1.000 & 0.250 / 0.250\\
+Cube-single-play       & 15 & 5/5 & 1.000 & 0.250 / 0.250\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:native-use-repaired-allenv} reports the repaired all-env
+native-use sweep.  It subsumes the earlier PointMaze-large/Cube-single slice
+and keeps controller-gate failures and unavailable locomotion controllers as
+explicit scope limits.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Final non-manual OGBench patch-set JEPA summary.  Labels are used
+only for post-hoc audit; training uses no cue labels, cue crops, or key-frame
+annotations.}
+\begin{tabular}{lccccc}
+\toprule
+Deck & Age & Seeds passing & Full & Reset & Recent-only\\
+\midrule
+PointMaze-large-navigate & 4  & 5/5 & 1.000 & 0.251 & 0.255\\
+PointMaze-large-navigate & 8  & 5/5 & 0.994 & 0.266 & 0.250\\
+PointMaze-large-navigate & 15 & 5/5 & 0.983 & 0.251 & 0.252\\
+Cube-single-play         & 4  & 5/5 & 1.000 & 0.240 & 0.257\\
+Cube-single-play         & 8  & 5/5 & 0.990 & 0.223 & 0.254\\
+Cube-single-play         & 15 & 5/5 & 0.921 & 0.247 & 0.246\\
+\bottomrule
+\end{tabular}
+\end{table}

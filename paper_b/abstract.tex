@@ -1,0 +1,20 @@
+Finite-context latent world models can store old evidence internally yet fail
+to expose it to a later decision.  We study this as an interface problem rather
+than an architecture label.  A valid memory claim must establish old-cue
+demand, post-context retention, frozen-host exposure, and downstream use under
+matched controls.  We instantiate this ladder with masked-evidence sidecars on
+frozen DINO-WM and LeWM hosts, where PushT visual binding passes a
+checkpointed downstream-use gate and DINO-WM PointMaze converts retained goal
+state into fixed-controller execution gains.  Wall exposes the key failure
+mode: carrier-prior memory remains high while host-output exposure collapses
+with cue age.  We then remove the manual cue-feature handoff with a
+self-supervised salient patch-set JEPA objective: target frames and patches
+are mined without cue labels, cue crops, or key-frame annotations, and a
+compact slot state predicts fixed generic color/texture latents.  On OGBench
+PointMaze-large and Cube-single this non-manual objective passes all 30
+registered cells over ages 4/8/15 and five seeds: full-memory balanced
+accuracy is 0.92--1.00 while reset and recent-only controls stay near chance.
+The result is a scoped method-and-audit contribution: persistent memory in
+latent world models is a property of the target--carrier--host--consumer
+interface, not a universal property of any single recurrent, state-space, or
+fixed-trust module.

@@ -1,0 +1,3371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masked-Evidence JEPA Memory — Research Dashboard</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --black: #000000;
+      --cream: #f5f4ef;
+      --paper: #fbfbf9;
+      --paper-2: #efeee8;
+      --yellow: #fbd45b;
+      --yellow-deep: #d8a900;
+      --gray: #9ca3af;
+      --muted: #656760;
+      --line: #d4d3cb;
+      --line-dark: #333b49;
+      --good: #315b2c;
+      --bad: #7f1d1d;
+      --warn: #8a5d00;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Baskerville, Georgia, "Times New Roman", serif;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --shell: min(1460px, calc(100vw - 32px));
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--cream);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(17, 24, 39, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 24, 39, 0.025) 1px, transparent 1px),
+        var(--cream);
+      background-size: 28px 28px;
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+
+    a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+    a:hover { color: var(--black); }
+    :focus-visible { outline: 2px solid var(--yellow); outline-offset: 4px; }
+
+    .skip {
+      position: fixed;
+      left: 16px;
+      top: 12px;
+      z-index: 100;
+      transform: translateY(-150%);
+      background: var(--yellow);
+      color: var(--black);
+      padding: 10px 12px;
+      border: 1px solid var(--black);
+      font: 700 12px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .skip:focus { transform: translateY(0); }
+
+    .progress {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 4px;
+      z-index: 90;
+      background: transparent;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--yellow);
+      border-right: 1px solid var(--black);
+    }
+
+    .top {
+      background: var(--black);
+      color: var(--paper);
+      border-bottom: 1px solid var(--line-dark);
+    }
+
+    .topbar {
+      width: var(--shell);
+      margin: 0 auto;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-left: 1px solid var(--line-dark);
+      border-right: 1px solid var(--line-dark);
+      padding: 0 18px;
+    }
+
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: 800 14px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      background: var(--yellow);
+      color: var(--black);
+      border: 1px solid var(--paper);
+      font-weight: 900;
+    }
+
+    .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .source-links a {
+      padding: 9px 10px;
+      border: 1px solid var(--line-dark);
+      color: var(--paper);
+      text-decoration: none;
+    }
+
+    .source-links a:hover { background: var(--yellow); color: var(--black); }
+
+    .hero {
+      width: var(--shell);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.14fr) minmax(360px, 0.86fr);
+      border-left: 1px solid var(--line-dark);
+      border-right: 1px solid var(--line-dark);
+      min-height: 680px;
+    }
+
+    .hero-copy {
+      padding: clamp(44px, 7vw, 94px) clamp(24px, 5vw, 74px);
+      border-right: 1px solid var(--line-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-copy::after {
+      content: "ME";
+      position: absolute;
+      right: -0.18em;
+      bottom: -0.32em;
+      font: 900 clamp(160px, 28vw, 430px)/0.8 var(--mono);
+      color: rgba(251, 212, 91, 0.09);
+      letter-spacing: -0.16em;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--yellow);
+      font: 800 12px/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      background: var(--yellow);
+      box-shadow: 0 0 0 6px rgba(251, 212, 91, 0.15);
+    }
+
+    h1, h2, h3, h4 { margin: 0; }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(52px, 7.5vw, 118px);
+      line-height: 0.91;
+      letter-spacing: -0.065em;
+      font-weight: 700;
+    }
+
+    h1 .yellow {
+      display: block;
+      color: var(--yellow);
+      padding-left: clamp(24px, 8vw, 120px);
+    }
+
+    .deck {
+      max-width: 780px;
+      margin-top: 28px;
+      color: #e9e6d7;
+      font: 400 clamp(17px, 1.35vw, 22px)/1.55 var(--serif);
+    }
+
+    .thesis {
+      margin-top: 34px;
+      max-width: 820px;
+      padding: 18px 20px;
+      border: 1px solid var(--line-dark);
+      background: rgba(251, 212, 91, 0.08);
+      color: var(--paper);
+      font: 600 15px/1.55 var(--sans);
+    }
+
+    .hero-panel {
+      padding: 26px;
+      display: grid;
+      align-content: stretch;
+      gap: 20px;
+      background:
+        linear-gradient(rgba(251, 212, 91, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(251, 212, 91, 0.06) 1px, transparent 1px),
+        #060606;
+      background-size: 22px 22px;
+    }
+
+    .system-card {
+      border: 1px solid var(--line-dark);
+      background: rgba(0, 0, 0, 0.72);
+      padding: 18px;
+    }
+
+    .panel-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--gray);
+      font: 800 11px/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+    }
+
+    .memory-flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .node-row {
+      display: grid;
+      grid-template-columns: 1fr 30px 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .node {
+      min-height: 68px;
+      border: 1px solid var(--line-dark);
+      background: #111;
+      padding: 12px;
+      color: var(--paper);
+    }
+
+    .node strong {
+      display: block;
+      font: 800 12px/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .node span { color: var(--gray); font-size: 13px; }
+
+    .node.hot {
+      background: var(--yellow);
+      color: var(--black);
+      border-color: var(--paper);
+    }
+
+    .node.hot span { color: #3b3420; }
+
+    .arrow {
+      height: 1px;
+      background: var(--yellow);
+      position: relative;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: -4px;
+      border-left: 8px solid var(--yellow);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+
+    .trace {
+      height: 92px;
+      border: 1px solid var(--line-dark);
+      background:
+        linear-gradient(90deg, transparent 0 11%, rgba(251, 212, 91, 0.25) 11% 23%, transparent 23% 100%),
+        repeating-linear-gradient(90deg, #151515 0 13px, #111 13px 26px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .trace::before {
+      content: "";
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      top: 48%;
+      height: 2px;
+      background: var(--yellow);
+      transform: skewY(-8deg);
+      box-shadow:
+        70px 16px 0 rgba(251, 212, 91, 0.55),
+        140px -10px 0 rgba(251, 212, 91, 0.8),
+        220px 10px 0 rgba(251, 212, 91, 0.45);
+    }
+
+    .trace-labels {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      font: 700 10px/1.2 var(--mono);
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .meta {
+      width: var(--shell);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .meta div {
+      min-height: 118px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+    }
+
+    .meta div:last-child { border-right: 0; }
+    .meta span {
+      display: block;
+      color: var(--muted);
+      font: 800 10px/1.2 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .meta strong {
+      display: block;
+      font: 800 clamp(25px, 3vw, 42px)/1 var(--sans);
+      letter-spacing: -0.045em;
+    }
+
+    .meta small { color: var(--muted); font-size: 13px; }
+
+    .layout {
+      width: var(--shell);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .chapters {
+      border-right: 1px solid var(--line);
+      padding: 24px 16px;
+      background: var(--paper-2);
+    }
+
+    .chapters-inner {
+      position: sticky;
+      top: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .chapters-title {
+      font: 900 11px/1.2 var(--mono);
+      color: var(--muted);
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .chapters a {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      padding: 10px 8px;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid transparent;
+      font: 700 12px/1.25 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .chapters a.active,
+    .chapters a:hover {
+      color: var(--black);
+      background: var(--yellow);
+      border-color: var(--black);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      padding: clamp(46px, 6vw, 90px) clamp(20px, 4vw, 70px);
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 18px;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 880px);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 34px;
+    }
+
+    .chapter-no {
+      font: 900 12px/1 var(--mono);
+      color: var(--muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding-top: 12px;
+      border-top: 2px solid var(--black);
+    }
+
+    h2 {
+      font: 700 clamp(36px, 4.4vw, 68px)/0.98 var(--serif);
+      letter-spacing: -0.055em;
+      max-width: 920px;
+    }
+
+    .intro {
+      max-width: 860px;
+      font: 400 20px/1.58 var(--serif);
+      color: #2f332d;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.65fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .prose {
+      max-width: 880px;
+      color: #33362f;
+      font-size: 16.5px;
+    }
+
+    .prose p { margin: 0 0 16px; }
+
+    .callout {
+      border: 1px solid var(--black);
+      background: var(--yellow);
+      padding: 18px;
+      color: var(--black);
+    }
+
+    .callout strong {
+      display: block;
+      font: 900 12px/1.2 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .callout p { margin: 0; font-weight: 650; }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--line);
+      background: var(--paper);
+      margin-top: 24px;
+    }
+
+    .matrix .cell {
+      min-height: 168px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .matrix .cell:nth-child(4n) { border-right: 0; }
+    .matrix .cell:nth-last-child(-n+4) { border-bottom: 0; }
+
+    .cell b {
+      display: block;
+      font: 900 12px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .cell p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border: 1px solid currentColor;
+      font: 900 10px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 14px;
+    }
+
+    .pass { color: var(--good); }
+    .fail { color: var(--bad); }
+    .partial { color: var(--warn); }
+
+    .diagram {
+      border: 1px solid var(--line);
+      background: var(--paper-2);
+      margin-top: 24px;
+    }
+
+    .diagram-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font: 900 11px/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .architecture {
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 1fr 46px 1fr 46px 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .arch-block {
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+      min-height: 184px;
+      padding: 16px;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .arch-block.dark {
+      background: var(--black);
+      color: var(--paper);
+    }
+
+    .arch-block.yellow {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .arch-title {
+      font: 900 12px/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .arch-text {
+      color: inherit;
+      opacity: 0.76;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .mini-grid span {
+      height: 24px;
+      border: 1px solid var(--line-dark);
+      background: var(--paper-2);
+    }
+
+    .mini-grid .hot { background: var(--yellow); }
+    .mini-grid .dark { background: var(--black); }
+
+    .flow-arrow {
+      display: grid;
+      place-items: center;
+      color: var(--black);
+      font: 900 24px/1 var(--mono);
+    }
+
+    .pi-panel {
+      border: 1px solid var(--line-dark);
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 18px 18px;
+      margin-top: 24px;
+    }
+
+    .pi-stage {
+      display: grid;
+      grid-template-columns: 1.05fr 0.72fr 1.05fr;
+      min-height: 520px;
+    }
+
+    .pi-column {
+      padding: 20px;
+      border-right: 1px solid var(--line);
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .pi-column:last-child { border-right: 0; }
+
+    .pi-column.dark {
+      background: var(--black);
+      color: var(--paper);
+      border-color: var(--line-dark);
+    }
+
+    .pi-label {
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .pi-column.dark .pi-label { color: var(--yellow); }
+
+    .pi-title {
+      font: 700 clamp(28px, 3vw, 44px)/0.98 var(--serif);
+      letter-spacing: -0.045em;
+    }
+
+    .pi-note {
+      color: inherit;
+      opacity: 0.72;
+      font-size: 14px;
+      max-width: 460px;
+      margin: 0;
+    }
+
+    .frame-strip {
+      display: grid;
+      grid-template-columns: repeat(20, minmax(18px, 1fr));
+      gap: 4px;
+      align-items: end;
+      margin-top: 10px;
+    }
+
+    .frame {
+      height: 48px;
+      border: 1px solid var(--line-dark);
+      background: var(--paper-2);
+      position: relative;
+    }
+
+    .frame.cue { background: var(--yellow); }
+    .frame.context { background: var(--black); }
+    .frame.read { background: #ffffff; box-shadow: inset 0 0 0 2px var(--yellow); }
+
+    .frame::after {
+      content: attr(data-i);
+      position: absolute;
+      left: 50%;
+      bottom: -18px;
+      transform: translateX(-50%);
+      font: 800 8px/1 var(--mono);
+      color: var(--muted);
+    }
+
+    .slot-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .slot {
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+      min-height: 96px;
+      padding: 10px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+    }
+
+    .slot b {
+      font: 900 10px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .slot-swatch {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      align-items: stretch;
+    }
+
+    .slot-swatch span {
+      border: 1px solid var(--line-dark);
+      background: var(--yellow);
+    }
+
+    .slot-swatch span:nth-child(2) { background: var(--black); }
+    .slot-swatch span:nth-child(3) { background: var(--paper-2); }
+
+    .module-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .module {
+      border: 1px solid var(--line-dark);
+      background: #0e0e0e;
+      padding: 13px;
+      color: var(--paper);
+    }
+
+    .module.hot {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .module b {
+      display: block;
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .module span {
+      display: block;
+      font-size: 13px;
+      opacity: 0.72;
+    }
+
+    .pipeline-board {
+      display: grid;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .pipeline-lane {
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .lane-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line-dark);
+      background: var(--black);
+      color: var(--paper);
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .lane-head span:last-child {
+      color: var(--yellow);
+      text-align: right;
+    }
+
+    .pipeline-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .flow-block {
+      min-width: 0;
+      min-height: 128px;
+      border: 1px solid var(--line);
+      background: var(--paper-2);
+      padding: 13px;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      position: relative;
+    }
+
+    .flow-block::after {
+      content: ">";
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--line-dark);
+      background: var(--yellow);
+      color: var(--black);
+      display: grid;
+      place-items: center;
+      font: 900 12px/1 var(--mono);
+      z-index: 2;
+    }
+
+    .flow-block:nth-child(4n)::after,
+    .flow-block:last-child::after {
+      display: none;
+    }
+
+    .flow-block.hot {
+      background: var(--yellow);
+      border-color: var(--line-dark);
+    }
+
+    .flow-block.dark {
+      background: var(--black);
+      border-color: var(--line-dark);
+      color: var(--paper);
+    }
+
+    .flow-block b {
+      display: block;
+      font: 900 12px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .flow-block p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    .flow-block.dark p { color: #c9c5b8; }
+    .flow-block.hot p { color: #302a00; }
+
+    .block-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .block-tags span {
+      border: 1px solid currentColor;
+      padding: 3px 6px;
+      font: 800 10px/1 var(--mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: inherit;
+    }
+
+    .pipeline-ledger {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--line-dark);
+    }
+
+    .pipeline-ledger div {
+      padding: 12px 14px;
+      border-right: 1px solid var(--line);
+      min-width: 0;
+    }
+
+    .pipeline-ledger div:last-child { border-right: 0; }
+
+    .pipeline-ledger b {
+      display: block;
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-ledger p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .formula-row {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .formula {
+      border: 1px solid var(--line-dark);
+      background: #0b0b0b;
+      color: var(--paper);
+      padding: 14px;
+      font: 700 13px/1.6 var(--mono);
+      overflow-x: auto;
+    }
+
+    .io-ledger {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--line);
+      margin-top: 0;
+    }
+
+    .io-ledger div {
+      padding: 16px;
+      border-right: 1px solid var(--line);
+    }
+
+    .io-ledger div:last-child { border-right: 0; }
+
+    .io-ledger b {
+      display: block;
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .io-ledger p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .visual-pipeline {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+      align-items: stretch;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .visual-pipeline > .flow-arrow {
+      display: none;
+    }
+
+    .visual-panel {
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+      padding: 12px;
+      min-height: 300px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .input-panel {
+      grid-column: 1 / -1;
+      min-height: auto;
+    }
+
+    .evidence-panel { grid-column: 1 / span 4; }
+    .memory-panel { grid-column: 5 / span 4; }
+    .audit-panel { grid-column: 9 / span 4; }
+
+    .visual-panel.dark {
+      background: var(--black);
+      color: var(--paper);
+    }
+
+    .visual-panel.yellow {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .visual-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-width: 0;
+    }
+
+    .visual-head span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .visual-head span:last-child {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .visual-panel.dark .visual-head span:last-child { color: var(--gray); }
+
+    .render-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .input-panel .render-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .render-card {
+      border: 1px solid var(--line-dark);
+      background: var(--paper-2);
+      padding: 8px;
+    }
+
+    .render-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line-dark);
+      background: var(--black);
+    }
+
+    .render-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 7px;
+      font: 900 9px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-width: 0;
+    }
+
+    .render-label span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .pusht-canvas {
+      aspect-ratio: 1 / 0.86;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line-dark);
+      background:
+        radial-gradient(circle at 66% 62%, #aeb3bb 0 8px, transparent 9px),
+        radial-gradient(circle at 34% 38%, #747b85 0 12px, transparent 13px),
+        linear-gradient(45deg, #e7e5de 25%, #f6f5ef 25% 50%, #e7e5de 50% 75%, #f6f5ef 75%);
+      background-size: auto, auto, 24px 24px;
+    }
+
+    .pusht-canvas::before {
+      content: "";
+      position: absolute;
+      width: 44%;
+      height: 16%;
+      left: 30%;
+      top: 28%;
+      background: #252a32;
+      box-shadow: 18px 26px 0 #252a32;
+      transform: rotate(-8deg);
+    }
+
+    .pusht-canvas::after {
+      content: "";
+      position: absolute;
+      width: 15%;
+      height: 15%;
+      left: 17%;
+      bottom: 18%;
+      background: var(--yellow);
+      border: 2px solid #111;
+      border-radius: 50%;
+    }
+
+    .cue-swatches {
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      top: 7%;
+      height: 13%;
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      padding-bottom: 5px;
+      border-bottom: 5px solid #f5f4ef;
+    }
+
+    .cue-swatches span {
+      border: 1px solid #111;
+      background: var(--yellow);
+    }
+
+    .cue-swatches span:nth-child(2) { background: #111827; }
+    .cue-swatches span:nth-child(3) { background: #efeee8; }
+    .pusht-canvas.cue .cue-swatches { display: grid; }
+
+    .pusht-canvas.read {
+      box-shadow: inset 0 0 0 6px var(--yellow);
+    }
+
+    .input-panel .pusht-canvas {
+      aspect-ratio: 1.12 / 1;
+      min-height: 185px;
+    }
+
+    .target-slots {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: minmax(82px, 1fr);
+      gap: 8px;
+    }
+
+    .target-slot {
+      border: 1px solid var(--line-dark);
+      background: rgba(255, 255, 255, 0.55);
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 6px;
+      padding: 8px;
+      min-width: 0;
+    }
+
+    .target-slot .patch {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+    }
+
+    .target-slot .patch span {
+      border: 1px solid var(--line-dark);
+      background: var(--black);
+    }
+
+    .target-slot:nth-child(2) .patch span { background: var(--yellow); }
+    .target-slot:nth-child(3) .patch span { background: var(--paper); }
+    .target-slot:nth-child(4) .patch span { background: #f5f4ef; }
+    .target-slot:nth-child(5) .patch span:nth-child(1) { background: var(--yellow); }
+    .target-slot:nth-child(5) .patch span:nth-child(2) { background: var(--black); }
+    .target-slot:nth-child(5) .patch span:nth-child(3) { background: var(--paper); }
+
+    .target-slot b {
+      font: 900 8px/1.1 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .evidence-mini {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .evidence-mini div {
+      border: 1px solid var(--line-dark);
+      background: rgba(255, 255, 255, 0.42);
+      min-height: 58px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .evidence-mini b {
+      font: 900 8px/1.1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stripe-set {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 3px;
+    }
+
+    .stripe-set span {
+      height: 22px;
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+    }
+
+    .stripe-set span:nth-child(2n) { background: var(--black); }
+    .stripe-set span:nth-child(3n) { background: var(--yellow); }
+
+    .slot-memory {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      min-height: 150px;
+    }
+
+    .memory-slot {
+      border: 1px solid var(--paper);
+      background:
+        linear-gradient(var(--yellow) 0 0) 50% 18% / 42% 3px no-repeat,
+        linear-gradient(var(--yellow) 0 0) 50% 50% / 70% 3px no-repeat,
+        linear-gradient(var(--yellow) 0 0) 50% 82% / 52% 3px no-repeat,
+        #111;
+    }
+
+    .host-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .host-layer {
+      border: 1px solid var(--line-dark);
+      min-height: 48px;
+      background: #161616;
+      color: var(--paper);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      font: 900 10px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-width: 0;
+      gap: 8px;
+    }
+
+    .host-layer span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      text-align: right;
+    }
+
+    .host-layer.hot {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .audit-bars {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .audit-row {
+      display: grid;
+      grid-template-columns: 58px 1fr 42px;
+      gap: 8px;
+      align-items: center;
+      font: 900 10px/1.2 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .audit-row .track {
+      height: 12px;
+      border: 1px solid var(--line-dark);
+      background: var(--paper-2);
+    }
+
+    .audit-row .fill {
+      display: block;
+      height: 100%;
+      background: var(--yellow);
+      border-right: 1px solid var(--black);
+    }
+
+    .tensor-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 18px 18px;
+    }
+
+    .tensor-chip {
+      border: 1px solid var(--line-dark);
+      background: var(--paper);
+      padding: 8px 10px;
+      font: 900 10px/1.2 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      margin-top: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      font-size: 14px;
+    }
+
+    caption {
+      text-align: left;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font: 900 11px/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      background: var(--paper-2);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 13px 14px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th:last-child, td:last-child { border-right: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+    th {
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--paper-2);
+    }
+
+    td.num {
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+
+    .bar {
+      min-width: 190px;
+    }
+
+    .bar-track {
+      height: 12px;
+      background: var(--paper-2);
+      border: 1px solid var(--line);
+      margin-top: 6px;
+    }
+
+    .bar-fill {
+      display: block;
+      height: 100%;
+      background: var(--yellow);
+      border-right: 1px solid var(--black);
+    }
+
+    .insights {
+      display: grid;
+      border-top: 1px solid var(--line);
+      margin-top: 24px;
+    }
+
+    .insight {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr) minmax(260px, 0.42fr);
+      gap: 22px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .insight .num {
+      font: 900 12px/1 var(--mono);
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .insight h3 {
+      font: 700 25px/1.1 var(--serif);
+      letter-spacing: -0.035em;
+      margin-bottom: 8px;
+    }
+
+    .insight p { margin: 0; color: var(--muted); }
+
+    .annotation {
+      border-left: 3px solid var(--yellow);
+      padding-left: 14px;
+      color: #373a33;
+      font-size: 14px;
+    }
+
+    .dark-band {
+      background: var(--black);
+      color: var(--paper);
+    }
+
+    .dark-band .chapter-no { color: var(--yellow); border-color: var(--yellow); }
+    .dark-band .intro, .dark-band .prose { color: #dedbd0; }
+    .dark-band .diagram { background: #070707; border-color: var(--line-dark); }
+    .dark-band .diagram-header { border-color: var(--line-dark); color: var(--gray); background: #0f0f0f; }
+
+    .risk-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .risk {
+      border: 1px solid var(--line-dark);
+      padding: 18px;
+      background: #0d0d0d;
+      color: var(--paper);
+    }
+
+    .risk b {
+      display: block;
+      color: var(--yellow);
+      font: 900 12px/1.2 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .risk p { margin: 0; color: #c9c5b8; font-size: 14px; }
+
+    .diagnostic-ladder {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .diag-card {
+      border: 1px solid var(--line-dark);
+      background: #0d0d0d;
+      color: var(--paper);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .diag-card .label {
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--yellow);
+    }
+
+    .diag-card .value {
+      font: 800 38px/0.95 var(--serif);
+      letter-spacing: -0.05em;
+    }
+
+    .diag-card .value small {
+      font: 900 12px/1 var(--mono);
+      letter-spacing: 0.05em;
+      color: var(--gray);
+    }
+
+    .diag-card p {
+      margin: 0;
+      color: #c9c5b8;
+      font-size: 13px;
+    }
+
+    .diag-metrics {
+      display: grid;
+      gap: 8px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 52px;
+      gap: 8px;
+      align-items: center;
+      font: 900 10px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gray);
+    }
+
+    .metric-track {
+      height: 10px;
+      border: 1px solid var(--line-dark);
+      background: #050505;
+      overflow: hidden;
+    }
+
+    .metric-fill {
+      display: block;
+      height: 100%;
+      width: var(--w);
+      background: var(--yellow);
+    }
+
+    .metric-fill.control { background: #757575; }
+
+    .diag-card.warn .value { color: var(--yellow); }
+    .diag-card.fail { box-shadow: inset 0 -4px 0 #b45309; }
+
+    .diag-note {
+      margin-top: 14px;
+      border: 1px solid var(--line-dark);
+      background: #0f0f0f;
+      padding: 14px 16px;
+      color: #d7d2c4;
+      font-size: 14px;
+    }
+
+    .extension-subsection {
+      border: 1px solid var(--black);
+      background: var(--paper);
+      margin: 4px 0 30px;
+    }
+
+    .extension-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(260px, 0.45fr);
+      gap: 20px;
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper-2);
+    }
+
+    .extension-kicker {
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .extension-head h3 {
+      font: 700 clamp(30px, 3.5vw, 54px)/0.98 var(--serif);
+      letter-spacing: -0.055em;
+      max-width: 780px;
+    }
+
+    .extension-head p {
+      margin: 10px 0 0;
+      color: #35382f;
+      max-width: 780px;
+    }
+
+    .extension-stat {
+      border-left: 4px solid var(--yellow);
+      padding-left: 16px;
+      align-self: end;
+      font: 900 12px/1.4 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .extension-stat strong {
+      display: block;
+      color: var(--black);
+      font: 800 38px/1 var(--serif);
+      letter-spacing: -0.05em;
+      margin-bottom: 6px;
+      text-transform: none;
+    }
+
+    .extension-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .extension-node {
+      min-height: 170px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .extension-node:last-child { border-right: 0; }
+
+    .extension-node b {
+      font: 900 11px/1.2 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .extension-node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .extension-node.hot {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .extension-node.hot p { color: #25220f; }
+
+    .extension-spec {
+      display: grid;
+      grid-template-columns: minmax(0, 0.6fr) minmax(0, 0.4fr);
+      gap: 0;
+    }
+
+    .extension-spec > div {
+      padding: 18px;
+      border-right: 1px solid var(--line);
+    }
+
+    .extension-spec > div:last-child { border-right: 0; }
+
+    .extension-spec code {
+      display: block;
+      background: var(--black);
+      color: var(--paper);
+      padding: 14px;
+      overflow-x: auto;
+      font: 800 12px/1.7 var(--mono);
+      white-space: pre;
+    }
+
+    .footer {
+      width: var(--shell);
+      margin: 0 auto 40px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-top: 0;
+      background: var(--paper-2);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+      font: 700 11px/1.4 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .backtop {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      border: 1px solid var(--black);
+      background: var(--yellow);
+      color: var(--black);
+      width: 44px;
+      height: 44px;
+      font: 900 18px/1 var(--mono);
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: 150ms ease;
+      z-index: 70;
+    }
+
+    .backtop.show { opacity: 1; transform: translateY(0); }
+
+    .mobile-nav {
+      display: none;
+      width: var(--shell);
+      margin: 0 auto;
+      padding: 12px;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      background: var(--paper-2);
+    }
+
+    .mobile-nav select {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--black);
+      background: var(--paper);
+      color: var(--ink);
+      font: 800 12px/1 var(--mono);
+      text-transform: uppercase;
+      padding: 0 12px;
+    }
+
+    @media (max-width: 1120px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-copy { border-right: 0; border-bottom: 1px solid var(--line-dark); }
+      .meta { grid-template-columns: repeat(2, 1fr); }
+      .meta div:nth-child(2) { border-right: 0; }
+      .meta div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .layout { grid-template-columns: 1fr; }
+      .chapters { display: none; }
+      .mobile-nav { display: block; }
+      .two-col, .risk-grid, .diagnostic-ladder { grid-template-columns: 1fr; }
+      .matrix { grid-template-columns: repeat(2, 1fr); }
+      .matrix .cell:nth-child(2n) { border-right: 0; }
+      .matrix .cell:nth-last-child(-n+4) { border-bottom: 1px solid var(--line); }
+      .matrix .cell:nth-last-child(-n+2) { border-bottom: 0; }
+      .architecture { grid-template-columns: 1fr; }
+      .extension-head,
+      .extension-flow,
+      .extension-spec { grid-template-columns: 1fr; }
+      .extension-node,
+      .extension-spec > div { border-right: 0; border-bottom: 1px solid var(--line); }
+      .extension-node:last-child,
+      .extension-spec > div:last-child { border-bottom: 0; }
+      .pi-stage { grid-template-columns: 1fr; }
+      .visual-pipeline { grid-template-columns: 1fr; }
+      .pipeline-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-block:nth-child(4n)::after { display: grid; }
+      .flow-block:nth-child(2n)::after,
+      .flow-block:last-child::after { display: none; }
+      .pipeline-ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pipeline-ledger div:nth-child(2n) { border-right: 0; }
+      .pipeline-ledger div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .input-panel,
+      .evidence-panel,
+      .memory-panel,
+      .audit-panel { grid-column: auto; }
+      .input-panel .render-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .visual-panel { min-height: auto; }
+      .pi-column { border-right: 0; border-bottom: 1px solid var(--line); }
+      .pi-column:last-child { border-bottom: 0; }
+      .io-ledger { grid-template-columns: repeat(2, 1fr); }
+      .io-ledger div:nth-child(2) { border-right: 0; }
+      .io-ledger div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .flow-arrow { transform: rotate(90deg); min-height: 36px; }
+      .insight { grid-template-columns: 62px 1fr; }
+      .annotation { grid-column: 2; }
+    }
+
+    @media (max-width: 700px) {
+      :root { --shell: min(100vw, calc(100vw - 18px)); }
+      .topbar, .footer { flex-direction: column; align-items: stretch; }
+      .source-links { justify-content: flex-start; }
+      .hero-copy, .hero-panel, section { padding: 28px 18px; }
+      h1 { font-size: clamp(46px, 16vw, 70px); }
+      h1 .yellow { padding-left: 0; }
+      .meta { grid-template-columns: 1fr; }
+      .meta div { border-right: 0; border-bottom: 1px solid var(--line); }
+      .meta div:last-child { border-bottom: 0; }
+      .section-head { grid-template-columns: 1fr; gap: 12px; }
+      .chapter-no { width: max-content; }
+      .matrix { grid-template-columns: 1fr; }
+      .matrix .cell { border-right: 0 !important; border-bottom: 1px solid var(--line) !important; }
+      .matrix .cell:last-child { border-bottom: 0 !important; }
+      .insight { grid-template-columns: 1fr; }
+      .annotation { grid-column: auto; }
+      .node-row { grid-template-columns: 1fr; }
+      .node-row .arrow { height: 28px; width: 1px; justify-self: center; }
+      .node-row .arrow::after {
+        right: -4px;
+        top: auto;
+        bottom: -1px;
+        border-top: 8px solid var(--yellow);
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-bottom: 0;
+      }
+      .frame-strip { grid-template-columns: repeat(10, minmax(18px, 1fr)); row-gap: 22px; }
+      .input-panel .render-grid { grid-template-columns: 1fr; }
+      .input-panel .pusht-canvas { min-height: 220px; }
+      .slot-board, .io-ledger { grid-template-columns: 1fr; }
+      .io-ledger div { border-right: 0; border-bottom: 1px solid var(--line); }
+      .io-ledger div:last-child { border-bottom: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <header class="top" id="top">
+    <div class="topbar">
+      <div class="wordmark"><span class="mark">ME</span><span>Masked-Evidence Memory</span></div>
+      <nav class="source-links" aria-label="Source links">
+        <a href="../scripts/run_mem_jepa_pusht_stage_f.py">Stage-F runner</a>
+        <a href="../scripts/run_lewm_pusht_host_writer.py">LeWM runner</a>
+        <a href="../outputs/mem_jepa_pusht_stage_f/summary.json">Token summary</a>
+        <a href="../outputs/lewm_pusht_host_writer_counterfactual_v2_wide64/summary.json">LeWM binding</a>
+        <a href="../outputs/mem_jepa_pusht_stage_f_cue_slots/summary.json">Binding repair</a>
+        <a href="../paper_b/main.pdf">Paper B draft</a>
+      </nav>
+    </div>
+
+    <div class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">DINO-WM + LeWM / PushT / Label-free memory audit</div>
+        <h1>When memory <span class="yellow">survives the context window</span></h1>
+        <p class="deck">This report tracks the Masked-Evidence JEPA sidecar experiments after the PointMaze success. The current cross-host result is precise: DINO-WM passes PushT binding with slot-structured evidence, and LeWM reaches the same age-15 retention gate after replacing flat latent reconstruction with same-base counterfactual evidence alternatives.</p>
+        <div class="thesis">Central takeaway: the method is no longer a one-host result. The clean claim is that persistent memory needs a structure-preserving evidence target; once that target is matched to the frozen host interface, both DINO-WM and LeWM expose old PushT evidence after context expiry.</div>
+      </div>
+
+      <aside class="hero-panel" aria-label="System overview">
+        <div class="system-card">
+          <div class="panel-label"><span>Current status</span><span>2026-07-15</span></div>
+          <div class="trace" aria-hidden="true"></div>
+          <div class="trace-labels">
+            <span>cue visible</span><span>context expires</span><span>memory writes</span><span>audit reads</span>
+          </div>
+        </div>
+        <div class="system-card">
+          <div class="panel-label"><span>Gated path</span><span>fail closed</span></div>
+          <div class="memory-flow">
+            <div class="node-row">
+              <div class="node hot"><strong>Masked cue</strong><span>Short visual evidence is visible for frames 1–3.</span></div>
+              <div class="arrow" aria-hidden="true"></div>
+              <div class="node"><strong>Slot memory</strong><span>Adapter stores evidence without class-label supervision.</span></div>
+            </div>
+            <div class="node-row">
+              <div class="node"><strong>Frozen host</strong><span>DINO-WM or LeWM receives residual-injected legal context.</span></div>
+              <div class="arrow" aria-hidden="true"></div>
+              <div class="node hot"><strong>Gate</strong><span>Full must beat 0.75 while reset/no-state stay at chance.</span></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <div class="meta" aria-label="Key statistics">
+    <div><span>DINO-WM binding</span><strong>15 / 15</strong><small>Ages 4/8 plus age15 host-writer rescue passed every seed.</small></div>
+    <div><span>LeWM PushT grid</span><strong>30 / 30</strong><small>Token and binding pass ages 4/8/15 over seeds 0–4.</small></div>
+    <div><span>PointMaze use</span><strong>77.5%</strong><small>Fixed-trust executed success; oracle/controller ceiling is 95.6%.</small></div>
+    <div><span>Downstream gate</span><strong>Pass</strong><small>Checkpointed external consumer passes on DINO-WM and LeWM.</small></div>
+  </div>
+
+  <div class="mobile-nav">
+    <label class="chapters-title" for="chapterSelect">Chapter navigation</label>
+    <select id="chapterSelect" aria-label="Jump to chapter">
+      <option value="#context">01 Context</option>
+      <option value="#method">02 Method</option>
+      <option value="#architecture-flow">03 Architecture + data flow</option>
+      <option value="#results">04 Results</option>
+      <option value="#diagnosis">05 Diagnosis</option>
+      <option value="#next">06 Next actions</option>
+    </select>
+  </div>
+
+  <div class="layout">
+    <aside class="chapters" aria-label="Chapter navigation">
+      <div class="chapters-inner">
+        <div class="chapters-title">Chapters</div>
+        <a href="#context"><span>01</span><span>Context</span></a>
+        <a href="#method"><span>02</span><span>Method</span></a>
+        <a href="#architecture-flow"><span>03</span><span>Architecture</span></a>
+        <a href="#results"><span>04</span><span>Results</span></a>
+        <a href="#diagnosis"><span>05</span><span>Diagnosis</span></a>
+        <a href="#next"><span>06</span><span>Next actions</span></a>
+      </div>
+    </aside>
+
+    <main id="main">
+      <section id="context">
+        <div class="section-head">
+          <div class="chapter-no">01 / Context</div>
+          <div>
+            <h2>The experiment is no longer a generic memory probe.</h2>
+            <p class="intro">The current pipeline asks whether a frozen finite-context world model can expose old visual evidence after the raw context window has expired, using self-supervised masked-evidence targets and fail-closed readout gates on DINO-WM and LeWM.</p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="prose">
+            <p>PointMaze already gave a strong positive downstream-use result: the full memory condition reached 95.6% executed success with reset/no-state controls near the random-goal baseline. PushT is the harder visual-overlay test because it requires the frozen host to expose old cue evidence after context expiry and then drive a physical controller.</p>
+            <p>The PushT token task is a four-way color recall task. The PushT binding task is a six-way ordered permutation of three color swatches. The second task is harder because it tests whether the memory target preserves relational order, not only color presence. DINO-WM solved it with slot-structured evidence; LeWM solved it after adding same-base counterfactual cue alternatives.</p>
+          </div>
+          <aside class="callout">
+            <strong>Interpretation</strong>
+            <p>The ablation lesson is informative: flat latent reconstruction can store nuisance-heavy evidence while failing to expose the ordered relationship needed by the downstream readout.</p>
+          </aside>
+        </div>
+
+        <div class="matrix" aria-label="Claim ladder">
+          <div class="cell"><b>Demand</b><p>The cue is outside the legal three-frame prediction context at ages 4, 8, and 15.</p><span class="status-pill pass">Admitted</span></div>
+          <div class="cell"><b>Encoding</b><p>Prior PushT admissions show cue-time availability is 1.0 for token and binding overlays.</p><span class="status-pill pass">Admitted</span></div>
+          <div class="cell"><b>Retention</b><p>The full memory condition must classify old evidence while reset/no-state remain near chance.</p><span class="status-pill pass">Resolved on PushT age15</span></div>
+          <div class="cell"><b>Use</b><p>Checkpointed PushT adapters now pass the shared external-consumer gate on both hosts, including native physical execution decks.</p><span class="status-pill pass">Resolved on PushT age15</span></div>
+        </div>
+      </section>
+
+      <section id="method">
+        <div class="section-head">
+          <div class="chapter-no">02 / Method</div>
+          <div>
+            <h2>Masked-evidence JEPA writes old cue evidence into a frozen host interface.</h2>
+            <p class="intro">The adapter never trains on semantic class labels. Labels appear only after training, in the audit readout that measures whether the frozen host output exposes the old cue.</p>
+          </div>
+        </div>
+
+        <div class="insights">
+          <div class="insight">
+            <div class="num">A</div>
+            <div><h3>Coarse pooling is sufficient for token identity.</h3><p>The four-way color token survives with full accuracy at every tested age and seed.</p></div>
+            <div class="annotation">This supports the basic self-supervised memory mechanism.</div>
+          </div>
+          <div class="insight">
+            <div class="num">B</div>
+            <div><h3>Coarse pooling is not sufficient for binding.</h3><p>The first binding attempt stayed at chance because the target erased left/middle/right slot order.</p></div>
+            <div class="annotation">This is a representation-design failure, not a GPU or logging issue.</div>
+          </div>
+          <div class="insight">
+            <div class="num">C</div>
+            <div><h3>Historical: cue-space slot targets repaired age4 but not age8 robustness.</h3><p>The first 20-epoch cue-slot repair passed all age4 seeds and some age8 seeds, but age8 seeds 2–3 fell below the 0.75 admission gate.</p></div>
+            <div class="annotation">This was the stop condition before the host-writer rescue.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture-flow">
+        <div class="section-head">
+          <div class="chapter-no">03 / Architecture</div>
+          <div>
+            <h2>Architecture as visual flow: frames in, slots carry, host exposes, audit decides.</h2>
+            <p class="intro">A compact model card for the current PushT design. Labels are intentionally short; the structure should be readable before the equations.</p>
+          </div>
+        </div>
+
+        <div class="pi-panel" role="img" aria-label="Model architecture and data flow for Masked-Evidence JEPA Memory">
+          <div class="diagram-header"><span>Model + data flow</span><span>visual-first schematic</span></div>
+          <div class="visual-pipeline">
+            <div class="visual-panel input-panel">
+              <div class="visual-head"><span>01 Input frames</span><span>PushT window</span></div>
+              <div class="render-grid">
+                <div class="render-card">
+                  <div class="pusht-canvas"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>raw t0</span><span>base</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas cue"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>cue t1–3</span><span>visible</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>ctx t15–17</span><span>legal</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas read"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>read t18</span><span>audit</span></div>
+                </div>
+              </div>
+              <div class="frame-strip" aria-label="Twenty-frame sequence timeline">
+                <span class="frame" data-i="0"></span><span class="frame cue" data-i="1"></span><span class="frame cue" data-i="2"></span><span class="frame cue" data-i="3"></span><span class="frame" data-i="4"></span><span class="frame" data-i="5"></span><span class="frame" data-i="6"></span><span class="frame" data-i="7"></span><span class="frame" data-i="8"></span><span class="frame" data-i="9"></span><span class="frame" data-i="10"></span><span class="frame" data-i="11"></span><span class="frame" data-i="12"></span><span class="frame" data-i="13"></span><span class="frame" data-i="14"></span><span class="frame context" data-i="15"></span><span class="frame context" data-i="16"></span><span class="frame context" data-i="17"></span><span class="frame read" data-i="18"></span><span class="frame" data-i="19"></span>
+              </div>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="visual-panel yellow evidence-panel">
+              <div class="visual-head"><span>02 Evidence target</span><span>slot-preserving</span></div>
+              <div class="target-slots" aria-label="Cue-space binding target slots">
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>left</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>middle</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>right</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>anchor</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>top band</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>order</b></div>
+              </div>
+              <div class="evidence-mini" aria-label="Positive and negative evidence banks">
+                <div><b>positive</b><div class="stripe-set"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                <div><b>negatives</b><div class="stripe-set"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+              </div>
+              <div class="tensor-chips" style="padding:0">
+                <span class="tensor-chip">positive cue</span>
+                <span class="tensor-chip">batch negatives</span>
+                <span class="tensor-chip">no labels</span>
+              </div>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="visual-panel dark memory-panel">
+              <div class="visual-head"><span>03 Memory + host</span><span>frozen interface</span></div>
+              <div class="slot-memory" aria-label="Learned memory slots">
+                <div class="memory-slot"></div>
+                <div class="memory-slot"></div>
+                <div class="memory-slot"></div>
+              </div>
+              <div class="host-stack">
+                <div class="host-layer">patch-time tokens <span>z+a+t+p</span></div>
+                <div class="host-layer hot">slot memory <span>M</span></div>
+                <div class="host-layer">residual write <span>z′ctx</span></div>
+                <div class="host-layer">frozen DINO-WM <span>locked</span></div>
+              </div>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="visual-panel audit-panel">
+              <div class="visual-head"><span>04 Audit output</span><span>fail closed</span></div>
+              <div class="audit-bars" aria-label="Audit output examples">
+                <div class="audit-row"><span>full</span><div class="track"><span class="fill" style="width:84%"></span></div><span>0.84</span></div>
+                <div class="audit-row"><span>reset</span><div class="track"><span class="fill" style="width:16%"></span></div><span>0.16</span></div>
+                <div class="audit-row"><span>none</span><div class="track"><span class="fill" style="width:17%"></span></div><span>0.17</span></div>
+              </div>
+              <div class="render-card">
+                <div class="pusht-canvas read"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                <div class="render-label"><span>host endpoint</span><span>readout</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tensor-chips" aria-label="Compact tensor ledger">
+            <span class="tensor-chip">z<sub>t</sub>: 196×384</span>
+            <span class="tensor-chip">a<sub>t</sub>: 10</span>
+            <span class="tensor-chip">q<sub>t</sub>: 4</span>
+            <span class="tensor-chip">cue: t1–t3</span>
+            <span class="tensor-chip">ages: 4 / 8 / 15</span>
+            <span class="tensor-chip">gate: full ≥ 0.75</span>
+          </div>
+        </div>
+
+        <div class="pipeline-board" id="model-training-inference-pipeline" aria-label="Model training and inference pipeline">
+          <div class="pipeline-lane">
+            <div class="lane-head"><span>Training pipeline</span><span>learn memory without cue labels</span></div>
+            <div class="pipeline-flow">
+              <div class="flow-block">
+                <b>trajectory cache</b>
+                <p>rendered frames, actions, and time indices from an admitted OGBench deck.</p>
+                <div class="block-tags"><span>frames</span><span>actions</span><span>time</span></div>
+              </div>
+              <div class="flow-block hot">
+                <b>salient patch miner</b>
+                <p>select target patches from the causal stream using generic saliency and novelty.</p>
+                <div class="block-tags"><span>no labels</span><span>no cue crop</span></div>
+              </div>
+              <div class="flow-block">
+                <b>mask visible evidence</b>
+                <p>hide the selected target patches from the input stream so memory must carry them.</p>
+                <div class="block-tags"><span>masked view</span><span>full stream</span></div>
+              </div>
+              <div class="flow-block dark">
+                <b>context encoder</b>
+                <p>small CNN frame encoder plus action and time embeddings create context tokens.</p>
+                <div class="block-tags"><span>frame CNN</span><span>MLP</span></div>
+              </div>
+              <div class="flow-block dark">
+                <b>slot memory</b>
+                <p>8 learned attention slots compress the visible history into a compact memory state.</p>
+                <div class="block-tags"><span>8 slots</span><span>4 heads</span></div>
+              </div>
+              <div class="flow-block">
+                <b>slot predictor</b>
+                <p>an MLP maps memory slots to predicted hidden patch features.</p>
+                <div class="block-tags"><span>predict set</span><span>normalize</span></div>
+              </div>
+              <div class="flow-block">
+                <b>fixed target encoder</b>
+                <p>hidden patches become frozen color and texture latents; gradients do not update this target.</p>
+                <div class="block-tags"><span>stop-grad</span><span>latent</span></div>
+              </div>
+              <div class="flow-block hot">
+                <b>training loss</b>
+                <p>set InfoNCE plus cosine matching and anti-collapse regularization updates the memory model.</p>
+                <div class="block-tags"><span>NCE</span><span>cos</span><span>std</span></div>
+              </div>
+            </div>
+            <div class="pipeline-ledger">
+              <div><b>default size</b><p>dim 160, 8 slots, 4 attention heads.</p></div>
+              <div><b>default train</b><p>36 epochs, batch 96, AdamW 3e-4.</p></div>
+              <div><b>data rule</b><p>cue labels are not used in the training loss.</p></div>
+              <div><b>saved artifact</b><p><code>model.pt</code> and <code>features.npz</code> per env-age-seed.</p></div>
+            </div>
+          </div>
+
+          <div class="pipeline-lane">
+            <div class="lane-head"><span>Inference and native-use pipeline</span><span>test whether memory changes success</span></div>
+            <div class="pipeline-flow">
+              <div class="flow-block">
+                <b>new episode</b>
+                <p>the old clue appears early, then disappears before the readout point.</p>
+                <div class="block-tags"><span>cue</span><span>delay</span></div>
+              </div>
+              <div class="flow-block">
+                <b>condition builder</b>
+                <p>run full, reset, recent-only, random, and oracle variants for the same task.</p>
+                <div class="block-tags"><span>full</span><span>controls</span></div>
+              </div>
+              <div class="flow-block dark">
+                <b>encode context</b>
+                <p>frames, actions, and time tokens pass through the trained encoder and slot memory.</p>
+                <div class="block-tags"><span>CNN</span><span>slots</span></div>
+              </div>
+              <div class="flow-block hot">
+                <b>memory readout</b>
+                <p>a post-hoc readout converts the memory vector into the selected target label.</p>
+                <div class="block-tags"><span>target</span><span>label</span></div>
+              </div>
+              <div class="flow-block">
+                <b>target override</b>
+                <p>the fixed controller receives the memory-selected target, not the true label.</p>
+                <div class="block-tags"><span>selected goal</span></div>
+              </div>
+              <div class="flow-block dark">
+                <b>fixed controller</b>
+                <p>BFS, Cube/Puzzle/Scene Markov oracles, or no score if no audited controller exists.</p>
+                <div class="block-tags"><span>audited only</span></div>
+              </div>
+              <div class="flow-block">
+                <b>environment check</b>
+                <p>success is judged against the original true cue target.</p>
+                <div class="block-tags"><span>native success</span></div>
+              </div>
+              <div class="flow-block hot">
+                <b>pass gate</b>
+                <p>full memory must beat recent-only and random controls; controller-gate failures stay unscored.</p>
+                <div class="block-tags"><span>fail closed</span></div>
+              </div>
+            </div>
+            <div class="pipeline-ledger">
+              <div><b>current ages</b><p>manual registered delays: 4, 8, and 15.</p></div>
+              <div><b>long memory</b><p>replace fixed ages with a sampled delay sweep.</p></div>
+              <div><b>auto age</b><p>scan delays and report the retention curve.</p></div>
+              <div><b>paper boundary</b><p>fixed-controller use, not native planner memory.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="results">
+        <div class="section-head">
+          <div class="chapter-no">04 / Results</div>
+          <div>
+            <h2>The DINO-WM iteration log shows why the final writer was needed.</h2>
+            <p class="intro">Token recall was solved immediately. The first ordered-binding repair improved the target but failed age8 robustness; the later host-aligned writer below resolved that exposure bottleneck.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption>PushT token recall with delta compact target. Gate: full ≥ 0.75 and reset/no-state ≤ 0.30.</caption>
+            <thead>
+              <tr><th>Age</th><th>Seeds</th><th>Full mean</th><th>Reset mean</th><th>No-state mean</th><th>Status</th><th>Full bar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="num">4</td><td class="num">0–4</td><td class="num">1.000</td><td class="num">0.235</td><td class="num">0.250</td><td><span class="status-pill pass">Pass</span></td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td></tr>
+              <tr><td class="num">8</td><td class="num">0–4</td><td class="num">1.000</td><td class="num">0.249</td><td class="num">0.244</td><td><span class="status-pill pass">Pass</span></td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td></tr>
+              <tr><td class="num">15</td><td class="num">0–4</td><td class="num">1.000</td><td class="num">0.251</td><td class="num">0.253</td><td><span class="status-pill pass">Pass</span></td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption>PushT binding repair with cue-space slot target. Gate: full ≥ 0.75 and reset/no-state ≤ 0.2167.</caption>
+            <thead>
+              <tr><th>Age</th><th>Completed seeds</th><th>Full values</th><th>Full mean</th><th>Reset mean</th><th>No-state mean</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="num">4</td><td class="num">0–4</td><td class="num">0.906, 0.837, 0.781, 0.850, 0.812</td><td class="num">0.838</td><td class="num">0.158</td><td class="num">0.163</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td class="num">8</td><td class="num">0–3</td><td class="num">0.938, 0.925, 0.715, 0.719</td><td class="num">0.824</td><td class="num">0.165</td><td class="num">0.171</td><td><span class="status-pill fail">Fail: seeds 2–3</span></td></tr>
+              <tr><td class="num">15</td><td class="num">not run after failure</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="status-pill partial">Stopped</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption>Negative control: original binding target with delta compact pooling.</caption>
+            <thead>
+              <tr><th>Age</th><th>Seeds</th><th>Full mean</th><th>Reset mean</th><th>No-state mean</th><th>Interpretation</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="num">4</td><td class="num">0–2</td><td class="num">0.162</td><td class="num">0.176</td><td class="num">0.165</td><td>At chance; coarse target erases the ordered binding signal.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="diagnosis" class="dark-band">
+        <div class="section-head">
+          <div class="chapter-no">05 / Diagnosis</div>
+          <div>
+            <h2>The historical DINO-WM bottleneck was not storage. It was stable host exposure.</h2>
+            <p class="intro">The age8 failed seeds were rerun with a three-level readout. The carrier stored the binding almost perfectly; the information weakened when written into the context and remained just below the official host-output gate.</p>
+          </div>
+        </div>
+
+        <div class="risk-grid">
+          <div class="risk"><b>What is established</b><p>The internal memory prior is strong at age8: seed-2 full is 1.000 and seed-3 full is 0.992, while reset remains near chance.</p></div>
+          <div class="risk"><b>What failed</b><p>The official readout is host output. It reached only 0.715 and 0.719 on the failed seeds, below the 0.750 full-condition gate.</p></div>
+          <div class="risk"><b>Why the stop mattered</b><p>The design stored evidence, but the frozen-host interface was not robust enough for a positive PushT binding claim until the writer was changed.</p></div>
+        </div>
+
+        <div class="diagnostic-ladder" aria-label="Age eight diagnostic readout ladder">
+          <article class="diag-card">
+            <div class="label">01 / Carrier prior</div>
+            <div class="value">0.996 <small>full mean</small></div>
+            <div class="diag-metrics">
+              <div class="metric-row"><span>Full</span><div class="metric-track"><span class="metric-fill" style="--w:99.6%"></span></div><span>0.996</span></div>
+              <div class="metric-row"><span>Reset</span><div class="metric-track"><span class="metric-fill control" style="--w:15.3%"></span></div><span>0.153</span></div>
+            </div>
+            <p>Storage is clean. The carrier alone retains the ordered cue; reset removes it.</p>
+          </article>
+          <article class="diag-card warn">
+            <div class="label">02 / Injected context</div>
+            <div class="value">0.600 <small>full mean</small></div>
+            <div class="diag-metrics">
+              <div class="metric-row"><span>Full</span><div class="metric-track"><span class="metric-fill" style="--w:60.0%"></span></div><span>0.600</span></div>
+              <div class="metric-row"><span>Reset</span><div class="metric-track"><span class="metric-fill control" style="--w:16.6%"></span></div><span>0.166</span></div>
+              <div class="metric-row"><span>No state</span><div class="metric-track"><span class="metric-fill control" style="--w:15.7%"></span></div><span>0.157</span></div>
+            </div>
+            <p>The residual write is the first major loss point. The memory signal is present but weakened before prediction.</p>
+          </article>
+          <article class="diag-card fail">
+            <div class="label">03 / Frozen host output</div>
+            <div class="value">0.717 <small>full mean</small></div>
+            <div class="diag-metrics">
+              <div class="metric-row"><span>Full</span><div class="metric-track"><span class="metric-fill" style="--w:71.7%"></span></div><span>0.717</span></div>
+              <div class="metric-row"><span>Gate</span><div class="metric-track"><span class="metric-fill" style="--w:75.0%"></span></div><span>0.750</span></div>
+              <div class="metric-row"><span>Reset</span><div class="metric-track"><span class="metric-fill control" style="--w:16.1%"></span></div><span>0.161</span></div>
+            </div>
+            <p>The host output recovers some evidence but not enough to pass. This is an exposure/interface failure, not a storage failure.</p>
+          </article>
+        </div>
+
+        <div class="diag-note">
+          Diagnostic basis: age8 multi-item binding, cue-space slot target, seeds 2 and 3. Exact host-output full values are 0.7146 and 0.7188; reset/no-state controls remain below the 0.2167 control ceiling.
+        </div>
+
+        <div class="diagram">
+          <div class="diagram-header"><span>Failure localization</span><span>evidence chain</span></div>
+          <div class="architecture">
+            <div class="arch-block dark"><div class="arch-title">Evidence target</div><p class="arch-text">Cue-slot target is sufficient for carrier storage; the memory-prior readout is essentially solved.</p></div>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="arch-block yellow"><div class="arch-title">Write / exposure loss</div><p class="arch-text">The signal drops at injected context, so the next design should improve how slot memory writes into host-visible patch tokens.</p></div>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="arch-block dark"><div class="arch-title">Claim boundary</div><p class="arch-text">At this stage, the correct action was to stop and redesign the host-visible write path rather than claim solved binding.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="next">
+        <div class="section-head">
+          <div class="chapter-no">06 / Next actions</div>
+          <div>
+            <h2>The DINO-WM rescue stabilized binding before the LeWM expansion.</h2>
+            <p class="intro">The fastest path was to fix the age8 binding robustness issue under the same frozen PushT host before expanding the scope. That rescue produced the DINO-WM reference result that LeWM has now matched at age15.</p>
+          </div>
+        </div>
+
+        <article class="extension-subsection" id="host-aligned-writer-extension">
+          <div class="extension-head">
+            <div>
+              <div class="extension-kicker">DINO-WM host-writer rescue / completed</div>
+              <h3>Host-Aligned Evidence Writer</h3>
+              <p>The diagnostic says the carrier stores ordered evidence, but the host-visible pathway loses too much signal. This extension keeps masked-evidence JEPA storage and changes only the write/read interface into the frozen DINO-WM context.</p>
+            </div>
+            <div class="extension-stat">
+              <strong>0.992</strong>
+              targeted age8 host-output mean after launch; previous failed-seed mean was 0.717.
+            </div>
+          </div>
+
+          <div class="extension-flow" aria-label="Host-Aligned Evidence Writer flow">
+            <div class="extension-node">
+              <b>Stored evidence</b>
+              <p>Old cue frames are compressed into latent slots. The memory-prior audit is already near solved, so this block is retained.</p>
+            </div>
+            <div class="extension-node hot">
+              <b>Gated writer</b>
+              <p>A patch-level writer reads memory slots and current context, then writes a bounded residual into host-visible patch tokens.</p>
+            </div>
+            <div class="extension-node">
+              <b>Host-aligned loss</b>
+              <p>The frozen predictor output receives stronger contrastive pressure, because this is the interface that failed the gate.</p>
+            </div>
+            <div class="extension-node">
+              <b>Permutation negatives</b>
+              <p>Binding negatives are created by reordering cue-slot feature blocks, so the model must preserve swatch order without semantic labels.</p>
+            </div>
+          </div>
+
+          <div class="extension-spec">
+            <div>
+              <div class="extension-kicker">Implementation delta</div>
+              <code>adapter = host_writer
+negative_mode = binding_permutation
+host_weight = 2.0
+context_weight = 0.5
+memory_weight = 1.0
+gate = age8 binding seeds 2 and 3 first</code>
+            </div>
+            <div>
+              <div class="extension-kicker">Decision rule</div>
+              <p>If both failed age8 seeds pass host-output full ≥ 0.750 and reset/no-state ≤ 0.2167, run the full binding grid. If either remains below gate, treat this as an interface result, not a method-result paper claim.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0;border-bottom:0">
+            <table>
+              <caption>Launched extension outcome: PushT binding age8, previously failed seeds only.</caption>
+              <thead>
+                <tr><th>Seed</th><th>Full host output</th><th>Reset</th><th>No state</th><th>Gate</th><th>Diagnostic note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">2</td><td class="num">0.983</td><td class="num">0.163</td><td class="num">0.192</td><td><span class="status-pill pass">Pass</span></td><td>Injected context also reaches 0.983; memory prior is 1.000.</td></tr>
+                <tr><td class="num">3</td><td class="num">1.000</td><td class="num">0.154</td><td class="num">0.171</td><td><span class="status-pill pass">Pass</span></td><td>Injected context and memory prior both reach 1.000.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="diag-note" style="margin:0;border-left:0;border-right:0;border-bottom:0;background:var(--paper-2);color:var(--muted)">
+            Interpretation: this is a positive targeted rescue, not yet a complete PushT claim. The writer fixes the measured age8 exposure bottleneck, but residual L2 is high. The full ages 4/8/15 × five-seed binding grid has now finished under <code>outputs/mem_jepa_pusht_stage_f_host_writer</code>; see the full-grid subsection below.
+          </div>
+        </article>
+
+        <article class="extension-subsection" id="host-writer-full-grid">
+          <div class="extension-head">
+            <div>
+              <div class="extension-kicker">Full-grid outcome / completed</div>
+              <h3>The writer solves short and mid age, but age15 is not robust.</h3>
+              <p>The full host-writer binding grid finished with all registered cells present. Ages 4 and 8 pass every seed. Age15 has one failed seed, so this is a strong partial result rather than a paper-ready full retention claim.</p>
+            </div>
+            <div class="extension-stat">
+              <strong>14 / 15</strong>
+              registered cells pass; the only failed gate is age15 seed2.
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>Full host-writer grid: PushT binding, ages 4/8/15 × five seeds. Gate: full ≥ 0.750 and reset/no-state ≤ 0.2167.</caption>
+              <thead>
+                <tr><th>Age</th><th>Seeds passing</th><th>Full mean</th><th>Full minimum</th><th>Reset mean</th><th>No-state mean</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">4</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.168</td><td class="num">0.168</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">8</td><td class="num">5 / 5</td><td class="num">0.966</td><td class="num">0.848</td><td class="num">0.164</td><td class="num">0.172</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">15</td><td class="num">4 / 5</td><td class="num">0.810</td><td class="num">0.473</td><td class="num">0.173</td><td class="num">0.168</td><td><span class="status-pill fail">Fail: seed2</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="extension-flow" aria-label="Full-grid interpretation">
+            <div class="extension-node hot">
+              <b>Positive result</b>
+              <p>Compared with the previous cue-slot repair, host-writer removes the age8 seed failure: all five age8 seeds pass and controls remain near chance.</p>
+            </div>
+            <div class="extension-node">
+              <b>Long-age failure</b>
+              <p>Age15 seed2 falls to full=0.473. Its memory prior is 0.817 and injected context is 0.413, so this is not only a frozen-host exposure problem.</p>
+            </div>
+            <div class="extension-node">
+              <b>Distribution caveat</b>
+              <p>Residual L2 remains large across successful cells, with age means around 44.8, 46.2, and 45.5. The writer is effective but aggressive.</p>
+            </div>
+            <div class="extension-node">
+              <b>Decision</b>
+              <p>Do not write the paper as “PushT binding solved.” The valid claim is a stronger interface writer that fixes short/mid-age exposure but still fails one long-age seed.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0;border-bottom:0">
+            <table>
+              <caption>Age15 seed-level detail. This is the claim boundary for the current method.</caption>
+              <thead>
+                <tr><th>Seed</th><th>Host output full</th><th>Injected context full</th><th>Memory prior full</th><th>Reset</th><th>No state</th><th>Gate</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">0</td><td class="num">0.788</td><td class="num">0.746</td><td class="num">0.979</td><td class="num">0.185</td><td class="num">0.175</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">1</td><td class="num">0.792</td><td class="num">0.806</td><td class="num">0.896</td><td class="num">0.160</td><td class="num">0.158</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">2</td><td class="num">0.473</td><td class="num">0.413</td><td class="num">0.817</td><td class="num">0.173</td><td class="num">0.179</td><td><span class="status-pill fail">Fail</span></td></tr>
+                <tr><td class="num">3</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.181</td><td class="num">0.163</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">4</td><td class="num">1.000</td><td class="num">0.996</td><td class="num">1.000</td><td class="num">0.167</td><td class="num">0.167</td><td><span class="status-pill pass">Pass</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="extension-subsection" id="age15-seed2-rescue">
+          <div class="extension-head">
+            <div>
+              <div class="extension-kicker">Age15 rescue / completed</div>
+              <h3>The failed seed was rescued by training horizon, not by a smaller writer.</h3>
+              <p>Three seed2-only variants were tested. Stronger residual regularization made the result worse. Rebalancing context loss improved the failed seed but missed the gate. Keeping the original host-writer objective and extending training to 32 epochs passed seed2, then validated across all five age15 seeds.</p>
+            </div>
+            <div class="extension-stat">
+              <strong>5 / 5</strong>
+              age15 seeds pass under the 32-epoch host-writer setting.
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>Targeted seed2 rescue variants. All runs use host-writer + binding-permutation negatives.</caption>
+              <thead>
+                <tr><th>Variant</th><th>Epochs</th><th>Host / context weight</th><th>Residual weight</th><th>Seed2 full</th><th>Injected context</th><th>Gate</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Original full-grid setting</td><td class="num">20</td><td class="num">2.0 / 0.5</td><td class="num">1e-4</td><td class="num">0.473</td><td class="num">0.413</td><td><span class="status-pill fail">Fail</span></td></tr>
+                <tr><td>Context-balanced</td><td class="num">20</td><td class="num">1.25 / 1.0</td><td class="num">1e-4</td><td class="num">0.713</td><td class="num">0.671</td><td><span class="status-pill fail">Near miss</span></td></tr>
+                <tr><td>Residual-budget</td><td class="num">20</td><td class="num">2.0 / 0.5</td><td class="num">5e-4</td><td class="num">0.535</td><td class="num">0.504</td><td><span class="status-pill fail">Fail</span></td></tr>
+                <tr><td>Longer-training</td><td class="num">32</td><td class="num">2.0 / 0.5</td><td class="num">1e-4</td><td class="num">0.935</td><td class="num">0.902</td><td><span class="status-pill pass">Pass</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>Age15 validation under the winning 32-epoch setting. Gate: full ≥ 0.750 and reset/no-state ≤ 0.2167.</caption>
+              <thead>
+                <tr><th>Seed</th><th>Host output full</th><th>Injected context full</th><th>Memory prior full</th><th>Reset</th><th>No state</th><th>Gate</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">0</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.169</td><td class="num">0.169</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">1</td><td class="num">1.000</td><td class="num">0.998</td><td class="num">1.000</td><td class="num">0.194</td><td class="num">0.165</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">2</td><td class="num">0.935</td><td class="num">0.902</td><td class="num">1.000</td><td class="num">0.167</td><td class="num">0.163</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">3</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.173</td><td class="num">0.181</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">4</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.183</td><td class="num">0.183</td><td><span class="status-pill pass">Pass</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="extension-flow" aria-label="Age15 rescue interpretation">
+            <div class="extension-node hot">
+              <b>Insight</b>
+              <p>The failed seed was not evidence against the architecture. It was evidence that age15 needs a longer convergence horizon under the host-aligned objective.</p>
+            </div>
+            <div class="extension-node">
+              <b>Mechanism</b>
+              <p>Seed2 memory prior moves to 1.000 and injected context rises from 0.413 to 0.902 after 32 epochs, so the fix improves both storage and write quality.</p>
+            </div>
+            <div class="extension-node">
+              <b>Caveat</b>
+              <p>The 32-epoch age15 residual L2 mean is 49.55, higher than the 20-epoch age15 mean. The writer remains effective but aggressive.</p>
+            </div>
+            <div class="extension-node">
+              <b>Next gate</b>
+              <p>For a clean paper table, rerun the complete ages 4/8/15 grid with the final 32-epoch recipe or explicitly report the age15 rescue as an amendment.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="extension-subsection" id="lewm-model-agnostic-extension">
+          <div class="extension-head">
+            <div>
+              <div class="extension-kicker">Flat-objective LeWM ablation / failed</div>
+              <h3>Flat LeWM evidence reconstruction did not transfer the binding result.</h3>
+              <p>The first LeWM port used the same label-free host-aligned writer but asked it to reconstruct a flattened old cue-latent delta. This is now recorded as a negative ablation: token recall partially transferred, while six-way binding remained near chance across every seed.</p>
+            </div>
+            <div class="extension-stat">
+              <strong>3 / 10</strong>
+              cells passed the flat-objective gate; all passing cells were token recall.
+            </div>
+          </div>
+
+          <div class="extension-flow" aria-label="LeWM model-agnostic host-writer flow">
+            <div class="extension-node">
+              <b>Frozen LeWM host</b>
+              <p>Official PushT LeWM predicts 192-D next latents from three legal context latents and action blocks. The released host is hash-checked before and after training.</p>
+            </div>
+            <div class="extension-node hot">
+              <b>Label-free evidence target</b>
+              <p>The target is the old cue-latent delta, flattened across the three cue frames. Semantic labels are excluded from adapter training.</p>
+            </div>
+            <div class="extension-node">
+              <b>Host-aligned writer</b>
+              <p>Memory slots write a gated residual into the final legal context. Losses supervise memory prior, injected context, and frozen-host output against the old cue evidence.</p>
+            </div>
+            <div class="extension-node">
+              <b>Readout-only audit</b>
+              <p>After training, labels are used only to test full, reset, and no-state features. The gate remains full ≥ 0.750 with controls at chance + 0.05.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>LeWM PushT host-writer outcome. Output root: <code>outputs/lewm_pusht_host_writer_v1</code>. Gate: full ≥ 0.750 and controls ≤ chance + 0.05.</caption>
+              <thead>
+                <tr><th>Task</th><th>Classes</th><th>Seeds passing</th><th>Full mean</th><th>Full range</th><th>Reset mean</th><th>No-state mean</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Transient visual-token recall</td><td class="num">4</td><td class="num">3 / 5</td><td class="num">0.795</td><td class="num">0.717–0.892</td><td class="num">0.252</td><td class="num">0.252</td><td><span class="status-pill warn">Partial</span></td></tr>
+                <tr><td>Multi-item visual-binding recall</td><td class="num">6</td><td class="num">0 / 5</td><td class="num">0.178</td><td class="num">0.158–0.196</td><td class="num">0.176</td><td class="num">0.175</td><td><span class="status-pill fail">Fail</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>Interface diagnosis: where the label-free LeWM run fails. Values are balanced accuracy at age 15.</caption>
+              <thead>
+                <tr><th>Task</th><th>Memory prior full</th><th>Injected context full</th><th>Host output full</th><th>Interpretation</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Token recall</td><td class="num">0.993</td><td class="num">0.857</td><td class="num">0.795</td><td>Evidence is stored and often survives the write; two seeds miss the strict 0.750 gate by small margins.</td></tr>
+                <tr><td>Six-way binding</td><td class="num">0.367</td><td class="num">0.152</td><td class="num">0.178</td><td>The old cue-latent delta objective does not recover ordered binding semantics in LeWM; failure appears before host exposure.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="extension-spec">
+            <div>
+              <div class="extension-kicker">What transferred</div>
+              <p>The architecture and training loop run cleanly on a second frozen host without changing the host. Token recall shows real old-evidence sensitivity: controls stay near chance while the full condition averages 0.795.</p>
+            </div>
+            <div>
+              <div class="extension-kicker">What did not transfer</div>
+              <p>Binding did not improve over the old LeWM near-chance story. Training match can be high while semantic binding readout remains absent, so the next LeWM design must use an order-preserving evidence objective rather than a flat cue-delta target.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="extension-subsection" id="lewm-counterfactual-structured-evidence">
+          <div class="extension-head">
+            <div>
+              <div class="extension-kicker">Structured objective / completed age grid</div>
+              <h3>Counterfactual evidence contrast solves the LeWM PushT age grid.</h3>
+              <p>The flat cue-delta objective failed because it asked the writer to reconstruct instance-specific latent evidence. The successful objective keeps the method label-free at readout time but supplies structured alternatives: for each base trajectory, all cue branches are rendered at the requested evidence age and encoded by the frozen LeWM encoder, then the observed cue is contrasted against same-base counterfactual cues.</p>
+            </div>
+            <div class="extension-stat">
+              <strong>30 / 30</strong>
+              LeWM token + binding cells pass across ages 4, 8, and 15.
+            </div>
+          </div>
+
+          <div class="extension-flow" aria-label="Counterfactual structured evidence flow">
+            <div class="extension-node">
+              <b>Same base trajectory</b>
+              <p>State, actions, proprioception, final context, and decision index stay fixed. Only the old cue branch changes.</p>
+            </div>
+            <div class="extension-node hot">
+              <b>Structured alternatives</b>
+              <p>All six binding cue permutations are rendered as counterfactual cue frames and encoded into 192-D LeWM latents.</p>
+            </div>
+            <div class="extension-node">
+              <b>Positive by observation</b>
+              <p>The positive branch is selected by matching the actually observed cue latent, not by fitting a semantic label classifier.</p>
+            </div>
+            <div class="extension-node">
+              <b>Host-visible readout</b>
+              <p>The final audit still reads frozen-host output under full, reset, and no-state controls. Labels are used only after training.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>LeWM PushT binding, age15, counterfactual structured evidence + wider host writer. Gate: full ≥ 0.750 and reset/no-state ≤ 0.2167. The full age grid appears below.</caption>
+              <thead>
+                <tr><th>Seed</th><th>Host output full</th><th>Reset</th><th>No state</th><th>Memory prior full</th><th>Injected context full</th><th>Gate</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">0</td><td class="num">0.910</td><td class="num">0.148</td><td class="num">0.183</td><td class="num">0.990</td><td class="num">0.881</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">1</td><td class="num">0.929</td><td class="num">0.133</td><td class="num">0.156</td><td class="num">0.994</td><td class="num">0.904</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">2</td><td class="num">0.925</td><td class="num">0.181</td><td class="num">0.154</td><td class="num">0.985</td><td class="num">0.877</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">3</td><td class="num">0.921</td><td class="num">0.144</td><td class="num">0.135</td><td class="num">0.987</td><td class="num">0.877</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td class="num">4</td><td class="num">0.927</td><td class="num">0.152</td><td class="num">0.177</td><td class="num">0.979</td><td class="num">0.852</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td><strong>Mean</strong></td><td class="num"><strong>0.923</strong></td><td class="num"><strong>0.152</strong></td><td class="num"><strong>0.161</strong></td><td class="num"><strong>0.987</strong></td><td class="num"><strong>0.878</strong></td><td><span class="status-pill pass">Resolved</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-wrap" style="margin:0;border-left:0;border-right:0">
+            <table>
+              <caption>LeWM PushT age-grid summary. Same structured counterfactual recipe, frozen official LeWM host, seeds 0–4. Gates: full ≥ 0.750; controls ≤ chance + 0.05.</caption>
+              <thead>
+                <tr><th>Task</th><th>Age</th><th>Seeds passing</th><th>Full mean</th><th>Full range</th><th>Reset mean</th><th>No-state mean</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Transient visual-token recall</td><td class="num">4</td><td class="num">5 / 5</td><td class="num">0.999</td><td class="num">0.998–1.000</td><td class="num">0.260</td><td class="num">0.241</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td>Transient visual-token recall</td><td class="num">8</td><td class="num">5 / 5</td><td class="num">0.996</td><td class="num">0.994–0.998</td><td class="num">0.270</td><td class="num">0.246</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td>Transient visual-token recall</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">0.997</td><td class="num">0.992–1.000</td><td class="num">0.266</td><td class="num">0.248</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td>Multi-item visual-binding recall</td><td class="num">4</td><td class="num">5 / 5</td><td class="num">0.957</td><td class="num">0.952–0.965</td><td class="num">0.171</td><td class="num">0.156</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td>Multi-item visual-binding recall</td><td class="num">8</td><td class="num">5 / 5</td><td class="num">0.949</td><td class="num">0.938–0.960</td><td class="num">0.164</td><td class="num">0.150</td><td><span class="status-pill pass">Pass</span></td></tr>
+                <tr><td>Multi-item visual-binding recall</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">0.923</td><td class="num">0.910–0.929</td><td class="num">0.152</td><td class="num">0.161</td><td><span class="status-pill pass">Pass</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="extension-spec">
+            <div>
+              <div class="extension-kicker">Ablation lesson</div>
+              <p>Flat cue-delta reconstruction produced binding full ≈ 0.178. Self-discovered KMeans prototypes also failed because clusters did not align with binding states. Same-base counterfactual negatives removed nuisance variation and exposed the binding variable.</p>
+            </div>
+            <div>
+              <div class="extension-kicker">Clean paper claim</div>
+              <p>The method is not “LeWM-specific.” The general claim is that ordered memory needs structured evidence alternatives. DINO-WM supplied patch/slot structure naturally; LeWM needed same-base counterfactual branches to provide equivalent structure. With that structure, LeWM token and binding pass every age4/8/15 seed.</p>
+            </div>
+          </div>
+        </article>
+
+        <div class="insights">
+          <div class="insight">
+            <div class="num">01</div>
+            <div><h3>Structured alternatives matter more than another recurrent block.</h3><p>Flat latent reconstruction failed on LeWM binding; same-base counterfactual cue alternatives made the old evidence separable and host-visible.</p></div>
+            <div class="annotation">LeWM binding moves from 0.178 to 0.923 full mean.</div>
+          </div>
+          <div class="insight">
+            <div class="num">02</div>
+            <div><h3>The method claim can stay model-agnostic if the objective is structure-aware.</h3><p>DINO-WM uses spatial patch/slot structure; LeWM uses rendered same-base alternatives. These are different implementations of the same evidence principle.</p></div>
+            <div class="annotation">Avoid framing this as a LeWM-only rescue.</div>
+          </div>
+          <div class="insight">
+            <div class="num">03</div>
+            <div><h3>The next experiment should be shared across hosts.</h3><p>Now that DINO-WM and LeWM both pass PushT retention gates, the next stage should test the same downstream or transfer gate on both rather than adding more isolated rescues.</p></div>
+            <div class="annotation">Candidate: shared external consumer or age sweep.</div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:28px">
+          <strong>Bottom line</strong>
+          <p>The model-agnostic story is now substantially cleaner: DINO-WM already passed the host-writer PushT binding gate, and LeWM now passes the full PushT token/binding age grid under a structured counterfactual evidence objective. The next step should be a shared cross-host stage, not another one-off LeWM patch.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Next-stage contract</strong>
+          <p>Status: completed. The shared checkpointed downstream-use gate saved trained host-writer adapters for DINO-WM and LeWM, extracted matched full/reset/no-state endpoint features, and trained the same external consumer protocol on both hosts. The goal-selection gate passes for both hosts. Physical execution is now reported for both hosts: LeWM uses the existing compatible simulator deck, and DINO-WM uses a newly built native PushT execution deck from its validation rows.</p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>Checkpointed PushT downstream-use gate, binding recall at age15. Output root: <code>outputs/pusht_checkpointed_downstream_use_v1</code>.</caption>
+            <thead>
+              <tr><th>Host</th><th>Full BAcc</th><th>Reset BAcc</th><th>No-state BAcc</th><th>Full − no-state</th><th>Execution</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DINO-WM</td><td class="num">0.988</td><td class="num">0.168</td><td class="num">0.165</td><td class="num">+0.823</td><td>0.972 executed success; reset 0.167, no-state 0.168. Native deck: 212 rows, oracle 0.983, wrong-goal 0.000.</td><td><span class="status-pill pass">Selection + execution pass</span></td></tr>
+              <tr><td>LeWM</td><td class="num">0.920</td><td class="num">0.151</td><td class="num">0.154</td><td class="num">+0.765</td><td>0.926 executed success; reset 0.156, no-state 0.151.</td><td><span class="status-pill pass">Selection + execution pass</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Interpretation</strong>
+          <p>This closes a stronger ladder than the retention table alone: checkpointed memory state is not only linearly readable in the original audit, but can drive an external consumer and a PushT physical controller. The clean claim remains scoped: DINO-WM and LeWM use separate host-native validation banks and physical decks, so this is cross-host replication of the use gate rather than a row-matched head-to-head simulator comparison.</p>
+        </div>
+
+        <div class="callout" style="margin-top:28px">
+          <strong>Environment expansion contract</strong>
+          <p>Status: active. The next stage expands only when the environment can support the same fail-closed ladder: demand, cue-time encoding, retention after context expiry, reset/no-state controls, and downstream use when a valid controller/deck exists. Old OGBench/HACSSM logs are treated as background only until they are rewrapped into this ladder.</p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>Live environment expansion matrix for MESM. “Paper-ready” means the result follows the current memory-audit ladder, not merely that an old run exists.</caption>
+            <thead>
+              <tr><th>Environment</th><th>Host / asset state</th><th>Memory target</th><th>Current evidence</th><th>Paper role</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PushT</td>
+                <td>DINO-WM + LeWM frozen hosts</td>
+                <td>Token recall and six-way ordered visual binding</td>
+                <td>DINO-WM full BAcc 0.988 and execution 0.972; LeWM full BAcc 0.920 and execution 0.926. Controls remain near chance.</td>
+                <td>Main hard visual-manipulation result</td>
+                <td><span class="status-pill pass">Paper-ready</span></td>
+              </tr>
+              <tr>
+                <td>PointMaze</td>
+                <td>Released DINO-WM PointMaze checkpoint; formal summary verified</td>
+                <td>Transient four-goal cue card</td>
+                <td>Fixed-trust age15 BAcc 0.866; SSM age15 BAcc 0.760; no-state 0.250. External execution: fixed-trust 0.775 vs no-state 0.239; oracle 0.956.</td>
+                <td>Navigation / spatial-memory generalization</td>
+                <td><span class="status-pill pass">Paper-ready</span></td>
+              </tr>
+              <tr>
+                <td>DINO-WM Wall</td>
+                <td>Official checkpoint extracted from the released DINO-WM archive; <code>wall_single.zip</code> downloaded and extracted locally.</td>
+                <td>Transient four-position wall cue; ages 4, 8, and 15</td>
+                <td>Admission passes. Ridge screening suggested fixed-trust age4/8, but PCA-logistic confirmation only clears fixed-trust age4. Carrier priors remain near 1.0, so the bottleneck is host exposure rather than internal storage.</td>
+                <td>Third DINO-WM environment showing stricter evidence-age exposure limits</td>
+                <td><span class="status-pill pass">Short-age confirmed</span></td>
+              </tr>
+              <tr>
+                <td>OGBench AntMaze / visual AntMaze</td>
+                <td>OGBench, MuJoCo, Gymnasium, and EGL render path smoke-tested locally</td>
+                <td>Long-horizon navigation cue memory</td>
+                <td>Admission bridge passes. Feature-host wave also passes all 15 AntMaze cells: full host-output BAcc 1.000 with reset/no-state at 0.250. Native execution is not claimed because a real ant controller/policy is not yet available.</td>
+                <td>Locomotion breadth and next execution target; capacity-only for now.</td>
+                <td><span class="status-pill pass">Feature-host pass</span></td>
+              </tr>
+              <tr>
+                <td>OGBench Cube / Scene</td>
+                <td>OGBench render path passes for Cube single/double, Scene, and Puzzle; old cube/occlusion outputs also exist</td>
+                <td>Object identity, relation, or occlusion memory</td>
+                <td>Admission and feature-host pass. Native-use stage also reaches 1.000 executed success under full memory and 0.250 under reset/no-state/random across ages 4/8/15.</td>
+                <td>Object-manipulation final-performance check under a fixed OGBench controller.</td>
+                <td><span class="status-pill pass">Native-use pass</span></td>
+              </tr>
+              <tr>
+                <td>DINO-WM Rope / Granular</td>
+                <td>DINO-WM vendor has deformable configs; PyFleX/deformable assets not verified</td>
+                <td>Deformable object memory</td>
+                <td>No valid MESM run yet. High novelty, high setup risk.</td>
+                <td>Appendix/future extension unless dependencies are already clean</td>
+                <td><span class="status-pill partial">High-risk check</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Immediate execution order</strong>
+          <p>1) keep PushT and DINO-WM PointMaze as native-host/use evidence; 2) use Wall as the exposure-bottleneck result; 3) report OGBench PointMaze/Cube as fixed-controller native-success checks, not native world-model planning; 4) keep AntMaze capacity-only until a real ant controller or policy exists; 5) next, run an autonomous evidence-discovery variant where the sidecar must infer which past observation matters instead of being handed the cue feature directly.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>OGBench admission bridge</strong>
+          <p>Status: completed for seven render-ready OGBench tasks under <code>outputs/ogbench_mesmem_admission_v1</code>. This only establishes that a controlled transient cue can be injected, decoded when visible, and protected from endpoint/action/observation shortcuts. It does not yet establish persistent memory in a frozen world model.</p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>OGBench Stage-G-style admission bridge. Gate: cue-time BAcc ≥ 0.750 and all shortcuts ≤ 0.300. Each row uses 200 training bases, 80 validation bases, four cue labels, and ages 4/8/15.</caption>
+            <thead>
+              <tr><th>Environment</th><th>Family</th><th>Cue-time BAcc</th><th>Shortcut ceiling</th><th>Counterfactual mask</th><th>Claim boundary</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>pointmaze-large-navigate-v0</td><td>Navigation</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>antmaze-large-navigate-v0</td><td>Locomotion navigation</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>humanoidmaze-large-navigate-v0</td><td>High-DoF locomotion</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>cube-single-play-v0</td><td>Object manipulation</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>cube-double-play-v0</td><td>Object manipulation</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>scene-play-v0</td><td>Multi-object scene</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>puzzle-3x3-play-v0</td><td>Combinatorial manipulation</td><td class="num">1.000</td><td class="num">0.250 at ages 4/8/15</td><td>post-cue pixels unchanged; outside-mask changes 0</td><td>admission only</td><td><span class="status-pill pass">Pass</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>OGBench interpretation</strong>
+          <p>The useful result is no longer only shortcut-safe admission. The repaired all-env native-use run now scores 27/36 env-age rows through audited fixed controllers: PointMaze medium/large/giant/teleport, Cube single/double/triple, Scene, and Puzzle are completed; AntMaze and HumanoidMaze remain controller-unavailable.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>OGBench feature-host wave</strong>
+          <p>Status: base and expanded grids completed from <code>outputs/ogbench_feature_host_stage_v1</code>. The completed table below covers PointMaze large/medium/giant/teleport, Cube single/double/triple, Scene, Puzzle, AntMaze, and HumanoidMaze across ages 4/8/15. It is deliberately labeled as a feature-host stage: the sidecar carries the old cue feature as memory state, so this is an exposure-capacity result, not evidence that the model autonomously discovered which past frame mattered.</p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>Completed expanded OGBench feature-host grid launched on GPUs 0, 1, and 2. Gate: full host-output BAcc ≥ 0.750 while reset and no-state controls stay ≤ 0.300. Readout is trained after the writer stage; semantic labels are not used by the writer loss.</caption>
+            <thead>
+              <tr><th>Environment</th><th>Age</th><th>Seeds passed</th><th>Full</th><th>Reset</th><th>No-state</th><th>Visual read</th><th>Claim boundary</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PointMaze-large</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host exposure capacity; native-use pass below.</td></tr>
+              <tr><td>PointMaze-medium</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host exposure capacity; native-use pass below.</td></tr>
+              <tr><td>PointMaze-giant</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host exposure capacity; native-use pass below.</td></tr>
+              <tr><td>PointMaze-teleport</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host exposure capacity; repaired native-use pass below.</td></tr>
+              <tr><td>AntMaze-large</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity only; no valid controller yet.</td></tr>
+              <tr><td>AntMaze-giant</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity only; no valid controller yet.</td></tr>
+              <tr><td>HumanoidMaze-large</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity only; no valid controller yet.</td></tr>
+              <tr><td>Cube-single</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host exposure capacity; native-use pass below.</td></tr>
+              <tr><td>Cube-double</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity; repaired current-method native-use pass below.</td></tr>
+              <tr><td>Cube-triple</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity; repaired current-method native-use pass below.</td></tr>
+              <tr><td>Scene</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">≥0.999</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:99.9%"></span></div></td><td>Feature-host capacity; repaired current-method native-use pass below.</td></tr>
+              <tr><td>Puzzle-3x3</td><td class="num">4 / 8 / 15</td><td class="num">15 / 15</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="bar"><div class="bar-track"><span class="bar-fill" style="width:100%"></span></div></td><td>Feature-host capacity; current-method native-use pass below.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>OGBench insight</strong>
+          <p>The fixed-controller success result gives reviewers the straightforward final-performance number that readout-only evidence lacked. The boundary is still important: these are memory-selected target execution checks, not native world-model planning. The next stronger experiment should remove the explicit cue-feature handoff: the model sees a sequence with masked evidence and must self-supervise which past observation reconstructs the endpoint-relevant latent target.</p>
+        </div>
+
+        <div class="pi-panel" style="margin-top:16px" role="img" aria-label="Autonomous Masked-Evidence JEPA Memory model and training flow">
+          <div class="diagram-header"><span>Autonomous ME-JEPA stage</span><span>no manual cue-feature sidecar</span></div>
+          <div class="visual-pipeline">
+            <div class="visual-panel input-panel">
+              <div class="visual-head"><span>01 Causal render history</span><span>OGBench PointMaze / Cube</span></div>
+              <div class="render-grid">
+                <div class="render-card">
+                  <div class="pusht-canvas"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>base frame</span><span>t0</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas cue"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>transient evidence</span><span>t1–3</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>post-cue context</span><span>t4+</span></div>
+                </div>
+                <div class="render-card">
+                  <div class="pusht-canvas read"><div class="cue-swatches"><span></span><span></span><span></span></div></div>
+                  <div class="render-label"><span>read point</span><span>age 4/8/15</span></div>
+                </div>
+              </div>
+              <div class="frame-strip" aria-label="Masked-evidence JEPA temporal flow">
+                <span class="frame" data-i="0"></span><span class="frame cue" data-i="1"></span><span class="frame cue" data-i="2"></span><span class="frame cue" data-i="3"></span><span class="frame" data-i="4"></span><span class="frame" data-i="5"></span><span class="frame" data-i="6"></span><span class="frame read" data-i="7"></span><span class="frame" data-i="8"></span><span class="frame" data-i="9"></span><span class="frame" data-i="10"></span><span class="frame" data-i="11"></span><span class="frame read" data-i="12"></span><span class="frame" data-i="13"></span><span class="frame" data-i="14"></span><span class="frame" data-i="15"></span><span class="frame" data-i="16"></span><span class="frame" data-i="17"></span><span class="frame read" data-i="18"></span><span class="frame" data-i="19"></span>
+              </div>
+            </div>
+
+            <div class="visual-panel yellow evidence-panel">
+              <div class="visual-head"><span>02 Masked evidence target</span><span>latent, not RGB decode</span></div>
+              <div class="target-slots" aria-label="Four evidence crop slots">
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>corner 1</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>corner 2</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>corner 3</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>corner 4</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>panel latent</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>stop-grad</b></div>
+              </div>
+              <div class="formula-row">
+                <div class="formula">target = stopgrad(φ(panel(x<sub>1:3</sub>)))<br>loss = InfoNCE(p(M), target) + cosine + variance</div>
+              </div>
+            </div>
+
+            <div class="visual-panel dark memory-panel">
+              <div class="visual-head"><span>03 Compact memory</span><span>slots, not KV/recurrent</span></div>
+              <div class="host-stack">
+                <div class="host-layer">frame CNN <span>z<sub>t</sub></span></div>
+                <div class="host-layer">time + action <span>τ<sub>t</sub>, a<sub>t</sub></span></div>
+                <div class="host-layer hot">learned query slots <span>K=8</span></div>
+                <div class="host-layer">slot attention bottleneck <span>M</span></div>
+                <div class="host-layer">JEPA predictor <span>p(M)</span></div>
+              </div>
+              <p style="margin:0;color:#d9d6ca;font-size:13px">The model receives a whole causal history but can only carry it through a small slot bottleneck. It is not given the cue feature, cue label, or key-frame index during training.</p>
+            </div>
+
+            <div class="visual-panel audit-panel">
+              <div class="visual-head"><span>04 Evaluation contract</span><span>labels only after training</span></div>
+              <div class="audit-bars" aria-label="Evaluation arms">
+                <div class="audit-row"><span>full</span><div class="track"><span class="fill" style="width:75%"></span></div><span>≥.75</span></div>
+                <div class="audit-row"><span>reset</span><div class="track"><span class="fill" style="width:35%"></span></div><span>≤.35</span></div>
+                <div class="audit-row"><span>recent</span><div class="track"><span class="fill" style="width:35%"></span></div><span>≤.35</span></div>
+              </div>
+              <div class="tensor-chips" style="padding:0">
+                <span class="tensor-chip">post-hoc readout</span>
+                <span class="tensor-chip">reset baseline</span>
+                <span class="tensor-chip">recent-only baseline</span>
+                <span class="tensor-chip">diagnostic SVG</span>
+              </div>
+            </div>
+          </div>
+          <div class="io-ledger">
+            <div><b>Script</b><p><code>scripts/run_masked_evidence_jepa_ogbench.py</code></p></div>
+            <div><b>Launcher</b><p><code>scripts/launch_masked_evidence_jepa_ogbench.py</code></p></div>
+            <div><b>Output</b><p><code>outputs/masked_evidence_jepa_ogbench_v1</code></p></div>
+            <div><b>First wave</b><p>Completed: PointMaze-large and Cube-single, ages 4/8/15, seeds 0–2 on GPUs 0/1/2.</p></div>
+          </div>
+        </div>
+
+        <div class="pi-panel" style="margin-top:16px" role="img" aria-label="Random-target JEPA final non-manual memory proposal">
+          <div class="diagram-header"><span>Final method candidate</span><span>random-target JEPA; no hand-picked evidence moment</span></div>
+          <div class="visual-pipeline">
+            <div class="visual-panel input-panel">
+              <div class="visual-head"><span>01 Unlabeled causal stream</span><span>x<sub>0:T</sub>, actions, time</span></div>
+              <div class="frame-strip" aria-label="Random latent target sampling">
+                <span class="frame" data-i="0"></span><span class="frame" data-i="1"></span><span class="frame cue" data-i="2"></span><span class="frame" data-i="3"></span><span class="frame" data-i="4"></span><span class="frame read" data-i="5"></span><span class="frame" data-i="6"></span><span class="frame" data-i="7"></span><span class="frame cue" data-i="8"></span><span class="frame" data-i="9"></span><span class="frame read" data-i="10"></span><span class="frame" data-i="11"></span>
+              </div>
+              <p style="margin:10px 0 0;color:#2d2f2a;font-size:13px">Training receives only render history, action tokens, and time tokens. It is not told which frame contains decision evidence.</p>
+            </div>
+            <div class="visual-panel yellow evidence-panel">
+              <div class="visual-head"><span>02 Random withheld target</span><span>whole-frame latent</span></div>
+              <div class="target-slots" aria-label="Random target samples">
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>sample t*</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>remove x<sub>t*</sub></b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>encode φ(x<sub>t*</sub>)</b></div>
+                <div class="target-slot"><div class="patch"><span></span><span></span><span></span></div><b>stop-grad</b></div>
+              </div>
+              <div class="formula-row">
+                <div class="formula">t* ∼ Uniform(0, endpoint)<br>target = stopgrad(φ(x<sub>t*</sub>)); visible history excludes x<sub>t*</sub></div>
+              </div>
+            </div>
+            <div class="visual-panel dark memory-panel">
+              <div class="visual-head"><span>03 Emergent memory bottleneck</span><span>slots only</span></div>
+              <div class="host-stack">
+                <div class="host-layer">visible tokens <span>x<sub>¬t*</sub></span></div>
+                <div class="host-layer hot">compact slots <span>M</span></div>
+                <div class="host-layer">latent predictor <span>p(M)</span></div>
+                <div class="host-layer">contrastive JEPA loss <span>no labels</span></div>
+              </div>
+            </div>
+            <div class="visual-panel audit-panel">
+              <div class="visual-head"><span>04 Audit only after training</span><span>labels not in method</span></div>
+              <div class="tensor-chips" style="padding:0">
+                <span class="tensor-chip">cue label: evaluation only</span>
+                <span class="tensor-chip">reset control</span>
+                <span class="tensor-chip">recent-only control</span>
+                <span class="tensor-chip">native-use check</span>
+              </div>
+              <p style="margin:10px 0 0;color:#2d2f2a;font-size:13px">The benchmark still uses controlled cues so we can score memory. The proposed learning rule does not use cue labels, cue crops, or key-frame annotations.</p>
+            </div>
+          </div>
+          <div class="io-ledger">
+            <div><b>Manual component removed</b><p>Fixed evidence-panel target and hand-picked cue moment.</p></div>
+            <div><b>Still controlled</b><p>Evaluation cue injection and labels remain benchmark instrumentation, not training supervision.</p></div>
+            <div><b>Runner</b><p><code>scripts/run_random_target_jepa_ogbench.py</code></p></div>
+            <div><b>Auto-resume</b><p>Waiting at <code>outputs/random_target_jepa_ogbench_v1/logs/auto_after_seed.log</code>; launch requires the 135-cell ME-JEPA summary to pass.</p></div>
+          </div>
+        </div>
+
+        <div class="visual-panel dark" style="margin-top:16px">
+          <div class="visual-head"><span>Random-target JEPA first wave</span><span>mixed: navigation passes; manipulation fails</span></div>
+          <p style="margin:12px 0 16px;color:#d9d6ca;max-width:920px">The stricter non-manual variant completed on PointMaze-large and Cube-single. It withholds a randomly sampled whole frame from the causal history and predicts its stop-gradient latent without cue labels, cue crops, or key-frame annotations. PointMaze remains positive across ages; Cube-single does not. The failure is informative: whole-frame latent prediction can preserve maze-level evidence but is too diffuse for object-level manipulation cues, where static pixels dominate the target.</p>
+          <div class="render-card" style="margin-bottom:12px">
+            <img src="assets/random_target_jepa_ogbench_summary.svg" alt="Random-target JEPA summary chart for PointMaze-large and Cube-single">
+            <div class="render-label"><span>Random withheld whole-frame target</span><span>post-hoc BAcc</span></div>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>Random-target JEPA first wave. This is the candidate final direction because the training objective is not manually tied to a cue moment or evidence crop. The result is not yet paper-ready for manipulation.</caption>
+            <thead>
+              <tr><th>Environment</th><th>Age</th><th>Seeds passed</th><th>Full BAcc</th><th>Reset BAcc</th><th>Recent-only BAcc</th><th>JEPA top-1</th><th>Interpretation</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PointMaze-large</td><td class="num">4</td><td class="num">3 / 3</td><td class="num">0.980</td><td class="num">0.250</td><td class="num">0.242</td><td class="num">0.182</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>PointMaze-large</td><td class="num">8</td><td class="num">3 / 3</td><td class="num">0.943</td><td class="num">0.247</td><td class="num">0.235</td><td class="num">0.169</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>PointMaze-large</td><td class="num">15</td><td class="num">3 / 3</td><td class="num">0.898</td><td class="num">0.241</td><td class="num">0.242</td><td class="num">0.095</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">4</td><td class="num">1 / 3</td><td class="num">0.816</td><td class="num">0.299</td><td class="num">0.275</td><td class="num">0.498</td><td><span class="status-pill fail">Unstable</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">8</td><td class="num">0 / 3</td><td class="num">0.625</td><td class="num">0.308</td><td class="num">0.300</td><td class="num">0.481</td><td><span class="status-pill fail">Fail</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">15</td><td class="num">0 / 3</td><td class="num">0.475</td><td class="num">0.254</td><td class="num">0.244</td><td class="num">0.312</td><td><span class="status-pill fail">Fail</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Next non-manual fix</strong>
+          <p>Do not return to manual cue crops. The first patch-set attempt used label-free saliency mining and learned slot-to-patch assignment, but Cube-single age4 failed near chance because the miner selected the cue and then masked the evidence across the visible stream. The v2 single-view patch-set objective improved Cube but still failed long-age retention: Cube age4 was borderline, age8/15 remained below gate, and PointMaze age8 had two seeds just below threshold. The next correction is v3 at <code>outputs/random_patchset_view_color_jepa_ogbench_v1</code>: same non-manual single-view target mining, but with a fixed generic color/texture patch target instead of a frozen random patch CNN. It still uses no cue labels, no cue crops, and no manually selected key frame in training.</p>
+        </div>
+
+        <div class="visual-panel dark" style="margin-top:16px">
+          <div class="visual-head"><span>Non-manual patch-set v3</span><span>complete first wave; targeted long run active</span></div>
+          <p style="margin:12px 0 16px;color:#d9d6ca;max-width:920px">v3 validates the target-latent fix but did not close long-age retention at the 36-epoch setting. The targeted long-horizon run at <code>outputs/random_patchset_view_color_jepa_long_v1</code> uses 72 epochs, 224 latent dimensions, and 12 slots on the failed ages only. It now passes PointMaze age8/15 and Cube age15 across all seeds. Cube age8 has strong full-memory reads on all seeds, but one seed misses the registered per-seed gate because its recent-only control is 0.355, just above the 0.350 ceiling. The next step is a focused Cube age8 confirmation rather than a broad expansion.</p>
+          <div class="render-card" style="margin-bottom:12px">
+            <img src="assets/random_patchset_view_color_jepa_long_summary.svg" alt="Single-view color-target patch-set JEPA v3 long-horizon summary chart">
+            <div class="render-label"><span>v3 long-horizon run</span><span>post-hoc BAcc</span></div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Active confirmation</strong>
+          <p>Cube-single age8 confirmation passed under <code>outputs/random_patchset_view_color_jepa_confirm_cube_age8_v1</code> with a larger 768-episode bank, seeds 0–2, and the same 72-epoch / 224-dim / 12-slot v3-long setting. Full-memory balanced accuracy is 0.992 on average, while reset and recent-only controls remain near chance. This resolves the earlier 0.355 recent-only control blip as validation-bank instability rather than a method failure.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Final expansion launch</strong>
+          <p>The clean 5-seed expansion completed at <code>outputs/random_patchset_view_color_jepa_final_v1</code>. Scope: PointMaze-large and Cube-single, ages 4/8/15, seeds 0–4, 768 episodes, 72 epochs, 224 latent dimensions, and 12 slots. All 30 registered cells pass: full-memory balanced accuracy stays high while reset and recent-only controls remain near chance.</p>
+        </div>
+
+        <div class="visual-panel dark" style="margin-top:16px">
+          <div class="visual-head"><span>Final non-manual method result</span><span>30 / 30 cells pass</span></div>
+          <p style="margin:12px 0 16px;color:#d9d6ca;max-width:920px">This is the first complete paper-level evidence for the proposed non-manual memory objective. The training objective uses no cue labels, no cue crops, and no manually selected key frame. It learns from automatically mined salient patch sets, predicts fixed generic color/texture latent targets, and carries information through compact slots. Cue labels are used only after training to audit whether old evidence is retained and not recoverable from reset or recent-only controls.</p>
+          <div class="render-card" style="margin-bottom:12px">
+            <img src="assets/random_patchset_view_color_jepa_final_summary.svg" alt="Final non-manual patch-set JEPA summary chart">
+            <div class="render-label"><span>PointMaze-large + Cube-single</span><span>ages 4 / 8 / 15, seeds 0–4</span></div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Paper-B update</strong>
+          <p><code>paper_b/main.pdf</code> has been rebuilt with the final 30-cell non-manual result, the updated title, a new method/result section, and <code>fig_b_nonmanual_final.pdf</code>. The current paper claim remains bounded to PointMaze-large and Cube-single for the non-manual method.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Active breadth validation</strong>
+          <p>The separate non-manual breadth and confirmation waves completed under <code>outputs/random_patchset_view_color_jepa_autorun_v1</code>. They remain stress-test evidence rather than the main paper claim; the clean non-manual claim is still PointMaze-large/Cube-single, while the repaired fixed-controller native-use claim is summarized in the all-env block below.</p>
+        </div>
+
+        <!-- NONMANUAL_AUTORUN_STATUS_START -->
+        <div class="callout" style="margin-top:16px">
+          <strong>Overnight auto-resume status</strong>
+          <p><b>overnight sequence completed</b> — Breadth, confirmation, and extra-env validation sequence finished. Paper rebuild exit code 0.</p>
+          
+          <div class="render-card" style="margin-top:12px"><img src="assets/random_patchset_view_color_jepa_extra_antmaze_large_navigate_v0.svg" alt="antmaze-large-navigate-v0"><div class="render-label"><span>antmaze-large-navigate-v0</span><span>exit=0, failed rows=0</span></div></div><div class="render-card" style="margin-top:12px"><img src="assets/random_patchset_view_color_jepa_extra_antmaze_giant_navigate_v0.svg" alt="antmaze-giant-navigate-v0"><div class="render-label"><span>antmaze-giant-navigate-v0</span><span>exit=0, failed rows=0</span></div></div><div class="render-card" style="margin-top:12px"><img src="assets/random_patchset_view_color_jepa_extra_humanoidmaze_large_navigate_v0.svg" alt="humanoidmaze-large-navigate-v0"><div class="render-label"><span>humanoidmaze-large-navigate-v0</span><span>exit=0, failed rows=3</span></div></div>
+          <p><small>Last update: 2026-07-17T02:57:52. Machine-readable status: <code>outputs/random_patchset_view_color_jepa_autorun_v1/status.json</code>.</small></p>
+        </div>
+        <!-- NONMANUAL_AUTORUN_STATUS_END -->
+
+        <div class="visual-panel dark" style="margin-top:16px">
+          <div class="visual-head"><span>Legacy fixed-panel ME-JEPA breadth result</span><span>completed earlier, not the active breadth wave</span></div>
+          <p style="margin:12px 0 16px;color:#d9d6ca;max-width:920px">This older five-seed breadth result belongs to the fixed-panel diagnostic stage. It did not use cue labels in the JEPA loss, but it still used a fixed evidence-panel formation. The active overnight run above is stricter: it uses automatically mined random patch-set evidence and therefore is the result that should decide whether the non-manual method generalizes beyond PointMaze-large and Cube-single.</p>
+          <div class="render-card" style="margin-bottom:12px">
+            <img src="assets/masked_evidence_jepa_ogbench_summary.svg" alt="Autonomous Masked-Evidence JEPA summary chart for PointMaze-large and Cube-single">
+            <div class="render-label"><span>Self-supervised memory vs controls</span><span>post-hoc BAcc</span></div>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>Legacy fixed-panel ME-JEPA OGBench five-seed breadth wave. Gate: full post-hoc BAcc ≥ 0.750 while reset and recent-only stay ≤ 0.350. Training loss does not use cue labels. This table is retained as development evidence; the current random-patch-set breadth wave is tracked in the auto-resume status block above.</caption>
+            <thead>
+              <tr><th>Environment</th><th>Age</th><th>Seeds passed</th><th>Full BAcc</th><th>Reset BAcc</th><th>Recent-only BAcc</th><th>JEPA top-1</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PointMaze-large</td><td class="num">4</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">0.255</td><td class="num">0.253</td><td class="num">0.312</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>PointMaze-large</td><td class="num">8</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">0.283</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>PointMaze-large</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">0.246</td><td class="num">0.256</td><td class="num">0.260</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">4</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">0.263</td><td class="num">0.302</td><td class="num">0.738</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">8</td><td class="num">5 / 5</td><td class="num">1.000</td><td class="num">0.242</td><td class="num">0.263</td><td class="num">0.691</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Cube-single</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">0.998</td><td class="num">0.248</td><td class="num">0.257</td><td class="num">0.652</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Scene</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">0.962</td><td class="num">0.248</td><td class="num">0.257</td><td class="num">0.634</td><td><span class="status-pill pass">Pass</span></td></tr>
+              <tr><td>Puzzle-3x3</td><td class="num">15</td><td class="num">5 / 5</td><td class="num">0.998</td><td class="num">0.265</td><td class="num">0.290</td><td class="num">0.597</td><td><span class="status-pill pass">Pass</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>OGBench native-use stage</strong>
+          <p>Status: the repaired current-method all-env run is complete at <code>outputs/native_use_repaired_combined_v2</code>. The final all-env table below is the source of truth: 27/36 env-age rows are scored, mean full-memory native success is 0.957, the worst scored full row is 0.828, and PointMaze-teleport is now admitted by the teleport-aware fixed controller.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Wall Stage-H launch</strong>
+          <p>Status: completed. The 25-cell Wall carrier grid ran over GPUs 0, 1, and 2 under <code>outputs/dinowm_wall_audit_v1/stage_h_carriers</code>. This is an exploratory carrier pass using a deterministic ridge readout to avoid the high-dimensional LBFGS bottleneck; promising Wall cells should later be rechecked with the registered logistic readout before paper claims.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Wall PCA-logistic confirmation</strong>
+          <p>Status: completed under <code>outputs/dinowm_wall_audit_v1/stage_h_logistic_readout</code>. A non-overwriting evaluator was added at <code>scripts/evaluate_dinowm_wall_logistic_readout.py</code>. It reloads the trained carriers and uses <code>StandardScaler → PCA(256) → LogisticRegression(lbfgs)</code> fitted only on the training split. This stricter readout confirms fixed-trust at age4, but not age8 or age15; state-space does not clear the host-output gate under this confirmation.</p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>DINO-WM Wall PCA-logistic confirmation. Gate: full ≥ 0.750 and reset/no-state ≤ 0.300. Readout: StandardScaler → PCA(256) → LogisticRegression(lbfgs), fitted on the training split only.</caption>
+            <thead>
+              <tr><th>Carrier</th><th>Age</th><th>Full BAcc</th><th>Reset</th><th>No-state</th><th>Carrier prior</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Fixed-trust</td><td class="num">4 / 8 / 15</td><td class="num">0.929 / 0.446 / 0.297</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">1.000 / 1.000 / 1.000</td><td><span class="status-pill pass">Age4 pass only</span></td></tr>
+              <tr><td>State-space</td><td class="num">4 / 8 / 15</td><td class="num">0.565 / 0.301 / 0.272</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">1.000 / 0.995 / 0.989</td><td><span class="status-pill partial">No confirmed pass</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <caption>DINO-WM Wall Stage-H exploratory carrier grid. Gate: full ≥ 0.750 and reset/no-state ≤ 0.300. Readout: ridge classifier for speed; rerun promising cells with logistic readout before final paper claims.</caption>
+            <thead>
+              <tr><th>Carrier</th><th>Age</th><th>Full BAcc</th><th>Reset</th><th>No-state</th><th>Carrier prior</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>None</td><td class="num">4 / 8 / 15</td><td class="num">0.250 / 0.250 / 0.250</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">0.250</td><td><span class="status-pill partial">Baseline</span></td></tr>
+              <tr><td>GRU</td><td class="num">4 / 8 / 15</td><td class="num">0.278 / 0.268 / 0.260</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">0.963 / 0.872 / 0.753</td><td><span class="status-pill partial">Prior only</span></td></tr>
+              <tr><td>LSTM</td><td class="num">4 / 8 / 15</td><td class="num">0.353 / 0.272 / 0.269</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">1.000 / 0.974 / 0.761</td><td><span class="status-pill partial">Prior only</span></td></tr>
+              <tr><td>State-space</td><td class="num">4 / 8 / 15</td><td class="num">0.826 / 0.530 / 0.376</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">1.000 / 1.000 / 0.997</td><td><span class="status-pill partial">Ridge screen age4</span></td></tr>
+              <tr><td>Fixed-trust</td><td class="num">4 / 8 / 15</td><td class="num">0.952 / 0.761 / 0.472</td><td class="num">0.250</td><td class="num">0.250</td><td class="num">1.000 / 1.000 / 1.000</td><td><span class="status-pill partial">Ridge screen age4–8</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Wall interpretation</strong>
+          <p>Wall strengthens the paper as a failure-localization result, not as a broad performance win. Both readouts show near-perfect carrier-prior memory for fixed-trust, but the stricter PCA-logistic readout confirms host-output exposure only at age4. The correct insight is that internal memory can exist while the frozen host fails to expose it robustly as evidence age grows.</p>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Paper-B draft v1</strong>
+          <p>Status: compiled at <code>paper_b/main.pdf</code> after the native-use revision. The latest source adds OGBench native fixed-controller success for PointMaze and Cube-single, refreshes the OGBench figure panel from feature-host BAcc to environment success, and keeps the claim boundary explicit: fixed-controller use, not native world-model planning.</p>
+        </div>
+      </section>
+    
+        <!-- NONMANUAL_WEAK_DIAGNOSIS_START -->
+        <section class="section-block" id="weak-diagnosis">
+          <div class="section-kicker">Post-hoc diagnosis</div>
+          <h2>Why the weak non-manual rows failed</h2>
+          <p>The weak rows are not shortcut leaks: reset and recent-only controls remain near chance. The diagnostic compares full-memory accuracy, JEPA target retrieval, and the fraction of automatically mined target views that fall inside the true cue-visible window. This cue-window statistic is post-hoc only; it is not used in training.</p>
+          <div class="render-card" style="margin-top:14px">
+            <img src="assets/random_patchset_weak_diagnosis.svg" alt="Weak-case diagnosis for random patch-set JEPA">
+            <div class="render-label"><span>Weak-case diagnosis</span><span>outputs/random_patchset_view_color_jepa_diagnosis_v1/diagnosis.json</span></div>
+          </div>
+        </section>
+        <!-- NONMANUAL_WEAK_DIAGNOSIS_END -->
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        <!-- MULTIVIEW_WEAK_STATUS_START -->
+        <section class="section-block" id="multiview-weak-status">
+          <div class="section-kicker">Active improvement run</div>
+          <h2>Temporal-coverage salient JEPA weak-env sweep</h2>
+          <p><b>completed</b> — 8/9 env-age rows passed; 1 mixed rows remain.</p>
+          <div class="matrix" style="margin-top:14px"><div class="cell"><b>8/9</b><p>env-age rows pass the memory gate.</p></div><div class="cell"><b>0.823</b><p>worst age-15 full-memory readout across environments.</p></div><div class="cell"><b>scene-play-v0</b><p>hardest row: age 15 with 2/3 seeds passing.</p></div><div class="cell"><b>Native-use below</b><p>This sweep measures retention/readout; repaired fixed-controller native success is reported in the all-env block below.</p></div></div><div class="table-wrap" style="margin-top:14px"><table><caption>Compact retention gate summary; not native environment success.</caption><thead><tr><th>Environment</th><th>Age</th><th>Seeds</th><th>Full</th><th>Reset</th><th>Recent</th><th>Status</th></tr></thead><tbody><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">4</td><td class="num">3 / 3</td><td class="num">1.000</td><td class="num">0.239</td><td class="num">0.248</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">8</td><td class="num">3 / 3</td><td class="num">0.998</td><td class="num">0.246</td><td class="num">0.244</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">15</td><td class="num">3 / 3</td><td class="num">0.898</td><td class="num">0.271</td><td class="num">0.246</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">4</td><td class="num">3 / 3</td><td class="num">0.990</td><td class="num">0.266</td><td class="num">0.231</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">8</td><td class="num">3 / 3</td><td class="num">0.956</td><td class="num">0.245</td><td class="num">0.263</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">15</td><td class="num">3 / 3</td><td class="num">0.849</td><td class="num">0.236</td><td class="num">0.256</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">4</td><td class="num">3 / 3</td><td class="num">0.987</td><td class="num">0.241</td><td class="num">0.236</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">8</td><td class="num">3 / 3</td><td class="num">0.964</td><td class="num">0.263</td><td class="num">0.238</td><td><span class="status-pill pass">Pass</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">15</td><td class="num">2 / 3</td><td class="num">0.823</td><td class="num">0.239</td><td class="num">0.287</td><td><span class="status-pill fail">Mixed</span></td></tr></tbody></table></div>
+          <div class="render-card" style="margin-top:14px"><img src="assets/multiview_patchset_color_jepa_weak_summary.svg" alt="Temporal-coverage JEPA weak-env summary"><div class="render-label"><span>Temporal-coverage weak-env sweep</span><span>automatic monitor</span></div></div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <caption>Native environment success-rate evidence currently available. These are fixed-controller use checks, not native planner claims. The temporal-coverage current-method all-env result is now consolidated at <code>outputs/native_use_repaired_combined_v2</code>.</caption>
+              <thead><tr><th>Setting</th><th>Env / host</th><th>Age</th><th>Full-memory success</th><th>Main baseline</th><th>Random / no-state</th><th>Oracle</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Checkpointed PushT</td><td>DINO-WM</td><td class="num">15</td><td class="num">0.972</td><td class="num">reset 0.167</td><td class="num">no-state 0.168</td><td class="num">—</td><td><span class="status-pill pass">Available</span></td></tr>
+                <tr><td>Checkpointed PushT</td><td>LeWM</td><td class="num">15</td><td class="num">0.926</td><td class="num">reset 0.156</td><td class="num">no-state 0.151</td><td class="num">—</td><td><span class="status-pill pass">Available</span></td></tr>
+                <tr><td>Fixed-panel ME-JEPA</td><td>PointMaze-large</td><td class="num">4 / 8 / 15</td><td class="num">1.000 / 1.000 / 1.000</td><td class="num">recent 0.255 / 0.281 / 0.264</td><td class="num">random 0.238</td><td class="num">1.000</td><td><span class="status-pill pass">Available</span></td></tr>
+                <tr><td>Fixed-panel ME-JEPA</td><td>Cube-single</td><td class="num">4 / 8 / 15</td><td class="num">1.000 / 1.000 / 0.996</td><td class="num">recent 0.281 / 0.255 / 0.264</td><td class="num">random 0.238</td><td class="num">1.000</td><td><span class="status-pill pass">Available</span></td></tr>
+                <tr><td>Feature-host bridge</td><td>PointMaze-large + Cube-single</td><td class="num">4 / 8 / 15</td><td class="num">1.000 all rows</td><td class="num">reset 0.250</td><td class="num">random/no-state 0.250</td><td class="num">1.000</td><td><span class="status-pill pass">Available</span></td></tr>
+                <tr><td>Temporal-coverage current method</td><td>All tested OGBench envs</td><td class="num">4 / 8 / 15</td><td class="num">27/36 rows; mean 0.957</td><td class="num">recent 0.279 mean</td><td class="num">random 0.279 mean</td><td class="num">0.903-1.000 on scored rows</td><td><span class="status-pill pass">Completed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Insight: the retention sweep proves old evidence survives the context boundary; the fixed-controller success rows show when that memory readout changes the final environment outcome. The temporal-coverage current-method all-env run is complete at <code>outputs/native_use_repaired_combined_v2</code>: PointMaze medium/large/giant/teleport, Cube single/double/triple, Scene, and Puzzle are scored; AntMaze and HumanoidMaze remain controller-unavailable.</p>
+          <p><small>Last update: 2026-07-17T11:47:40. Machine-readable status: <code>outputs/multiview_patchset_color_jepa_weak_v1/monitor_status.json</code>.</small></p>
+        </section>
+        <!-- MULTIVIEW_WEAK_STATUS_END -->
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        <!-- MEMORY_ARCH_BASELINES_STATUS_START -->
+        <section class="section-block" id="memory-arch-baselines-status">
+          <div class="section-kicker">Baseline architecture comparison</div>
+          <h2>GRU, LSTM, and Mamba-lite OGBench sweep</h2>
+          <p><b>completed</b> &mdash; Full baseline comparison finished in tmux session <code>mem-arch-baselines-v1</code>. The sweep covers GRU, LSTM, and Mamba-lite over all 12 tested OGBench environments, ages 4/8/15, and seeds 0/1/2.</p>
+          <div class="matrix" style="margin-top:14px">
+            <div class="cell"><b>324/324</b><p>baseline jobs completed at the latest monitor snapshot.</p></div>
+            <div class="cell"><b>3</b><p>parallel workers completed cleanly on GPUs 0, 1, and 2.</p></div>
+            <div class="cell"><b>0</b><p>failed baseline jobs reported so far.</p></div>
+            <div class="cell"><b>Mamba-lite</b><p>final completed phase: scene age 15, seeds 0/1/2.</p></div>
+          </div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <caption>Memory architecture baseline status. These runs use the same temporal-coverage target mining, cache, fixed patch target, and post-hoc readout as the current slot-memory method; only the memory block changes.</caption>
+              <thead><tr><th>Baseline</th><th>Completed jobs</th><th>Coverage target</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><code>GRU</code></td><td class="num">108 / 108</td><td class="num">12 envs x 3 ages x 3 seeds</td><td><span class="status-pill pass">Completed</span></td></tr>
+                <tr><td><code>LSTM</code></td><td class="num">108 / 108</td><td class="num">12 envs x 3 ages x 3 seeds</td><td><span class="status-pill pass">Completed</span></td></tr>
+                <tr><td><code>Mamba-lite</code></td><td class="num">108 / 108</td><td class="num">12 envs x 3 ages x 3 seeds</td><td><span class="status-pill pass">Completed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><small>Last update: 2026-07-19T18:33:04+0800 snapshot. Live monitor: <code>outputs/memory_arch_baselines_v1/monitor_status.json</code>. Log: <code>outputs/memory_arch_baselines_v1/tmux_baselines.log</code>. Launcher: <code>scripts/launch_memory_arch_baselines.py</code>.</small></p>
+        </section>
+        <!-- MEMORY_ARCH_BASELINES_STATUS_END -->
+
+        <!-- NATIVE_USE_ALL_STATUS_START -->
+        <section class="section-block" id="native-use-all-status">
+          <div class="section-kicker">Native success-rate extension</div>
+          <h2>All-env fixed-controller success rates</h2>
+          <p><b>completed</b> — 27/36 env-age rows have audited fixed-controller native success. Rows that fail controller validation or lack a local controller are reported as scope limits, not method failures.</p>
+          <div class="matrix" style="margin-top:14px">
+            <div class="cell"><b>27/36</b><p>env-age rows with native success-rate estimates.</p></div>
+            <div class="cell"><b>0.957</b><p>mean full-memory executed success over supported rows.</p></div>
+            <div class="cell"><b>0.828</b><p>worst supported full-memory executed success.</p></div>
+            <div class="cell"><b>0.678 / 0.679</b><p>mean full-memory lift over recent and random baselines.</p></div>
+          </div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <caption>All-env temporal-coverage current-method native use. Completed environments: cube-double-play-v0, cube-single-play-v0, cube-triple-play-v0, pointmaze-giant-navigate-v0, pointmaze-large-navigate-v0, pointmaze-medium-navigate-v0, pointmaze-teleport-navigate-v0, puzzle-3x3-play-v0, scene-play-v0. Controller-validation failed: none. No local controller: antmaze-giant-navigate-v0, antmaze-large-navigate-v0, humanoidmaze-large-navigate-v0.</caption>
+              <thead><tr><th>Environment</th><th>Age</th><th>Seeds</th><th>Full</th><th>Recent</th><th>Random</th><th>Oracle</th><th>Status</th></tr></thead>
+              <tbody><tr><td><code>antmaze-giant-navigate-v0</code></td><td class="num">4</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>antmaze-giant-navigate-v0</code></td><td class="num">8</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>antmaze-giant-navigate-v0</code></td><td class="num">15</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>antmaze-large-navigate-v0</code></td><td class="num">4</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>antmaze-large-navigate-v0</code></td><td class="num">8</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>antmaze-large-navigate-v0</code></td><td class="num">15</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>cube-double-play-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">0.944</td><td class="num">0.281</td><td class="num">0.281</td><td class="num">0.944</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-double-play-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">0.944</td><td class="num">0.236</td><td class="num">0.281</td><td class="num">0.944</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-double-play-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.944</td><td class="num">0.233</td><td class="num">0.281</td><td class="num">0.944</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-single-play-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.219</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-single-play-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.225</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-single-play-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.250</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-triple-play-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">0.911</td><td class="num">0.197</td><td class="num">0.222</td><td class="num">0.911</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-triple-play-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">0.911</td><td class="num">0.222</td><td class="num">0.222</td><td class="num">0.911</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>cube-triple-play-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.911</td><td class="num">0.200</td><td class="num">0.222</td><td class="num">0.911</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">4</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">8</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>humanoidmaze-large-navigate-v0</code></td><td class="num">15</td><td class="num">all</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="status-pill partial">No local controller</span></td></tr><tr><td><code>pointmaze-giant-navigate-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.233</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-giant-navigate-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.261</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-giant-navigate-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.961</td><td class="num">0.258</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-large-navigate-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.256</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-large-navigate-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.244</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-large-navigate-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.992</td><td class="num">0.225</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-medium-navigate-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.244</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-medium-navigate-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.267</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-medium-navigate-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.986</td><td class="num">0.194</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-teleport-navigate-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.483</td><td class="num">0.556</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-teleport-navigate-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.667</td><td class="num">0.556</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>pointmaze-teleport-navigate-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.678</td><td class="num">0.556</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">1.000</td><td class="num">0.269</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">0.956</td><td class="num">0.242</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>puzzle-3x3-play-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.828</td><td class="num">0.247</td><td class="num">0.244</td><td class="num">1.000</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">4</td><td class="num">3</td><td class="num">0.881</td><td class="num">0.247</td><td class="num">0.228</td><td class="num">0.903</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">8</td><td class="num">3</td><td class="num">0.842</td><td class="num">0.217</td><td class="num">0.228</td><td class="num">0.903</td><td><span class="status-pill pass">Completed</span></td></tr><tr><td><code>scene-play-v0</code></td><td class="num">15</td><td class="num">3</td><td class="num">0.839</td><td class="num">0.242</td><td class="num">0.228</td><td class="num">0.903</td><td><span class="status-pill pass">Completed</span></td></tr></tbody>
+            </table>
+          </div>
+          <p><small>Last update: 2026-07-19T11:58:17. Machine-readable status: <code>outputs/native_use_repaired_combined_v2/summary.json</code>. Fixed-controller native use from ME-JEPA memory readout where a local audited controller exists. Teleport-aware PointMaze controller repair admits pointmaze-teleport; Ant/Humanoid remain unscored without local low-level controllers.</small></p>
+        </section>
+        <!-- NATIVE_USE_ALL_STATUS_END -->
+
+
+
+
+
+
+        <!-- NATIVE_USE_MISSING_RELAUNCH_STATUS_START -->
+        <section class="section-block" id="native-use-missing-relaunch-status">
+          <div class="section-kicker">Recovery relaunch</div>
+          <h2>Multi-object controller repair recovery</h2>
+          <p><b>completed</b> &mdash; 12/12 previously unscored env-age rows became scorable after repairing the fixed controllers and rerunning native-use recovery. PointMaze-teleport is now included after adding a teleport-aware PointMaze controller gate.</p>
+          <div class="matrix" style="margin-top:14px">
+            <div class="cell"><b>12/12</b><p>missing env-age rows recovered.</p></div>
+            <div class="cell"><b>27/36</b><p>all-env native-use rows scored after repair.</p></div>
+            <div class="cell"><b>0.911 / 0.944</b><p>cube-triple and cube-double full-memory native success means.</p></div>
+            <div class="cell"><b>0.839-0.881</b><p>scene full-memory native success across ages 4/8/15.</p></div>
+          </div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <caption>Repair recovery for rows that were previously controller-validation failures. Native-use scoring uses the repaired fixed-controller gates, not failed old relaunch rows.</caption>
+              <thead><tr><th>Environment</th><th>Ages</th><th>Seeds</th><th>Recovered native success</th><th>Outcome</th></tr></thead>
+              <tbody>
+                <tr><td><code>cube-double-play-v0</code></td><td class="num">4 / 8 / 15</td><td class="num">0,1,2</td><td class="num">full 0.944; oracle 0.944</td><td><span class="status-pill pass">Recovered</span></td></tr>
+                <tr><td><code>cube-triple-play-v0</code></td><td class="num">4 / 8 / 15</td><td class="num">0,1,2</td><td class="num">full 0.911; oracle 0.911</td><td><span class="status-pill pass">Recovered</span></td></tr>
+                <tr><td><code>scene-play-v0</code></td><td class="num">4 / 8 / 15</td><td class="num">0,1,2</td><td class="num">full 0.881 / 0.842 / 0.839; oracle 0.903</td><td><span class="status-pill pass">Recovered</span></td></tr>
+                <tr><td><code>pointmaze-teleport-navigate-v0</code></td><td class="num">4 / 8 / 15</td><td class="num">0,1,2</td><td class="num">full 1.000; oracle 1.000</td><td><span class="status-pill pass">Recovered</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><small>Last update: 2026-07-19T11:58:17+0800. Machine-readable status: <code>outputs/native_use_repaired_combined_v2/summary.json</code>. Supporting reruns: <code>outputs/native_use_missing_recovery_v2/summary.json</code>, <code>outputs/native_use_scene_recovery_v3/summary.json</code>, and <code>outputs/native_missing_controller_repair_v1/native_use/summary.json</code>.</small></p>
+        </section>
+        <!-- NATIVE_USE_MISSING_RELAUNCH_STATUS_END -->
+
+        <!-- NATIVE_CONTROLLER_ADMISSION_STATUS_START -->
+        <section class="section-block" id="native-controller-admission-status">
+          <div class="section-kicker">Controller admission</div>
+          <h2>Repaired controller-only audit</h2>
+          <p><b>completed</b> &mdash; 12/12 failed-env age rows now pass the 0.850 true-label controller admission gate. The recovered rows are cube-double, cube-triple, scene, and pointmaze-teleport across ages 4/8/15.</p>
+          <div class="matrix" style="margin-top:14px">
+            <div class="cell"><b>36/36</b><p>env-age-seed controller cells audited.</p></div>
+            <div class="cell"><b>12/12</b><p>env-age rows admitted.</p></div>
+            <div class="cell"><b>1.000</b><p>PointMaze-teleport repaired controller mean.</p></div>
+            <div class="cell"><b>0.958</b><p>best multi-object repaired row mean, cube-double age 4/15.</p></div>
+          </div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <caption>Controller-only true-label success means over seeds 0/1/2. Values below 0.850 fail admission and are not used for native memory scoring.</caption>
+              <thead><tr><th>Environment</th><th>Age 4</th><th>Age 8</th><th>Age 15</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><code>cube-double-play-v0</code></td><td class="num">0.958</td><td class="num">0.939</td><td class="num">0.958</td><td><span class="status-pill pass">Admitted</span></td></tr>
+                <tr><td><code>cube-triple-play-v0</code></td><td class="num">0.900</td><td class="num">0.908</td><td class="num">0.911</td><td><span class="status-pill pass">Admitted</span></td></tr>
+                <tr><td><code>scene-play-v0</code></td><td class="num">0.903</td><td class="num">0.869</td><td class="num">0.881</td><td><span class="status-pill pass">Admitted</span></td></tr>
+                <tr><td><code>pointmaze-teleport-navigate-v0</code></td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td><td><span class="status-pill pass">Admitted</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><small>Last update: 2026-07-19T11:58:17+0800. Machine-readable status: <code>outputs/native_missing_controller_repair_v1/admission/summary.json</code>. Controller-only audit; no ME-JEPA readouts are scored in this stage.</small></p>
+        </section>
+        <!-- NATIVE_CONTROLLER_ADMISSION_STATUS_END -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</main>
+  </div>
+
+  <footer class="footer">
+    <div>Masked-Evidence JEPA Memory Dashboard · local artifact</div>
+    <div>Sources: Stage-F JSON outputs, Stage-E PointMaze summary, frozen DINO-WM PushT cache, checkpointed PushT downstream-use deck, Wall Stage-G/Stage-H outputs, OGBench admission bridge, feature-host stage, native-use stage summaries, and autonomous Masked-Evidence JEPA OGBench outputs.</div>
+  </footer>
+
+  <button class="backtop" id="backTop" type="button" aria-label="Back to top">↑</button>
+
+  <script>
+    (function () {
+      const progress = document.getElementById("progressBar");
+      const backTop = document.getElementById("backTop");
+      const links = Array.from(document.querySelectorAll(".chapters a"));
+      const sections = links.map((link) => document.querySelector(link.getAttribute("href"))).filter(Boolean);
+      const select = document.getElementById("chapterSelect");
+
+      function updateProgress() {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = max > 0 ? window.scrollY / max : 0;
+        progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + "%";
+        backTop.classList.toggle("show", window.scrollY > 520);
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        links.forEach((link) => {
+          const active = link.getAttribute("href") === "#" + visible.target.id;
+          link.classList.toggle("active", active);
+          if (active && select) select.value = "#" + visible.target.id;
+        });
+      }, { rootMargin: "-18% 0px -70% 0px", threshold: [0.1, 0.25, 0.5] });
+
+      sections.forEach((section) => observer.observe(section));
+
+      if (select) {
+        select.addEventListener("change", () => {
+          const target = document.querySelector(select.value);
+          if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+
+      backTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+      window.addEventListener("scroll", updateProgress, { passive: true });
+      window.addEventListener("resize", updateProgress);
+      updateProgress();
+    })();
+  </script>
+</body>
+</html>

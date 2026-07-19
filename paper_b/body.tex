@@ -1,0 +1,519 @@
+\section{Introduction}
+
+Finite-context latent world models make visual control tractable by compressing
+history into a short latent context.  That same compression makes memory claims
+ambiguous.  A model can produce locally plausible next features while losing an
+old cue that a later decision requires; a recurrent or state-space side state
+can store information internally while the frozen host never exposes it; a
+linear readout can recover a symbol without showing that an executed action
+would change.  These are different failure modes, but they are often collapsed
+into one question: does the model have memory?
+
+We study memory as an interface property of a frozen latent host.  The host is
+not retrained.  A compact causal side state observes the legal
+observation/action stream, stores evidence that has left the raw context, and
+writes only through the frozen host interface.  The audit is fail-closed:
+stronger claims are attempted only after earlier gates pass.  The resulting
+claim ladder has four rungs:
+\begin{enumerate}
+  \setlength\itemsep{1pt}
+  \item \emph{demand}: the target cannot be solved from the legal endpoint,
+        action, or state shortcuts;
+  \item \emph{retention}: the side state causally carries the old evidence
+        after context expiry;
+  \item \emph{host exposure}: the frozen predictor exposes that evidence in
+        its output rather than hiding it inside the side state; and
+  \item \emph{use}: a fixed consumer can convert the exposed state into an
+        executed decision.
+\end{enumerate}
+The paper is therefore not a claim that one carrier architecture wins.  It is a
+claim that persistent memory must be audited as a target--carrier--host--
+consumer chain.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_b_architecture.pdf}
+  \caption{Masked-evidence memory interface.  The top strip shows native-ratio
+  rendered inputs: cue-only counterfactuals share trajectory, actions, and
+  endpoint, while the legal context no longer contains the old cue.  The model
+  schematic follows a frozen encoder/host path with a causal evidence sidecar
+  that writes through a residual host interface before exposure and use.}
+  \label{fig:architecture}
+\end{figure}
+
+\paragraph{Contributions.}
+This study makes four scoped contributions.  First, it turns memory
+evaluation into a controlled interface audit with explicit demand, retention,
+exposure, and use gates.  Second, it validates positive downstream-use cases on
+PushT and PointMaze while keeping the consumer boundary explicit.  Third, it
+uses Wall and OGBench to prevent overclaiming: Wall isolates a storage-versus-
+exposure bottleneck, and OGBench shows that the admission protocol ports across
+seven environment families while a repaired PointMaze/Cube/Puzzle/Scene
+fixed-controller sweep tests whether the selected memory target changes native
+environment success without claiming native OGBench planning.  Fourth, it
+instantiates the audit as a
+non-manual self-supervised memory objective: salient target frames and patch
+sets are mined without cue labels, cue crops, or key-frame annotations, and the
+slot memory predicts fixed generic color/texture latents.  This objective
+passes all 30 registered OGBench PointMaze-large/Cube-single cells over ages
+4/8/15 and five seeds.
+
+\section{Audit design}
+
+\paragraph{Frozen hosts and sidecar states.}
+Each study starts from a locked finite-context latent host, either DINO-WM
+\citep{r_dinowm} or LeWM \citep{r_lewm}.  The encoder and predictor remain
+fixed.  A sidecar state receives the same legal stream as the host and is
+evaluated under matched conditions.  The \emph{full} condition receives the old
+stream.  The \emph{reset} condition reinitializes memory at the legal context
+boundary.  The \emph{no-state} condition evaluates the frozen host without a
+persistent side state.  These controls do not estimate an abstract scalar
+``amount of memory''; they localize where the interface stops carrying old
+evidence.
+
+\paragraph{Masked evidence, not declared key frames.}
+The sidecar is not given a symbolic instruction that a particular past frame
+will matter.  Instead, the task constructs cue-only counterfactuals: the old
+evidence changes while the later endpoint, action stream, and other legal
+signals stay fixed.  The target can therefore be solved only if the side state
+keeps the old evidence.  In feature-host settings the sidecar can be evaluated
+both as a \emph{carrier prior} and through the \emph{host output}; separating
+these two views is essential, because an internally readable carrier is not
+automatically a usable world-model output.
+
+\paragraph{Autonomous salient patch-set JEPA.}
+The final OGBench method removes the remaining manual cue-feature handoff.  It
+samples a causal rendered stream, mines a salient target frame and a set of
+high-saliency patches without using cue labels or cue layout, masks only that
+target view, and asks a compact slot state to predict stop-gradient
+color/texture patch latents.  Labels are never used in the learning objective;
+they enter only after training through the same full/reset/recent-only audit.
+This design is intentionally not a KV cache, a recurrent hidden state, or a
+manually declared key-frame mechanism.  The model must learn which evidence is
+worth carrying because the generic patch-set objective repeatedly withholds
+salient old observations from the legal context.
+
+\paragraph{Admission before retention.}
+Every memory claim starts with an admission deck.  Cue-time readout must verify
+that the cue is visible when it appears.  Shortcut checks must show that
+endpoint images, action-only traces, and state-only traces do not solve the
+label.  Counterfactual masks must verify that post-cue frames do not leak the
+answer.  Only after these checks pass do we run retention, exposure, or
+executed-use tests.  This staging is conservative, but it is what makes a
+negative or mixed result interpretable rather than merely disappointing.
+
+\section{Environments and claim boundaries}
+
+Figure~\ref{fig:claim-ledger} is the main evidence ledger.  The rows are not
+pooled into a single score because each environment is serving a different
+purpose.  PushT tests whether a visual-binding cue can influence an executed
+decision on two frozen host families.  PointMaze tests whether retained goal
+evidence can drive a navigation consumer.  Wall is included specifically to
+expose a bottleneck where carrier storage survives but host exposure fails.
+OGBench supplies breadth for the cue-admission machinery across navigation,
+locomotion, manipulation, scene, and puzzle families.  Its repaired native-use
+stage is reported as fixed-controller success for audited
+PointMaze/Cube/Puzzle/Scene controllers, not as native world-model planning or
+autonomous memory discovery.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_b_claim_ledger.pdf}
+  \caption{Task-level claim ledger.  The paper avoids a pooled memory score:
+  each row answers a different interface question and carries its own claim
+  boundary.  A check mark means that the corresponding rung is supported by the
+  current artifact; a dash means the rung is intentionally not claimed.}
+  \label{fig:claim-ledger}
+\end{figure}
+
+This ledger is the central presentation choice.  A conventional results table
+would invite a misleading reading in which environments are interchangeable
+and carrier names can be ranked globally.  The audit instead asks where the
+old evidence enters, where it disappears, and whether disappearance occurs
+before or after the frozen host.
+
+\section{Positive use cases}
+
+The strongest evidence in this study is not a probe, but executed use.
+Figure~\ref{fig:execution} compares host-readability and executed success under
+fixed consumers.  The main observation is qualitative: when the host-exposed
+state is reliable, a simple consumer can turn old evidence into control; when
+the controls remove pre-context evidence, execution drops to the expected
+uninformed regime.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{fig_b_execution.pdf}
+  \caption{Readability transfers to execution when the consumer is fixed.
+  PushT shows a checkpointed visual-binding use gate on DINO-WM and LeWM.
+  PointMaze shows the clearest large execution separation: memory-conditioned
+  goal selection succeeds where the no-state consumer behaves like an
+  uninformed policy.}
+  \label{fig:execution}
+\end{figure}
+
+\paragraph{PushT: use is not host-family-specific.}
+The PushT binding deck asks whether a transient visual token can be retained
+until a later action choice.  The result passes on both DINO-WM and LeWM frozen
+hosts under the same style of full/reset/no-state comparison.  This matters
+because a single-host success could be dismissed as a quirk of one feature
+space.  The evidence here is narrower and cleaner: two host families can expose
+the same kind of old visual binding strongly enough for a fixed consumer to
+act on it.  The claim remains bounded because the banks are host-native rather
+than a fully row-matched simulator comparison.
+
+\paragraph{PointMaze: retained state can become navigation.}
+PointMaze is the clearest use example because the old cue selects among
+waypoint goals and the downstream controller is fixed.  The memory sidecar
+does not receive a privileged goal label at decision time; it must carry the
+transient mini-map evidence until the consumer reads the host output.  The
+large separation between full memory and no-state execution shows that the
+retained evidence is not merely decodable; it changes the chosen path under a
+pinned controller.  At the same time, this is not native DINO-WM planning.  It
+is evidence that a fixed external consumer can use exposed memory.
+
+\section{Failure localization: storage is not exposure}
+
+Wall is the most important negative result.  It was added to answer a
+question that positive execution decks cannot answer: if a model fails at long
+evidence age, did the side state forget, or did the frozen host stop exposing
+what the side state still contains?  Figure~\ref{fig:wall} shows that these
+are separable.  The carrier-prior readout remains high across ages, while the
+host-output readout decays toward the shortcut regime.  The stricter
+PCA-logistic confirmation also reverses an overly optimistic screening
+interpretation: Wall should be written as a bottleneck diagnosis, not a
+success case.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{fig_b_wall_bottleneck.pdf}
+  \caption{Wall localizes the bottleneck.  Dashed curves in panel A are
+  carrier-prior readouts; solid curves are host-output readouts.  The widening
+  gap shows that retaining a cue internally is not the same as exposing it
+  through the frozen predictor.  Panel C shows why the paper uses the stricter
+  PCA-logistic confirmation instead of the earlier ridge screen.}
+  \label{fig:wall}
+\end{figure}
+
+This result is useful precisely because it is not flattering.  It rules out a
+simple story in which the proposed sidecar is a universally better memory
+module.  Instead, the evidence points to a host-interface failure: old
+information can survive in the carrier while the frozen predictor maps the
+legal context to an output that no longer carries the needed variable.  A
+paper that reports only carrier-prior accuracy would miss this failure.
+
+\section{Protocol breadth: OGBench admission and native-use checks}
+
+OGBench \citep{r_ogbench} is used as an admission bridge.  We construct
+cue-only counterfactual decks for seven render-ready environments: PointMaze,
+AntMaze, HumanoidMaze, Cube-single, Cube-double, Scene, and Puzzle.  The
+purpose is not to claim that an OGBench world model remembers.  The purpose is
+to test whether the same cue protocol can create valid old-evidence targets
+without shortcut leakage across qualitatively different visual domains.  We then
+run a deliberately bounded feature-host follow-up, then convert the selected
+memory target into native environment success wherever a local audited
+controller exists.  The repaired all-env native-use sweep scores 24/36 env-age
+rows across non-teleport PointMaze, Cube-single/double/triple, Puzzle-3x3, and
+Scene.  PointMaze uses a BFS waypoint controller in the native point-mass
+action space.  Cube variants use the OGBench CubeMarkovOracle with live target
+metadata and multi-block ordering.  Puzzle uses a lights-out solve with the
+button oracle, and Scene composes the button, drawer, window, and cube Markov
+oracles with dependency-aware sequencing.  PointMaze-teleport is left unscored
+because its oracle-label controller gate reaches only 0.608--0.658 below the
+0.850 admission threshold; AntMaze and HumanoidMaze are left unscored because
+this repository has no audited low-level controller for them.  This tests
+whether recovered memory changes final task success; it does not test
+autonomous cue discovery or native OGBench planning.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_b_ogbench_admission.pdf}
+  \caption{OGBench breadth.  Cue labels are readable at cue time, while
+  endpoint, action, and state shortcuts remain at the uninformed baseline;
+  counterfactual masks pass in all seven decks.  The execution panel summarizes
+  the repaired fixed-controller native-use sweep: full memory converts the
+  selected target into native success on the audited PointMaze/Cube/Puzzle/Scene
+  rows, while recent-only and random target selection remain near chance.  This
+  is fixed-controller use evidence, not native planner evidence.}
+  \label{fig:ogbench}
+\end{figure}
+
+The OGBench native-use result supplies the straightforward performance number
+missing from a pure readout study.  Across the 24 scored env-age rows, full
+memory reaches mean native success 0.952, with worst scored success 0.828 and
+mean full-minus-control lifts 0.714 over recent-only and 0.708 over random
+selection.  The scientific value is not that the fixed controllers are new;
+they are deliberately simple.  The value is that the same memory-selected
+label that is readable at the host interface also determines whether the
+environment reports success.  This fixed-controller stage still supplies the
+old cue feature to the sidecar; it is therefore evidence of use, not evidence
+of autonomous evidence discovery.
+
+\paragraph{Removing the manual cue-feature handoff.}
+We therefore run a final non-manual OGBench stage.  The learning rule sees only
+the rendered causal stream, action tokens, and time tokens.  It mines salient
+target frames and patch sets automatically, masks the selected target view,
+and predicts fixed generic color/texture patch latents from a compact slot
+bottleneck.  The target is not a cue crop, the model is not told which moment
+is key, and the training loss never uses cue labels.  The labels are used only
+after training to audit whether the learned slot state retains the old cue
+under full/reset/recent-only contrasts.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth]{fig_b_nonmanual_final.pdf}
+  \caption{Final non-manual OGBench result.  The salient patch-set JEPA
+  objective passes all 30 registered cells over two environments, three cue
+  ages, and five seeds.  Full-memory readout remains high at age 15, while
+  reset and recent-only controls stay near the four-way uninformed baseline.}
+  \label{fig:nonmanual-final}
+\end{figure}
+
+\begin{table}[!tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Final non-manual OGBench summary.  Gate: full balanced accuracy
+at least 0.750 and reset/recent-only controls at most 0.350 for every seed.}
+\label{tab:nonmanual-final}
+\begin{tabular}{lcccccc}
+\toprule
+Deck & Age & Seeds & Full & Reset & Recent-only & Status\\
+\midrule
+Cube-single & 4  & 5/5 & 1.000 & 0.240 & 0.257 & \Pass\\
+Cube-single & 8  & 5/5 & 0.990 & 0.223 & 0.254 & \Pass\\
+Cube-single & 15 & 5/5 & 0.921 & 0.247 & 0.246 & \Pass\\
+PointMaze-large & 4  & 5/5 & 1.000 & 0.251 & 0.255 & \Pass\\
+PointMaze-large & 8  & 5/5 & 0.994 & 0.266 & 0.250 & \Pass\\
+PointMaze-large & 15 & 5/5 & 0.983 & 0.251 & 0.252 & \Pass\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Breadth stress tests.}
+The two-deck result above is the current clean paper-level non-manual claim.
+The broader PointMaze/Cube/Scene/Puzzle/locomotion sweep is treated as a
+stress test rather than an automatic headline.  Its generated status is
+recorded in Appendix~\ref{app:nonmanual-breadth-auto}; rows that require
+large-bank confirmation are reported as such instead of being folded into a
+single pooled score.
+
+\section{Cross-study interpretation}
+
+\paragraph{The interface chain, not the carrier name, is the unit of evidence.}
+The same sidecar can look strong under a carrier-prior readout and weak under
+host-output exposure.  Conversely, a modest readout can still matter if a
+consumer is sensitive to the recovered variable.  This is why the paper avoids
+phrases such as ``fixed-trust solves memory'' or ``state-space is the memory
+winner.''  The defensible statement is conditional: for a given target, host,
+sidecar, and consumer, the old evidence either survives the chain or it does
+not.
+
+\paragraph{Negative results sharpen the method.}
+The Wall result is not dead weight; it is the diagnostic that makes the
+positive PushT and PointMaze results credible.  Without Wall, the paper could
+be read as another architecture-comparison story.  With Wall, the paper shows
+why architecture comparisons are brittle: a carrier can preserve the symbol
+while the host interface erases it.  That is the phenomenon reviewers should
+remember.
+
+\paragraph{Execution should be interpreted as consumer-specific use.}
+The fixed consumers are deliberately simple and shared within each deck.  They
+prove that exposed memory can change control, not that the native planner has
+learned to query memory.  This distinction is not a weakness to hide.  It is
+the correct boundary between an interface audit and an end-to-end planning
+paper.
+
+\paragraph{Breadth should not outrun evidence.}
+The OGBench decks show that the admission stage generalizes beyond the original
+hosts and tasks, and the expanded fixed-controller use stage shows that
+recovered memory can change native environment success across audited
+PointMaze/Cube/Puzzle/Scene rows.  Treating this as native planner memory
+would inflate the paper but weaken its rigor.  The
+non-manual patch-set JEPA stage takes the next step by removing the explicit
+cue-feature handoff on two core OGBench environments.  The right boundary is
+therefore: autonomous old-evidence retention is supported for
+PointMaze-large/Cube-single render-stage memory, while native OGBench
+world-model planning and broad OGBench-wide autonomous generalization remain
+unclaimed.
+
+\section{Diagnostic consequences}
+
+The audit is useful only if its outcomes imply different next actions.
+Table~\ref{tab:diagnosis} summarizes the signatures exposed by the current
+suite.  The same endpoint score can have different causes depending on the
+carrier prior, reset, no-state, host output, and execution views.
+
+\begin{table}[!tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.8pt}
+\renewcommand{\arraystretch}{1.12}
+\caption{How to read audit signatures.  The entries are written as diagnoses,
+not as leaderboard ranks.}
+\label{tab:diagnosis}
+\begin{tabularx}{\linewidth}{lY Y}
+\toprule
+Observed signature & Interpretation & Correct intervention target\\
+\midrule
+Prior weak, host output weak, controls at chance
+  & The side state did not preserve the old evidence in a useful form.
+  & Memory objective, write dynamics, capacity, or training horizon.\\
+Prior strong, host output weak
+  & The carrier stored evidence, but the frozen fusion/predictor path did not
+    expose it.
+  & Exposure adapter, fusion point, residual coordinates, or host-aware
+    auxiliary objective.\\
+Host output readable, execution unchanged
+  & The representation is accessible to a probe but not used by the declared
+    consumer.
+  & Consumer interface, action grounding, or planner integration.\\
+Full beats no state but not reset
+  & The sidecar helps the endpoint, but dependence on pre-context state is not
+    isolated under the reset intervention.
+  & Report as sensitivity, not persistent retention; redesign reset or task.\\
+Admission passes but no host stage exists
+  & The task is clean, not yet a memory experiment.
+  & Add a frozen host, carrier grid, reset/no-state controls, and use deck.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+This decision table clarifies why Wall is valuable.  A positive-only paper
+would treat Wall as a failed environment and move on.  A memory audit treats it
+as evidence about the interface.  The prior is strong enough to rule out simple
+forgetting inside the fixed-trust carrier; the host output is weak enough to
+rule out successful exposure.  That points to a concrete repair hypothesis: a
+self-supervised memory method should not only store masked evidence, but also
+train the host-facing projection to keep that evidence in coordinates that
+survive frozen predictor mixing.
+
+\section{Environment roles and why more rows are not automatically better}
+
+The current environments are not interchangeable.  PushT, PointMaze, Wall, and
+OGBench each stress a different part of the ladder.  Table~\ref{tab:envroles}
+states the role of each environment in the argument and keeps the paper from
+reading like an experiment log.
+
+\begin{table}[!tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.10}
+\caption{Environment roles in the paper narrative.}
+\label{tab:envroles}
+\begin{tabularx}{\linewidth}{lY Y Y}
+\toprule
+Environment & What it contributes & What it does not prove & Why it belongs in main text\\
+\midrule
+PushT & Visual binding under two frozen host families with an executed-use gate.
+  & A row-matched causal comparison between DINO-WM and LeWM.
+  & Shows the use gate is not host-family specific.\\
+PointMaze & Goal memory that survives host readout and changes navigation under
+  a fixed controller.
+  & Native model planning with memory.
+  & Provides the strongest positive behavioral link.\\
+Wall & A controlled negative case where storage and exposure separate.
+  & Broad success of the proposed carrier.
+  & Makes the diagnostic thesis falsifiable and prevents overclaiming.\\
+OGBench & Seven clean cue decks, plus repaired PointMaze/Cube/Puzzle/Scene
+  native success under fixed controllers after memory-selected target recovery,
+  plus a non-manual salient patch-set JEPA stage on PointMaze-large/Cube-single.
+  & Native OGBench world-model planning or broad OGBench-wide autonomous
+    generalization.
+  & Gives a reviewer-facing final-performance check and a clean autonomous
+    memory-learning result beyond linear readout.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+This structure is stronger than adding many partially completed environments.
+The paper now spans positive use, exposure failure, protocol breadth, and
+fixed-controller native success.  The missing piece is not another admission
+deck; it is an autonomous evidence-discovery stage and audited locomotion
+controllers.  AntMaze remains the most useful next execution target for
+locomotion generalization, but it requires a real ant controller or policy
+before it can be promoted beyond feature-host capacity.
+
+\section{Implications for memory-module design}
+
+The results suggest a design principle for future modules: self-supervised
+memory should optimize an evidence interface, not merely a hidden state.  A
+module that reconstructs or predicts masked old evidence internally can still
+fail if its host-facing projection is not trained to expose that evidence.  A
+module that exposes evidence can still fail if the consumer reads the wrong
+coordinates.  Therefore the objective should couple three pressures: retain
+masked evidence without an explicit key-frame label, expose it through the
+frozen host interface, and preserve downstream separability under reset and
+no-state controls.
+
+This principle is compatible with JEPA-style training.  The sidecar need not
+decode pixels or be told which observation is important for the final decision.
+Instead, the final OGBench stage mines salient target frames and patch sets
+without labels, predicts fixed generic color/texture latents, and audits the
+result only after training.  The important lesson from Wall is that this target
+should remain host-facing: optimizing only the carrier prior risks building a
+memory that exists in the side state but is invisible after frozen predictor
+mixing.  The important lesson from PointMaze and Cube is that a simple
+self-supervised patch-set target can be sufficient when the retained
+coordinates preserve the old evidence under reset and recent-only controls.
+
+For paper framing, this means the study should not sell fixed-trust as the
+new winning architecture.  The stronger claim is that the audit identifies the
+right unit of design---the evidence interface---and that salient patch-set
+JEPA is one concrete non-manual instantiation that passes a registered
+PointMaze/Cube grid.  The remaining claim boundary is breadth and native
+planning: the method has not yet been certified across every admitted OGBench
+deck or inside an end-to-end world-model planner.
+
+\section{Related work and positioning}
+
+Recent work adds memory to world models through recurrent or state-space
+agents, transformer memory, explicit retrieval, spatial/geometric memory, and
+world-action memory systems
+\citep{r_r2i,r_onmemory,r_s4wm,r_memworld,r_memorywam,r_dimwam,r_persist,
+r_statecore}.  These papers primarily ask how to build stronger memory-enabled
+agents or simulators, often evaluating through return, rollout consistency,
+video reconstruction, or task success.  This paper asks a different question:
+under a frozen finite-context latent host, which interface rung actually
+carries the old evidence?
+
+The closest host background is DINO-WM \citep{r_dinowm} and LeWorldModel
+\citep{r_lewm}.  We freeze these hosts and treat memory as a side-interface
+audit rather than a new host training recipe.  This positioning is also
+consistent with broader cautions about probing and planning: decodability does
+not by itself establish task use \citep{r_belinkov,r_ravich}, and predictive
+feature quality does not guarantee downstream planning utility \citep{r_rcaux}.
+
+\section{Limitations}
+
+The main limitations are claim-boundary limitations.  First, the paper is not
+a universal architecture win.  Wall shows that an internally strong carrier can
+fail at host exposure, and the claim ledger should keep this visible.  Second,
+the strongest execution results use fixed external consumers and pinned
+controllers, not native planners; PointMaze-teleport fails the controller gate
+and Ant/Humanoid locomotion remains unscored without a local low-level
+controller.  Third, the non-manual patch-set JEPA result is currently certified
+on PointMaze-large and Cube-single, not across every admitted OGBench deck.
+Fourth, OGBench still does not include a native world-model planner that
+autonomously queries the learned memory.  Fifth, the PushT cross-host result establishes that the use gate can pass on
+two host families, but it is not a row-matched causal comparison between those
+families.  These limitations are not cosmetic; they define what the audit can
+and cannot certify.
+
+\section{Conclusion}
+
+The evidence supports a concise ICLR story: persistent memory in
+finite-context latent world models is an interface property.  The side state
+may retain old evidence, the frozen host may expose or suppress it, and a
+consumer can use it only when the exposed representation remains reliable.
+PushT and PointMaze provide positive executed-use cases; Wall identifies the
+storage-versus-exposure bottleneck; OGBench shows that valid old-evidence
+admission decks can be carried through to repaired 24/36 env-age
+fixed-controller native-use success and that a non-manual salient patch-set
+JEPA objective can retain old evidence on PointMaze-large and Cube-single
+without cue labels, cue crops, or key-frame annotations.  The
+resulting claim is deliberately scoped: the audit can certify where evidence
+survives the interface chain, but it does not turn any single carrier name into
+a universal memory solution.

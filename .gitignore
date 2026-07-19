@@ -19,6 +19,7 @@ env/
 .idea/
 *.swp
 *.swo
+.tools/
 
 # Outputs
 outputs/
@@ -36,6 +37,11 @@ paper_a/*.fls
 paper_a/*.log
 paper_a/*.out
 paper_a/draft_v2.*
+paper_b/*.aux
+paper_b/*.fdb_latexmk
+paper_b/*.fls
+paper_b/*.log
+paper_b/*.out
 
 # Data
 data/
