@@ -3,6 +3,9 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx,float,booktabs,array,tabularx,multirow}
 \usepackage{xcolor,colortbl,microtype,caption}
+\usepackage{amsmath}
+\usepackage[ruled,linesnumbered]{algorithm2e}
+\usepackage{wrapfig}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 \hypersetup{
@@ -15,21 +18,26 @@
 
 \definecolor{MemInk}{HTML}{111827}
 \definecolor{MemCream}{HTML}{F5F4EF}
+\definecolor{MemYellow}{HTML}{FBD45B}
 \definecolor{MemYellowDeep}{HTML}{D8A900}
 \definecolor{MemMuted}{HTML}{656760}
-\definecolor{MemRed}{HTML}{A94B3F}
-\newcommand{\Pass}{\textcolor{MemYellowDeep}{\ensuremath{\checkmark}}}
+\definecolor{MemRed}{HTML}{7F1D1D}
+\definecolor{MemGood}{HTML}{315B2C}
+\newcommand{\Pass}{\textcolor{MemGood}{\ensuremath{\checkmark}}}
 \newcommand{\Fail}{\textcolor{MemRed}{\ensuremath{\times}}}
 \newcommand{\NA}{\textcolor{black!40}{\textemdash}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcolumntype{C}{>{\centering\arraybackslash}X}
 \graphicspath{{figures/}}
 
-\renewcommand{\floatpagefraction}{0.9}
-\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
-\setlength{\floatsep}{7pt plus 2pt minus 2pt}
-\setlength{\intextsep}{7pt plus 2pt minus 2pt}
-\captionsetup{font=footnotesize,labelfont={bf,color=MemYellowDeep},skip=3pt}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
+\captionsetup{font=footnotesize,labelfont={bf,color=MemYellowDeep},skip=4pt}
 
 \title{Structured Slot Memory for Masked-Evidence World-Model Interfaces}
 \author{Anonymous authors\\Paper under double-blind review}
@@ -42,4 +50,6 @@
 
 \input{body.tex}
 \input{refs.tex}
+\appendix
+\input{appendix.tex}
 \end{document}

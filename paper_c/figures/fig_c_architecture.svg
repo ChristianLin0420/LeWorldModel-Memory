@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="912" viewBox="0 0 1560 912"
+     role="img" aria-labelledby="tt dd">
+  <title id="tt">Masked-evidence slot-memory interface: training and audit data flow</title>
+  <desc id="dd">A label-free target miner withholds salient patch sets from a causal render stream. A trainable slot writer compresses the legal stream into eight memory slots and predicts the hidden targets. Cue labels are used only afterwards, by a locked readout, to audit full/reset/no-state exposure and bounded controller use.</desc>
+  <defs>
+    <style><![CDATA[
+      .canvas{fill:#f7f6f1}
+      .panel{fill:#fbfbf9;stroke:#c9c3b2;stroke-width:2}
+      .frozen{fill:#eeece4;stroke:#5f6b76;stroke-width:2.2}
+      .train{fill:#fdf3cf;stroke:#d8a900;stroke-width:2.4}
+      .mem{fill:#111827;stroke:#111827;stroke-width:2.2}
+      .fixed{fill:url(#hatchFixed);stroke:#8a5d00;stroke-width:2.2}
+      .locked{fill:url(#hatchLock);stroke:#5f6b76;stroke-width:2.2}
+      .data{fill:#fff;stroke:#a86200;stroke-width:2.2}
+      .audit{fill:#f2f6f0;stroke:#315b2c;stroke-width:2.2}
+      .sub{fill:#fff;stroke:#111827;stroke-width:1.6}
+      .subhot{fill:#fbd45b;stroke:#d8a900;stroke-width:1.8}
+      .title{font:700 33px 'DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .subtitle{font:400 20px 'DejaVu Sans',Arial,sans-serif;fill:#656760}
+      .ptitle{font:700 25px 'DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .btitle{font:700 21px 'DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .btitlew{font:700 21px 'DejaVu Sans',Arial,sans-serif;fill:#fbd45b}
+      .body{font:400 18px 'DejaVu Sans',Arial,sans-serif;fill:#2b3440}
+      .bodyw{font:400 18px 'DejaVu Sans',Arial,sans-serif;fill:#f4efe0}
+      .mono{font:700 17px 'DejaVu Sans Mono','DejaVu Sans',monospace;fill:#111827}
+      .monod{font:700 16px 'DejaVu Sans Mono','DejaVu Sans',monospace;fill:#656760}
+      .badge{font:700 15px 'DejaVu Sans',Arial,sans-serif;letter-spacing:.6px}
+      .small{font:400 16px 'DejaVu Sans',Arial,sans-serif;fill:#656760}
+      .flow{fill:none;stroke:#3a3f36;stroke-width:3;marker-end:url(#aGray)}
+      .grad{fill:none;stroke:#d8a900;stroke-width:3.6;marker-end:url(#aGold)}
+      .eval{fill:none;stroke:#315b2c;stroke-width:3;stroke-dasharray:9 7;marker-end:url(#aGreen)}
+      .divider{stroke:#e0dccf;stroke-width:1.6}
+    ]]></style>
+    <pattern id="hatchFixed" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#fbf4dd"/><path d="M-2 2L2-2M0 10L10 0M8 12L12 8" stroke="#e6cf95" stroke-width="1.5"/>
+    </pattern>
+    <pattern id="hatchLock" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#edece6"/><path d="M0 0L10 10M-3 7L3 13M7-3L13 3" stroke="#c7cdd3" stroke-width="1.5"/>
+    </pattern>
+    <marker id="aGray" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#3a3f36"/></marker>
+    <marker id="aGold" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#d8a900"/></marker>
+    <marker id="aGreen" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#315b2c"/></marker>
+  </defs>
+
+  <rect class="canvas" width="1560" height="912"/>
+  <text class="title" x="30" y="46">Masked-evidence slot memory: one interface, two data paths</text>
+  <text class="subtitle" x="30" y="76">Label-free masked patch-set training (top); cue labels enter only for the fail-closed audit and bounded use (bottom).</text>
+
+  <!-- legend -->
+  <g aria-label="key">
+    <rect class="data"   x="588" y="90" width="30" height="22" rx="4"/><text class="small" x="624" y="108">data</text>
+    <rect class="train"  x="700" y="90" width="30" height="22" rx="4"/><text class="small" x="736" y="108">trainable</text>
+    <rect class="mem"     x="838" y="90" width="30" height="22" rx="4"/><text class="small" x="874" y="108">memory slots</text>
+    <rect class="fixed"  x="1010" y="90" width="30" height="22" rx="4"/><text class="small" x="1046" y="108">fixed op</text>
+    <rect class="locked" x="1132" y="90" width="30" height="22" rx="4"/><text class="small" x="1168" y="108">locked evaluator</text>
+    <rect class="audit"  x="1330" y="90" width="30" height="22" rx="4"/><text class="small" x="1366" y="108">audit / use</text>
+  </g>
+
+  <!-- ================= PANEL A: TRAINING ================= -->
+  <rect class="panel" x="24" y="128" width="1512" height="404" rx="14"/>
+  <text class="ptitle" x="46" y="166">1 &#8212; Self-supervised training: predict withheld salient patches, no cue labels</text>
+  <line class="divider" x1="46" y1="180" x2="1514" y2="180"/>
+
+  <!-- causal stream -->
+  <rect class="data" x="46" y="212" width="266" height="150" rx="11"/>
+  <text class="btitle" x="66" y="242">Causal render stream</text>
+  <g>
+    <rect x="66" y="256" width="30" height="42" class="sub"/><circle cx="81" cy="277" r="7" fill="#dc2626"/>
+    <rect x="102" y="256" width="30" height="42" class="sub"/><circle cx="117" cy="277" r="7" fill="#2563eb"/><rect x="104" y="250" width="26" height="8" fill="#fbd45b" stroke="#d8a900"/>
+    <rect x="138" y="256" width="30" height="42" class="sub"/><circle cx="153" cy="277" r="7" fill="#16a34a"/>
+    <rect x="174" y="256" width="30" height="42" class="sub"/><circle cx="189" cy="277" r="7" fill="#d8a900"/>
+    <rect x="210" y="256" width="30" height="42" class="sub"/><circle cx="225" cy="277" r="7" fill="#7c3aed"/>
+    <rect x="246" y="256" width="30" height="42" class="sub"/><circle cx="261" cy="277" r="7" fill="#0891b2"/>
+  </g>
+  <rect x="66" y="308" width="72" height="14" fill="#fbd45b"/>
+  <rect x="138" y="308" width="96" height="14" fill="#e6e3d8"/>
+  <rect x="234" y="308" width="42" height="14" fill="#bcd3f5"/>
+  <text class="small" x="66" y="340">cue (early)</text>
+  <text class="small" x="214" y="340" fill="#1d4ed8">legal K</text>
+  <text class="mono" x="66" y="356">chunks of K; evict old tokens</text>
+
+  <!-- tokenize -->
+  <rect class="train" x="336" y="238" width="150" height="98" rx="10"/>
+  <text class="btitle" x="356" y="266">Tokenize</text>
+  <text class="body" x="356" y="292">frame CNN</text>
+  <text class="body" x="356" y="314">+ act / time</text>
+  <text class="monod" x="356" y="332">[ T &#215; D ]</text>
+
+  <!-- slot writer -->
+  <rect class="mem" x="510" y="206" width="276" height="164" rx="11"/>
+  <text class="badge btitlew" x="532" y="234">2  STREAMING SLOT WRITER (S=8)</text>
+  <rect class="subhot" x="530" y="246" width="236" height="30" rx="6"/><text class="mono" x="548" y="267">Mt = f(Mt-1, Z[t-K+1:t])</text>
+  <rect class="sub" x="530" y="282" width="236" height="28" rx="6"/><text class="mono" x="546" y="302">LayerNorm</text>
+  <rect class="subhot" x="530" y="316" width="236" height="28" rx="6"/><text class="mono" x="546" y="336">MLP slot update</text>
+  <g>
+    <circle cx="560" cy="358" r="7" fill="#fbd45b" stroke="#111827"/><circle cx="586" cy="358" r="7" fill="#fbd45b" stroke="#111827"/>
+    <circle cx="612" cy="358" r="7" fill="#fbd45b" stroke="#111827"/><circle cx="638" cy="358" r="7" fill="#fbd45b" stroke="#111827"/>
+    <circle cx="664" cy="358" r="7" fill="#fbd45b" stroke="#111827"/><circle cx="690" cy="358" r="7" fill="#fbd45b" stroke="#111827"/>
+    <circle cx="716" cy="358" r="7" fill="#fbd45b" stroke="#111827"/><circle cx="742" cy="358" r="7" fill="#fbd45b" stroke="#111827"/>
+  </g>
+
+  <!-- set predictor -->
+  <rect class="train" x="836" y="238" width="150" height="98" rx="10"/>
+  <text class="btitle" x="856" y="266">Predictor</text>
+  <text class="mono" x="856" y="296">p(Mt) &#8594; &#375;</text>
+  <text class="small" x="856" y="324">unordered</text>
+
+  <!-- loss -->
+  <rect class="train" x="1010" y="224" width="196" height="126" rx="11"/>
+  <text class="btitle" x="1030" y="252">Set objective</text>
+  <text class="body" x="1030" y="280">set InfoNCE</text>
+  <text class="body" x="1030" y="302">+ cosine align</text>
+  <text class="body" x="1030" y="324">+ std anti-collapse</text>
+
+  <!-- target miner (offline) -->
+  <rect class="data" x="336" y="392" width="648" height="118" rx="11"/>
+  <text class="btitle" x="356" y="420">3  Target miner &#8212; label-free, offline</text>
+  <rect class="sub"   x="356" y="432" width="132" height="60" rx="8"/><text class="body" x="372" y="458">temporal</text><text class="body" x="372" y="480">bins (V=3)</text>
+  <rect class="sub"   x="504" y="432" width="132" height="60" rx="8"/><text class="body" x="520" y="458">saliency</text><text class="body" x="520" y="480">select view</text>
+  <rect class="sub"   x="652" y="432" width="132" height="60" rx="8"/><text class="body" x="668" y="458">mask from</text><text class="body" x="668" y="480">visible stream</text>
+  <rect class="fixed" x="800" y="432" width="168" height="60" rx="8"/><text class="badge" x="816" y="452" fill="#8a5d00">FIXED &#966;</text><text class="mono" x="816" y="482">stop-grad Y=[N&#215;D]</text>
+  <path class="flow" d="M488 462H504"/><path class="flow" d="M636 462H652"/><path class="flow" d="M784 462H800"/>
+
+  <!-- panel A flows -->
+  <path class="flow" d="M312 300H334"/>
+  <path class="flow" d="M486 290H508"/>
+  <path class="flow" d="M786 290H834"/>
+  <path class="flow" d="M986 290H1008"/>
+  <!-- target -> loss -->
+  <path class="flow" d="M986 432C1060 408 1090 372 1106 352"/>
+  <text class="small" x="1012" y="398">targets</text>
+  <!-- gradient back -->
+  <path class="grad" d="M1108 224C1112 172 720 166 648 200"/>
+  <text class="badge" x="812" y="180" fill="#d8a900">GRADIENT (NO CUE LABELS)</text>
+
+  <!-- ================= PANEL B: AUDIT + USE ================= -->
+  <rect class="panel" x="24" y="548" width="1512" height="336" rx="14"/>
+  <text class="ptitle" x="46" y="586">4 &#8212; Fail-closed audit and bounded use: cue labels enter here only</text>
+  <line class="divider" x1="46" y1="600" x2="1514" y2="600"/>
+
+  <!-- frozen Mt -->
+  <rect class="frozen" x="46" y="640" width="168" height="96" rx="10"/>
+  <text class="badge" x="66" y="666" fill="#5f6b76">FROZEN</text>
+  <text class="btitle" x="66" y="694">memory Mt</text>
+  <text class="small" x="66" y="720">from panel 1</text>
+
+  <!-- ridge readout -->
+  <rect class="locked" x="248" y="632" width="196" height="112" rx="11"/>
+  <text class="badge" x="268" y="660" fill="#5f6b76">LOCKED READOUT</text>
+  <text class="btitle" x="268" y="690">ridge classifier</text>
+  <text class="small" x="268" y="716">fit on train Mt,</text>
+  <text class="small" x="268" y="736">applied unchanged</text>
+
+  <!-- audit conditions -->
+  <rect class="audit" x="478" y="616" width="336" height="176" rx="12"/>
+  <text class="btitle" x="498" y="644">Matched conditions</text>
+  <g>
+    <text class="body" x="498" y="678">full  Mt</text>
+    <rect x="612" y="662" width="176" height="20" fill="#fff" stroke="#111827"/><rect x="612" y="662" width="169" height="20" fill="#111827"/>
+    <text class="body" x="498" y="712">reset @K</text>
+    <rect x="612" y="696" width="176" height="20" fill="#fff" stroke="#111827"/><rect x="612" y="696" width="44" height="20" fill="#9ca3af"/>
+    <text class="body" x="498" y="746">no-state</text>
+    <rect x="612" y="730" width="176" height="20" fill="#fff" stroke="#111827"/><rect x="612" y="730" width="44" height="20" fill="#c4b5a5"/>
+  </g>
+  <text class="small" x="498" y="778">pass: full high &#8743; controls &#8776; chance</text>
+
+  <!-- target selected -->
+  <rect class="data" x="850" y="640" width="150" height="96" rx="10"/>
+  <text class="btitle" x="870" y="672">Selected</text>
+  <text class="btitle" x="870" y="698">target</text>
+  <text class="small" x="870" y="722">not the true label</text>
+
+  <!-- controller -->
+  <rect class="locked" x="1036" y="632" width="184" height="112" rx="11"/>
+  <text class="badge" x="1056" y="660" fill="#5f6b76">FIXED CONTROLLER</text>
+  <text class="btitle" x="1056" y="690">audited, local</text>
+  <text class="small" x="1056" y="718">where available</text>
+
+  <!-- executed success -->
+  <rect class="audit" x="1256" y="640" width="150" height="96" rx="10"/>
+  <text class="btitle" x="1276" y="672">Executed</text>
+  <text class="btitle" x="1276" y="698">success</text>
+  <text class="small" x="1276" y="722">vs recent / random</text>
+
+  <!-- age generalization callout -->
+  <rect x="478" y="812" width="1030" height="46" rx="9" fill="#fdf3cf" stroke="#d8a900" stroke-width="2"/>
+  <text class="body" x="498" y="841">Mixed-age training on ages {4, 8, 15} generalizes to unseen ages {6, 10, 12, 18} under the same audit.</text>
+
+  <!-- panel B flows (eval, green dashed) -->
+  <path class="eval" d="M214 688H246"/>
+  <path class="eval" d="M444 688H476"/>
+  <path class="eval" d="M814 688H848"/>
+  <path class="eval" d="M1000 688H1034"/>
+  <path class="eval" d="M1220 688H1254"/>
+  <!-- Mt handoff from panel A to panel B -->
+  <path class="eval" d="M540 372C300 470 150 520 130 636"/>
+  <text class="small" x="196" y="612" fill="#315b2c">frozen Mt &#8594; audit</text>
+</svg>

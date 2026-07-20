@@ -41,10 +41,28 @@ from torch.utils.data import DataLoader, Dataset  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "outputs" / "masked_evidence_jepa_ogbench_v1"
-AGES = (4, 8, 15)
+
+
+def _env_int_tuple(name: str, default: tuple[int, ...]) -> tuple[int, ...]:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    return tuple(int(v) for v in raw.replace(",", " ").split())
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    return int(raw) if raw else int(default)
+
+
+# Horizon constants are overridable via environment variables so the age-scaling
+# study (reviewer concern 8) can re-render longer episodes and evaluate delays
+# far beyond 15 without touching call sites:
+#   PAPER_C_AGES="4 8 16 32 64 128"  PAPER_C_LENGTH=140
+AGES = _env_int_tuple("PAPER_C_AGES", (4, 8, 15))
 CLASSES = 4
-LENGTH = 22
-LAST_CUE_FRAME = 3
+LENGTH = _env_int("PAPER_C_LENGTH", 22)
+LAST_CUE_FRAME = _env_int("PAPER_C_LAST_CUE_FRAME", 3)
 MAX_ENDPOINT = LAST_CUE_FRAME + max(AGES)
 MAX_CONTEXT = MAX_ENDPOINT + 1
 PALETTE = np.asarray(
@@ -78,6 +96,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dim", type=int, default=160)
     parser.add_argument("--slots", type=int, default=8)
     parser.add_argument("--heads", type=int, default=4)
+    parser.add_argument(
+        "--chunk",
+        type=int,
+        default=0,
+        help="Streaming chunk size K (bounded eviction). 0 = one-shot full-prefix attention.",
+    )
     parser.add_argument("--lr", type=float, default=3.0e-4)
     parser.add_argument("--weight-decay", type=float, default=1.0e-4)
     parser.add_argument("--temperature", type=float, default=0.08)
@@ -85,6 +109,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--std-weight", type=float, default=0.05)
     parser.add_argument("--temporal-drop", type=float, default=0.12)
     parser.add_argument("--patch-drop", type=float, default=0.20)
+    parser.add_argument(
+        "--cue-mode",
+        default="color",
+        choices=CUE_MODES,
+        help="Cue family. 'color' is the original; others decorrelate colour from the label.",
+    )
     parser.add_argument("--device", default="cuda:0")
     return parser.parse_args(argv)
 
@@ -159,6 +189,109 @@ def inject_cue_sequence(frames: np.ndarray, label: int, position: int) -> np.nda
     for time in range(1, LAST_CUE_FRAME + 1):
         out[time] = draw_cue(out[time], int(label), int(position))
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Shortcut-breaking cue families (reviewer concern 4).
+# The original ``color`` cue makes label recoverable from pooled color alone.
+# These variants decorrelate colour from the label so the memory must retain
+# shape identity, spatial relation, or count rather than a single hue.
+# --------------------------------------------------------------------------- #
+CUE_MODES = ("color", "shape_random_color", "relational", "palette_holdout", "two_cue_overwrite")
+# A large held-out palette so appearance is not a 4-way colour code.
+_RANDOM_PALETTE = np.asarray(
+    [
+        [230, 57, 70], [46, 204, 113], [52, 152, 219], [245, 203, 92],
+        [155, 89, 182], [26, 188, 156], [231, 126, 34], [149, 165, 166],
+        [211, 84, 0], [22, 160, 133], [192, 57, 43], [41, 128, 185],
+    ],
+    dtype=np.uint8,
+)
+
+
+def _draw_shape(draw, shape: int, box, color) -> None:
+    x0, y0, x1, y1 = box
+    outline = (17, 24, 39)
+    w = max(1, (x1 - x0) // 10)
+    if shape == 0:  # circle
+        draw.ellipse([x0, y0, x1, y1], fill=color, outline=outline, width=w)
+    elif shape == 1:  # triangle
+        draw.polygon([(x0 + (x1 - x0) // 2, y0), (x0, y1), (x1, y1)], fill=color, outline=outline)
+    elif shape == 2:  # square
+        draw.rectangle([x0, y0, x1, y1], fill=color, outline=outline, width=w)
+    else:  # diamond
+        cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+        draw.polygon([(cx, y0), (x1, cy), (cx, y1), (x0, cy)], fill=color, outline=outline)
+
+
+def draw_cue_shape(frame: np.ndarray, shape: int, position: int, color) -> np.ndarray:
+    """Draw a shape (label = shape identity) with an arbitrary colour."""
+    image = Image.fromarray(frame.copy())
+    draw = ImageDraw.Draw(image)
+    positions, card = cue_layout(frame.shape[0])
+    x, y = [int(v) for v in positions[int(position)]]
+    pad = max(2, card // 6)
+    draw.rectangle(
+        [x - pad, y - pad, x + card + pad, y + card + pad],
+        fill=(255, 255, 255),
+        outline=(17, 24, 39),
+        width=max(1, card // 9),
+    )
+    _draw_shape(draw, int(shape), (x, y, x + card, y + card), tuple(int(v) for v in color))
+    return np.asarray(image, dtype=np.uint8)
+
+
+def _episode_rng(episode: int, salt: int) -> np.random.Generator:
+    return np.random.default_rng(9_100_003 + int(episode) * 131 + int(salt))
+
+
+def inject_cue_sequence_mode(
+    frames: np.ndarray, label: int, position: int, *, mode: str, episode: int
+) -> np.ndarray:
+    """Cue injection dispatcher. ``color`` reproduces the original overlay."""
+    if mode == "color":
+        return inject_cue_sequence(frames, label, position)
+
+    out = frames.copy()
+    rng = _episode_rng(episode, 7)
+    if mode == "shape_random_color":
+        # Label = shape identity; colour is random and label-independent.
+        color = _RANDOM_PALETTE[int(rng.integers(0, len(_RANDOM_PALETTE)))]
+        for time in range(1, LAST_CUE_FRAME + 1):
+            out[time] = draw_cue_shape(out[time], int(label), int(position), color)
+        return out
+    if mode == "palette_holdout":
+        # Colour drawn from a large palette, decorrelated from the 4-way label,
+        # while shape encodes the label.
+        color = _RANDOM_PALETTE[int(rng.integers(4, len(_RANDOM_PALETTE)))]
+        for time in range(1, LAST_CUE_FRAME + 1):
+            out[time] = draw_cue_shape(out[time], int(label), int(position), color)
+        return out
+    if mode == "relational":
+        # Two shapes; label in {0,1,2,3} encodes the relation (which of two
+        # slots holds the marker, x2 orderings). Colour is random.
+        left_first = int(label) % 2
+        pair = sorted([int(position), int((position + 1 + int(label) // 2) % 4)])
+        marker = pair[0] if left_first else pair[1]
+        other = pair[1] if left_first else pair[0]
+        c1 = _RANDOM_PALETTE[int(rng.integers(0, len(_RANDOM_PALETTE)))]
+        c2 = _RANDOM_PALETTE[int(rng.integers(0, len(_RANDOM_PALETTE)))]
+        for time in range(1, LAST_CUE_FRAME + 1):
+            f = draw_cue_shape(out[time], 0, marker, c1)
+            f = draw_cue_shape(f, 2, other, c2)
+            out[time] = f
+        return out
+    if mode == "two_cue_overwrite":
+        # An early distractor cue is later overwritten; the LATER cue is the
+        # answer, so a model that keeps only the first cue fails.
+        distractor = int(rng.integers(0, CLASSES))
+        for time in range(1, LAST_CUE_FRAME + 1):
+            out[time] = draw_cue(out[time], distractor, int(position))
+        for time in range(LAST_CUE_FRAME + 1, min(2 * LAST_CUE_FRAME + 1, frames.shape[0])):
+            color = _RANDOM_PALETTE[int(rng.integers(0, len(_RANDOM_PALETTE)))]
+            out[time] = draw_cue_shape(out[time], int(label), int(position), color)
+        return out
+    raise ValueError(f"unknown cue mode {mode!r}; choices={CUE_MODES}")
 
 
 def crop_fixed(frame: np.ndarray, x: int, y: int, size: int) -> np.ndarray:
@@ -407,6 +540,60 @@ class SlotMemory(nn.Module):
         slots = self.norm1(slots + query)
         slots = self.norm2(slots + self.ff(slots))
         return slots, weights.mean(dim=1)
+
+
+class StreamingSlotMemory(nn.Module):
+    """Bounded streaming slot writer: ``M_t = f(M_{t-1}, Z_{t-K+1:t})``.
+
+    The writer maintains a fixed ``S x D`` slot state and ingests the token
+    stream in consecutive chunks of at most ``chunk`` (=K) tokens. Each update
+    lets the slot queries attend over ``[previous slots ; new chunk tokens]``
+    only; the chunk tokens are then discarded. Peak memory and per-step compute
+    are therefore constant in sequence length. With ``chunk <= 0`` (or
+    ``chunk >= steps``) it reduces exactly to one-shot :class:`SlotMemory` over
+    the full prefix, which we keep as an ablation.
+    """
+
+    def __init__(self, dim: int, slots: int, heads: int, chunk: int = 4) -> None:
+        super().__init__()
+        self.slots = int(slots)
+        self.chunk = int(chunk)
+        self.query = nn.Parameter(torch.randn(slots, dim) * 0.02)
+        self.attn = nn.MultiheadAttention(dim, heads, batch_first=True)
+        self.norm1 = nn.LayerNorm(dim)
+        self.ff = nn.Sequential(
+            nn.Linear(dim, 4 * dim), nn.SiLU(), nn.Linear(4 * dim, dim)
+        )
+        self.norm2 = nn.LayerNorm(dim)
+
+    def _update(
+        self, state: torch.Tensor, tokens: torch.Tensor, valid: torch.Tensor
+    ) -> torch.Tensor:
+        kv = torch.cat([state, tokens], dim=1)
+        slot_valid = torch.ones(
+            state.shape[0], state.shape[1], device=state.device, dtype=valid.dtype
+        )
+        kv_valid = torch.cat([slot_valid, valid], dim=1)
+        attended, _ = self.attn(
+            state, kv, kv, key_padding_mask=(kv_valid < 0.5), need_weights=False
+        )
+        updated = self.norm1(attended + state)
+        updated = self.norm2(updated + self.ff(updated))
+        return updated
+
+    def forward(
+        self, tokens: torch.Tensor, valid: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        bsz, steps = tokens.shape[0], tokens.shape[1]
+        state = self.query.unsqueeze(0).expand(bsz, -1, -1).contiguous()
+        chunk = self.chunk if self.chunk > 0 else steps
+        for start in range(0, steps, chunk):
+            end = min(steps, start + chunk)
+            chunk_valid = valid[:, start:end]
+            if float(chunk_valid.sum()) == 0.0:
+                continue
+            state = self._update(state, tokens[:, start:end], chunk_valid)
+        return state, None
 
 
 class MaskedEvidenceJEPA(nn.Module):

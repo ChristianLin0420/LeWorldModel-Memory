@@ -75,6 +75,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dim", type=int, default=160)
     parser.add_argument("--slots", type=int, default=8)
     parser.add_argument("--heads", type=int, default=4)
+    parser.add_argument("--hidden", type=int, default=0)
+    parser.add_argument("--chunk", type=int, default=0)
+    parser.add_argument("--cache-k", type=int, default=8)
+    parser.add_argument("--cue-mode", default="color")
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -124,6 +128,14 @@ def runner_base(args: argparse.Namespace, job: Job | None, baseline: str, env_na
         str(args.slots),
         "--heads",
         str(args.heads),
+        "--hidden",
+        str(args.hidden),
+        "--chunk",
+        str(args.chunk),
+        "--cache-k",
+        str(args.cache_k),
+        "--cue-mode",
+        str(args.cue_mode),
     ]
 
 

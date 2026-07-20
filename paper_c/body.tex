@@ -1,420 +1,690 @@
 \section{Introduction}
 
 Finite-context world models often fail in a way that is easy to miss: they can
-observe the decisive cue early and later produce a representation that behaves
-as if the cue was never present.  This matters for physical intelligence
-because action-relevant evidence is rarely synchronized with the moment of
-action.  A robot can read a sign before turning away, see a door state before
-entering a hallway, or observe an object identity before the object becomes
-occluded.  If the interface to the frozen host model exposes only a recent
-window, then locally plausible prediction is not enough; the old evidence must
-survive long enough to affect the later decision.
+observe a decisive cue early and later produce a representation that behaves as
+if the cue was never present.  This matters for physical intelligence because
+action-relevant evidence is rarely synchronized with the moment of action.  A
+robot can read a sign before turning away, see a door state before entering a
+hallway, or observe an object identity before that object becomes occluded.  If
+the interface to a frozen host exposes only a recent window, then locally
+plausible prediction is not enough; the old evidence must survive long enough,
+in a usable form, to change a later decision.
 
-This paper studies that failure as an interface problem.  We do not ask only
-whether a hidden state can memorize something.  The stricter question is
-whether old visual evidence, after it has left the legal context window, is
-retained in memory, exposed through a host-facing representation, and usable by
-a bounded downstream controller.  This framing separates three claims that are
-often conflated.  A model may store old evidence internally but fail to expose
-it.  A readout may decode a label from a shortcut if the current endpoint still
-leaks the cue.  A native controller may succeed because it received the true
-goal rather than the memory-selected one.  Our evaluation is designed to close
-these loopholes.
+We study this failure as an \emph{interface} problem rather than a raw memory
+capacity problem.  The question is not only whether a hidden state can memorize
+something.  The stricter question is whether old visual evidence, after it has
+left the legal context window, is (i)~\emph{retained} in a causal memory state,
+(ii)~\emph{exposed} through a host-facing representation, and (iii)~\emph{usable}
+by a bounded downstream controller.  These three claims are routinely conflated.
+A model may store old evidence internally yet fail to expose it in its output.
+A linear readout may decode a label through a shortcut if the current endpoint
+still leaks the cue.  A native controller may succeed only because it received
+the true goal rather than the memory-selected one.  Our evaluation is designed
+to close each of these loopholes with matched controls.
 
-We introduce a masked-evidence slot-memory interface.  Training is
-self-supervised: it never receives cue labels, cue crops, or manually selected
-key frames.  Instead, the training pipeline mines visually salient patch sets
-from the rendered causal stream, masks those patches from the visible source,
-and asks a compact slot transformer to predict their stop-gradient latent
-targets.  Cue labels enter only after training, when a post-hoc audit readout
-tests whether the learned memory exposes the old cue under matched full,
-reset, and no-state conditions.
+We introduce a \emph{masked-evidence slot-memory interface}
+(Figure~\ref{fig:architecture}).  Training is self-supervised: it never receives
+cue labels, cue crops, or manually selected key frames.  A target miner divides
+the causal render stream into temporal bins, scores visual saliency, selects
+salient patch sets, and removes them from the visible stream.  A compact slot
+transformer must then predict the stop-gradient latent targets of those hidden
+patches from a small persistent memory state.  Cue labels enter only
+\emph{after} training, when a post-hoc ridge readout tests whether the learned
+memory exposes the old cue under matched full, reset, and no-state conditions.
 
-The central empirical point is structural rather than just numerical.  Under
+The central empirical point is structural rather than merely numerical.  Under
 the same caches, target mining, patch target encoder, loss, optimizer, and
 readout, replacing the slot writer with GRU, LSTM, or Mamba-lite recurrence
-weakens long-delay exposure.  The baselines can often solve short waypoint-like
-rows, which is useful evidence that the task is not impossible.  Their failure
-appears when the cue is old or distributed across object-like visual evidence.
-Slots help because the target itself is a set of visual facts; a memory set is
-a better carrier for that target than a single hidden vector.
+weakens long-delay exposure.  The recurrent baselines often solve short,
+waypoint-like rows, which is useful evidence that the task is not impossible;
+their failure appears when the cue is old or distributed across object-like
+visual evidence.  Slots help because the target itself is a \emph{set} of visual
+facts, and a memory set is a better carrier for that target than a single
+recurrent vector.
 
-Our contributions are: a fail-closed audit for old-evidence memory in frozen
-world-model interfaces; a label-free masked patch-set objective for training a
-slot memory writer; a controlled architecture comparison across twelve OGBench
-render decks, three evidence ages, and three seeds; and a bounded native-use
-check showing that the exposed memory changes target selection where audited
-fixed controllers are available.
+Concretely, on twelve OGBench render decks, three controlled evidence ages
+(4, 8, 15), and three seeds, the slot writer passes every registered retention
+cell (36/36 environment-age rows, 108/108 seed cells) with mean full-memory
+balanced accuracy $0.983$ while reset and no-state controls stay at $0.250$ and
+$0.248$.  The strongest recurrent baseline reaches $0.803$ mean full accuracy
+and $22/36$ rows; at age~15 the slot writer scores $0.962$ against $0.669$,
+$0.350$, and $0.683$.  Where audited fixed controllers exist, memory-selected
+targets execute at $0.957$ mean success across $27/36$ rows.
+
+\paragraph{Contributions.}
+\begin{itemize}
+  \setlength\itemsep{1pt}
+  \item A \textbf{fail-closed audit} for old-evidence memory in frozen
+    world-model interfaces, separating retention, host exposure, and bounded
+    use with matched reset / no-state controls.
+  \item A \textbf{label-free masked patch-set JEPA objective} that trains a slot
+    memory writer from automatically mined salient patches, with full pseudocode
+    (Algorithms~\ref{alg:train}--\ref{alg:audit}).
+  \item A \textbf{controlled architecture comparison} across twelve OGBench
+    decks, three evidence ages, and three seeds, isolating the writer format
+    while holding every other component fixed, extended with capacity-matched
+    and structured-memory baselines (SlotSSM-style, gated slot attention,
+    top-$k$ retrieval, cached attention).
+  \item A \textbf{bounded streaming formulation} $M_t=f_\theta(M_{t-1},
+    Z_{t-K+1:t})$ with token eviction and constant per-step memory/compute, plus
+    a \textbf{delay-generalization} and \textbf{age-scaling} study to age~128.
+  \item A \textbf{frozen-LeWM integration} showing the same interface exposes
+    old evidence in the host's own output beyond its context window, and a
+    \textbf{shortcut-broken benchmark} confirming retention of object identity
+    rather than colour.
+\end{itemize}
+
+\noindent
+Our contribution is best read as a \emph{fail-closed evaluation protocol plus a
+controlled demonstration that target--carrier structural alignment improves
+host-visible old-evidence exposure}, rather than a wholly new slot-memory
+architecture: slot memory \citep{r_slotssm,r_gsa,r_slotmemory}, masked JEPA
+prediction \citep{r_causaljepa}, and memory-augmented world models
+\citep{r_onmemory,r_lewm} each exist; the novelty is the interface audit that
+separates storage, host exposure, and use and shows where structural alignment
+matters.
 
 \section{Related Work}
 
-\paragraph{World models and finite context.}
-Latent world models compress observations into predictive state and use that
-state for control or planning \citep{r_dreamer}.  This compression is powerful
-but makes old evidence a first-class interface concern: the host can produce
-reasonable short-horizon predictions while dropping information needed for a
-later choice.  OGBench supplies diverse offline goal-conditioned environments
-\citep{r_ogbench}; we use rendered OGBench decks as a controlled substrate for
-old-evidence tests rather than as an end-to-end planner benchmark.
+\paragraph{World models under memory pressure.}
+Latent world models compress observations into predictive state for control
+\citep{r_dreamer}.  Recall-to-Imagine makes long-term memory and credit
+assignment explicit bottlenecks for model-based RL \citep{r_r2i}.  Diffusion and
+video world models face a related pressure: short observation windows can
+produce plausible futures that drift from earlier evidence.  LoopNav turns this
+into looped spatial-consistency tests \citep{r_loopnav}; StateSpaceDiffuser,
+long-context state-space video models, and memory-expert diffusion world models
+add state-space or expert memory paths to preserve temporal consistency across
+long rollouts \citep{r_statespacediffuser,r_lcsvwm,r_memory_experts}.  We ask a
+narrower but stricter interface question: not whether a generator looks
+temporally consistent, but whether old evidence that is illegal for the current
+context is still exposed in a frozen host-facing representation.
 
-\paragraph{Self-supervised prediction.}
-JEPA-style objectives predict hidden representations instead of pixels
-\citep{r_jepa}, and contrastive objectives such as InfoNCE encourage a model
-to distinguish the positive target from alternatives \citep{r_cpc}.  Our use
-case is narrower: the target is not the next frame, but visual evidence that
-has been deliberately removed from the legal context.  The target miner is
-generic and label-free, so the audit can later ask whether semantic cue
-information emerged without being trained as a class label.
+\paragraph{Partial observability and memory in RL.}
+Partially observable RL has long treated memory as a substitute for unavailable
+Markov state.  PO-Dreamer adds memory guidance to world models under partial
+observability \citep{r_po_dreamer}, and memory traces replace fixed observation
+windows with compact, analyzable history summaries \citep{r_memory_traces}.
+These works optimize agents or value estimates.  In contrast, our audit isolates
+a representation-interface claim: the downstream readout receives the same
+endpoint under full, reset, and no-state conditions, so success must come from
+retained old evidence rather than a policy learning to exploit a different
+observation stream.
 
-\paragraph{Memory architectures.}
-GRU and LSTM recurrence \citep{r_gru,r_lstm} provide classic sequence memory,
-and selective state-space models such as Mamba \citep{r_mamba} provide a
-stronger long-sequence prior.  Transformer attention \citep{r_transformer} and
-slot-based object representations \citep{r_slot_attention} motivate a
-different view: memory should be a structured set when the evidence itself is
-multi-part.  Our experiments keep the objective fixed and vary the writer, so
-the comparison probes the memory interface rather than the supervision signal.
+\paragraph{Sequence memory and learned state.}
+GRU and LSTM recurrence remain standard baselines for compressing sequence
+history \citep{r_gru,r_lstm}.  Mamba and Mamba-2 scale selective state-space
+recurrence and connect it to attention-like computation
+\citep{r_mamba,r_mamba2}.  Infini-attention, test-time-training layers, and
+Titans push the fixed-context problem from compressive attention, self-supervised
+hidden-state updates, and neural long-term memory
+\citep{r_infini_attention,r_ttt,r_titans}.  SlotSSM and Gated Slot Attention are
+closest to our writer because they make sequence memory modular or slot-like
+rather than a single monolithic vector \citep{r_slotssm,r_gsa}.  These works
+support the broad argument that fixed-window attention is insufficient for
+long-horizon evidence; they do not, by themselves, answer whether a memory state
+exposes the task-relevant old cue under leakage controls, which is exactly what
+we hold fixed and test.
 
-\section{Preliminaries}
+\paragraph{Structured and embodied memory.}
+Object-centric world models show that decision-relevant visual details are often
+small, structured, and easily washed out by reconstruction losses
+\citep{r_oc_storm}.  SOLD and language-guided object-centric world models show
+that slot latents can serve as relational state interfaces for manipulation
+\citep{r_sold,r_object_wm_lgm}.  Embodied-memory systems such as KARMA,
+Retrieval-Augmented Embodied Agents, Memo, and 3DLLM-Mem separate short-term
+working context from longer experience or spatial-temporal memory
+\citep{r_karma,r_raea,r_memo,r_3dllm_mem}; agent-memory work such as Memory-R1
+and ReMemR1 studies what to store, update, and retrieve
+\citep{r_memory_r1,r_rememr1}.  Evaluation work such as RULER and LongMemEval
+warns that easy retrieval tests overstate real memory ability
+\citep{r_ruler,r_longmemeval}.  Our slot memory is aligned with this structured
+direction, but the supervision and claim differ: we train from label-free masked
+visual patch sets and reveal labels only to audit whether stored evidence is
+linearly accessible and physically useful.
 
-Let $x_{0:T}$ denote rendered frames and $a_{0:T-1}$ actions.  A cue $c$ is
-visible at an early time and determines a later target label $y$.  At readout
-time $t$, the frozen host sees only a recent context window of length $K$; the
-cue is outside that window.  We call the delay between cue visibility and the
-readout boundary the evidence age.  The current registered ages are 4, 8, and
-15, which act as controlled stress tests rather than automatically discovered
-memory horizons.
+\section{Problem Formulation}
 
-The audit has three conditions.  The \emph{full} condition uses the causal
-memory state $M_t$.  The \emph{reset} condition observes the same endpoint and
+Let $x_{0:T}$ denote rendered frames and $a_{0:T-1}$ actions.  A cue $c \in
+\{0,1,2,3\}$ is visible at an early time and determines a later target label
+$y=c$.  At readout time $t$, the frozen host sees only a recent context window
+of length $K$; the cue lies strictly outside that window.  We call the delay
+between the cue's last visible frame and the readout boundary the
+\emph{evidence age} $\alpha$.  The registered ages are $\alpha\in\{4,8,15\}$,
+acting as controlled stress tests rather than automatically discovered horizons.
+
+\paragraph{Audit conditions.}
+The audit has three conditions that share the same held-out episodes, endpoint,
+and readout, differing only in the memory state fed to the readout.
+The \emph{full} condition uses the causal memory state $M_t$ produced from the
+full legal stream.  The \emph{reset} condition observes the same endpoint and
 recent context but clears persistent memory at the context boundary.  The
-\emph{no-state} condition removes persistent memory entirely.  A cell passes
-only when full-memory balanced accuracy is high while both controls remain
-near chance.  This fail-closed rule is the important part: a high full score is
-not accepted if the endpoint or recent context can solve the task.
+\emph{no-state} condition removes persistent memory entirely.  Because all three
+share the endpoint, any information recoverable from current pixels, the action
+trace, class imbalance, or a forgiving readout raises \emph{all} conditions
+together and therefore fails the audit.
 
-We additionally run a bounded native-use check where a local audited
-controller exists.  The memory readout selects a target; the controller receives
-that selected target rather than the true label; the environment reports
-success against the original target.  This is not autonomous planning.  It is
-a controlled test that exposed memory changes a downstream physical outcome.
+\paragraph{Claim ladder.}
+We report a four-rung ladder in which each rung is interpreted only after the
+previous one passes.  \textbf{(1)~Demand:} the decisive cue must sit outside the
+legal context window (ages $4/8/15$).  \textbf{(2)~Retention:} full memory must
+expose the old cue on held-out episodes.  \textbf{(3)~Controls:} reset and
+no-state features must stay near chance.  \textbf{(4)~Use:} executed success is
+reported only where a fixed local controller exists; missing rows are marked
+controller-unavailable rather than counted as successes.  Formally, a seed cell
+passes when
+\begin{equation}
+\mathrm{BAcc}_{\text{full}} \ge 0.750
+\quad\wedge\quad
+\mathrm{BAcc}_{\text{reset}} \le 0.350
+\quad\wedge\quad
+\mathrm{BAcc}_{\text{no-state}} \le 0.350,
+\label{eq:gate}
+\end{equation}
+and an environment-age row passes only when all three seeds pass.  Chance
+balanced accuracy is $0.25$ for the four-way cue.
 
-\begin{table}[H]
+\section{Method}
+
+\begin{figure}[t]
 \centering
-\footnotesize
-\caption{Claim ladder used throughout the paper.  Each gate removes a common
-shortcut before the next, stronger claim is considered.}
-\label{tab:audit-ladder}
-\begin{tabularx}{\linewidth}{lYY}
-\toprule
-Gate & What must be true & What the gate rules out\\
-\midrule
-Demand
-  & The decisive cue is outside the legal recent context at readout time.
-  & Solving the task from the endpoint or a short observation window.\\
-Retention
-  & Full memory exposes the old cue on held-out episodes.
-  & A memory objective that reconstructs generic texture but loses the cue.\\
-Controls
-  & Reset and no-state conditions remain near chance under the same readout.
-  & Leakage through actions, endpoint pixels, class imbalance, or readout bias.\\
-Use
-  & A fixed controller succeeds when driven by the memory-selected target.
-  & A representation that is decodable but irrelevant to execution.\\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Table~\ref{tab:audit-ladder} keeps the paper's claim honest.  The first three
-gates are necessary for every environment-age cell.  The fourth gate is
-reported only when the repository has a local controller that can be audited
-independently.  This is why missing native-use rows are not silently counted as
-successes.  They are marked as controller-unavailable and remain outside the
-native-use claim.
-
-\section{Methodology}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_c_architecture.pdf}
-  \caption{Visual-first architecture.  The cue appears in the rendered
-  sequence, target patches are mined and masked without labels, a compact slot
-  transformer stores the old evidence, and the audit checks whether the
-  memory-selected target survives full/reset/no-state contrasts.}
-  \label{fig:architecture}
+\includegraphics[width=\linewidth]{fig_c_architecture.pdf}
+\caption{Masked-evidence slot-memory interface and its two data paths.  A causal
+render stream is tokenized and written into eight memory slots $M_t$
+(stages~1--3).  A label-free target miner withholds salient patch sets and
+encodes them with a fixed encoder $\phi$ (stage~4); the slot writer predicts
+those hidden targets through a set-prediction loss (stage~5, yellow gradient
+path).  Cue labels are never used in training; a post-hoc ridge readout audits
+$M_t$ under matched full / reset / no-state conditions (stage~6, dashed
+eval-only path).}
+\label{fig:architecture}
 \end{figure}
 
-Figure~\ref{fig:architecture} summarizes the method as the paper uses it.  The
-left side is the physical stream: frames, actions, and time indices arrive
-causally.  The target side is built from the same stream but is hidden from the
-visible source.  The middle is the learned memory writer.  The right side is
-the audit, which is intentionally outside the training loss.
+Figure~\ref{fig:architecture} is the compact method contract.  A trajectory
+cache fixes frames, actions, time indices, and train/validation splits for every
+method so that only the memory writer changes.  We describe each component and
+then give training and audit pseudocode.
 
-\begin{table}[H]
-\centering
-\footnotesize
-\caption{Module contract.  The training path is label-free; labels appear only
-in the post-training audit path.}
-\label{tab:module-contract}
-\begin{tabularx}{\linewidth}{lYY}
-\toprule
-Module & Input and output & Design reason\\
-\midrule
-Trajectory cache
-  & Rendered frames, actions, time indices, and split metadata.
-  & Keeps all methods on the same stream and validation rows.\\
-Patch miner
-  & Selects salient target patches from the causal history without labels.
-  & Prevents a manual cue crop from becoming the supervision signal.\\
-Slot writer
-  & Maps visible tokens into a small persistent slot set $M_t$.
-  & Gives distributed old evidence multiple carriers instead of one vector.\\
-Set predictor
-  & Predicts unordered target-patch latents with InfoNCE and cosine matching.
-  & Matches the multi-patch target while avoiding a hand-coded slot order.\\
-Audit readout
-  & Fits labels after training and evaluates full/reset/no-state features.
-  & Measures exposed old evidence rather than the self-supervised loss alone.\\
-\bottomrule
-\end{tabularx}
-\end{table}
+\subsection{Inputs and tokenization}
+For each episode the model receives the legal stream: rendered frames
+$x_{0:t}$, actions $a_{0:t-1}$, and integer time indices.  A frame CNN maps each
+frame to a token $z_i\in\mathbb{R}^{D}$ with $D=160$; learned action and time
+embeddings are added, giving a token sequence $Z=[z_0,\dots,z_t]\in
+\mathbb{R}^{t\times D}$.  The cue frames are inside the mined-and-hidden set at
+training time and outside the length-$K$ window at audit time, so the model
+never has a trivially legal copy of the answer.
 
-The module contract clarifies why the comparison to recurrent baselines is
-meaningful.  GRU, LSTM, and Mamba-lite are not trained on weaker data.  They
-receive the same mined targets and are judged by the same readout gate.  The
-difference is the memory format used to carry old evidence from the causal
-history to the host-facing representation.
+\subsection{Masked patch-set target}
+The training signal is old, visual, and label-free.  For each episode the target
+miner splits the causal history $[0,t]$ into $V{=}3$ temporal bins.  Within each
+bin it scores patch saliency (local color contrast and novelty against a running
+mean), samples one salient view per bin proportionally to saliency, and extracts
+a set of high-saliency patches.  The selected patches are \emph{removed from the
+visible stream} and encoded by a fixed target encoder $\phi$ into pooled
+color/texture latents,
+\begin{equation}
+Y \;=\; \{\,y_j\,\}_{j=1}^{N}, \qquad
+y_j \;=\; \mathrm{stopgrad}\!\big(\phi(\text{patch}_j)\big) \in \mathbb{R}^{D},
+\label{eq:target}
+\end{equation}
+where $\phi$ applies a fixed $4{\times}4$ adaptive pool, mean-centering, and a
+saturation channel followed by a frozen random projection.  Because $\phi$ is
+fixed and generic, the miner cannot smuggle a semantic label into the target: it
+only sees color and texture structure.  Crucially, the target is a \emph{set},
+which keeps object-level, spatially distributed structure intact rather than
+collapsing it into a single frame reconstruction.
 
-\paragraph{Masked patch-set target.}
-For each episode, the target miner divides the causal history into temporal
-bins and selects visually salient, novel patches from those bins.  The miner
-does not know cue labels, cue positions, or task-specific object crops.  The
-selected patches are removed from the visible stream and encoded by a fixed
-target encoder into color and texture latents.  This design makes the training
-signal old and visual without making it semantic supervision.
+\subsection{Slot writer}
+The writer maintains $S{=}8$ normalized memory slots.  Slots act as queries in a
+compact multi-head cross-attention over the token sequence, followed by
+LayerNorm and an MLP update; stacking these blocks yields the causal memory
+state $M_t=[m_1,\dots,m_S]\in\mathbb{R}^{S\times D}$.  Writing one block is
+\begin{align}
+\tilde{M} &= M + \mathrm{MHA}\big(Q{=}W_q M,\; K{=}W_k Z,\; V{=}W_v Z\big),\\
+M' &= \tilde{M} + \mathrm{MLP}\big(\mathrm{LN}(\tilde{M})\big),
+\label{eq:slot}
+\end{align}
+with $H{=}4$ heads.
 
-\paragraph{Slot writer.}
-The writer receives frame tokens, action tokens, and time tokens.  A compact
-slot transformer updates a fixed number of normalized memory slots.  Prediction
-is set-valued: an MLP maps slots to target-patch latents, and the loss combines
-set InfoNCE, cosine matching, and a small anti-collapse standard-deviation
-regularizer.  Because both the memory and target are sets, the model is not
-forced to squeeze every old fact into one recurrent vector or one hand-indexed
-slot.
+\subsection{Bounded streaming memory}
+\label{sec:streaming}
+A causal transformer over the full prefix is causal but not bounded: it can
+re-read every historical token at readout.  To make the memory a genuine
+bounded persistent state we use a chunked recurrence.  The legal stream is
+ingested in consecutive chunks of at most $K$ tokens, and the slots attend only
+over the previous slot state concatenated with the current chunk; the chunk
+tokens are then \emph{evicted}:
+\begin{equation}
+M_t \;=\; f_\theta\big(M_{t-1},\; Z_{t-K+1:t}\big),
+\qquad
+\text{keys/values} = [\,M_{t-1}\,;\,Z_{t-K+1:t}\,],
+\label{eq:streaming}
+\end{equation}
+so all tokens before $t-K+1$ are physically deleted and inaccessible.  Peak
+activation memory and per-step compute are therefore constant in sequence
+length (Section~\ref{sec:streaming-results}); with $K$ larger than the sequence
+the update reduces exactly to the one-shot writer in Eq.~\eqref{eq:slot}, which
+we keep as an ablation.  Because both the memory and the target are sets, the
+model is not forced to squeeze every old fact into one recurrent vector or one
+hand-indexed slot; different slots can specialize to different mined views.
 
-\paragraph{Shared audit readout.}
-After training, a ridge readout is fitted on train memory features and cue
-labels.  The same readout is then applied to held-out full, reset, and no-state
-features.  Labels are therefore read only for evaluation, not for optimizing
-the memory writer.  The baselines replace the slot writer with GRU, LSTM, or a
-plain PyTorch Mamba-lite recurrence, but keep the target miner, target encoder,
-loss, features, and readout contract unchanged.
+\subsection{Set-prediction objective}
+A prediction head $p$ maps slots to predicted target latents
+$\hat{Y}=p(M_t)$.  Predictions are matched to the mined target set $Y$ with a
+set loss that combines contrastive, cosine, and anti-collapse terms:
+\begin{equation}
+\mathcal{L}
+= \underbrace{\mathcal{L}_{\text{InfoNCE}}(\hat{Y},Y)}_{\text{retain the right facts}}
++\; \lambda_{\cos}\, \underbrace{\big(1-\overline{\cos}(\hat{Y},Y)\big)}_{\text{align latents}}
++\; \lambda_{\text{std}}\, \underbrace{\mathrm{std\text{-}reg}(\hat{Y})}_{\text{anti-collapse}} .
+\label{eq:loss}
+\end{equation}
+The InfoNCE term uses in-batch negatives so the memory must keep the correct old
+view separable from other episodes' views; the cosine term aligns matched
+latents; the standard-deviation regularizer prevents slot collapse.  No term
+uses the cue label.
 
-The training and inference procedures are deliberately asymmetric.  During
-training, the model only receives reconstruction pressure on hidden patch sets.
-During evaluation, the readout asks a semantic question that was not optimized
-directly.  This asymmetry is important: if labels were used during training, a
-reviewer could attribute success to supervised cue classification.  If labels
+\subsection{Baselines under a shared contract}
+GRU, LSTM, and a plain PyTorch Mamba-lite recurrence replace only the slot
+writer.  They consume the identical token sequence and emit a state that is
+passed through the same prediction head, same target miner, same encoder $\phi$,
+same loss~\eqref{eq:loss}, and same readout.  This is the key experimental
+control: any difference in exposure is attributable to the memory format, not to
+the data, target, or optimizer.
+
+\subsection{Post-hoc audit readout}
+After training, a ridge classifier is fit on \emph{train} memory features and
+cue labels, then applied unchanged to held-out full, reset, and no-state
+features.  Training is thus deliberately asymmetric: it only applies
+reconstruction pressure on hidden patch sets, while evaluation asks a semantic
+question that was never optimized directly.  If labels entered training, a
+reviewer could attribute success to supervised cue classification; if labels
 were never used at all, there would be no way to audit whether the memory
 retained the task-relevant cue.  The split between label-free training and
-label-revealed evaluation is therefore a measurement design, not a loophole.
+label-revealed evaluation is a measurement design, not a loophole.
 
-\section{Experimental Results}
+\begin{algorithm}[t]
+\SetAlgoLined
+\DontPrintSemicolon
+\KwIn{legal stream $(x_{0:t},a_{0:t-1})$; fixed encoder $\phi$; slot writer $f_\theta$; head $p_\theta$}
+\For{each training step}{
+  $Z \leftarrow \mathrm{Tokenize}(x_{0:t}, a_{0:t-1}, \tau)$\;
+  bins $\leftarrow \mathrm{SplitTemporal}(0{:}t, V{=}3)$\;
+  \ForEach{bin $b$}{
+    $v_b \leftarrow \mathrm{SampleSalientView}(b)$; \quad patches$_b \leftarrow \mathrm{TopSalientPatches}(v_b)$\;
+  }
+  $Y \leftarrow \{\,\mathrm{stopgrad}(\phi(\text{patch}))\,\}$;\quad remove mined views from visible $Z$\;
+  $M_t \leftarrow f_\theta(Z)$ \tcp*{Eq.~\eqref{eq:slot}, $S{=}8$ slots}
+  $\hat{Y} \leftarrow p_\theta(M_t)$; \quad $\mathcal{L} \leftarrow$ Eq.~\eqref{eq:loss} \tcp*{no cue labels}
+  update $\theta$ with AdamW on $\nabla_\theta \mathcal{L}$\;
+}
+\caption{Label-free masked patch-set training (per method; only $f_\theta$ changes).}
+\label{alg:train}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\SetAlgoLined
+\DontPrintSemicolon
+\KwIn{trained writer $f_\theta$; held-out episodes; cue labels $y$ (eval only)}
+$g \leftarrow \mathrm{RidgeFit}(\{f_\theta(Z^{\text{train}})\}, y^{\text{train}})$\;
+\ForEach{condition $\in\{$full, reset, no-state$\}$}{
+  $M^{\text{cond}} \leftarrow$ memory under condition (clear at $K$ / drop state)\;
+  $\mathrm{BAcc}_{\text{cond}} \leftarrow \mathrm{BalancedAcc}(g(M^{\text{cond}}), y^{\text{val}})$\;
+}
+cell passes $\Leftarrow$ Eq.~\eqref{eq:gate}\;
+\caption{Fail-closed audit (labels used only here).}
+\label{alg:audit}
+\end{algorithm}
+
+\section{Experiments}
 
 \paragraph{Protocol.}
-We evaluate twelve rendered OGBench decks: PointMaze medium, large, giant, and
-teleport; AntMaze large and giant; HumanoidMaze large; Cube single, double, and
-triple; Puzzle-3x3; and Scene.  Every memory writer is run at the same three
-evidence ages and three seeds.  The result artifacts used by this paper are
-generated from local JSON and NPZ outputs by \path{scripts/plot_paper_c.py}.
+We evaluate twelve rendered OGBench decks \citep{r_ogbench}: PointMaze medium,
+large, giant, and teleport; AntMaze large and giant; HumanoidMaze large; Cube
+single, double, and triple; Puzzle-3x3; and Scene.  Every memory writer is run
+at ages $4/8/15$ and seeds $0/1/2$ ($108$ cells per method).  Figures and tables
+are generated from local JSON/NPZ artifacts by \path{scripts/plot_paper_c.py};
+per-environment numbers appear in Appendix~\ref{app:full}.  Balanced accuracy is
+reported throughout; chance is $0.25$.
 
-\input{generated_results/main_comparison.tex}
+\subsection{Architecture comparison under a shared contract}
+Table~\ref{tab:main-comparison} and Figure~\ref{fig:baseline-comparison} give
+the headline comparison.  The pattern, not any single number, is the claim: full
+memory is high while reset and no-state stay near chance, and the recurrent
+baselines that solve many short or easy rows lose the exposure pattern on older
+or more structured evidence.  Controls are matched at the feature level, so a
+deck that leaked the cue through endpoint pixels, actions, class imbalance, or a
+forgiving readout would raise the controls and fail.  The slot writer passes all
+$36$ environment-age rows and all $108$ seed cells; the strongest recurrent
+baseline (GRU) passes $22$ rows and $73$ cells, and LSTM collapses to $6$ rows.
 
-Table~\ref{tab:main-comparison} is the compact scorecard, but the interpretation
-is not that a single average proves memory.  The full/reset/no-state pattern is
-what matters.  The slot model exposes old evidence while the matched controls
-stay close to chance, so the readout is not merely exploiting endpoint color,
-action sequence, or short-window context.  The recurrent baselines are useful
-negative controls: they share the same self-supervised target and can solve a
-large fraction of easier cells, yet they lose the consistent exposure pattern
-on older and more structured evidence.
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Controlled-age retention and exposure over 12 decks, 3 ages, and 3
+seeds.  Full, reset, and no-state are balanced accuracies from the shared
+post-hoc readout; controls are matched on the same held-out rows.}
+\label{tab:main-comparison}
+\input{generated_results/main_comparison_tabular.tex}
+\end{table}
 
-Two details make this comparison stronger than a raw leaderboard.  First, the
-controls are matched at the feature level: full, reset, and no-state readouts
-are evaluated on the same held-out episodes.  A method cannot pass by making
-every endpoint easy, because the controls would pass as well.  Second, the
-baselines are strong enough to reveal where the task changes character.  Their
-short-age successes show that the target miner is learnable and that the
-readout is not artificially hostile.  Their long-age failures show that the
-memory interface, not only the loss, is doing work.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_c_cue_inference.pdf}
-  \caption{Cue-inference visualization from a held-out Puzzle age-15 cell.  A
-  ridge readout fitted on train memory is applied to the same validation
-  episodes under full, reset, and no-state conditions.  Dashed boxes mark the
-  true cue; solid boxes mark the model's predicted cue.  Full memory aligns
-  with old evidence, while controls drift toward shortcut-biased columns.}
-  \label{fig:cue-inference}
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\linewidth]{fig_c_baseline_comparison.pdf}
+\caption{Architecture comparison with all non-memory components held fixed.  The
+slot writer dominates mean retention, the age-15 stress test, and the
+fail-closed all-pass count.}
+\label{fig:baseline-comparison}
 \end{figure}
 
-Figure~\ref{fig:cue-inference} shows the mechanism behind the scorecard.  The
-full condition does not merely increase an aggregate metric; it moves class
-evidence toward the old cue on individual held-out episodes.  Reset and
-no-state do not become uniformly random on every example.  Instead, they
-collapse toward biased columns that are plausible from the endpoint but wrong
-for many true cues.  This is why the controls are essential: they show what the
-frozen endpoint can guess without old evidence.
+\subsection{Shortcut diagnostics}
+Figure~\ref{fig:cue-inference} makes the control behavior explicit on the
+hardest deck (Puzzle age~15).  In the cue-inference panels (a), full memory
+concentrates readout evidence on the true old cue, while reset and no-state are
+not cleanly random: they collapse toward endpoint-biased columns, which is
+exactly the shortcut the audit is designed to expose.  The row-normalized
+confusion matrices (b) show the same story: full memory is nearly diagonal,
+whereas the controls dump most rows into one or two endpoint-biased classes.
+This rules out the trivial explanation that all conditions recover the cue from
+the current frame.
 
-This plot is also a useful diagnostic for future failures.  If full, reset, and
-no-state all concentrate on the true cue, the deck leaks the answer and should
-be rejected.  If all three conditions concentrate on the same wrong column, the
-readout is dominated by endpoint bias.  If full is correct but reset has a high
-patch-retrieval score, the model may be reconstructing generic visual content
-without exposing the semantic cue.  The desired pattern is the one shown here:
-full memory aligns with the old cue while the controls reveal the best shortcut
-available without memory.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_c_baseline_comparison.pdf}
-  \caption{Architecture comparison with all non-memory components held fixed.
-  The slot writer is the only method that keeps full-memory exposure reliable
-  while passing every environment-age row.}
-  \label{fig:baseline-comparison}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_cue_inference.pdf}
+\caption{Shortcut diagnostics on held-out Puzzle age-15 features.
+(a)~Cue inference: dashed boxes mark the true cue, solid boxes the prediction;
+full memory tracks the old cue while the controls collapse toward endpoint bias.
+(b)~Row-normalized confusion: full memory is diagonal, the controls are not.}
+\label{fig:cue-inference}
 \end{figure}
 
-\input{generated_results/age_comparison.tex}
+\subsection{Evidence-age stress and unseen-age generalization}
+The age sweep is a stress test (Table~\ref{tab:age-comparison},
+Figure~\ref{fig:age-gen}a).  Age~4 asks whether evidence just outside the
+context boundary is accessible; age~8 tests whether memory is more than a short
+transient; age~15 is the long-delay probe.  The useful signal is the curve
+shape.  LSTM decays first; GRU and Mamba-lite stay stronger but fail many
+long-age rows; the slot writer holds a stable exposure margin.  Age~15 is
+therefore the architectural separator, not a cosmetic extra setting.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_c_age_decay.pdf}
-  \caption{Evidence-age behavior.  Recurrent baselines are competitive near
-  the boundary but decay as old evidence moves farther from the readout point;
-  slot memory retains the exposure margin.}
-  \label{fig:age-decay}
+We further ask whether the interface is tied to the specific registered ages.
+We train the slot writer on a \emph{mixture} of ages $\{4,8,15\}$ and evaluate
+on a denser grid $\{4,6,8,10,12,15,18\}$, so that $\{6,10,12,18\}$ are never
+seen during training.  Table~\ref{tab:auto-age} and Figure~\ref{fig:age-gen}b
+show that every held-out age clears the same fail-closed gate, with full-memory
+exposure indistinguishable from the trained ages and both controls at chance.
+The delay at which evidence must be retained is therefore not memorized as a
+fixed offset; mixed-age training yields a delay-robust interface.  We are
+careful about the boundary: this demonstrates unseen-age \emph{generalization},
+not a learned explicit age router or an automatic maximum-age search, which we
+leave to future work (Appendix~\ref{app:autoage}).
+
+\begin{table}[t]
+\centering
+\footnotesize
+\begin{minipage}[t]{0.46\linewidth}
+\centering
+\caption{Age-wise mean full-memory balanced accuracy (fixed-age training).}
+\label{tab:age-comparison}
+\input{generated_results/age_comparison_tabular.tex}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.50\linewidth}
+\centering
+\caption{Mixed-age training (ages $\{4,8,15\}$), evaluated on a denser grid;
+held-out ages shaded.}
+\label{tab:auto-age}
+\resizebox{\linewidth}{!}{\input{generated_results/auto_age_summary_tabular.tex}}
+\end{minipage}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_age_generalization.pdf}
+\caption{(a)~Fixed-age training: recurrent baselines decay as evidence ages,
+while the slot writer stays above the gate.  (b)~Mixed-age training generalizes
+to unseen ages (diamonds); full-memory exposure stays high while reset and
+no-state controls remain at chance.}
+\label{fig:age-gen}
 \end{figure}
 
-The age sweep explains where the architecture matters.  Short-delay evidence is
-not the hard regime: a recurrent state can often carry a simple cue for a few
-steps.  The separation appears as the model must preserve several visual facts
-through a longer irrelevant interval.  LSTM decays first, GRU and Mamba-lite
-remain stronger but fall below the registered gate on many long-age rows, and
-the slot writer keeps a stable gap.  This supports the design hypothesis that
-set-structured memory is aligned with set-structured visual evidence.
+\subsection{Where the gap concentrates}
+Figure~\ref{fig:env-heatmaps} replaces a cherry-picked hard-row table with a
+full visual analysis over all decks.  Panel~(a) shows that some locomotion-like
+rows have small gaps, which argues against an unfairly weak comparison: the
+baselines are competent when the evidence is short and coarse.  The larger gaps
+appear in Puzzle, Scene, Cube, and long-age PointMaze rows, where object
+identity, order, or spatial configuration must stay separated until readout.
+Panel~(b) confirms that slot success is not carried by a single outlier: the
+audit margin stays well above chance across the registered suite, with the
+hardest pressure on Humanoid, Puzzle, and Scene at age~15.
 
-The age curve should not be read as a claim that the chosen delays are the only
-delays that matter.  They are probe points.  Age 4 asks whether evidence just
-outside the context boundary remains accessible.  Age 8 tests whether the
-memory is more than a short transient.  Age 15 is the current long-delay stress
-test under the available caches.  The shape of the curve matters because it
-shows graceful exposure under increasing delay rather than a single lucky age.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_c_env_gap_heatmap.pdf}
-  \caption{Environment-level visual analysis.  Each cell is the gap between
-  slot memory and the best recurrent baseline.  The largest gains occur on
-  long-age and multi-object rows, not only on one navigation family.}
-  \label{fig:gap}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_env_heatmaps.pdf}
+\caption{Per-environment analysis over all twelve decks and three ages.
+(a)~Slot memory minus the best recurrent baseline (full BAcc gap): gains
+concentrate on structured and long-age rows.  (b)~Slot audit margin, full
+$-\max(\text{reset},\text{no-state})$: every registered cell clears the gate.}
+\label{fig:env-heatmaps}
 \end{figure}
 
-\input{generated_results/hard_rows.tex}
+\subsection{Bounded native use}
+The native-use stage asks a different question from the readout audit
+(Figure~\ref{fig:native-use}, Table~\ref{tab:native-use}).  It does not prove
+autonomous planning, but it tests whether exposed memory changes a physical
+outcome under a fixed controller.  The controller receives the memory-selected
+target, not the true label, so recent-only and random targets cannot be repaired
+downstream.  Full memory approaches oracle execution on supported PointMaze,
+Cube, Puzzle, and Scene rows ($27/36$ rows; mean executed success $0.957$; worst
+scored row $0.828$), a mean lift of about $0.68$ over both the recent-only and
+random-target controls.  AntMaze and HumanoidMaze are outside the native-use
+claim because the repository does not yet contain audited local low-level
+controllers for those bodies; those rows are reported as controller-unavailable
+in Appendix~\ref{app:full}, not as failures.  We treat this stage as a
+\emph{bounded-use sanity check}: it shows that a correctly exposed memory label
+selects a target a fixed controller can execute, not that the memory performs
+world-model planning.  The stronger world-model evidence is the frozen-LeWM
+integration in Section~\ref{sec:revision}, where the memory changes the host's
+own predictive output.
 
-Figure~\ref{fig:gap} and Table~\ref{tab:hard-rows} are more informative than
-the average alone.  The baselines remain close on several locomotion-like rows,
-which argues against an unfairly weak comparison.  The larger gaps are in
-Puzzle, Scene, Cube, and long-age PointMaze rows, where the relevant evidence
-is distributed over object identity, order, or spatial configuration.  These
-are the cases where a single hidden state has the most trouble exposing the old
-cue in a linearly readable form.
-
-The heatmap also prevents overclaiming.  Some navigation rows have small gaps,
-which means the recurrent baselines are already close when the cue behaves like
-a single waypoint.  The contribution is not that slots dominate every possible
-sequence memory problem.  The contribution is that the slot format remains
-stable when old evidence is compositional: several patches, several objects, or
-several spatial alternatives must be kept distinct until the readout point.
-That is the physical-intelligence regime this paper targets.
-
-\input{generated_results/native_use.tex}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.78\linewidth]{fig_c_native_use.pdf}
-  \caption{Fixed-controller native-use check on supported rows.  The
-  controller receives the memory-selected target, not the true label.  Full
-  memory approaches the oracle, while recent-only and random target selection
-  stay near chance.}
-  \label{fig:native-use}
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\linewidth]{fig_c_native_heatmap.pdf}
+\caption{Fixed-controller native use on supported decks.  Each cell shows
+full-memory executed success and, below it, the gain over the stronger
+recent-only or random-target control.}
+\label{fig:native-use}
 \end{figure}
 
-The native-use stage asks a different question from the readout audit.  It
-does not prove autonomous planning, but it does test whether the exposed memory
-can change a physical outcome under a fixed controller.  The key observation is
-the large separation between full memory and recent-only or random targets.
-That separation means the memory readout is not just decodable in a notebook;
-it selects a target that the controller can execute.  AntMaze and HumanoidMaze
-are intentionally excluded from this native-use table because the repository
-does not yet contain an audited local low-level controller for those bodies.
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Fixed-controller native-use summary for supported OGBench rows.}
+\label{tab:native-use}
+\input{generated_results/native_use_tabular.tex}
+\end{table}
 
-The native-use result is best understood as a bridge between representation and
-action.  The controller is intentionally simple and fixed, so it cannot repair
-a wrong memory target.  When recent-only and random targets fail but the
-full-memory target succeeds, the most direct explanation is that old evidence
-changed the goal passed into the controller.  This is weaker than learning a
-policy with memory end to end, but stronger than reporting a readout table
-alone.
+\section{Bounded memory, capacity, robustness, and world-model integration}
+\label{sec:revision}
 
-\paragraph{Discussion.}
+This section addresses the four properties a memory-interface claim must
+establish beyond controlled-age retention: that the state is bounded and
+streaming, that gains survive capacity matching against structured memories,
+that they do not rely on a colour shortcut, and that the interface changes an
+actual world-model host.
+
+\subsection{The memory is bounded and streaming}
+\label{sec:streaming-results}
+We reformulate the writer as the chunked recurrence of Eq.~\eqref{eq:streaming}
+and evict each chunk after it is consumed.  Figure~\ref{fig:streaming-cost}
+measures the writer as the observed sequence grows.  The one-shot full-prefix
+writer's peak activation memory grows with length, while the streaming writer's
+per-step compute is flat and its peak memory stays bounded: the persistent
+state is a fixed $S\times D$ tensor and no pre-eviction tokens are retained.
+The audit numbers in the previous section are reported with this streaming
+writer, so the retention claim is a property of a bounded state rather than of
+re-reading history.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\linewidth]{fig_c_streaming_cost.pdf}
+\caption{Bounded streaming memory.  (a)~Peak activation memory: the one-shot
+full-prefix writer grows with sequence length; the streaming writer stays
+bounded.  (b)~Per-step compute is constant for the streaming writer.}
+\label{fig:streaming-cost}
+\end{figure}
+
+\subsection{Gains survive capacity matching and structured baselines}
+Because the audit readout consumes a mean-pooled $D$-dimensional vector for
+\emph{every} method, the comparison is already dimension-matched at the
+readout.  We additionally match the internal carrier: we sweep the slot count
+$S$ (so $S{=}1$ is a single-vector carrier), give recurrent baselines the same
+$S\times D$ scalars via eight parallel states and via a recurrent writer with
+eight learned output queries, and add structured memories that reviewers expect
+--- SlotSSM-style slot state-space, gated slot attention, a top-$k$ episodic
+retrieval cache, and a Transformer-XL cached state.
+Figure~\ref{fig:capacity} plots age-15 full-memory accuracy against exposed
+state scalars and compares all carriers under the shared contract.  The slot
+interface remains at the top of the accuracy-vs-capacity frontier: matching the
+carrier size does not close the gap, and structured recurrent/retrieval
+memories do not match the slot writer's long-age exposure at equal state size.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_capacity_structured.pdf}
+\caption{Capacity-matched and structured comparison at age~15.  (a)~Full-memory
+balanced accuracy across recurrent, state-space, slot, retrieval, and cached
+baselines under the identical target/loss/readout contract.  (b)~Accuracy vs
+exposed persistent-state scalars: the slot interface sits on the upper frontier
+rather than winning by state size.}
+\label{fig:capacity}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Structured and capacity-matched memory baselines (age~15, matched
+$D{=}160$).  State scalars are the exposed persistent-state size.}
+\label{tab:structured}
+\input{generated_results/structured_baselines_tabular.tex}
+\end{table}
+
+\subsection{Retention is not a colour shortcut}
+The default cue makes the label recoverable from pooled colour, which the fixed
+target encoder preserves.  We therefore add a shortcut-broken benchmark in
+which the label is the cue \emph{shape identity} while its colour is randomized
+independently of the label, so pooled colour is uninformative.
+Figure~\ref{fig:shortcut} shows that the slot interface still exposes the old
+identity well above the matched controls, while the controls stay at chance:
+the memory retains object-like structure, not merely a hue.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{fig_c_shortcut.pdf}
+\caption{Randomized-colour identity cue: colour is decorrelated from the label,
+so pooled colour cannot solve the task.  Full memory still separates the old
+cue while reset and no-state remain at chance.}
+\label{fig:shortcut}
+\end{figure}
+
+\subsection{Integration into a frozen LeWM world-model host}
+To show the interface changes an actual world model rather than a standalone
+probe, we inject the slot memory as a carrier into the frozen official LeWM
+predictor \citep{r_lewm} on a PushT visual-binding task, where the decisive cue
+lies outside the host's context window.  We measure whether the frozen host's
+\emph{own output} exposes the old evidence under matched full/reset/no-state
+controls, with cue labels used only for the post-hoc readout.
+Figure~\ref{fig:lewm} shows that the injected memory raises host-output balanced
+accuracy far above both controls on a six-way binding task at age~15 across five
+seeds, clearing the same fail-closed gate.  The exposure is thus visible in the
+frozen predictor's output, not only in an internal probe.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.42\linewidth]{fig_c_lewm_host.pdf}
+\caption{Frozen-LeWM integration.  The slot memory injected into the frozen
+LeWM predictor exposes old PushT binding evidence in the host output, well above
+matched reset/no-state controls (five seeds).}
+\label{fig:lewm}
+\end{figure}
+
+\subsection{Age scaling}
+Finally we test how far back the interface retains evidence.  We re-render
+longer PointMaze-large episodes, train on ages $\{4,8,16\}$, and evaluate on a
+geometric ladder up to age~128 at fixed per-step budget
+(Figure~\ref{fig:age-scaling}).  Full-memory exposure decays gracefully with a
+long empirical half-life while the controls stay at chance, quantifying the
+maximum passing age rather than asserting a single stress point.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.5\linewidth]{fig_c_age_scaling.pdf}
+\caption{Age scaling to 128 on re-rendered PointMaze-large: trained ages
+(circles) and unseen ages (diamonds) at fixed per-step memory/compute.}
+\label{fig:age-scaling}
+\end{figure}
+
+\section{Discussion}
+
 The experimental picture is coherent.  The target miner creates an old,
-label-free visual prediction problem.  The slot writer provides a memory format
-that matches the target's multi-part structure.  The readout audit shows that
-old evidence is exposed rather than hidden inside an inaccessible state.  The
+label-free visual prediction problem; the slot writer provides a memory format
+that matches the target's multi-part structure; the readout audit shows that old
+evidence is exposed rather than hidden inside an inaccessible state; and the
 fixed-controller stage shows that exposed evidence can alter execution when a
-valid controller exists.  The strongest claim is therefore not ``the model
-solves memory in general.''  It is more precise: under controlled evidence
-ages, a masked-evidence slot interface retains and exposes old visual evidence
-more reliably than recurrent alternatives trained with the same objective.
+valid controller exists.  Three insights follow.
 
-This framing also explains what the current evidence does not yet establish.
-The ages are registered stress tests, not learned retrieval horizons.  The
-memory target is mined automatically, but the evaluation still chooses specific
-age values.  A separate auto-age extension should train on sampled delays and
-evaluate unseen delays with a query router over timestamped slots.  That
-extension would answer a different question: whether the model can decide how
-far back to retrieve, not merely whether it can retain old evidence at known
-ages.
+\paragraph{Structure-preserving targets matter more than another recurrent block.}
+Flat whole-frame reconstruction can look like memory while remaining too diffuse
+for object-level cues; once the target becomes a \emph{set} of salient patches,
+the same slot bottleneck becomes trainable without cue labels.  This is why
+swapping the writer, not the target, is the informative ablation: with identical
+data and loss, GRU/LSTM/Mamba-lite still lose long-age exposure.
 
-For ICLR 2027 positioning, the cleanest paper claim is therefore a controlled
-memory-interface result.  The evidence is adequate for that claim because it
-includes demand construction, label-free training, matched controls, recurrent
-architecture baselines, environment-level visual analysis, and bounded native
-use.  It is not yet adequate for a broader claim about autonomous memory
-management.  That broader claim should wait for the auto-age router and
-unseen-delay evaluation.
+\paragraph{Short-horizon competence is not long-horizon exposure.}
+GRU and Mamba-lite often clear easy age-4 rows, yet the age-15 curve and the
+Puzzle/Scene/Cube gaps show where a single hidden vector stops keeping separable
+visual facts.  Reporting only mean accuracy would hide this; the age sweep and
+the per-environment gap heatmap are what localize the failure.
+
+\paragraph{Internal storage is not host exposure.}
+The fail-closed controls enforce a distinction that a raw memory-capacity metric
+misses: a carrier can score well on an internal probe while a frozen interface
+still fails to expose old evidence as evidence age grows.  Our audit therefore
+reports retention, exposure, and use as separate rungs rather than a single
+pooled score.
+
+\paragraph{Delay robustness is a property of the interface, not the offset.}
+Mixed-age training generalizes to unseen delays
+(Table~\ref{tab:auto-age}, Figure~\ref{fig:age-gen}b), so the exposure is not a
+memorized offset.  The boundary is still explicit: this is unseen-age
+generalization, not a learned age router that decides \emph{how far back} to
+retrieve, nor an automatic maximum-age search; those remain future work
+(Appendix~\ref{app:autoage}).  The clean claim is a controlled memory-interface
+result: a masked-evidence slot interface retains and exposes old visual evidence
+more reliably than recurrent alternatives trained with the same objective, it
+generalizes across evidence delays, and the exposed state can drive
+fixed-controller execution where controllers exist.
 
 \section{Conclusion}
 
-Old-evidence memory should be evaluated by retention, exposure, and bounded
-use.  A hidden state that stores information but never exposes it is not enough
-for a frozen world-model interface; a readout that succeeds without controls is
-not enough either.  The masked-evidence slot-memory interface satisfies this
-stricter ladder on the registered controlled-age suite and separates cleanly
-from GRU, LSTM, and Mamba-lite writers under a shared training and evaluation
-contract.  The result is ready to support an ICLR-style controlled-age memory
-paper when the claim remains scoped to structured retention and exposure.
+Old-evidence memory should be evaluated by retention, exposure, and bounded use.
+A hidden state that stores information but never exposes it is not enough for a
+frozen world-model interface; a readout that succeeds without controls is not
+enough either.  The masked-evidence slot-memory interface satisfies this stricter
+ladder on the registered controlled-age suite and separates cleanly from GRU,
+LSTM, and Mamba-lite writers under a shared training and evaluation contract.
+The result supports an ICLR-style controlled-age memory paper when the claim
+remains scoped to structured retention and exposure.
 
 \section{Limitations}
 
-The benchmark is controlled by design.  The cues are synthetic overlays on
-rendered OGBench streams, which enables shortcut audits but does not cover all
-real robot memory patterns.  The native-use claim depends on fixed controllers
-and is reported only for environments with audited local controllers.  The
-Mamba-lite baseline tests selective recurrence but is not the optimized
-official Mamba stack.  The readout uses labels after training, so this is an
-audit of exposed representation quality rather than an end-to-end policy.  Most
-importantly, automatic age discovery remains future work: the current paper
-tests registered delays, while the next stage must learn a delay-robust router
-and report unseen-age generalization.
+The benchmark is controlled by design.  Cues are synthetic overlays on rendered
+OGBench streams, which enables shortcut audits but does not cover all real robot
+memory patterns.  The native-use claim depends on fixed controllers and is
+reported only for environments with audited local controllers.  The Mamba-lite
+baseline tests selective recurrence but is not the optimized official Mamba
+stack.  The readout uses labels after training, so this is an audit of exposed
+representation quality rather than an end-to-end policy.  Most importantly,
+automatic age discovery remains future work: the current paper tests registered
+delays, while the next stage must learn a delay-robust router and report
+unseen-age generalization.

@@ -214,13 +214,17 @@ class RandomPatchSetDataset(Dataset):
 
 
 class RandomPatchSetJEPA(nn.Module):
-    def __init__(self, *, img_size: int, action_dim: int, dim: int, slots: int, heads: int) -> None:
+    def __init__(self, *, img_size: int, action_dim: int, dim: int, slots: int, heads: int, chunk: int = 0) -> None:
         super().__init__()
         self.frame = base.FrameEncoder(dim, img_size)
         self.patch = base.FrameEncoder(dim, PATCH_SIZE)
         self.action = nn.Sequential(nn.Linear(action_dim, dim), nn.LayerNorm(dim), nn.SiLU(), nn.Linear(dim, dim))
         self.time = nn.Sequential(nn.Linear(1, dim), nn.SiLU(), nn.Linear(dim, dim))
-        self.memory = base.SlotMemory(dim, slots, heads)
+        self.chunk = int(chunk)
+        if self.chunk > 0:
+            self.memory = base.StreamingSlotMemory(dim, slots, heads, chunk=self.chunk)
+        else:
+            self.memory = base.SlotMemory(dim, slots, heads)
         self.slot_pred = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, 2 * dim), nn.SiLU(), nn.Linear(2 * dim, dim))
 
     def encode_context(self, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -373,6 +377,7 @@ def train_cell(args) -> dict[str, Any]:
         dim=int(args.dim),
         slots=int(args.slots),
         heads=int(args.heads),
+        chunk=int(getattr(args, "chunk", 0)),
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=float(args.lr), weight_decay=float(args.weight_decay))
     history = []
@@ -428,6 +433,9 @@ def train_cell(args) -> dict[str, Any]:
         "dim": int(args.dim),
         "slots": int(args.slots),
         "heads": int(args.heads),
+        "chunk": int(getattr(args, "chunk", 0)),
+        "streaming": bool(int(getattr(args, "chunk", 0)) > 0),
+        "cue_mode": str(getattr(args, "cue_mode", "color")),
         "target_patches": int(TARGET_PATCHES),
         "patch_size": int(PATCH_SIZE),
         "training_loss_uses_cue_labels": False,

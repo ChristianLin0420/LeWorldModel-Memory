@@ -50,8 +50,8 @@ class FixedPatchTargetEncoder(nn.Module):
 
 
 class MultiViewPatchSetJEPA(patchset.RandomPatchSetJEPA):
-    def __init__(self, *, img_size: int, action_dim: int, dim: int, slots: int, heads: int) -> None:
-        super().__init__(img_size=img_size, action_dim=action_dim, dim=dim, slots=slots, heads=heads)
+    def __init__(self, *, img_size: int, action_dim: int, dim: int, slots: int, heads: int, chunk: int = 0) -> None:
+        super().__init__(img_size=img_size, action_dim=action_dim, dim=dim, slots=slots, heads=heads, chunk=chunk)
         self.patch = FixedPatchTargetEncoder(dim)
 
 
@@ -105,12 +105,14 @@ class TemporalCoveragePatchSetDataset(Dataset):
         augment: bool = False,
         temporal_drop: float = 0.0,
         patch_drop: float = 0.0,
+        cue_mode: str = "color",
     ) -> None:
         with np.load(archive, allow_pickle=False) as data:
             self.frames = data["frames"]
             self.actions = data["actions"]
             self.labels = data["cue_labels"]
             self.positions = data["cue_positions"]
+        self.cue_mode = str(cue_mode)
         self.age = int(age)
         self.endpoint = base.LAST_CUE_FRAME + self.age
         self.variant = str(variant)
@@ -153,7 +155,9 @@ class TemporalCoveragePatchSetDataset(Dataset):
         position = int(self.positions[episode])
         rng = np.random.default_rng(50_000_029 + episode + 431 * self.age)
         clean = self.frames[episode].copy()
-        full = base.inject_cue_sequence(clean, label, position)
+        full = base.inject_cue_sequence_mode(
+            clean, label, position, mode=self.cue_mode, episode=episode
+        )
         source = clean if self.variant in {"reset", "no_state"} else full
         target_times = choose_temporal_coverage_times(
             source,
@@ -200,7 +204,12 @@ class TemporalCoveragePatchSetDataset(Dataset):
 
 def build_datasets(args):
     archive = base.cache_path(args)
-    common = dict(age=args.age, seed=args.seed, validation_fraction=args.validation_fraction)
+    common = dict(
+        age=args.age,
+        seed=args.seed,
+        validation_fraction=args.validation_fraction,
+        cue_mode=str(getattr(args, "cue_mode", "color")),
+    )
     return {
         "train_aug": TemporalCoveragePatchSetDataset(
             archive,

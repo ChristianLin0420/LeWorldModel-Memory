@@ -1,25 +1,980 @@
 {
+  "auto_age": {
+    "age_rows": [
+      {
+        "age": 4,
+        "mean_full": 0.9844224032490202,
+        "mean_no_state": 0.25291061760657463,
+        "mean_reset": 0.24600399495783645,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": true
+      },
+      {
+        "age": 6,
+        "mean_full": 0.9848728179714266,
+        "mean_no_state": 0.247223571327068,
+        "mean_reset": 0.2541704509371778,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": false
+      },
+      {
+        "age": 8,
+        "mean_full": 0.9846820760132116,
+        "mean_no_state": 0.25036618229962154,
+        "mean_reset": 0.2523062810733392,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": true
+      },
+      {
+        "age": 10,
+        "mean_full": 0.9877830535919867,
+        "mean_no_state": 0.24690273883358607,
+        "mean_reset": 0.2533945580494633,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": false
+      },
+      {
+        "age": 12,
+        "mean_full": 0.9876162948145468,
+        "mean_no_state": 0.25472994447860126,
+        "mean_reset": 0.25473211398393997,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": false
+      },
+      {
+        "age": 15,
+        "mean_full": 0.9848728368713393,
+        "mean_no_state": 0.2488790320063254,
+        "mean_reset": 0.2498278090452392,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": true
+      },
+      {
+        "age": 18,
+        "mean_full": 0.9817600673758314,
+        "mean_no_state": 0.25060993190544234,
+        "mean_reset": 0.24765266343773712,
+        "pass_count": 36,
+        "seed_cells": 36,
+        "trained_age": false
+      }
+    ],
+    "claim_boundary": "Mixed-age training over ages 4/8/15 with evaluation on 4/6/8/10/12/15/18. This tests delay generalization, but not a learned explicit age router or automatic maximum-age search.",
+    "env_age_rows": [
+      {
+        "age": 4,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.754951581907656,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24187982908913142,
+        "mean_reset": 0.24504841809234396,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7483199502760245,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24563213071377346,
+        "mean_reset": 0.25168004972397556,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7454653884389643,
+        "mean_full": 1.0,
+        "mean_no_state": 0.22968013501783913,
+        "mean_reset": 0.25453461156103574,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7347988299000653,
+        "mean_full": 0.9978632478632479,
+        "mean_no_state": 0.23503928271046517,
+        "mean_reset": 0.2630644179631826,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7402280818118154,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24094000575698502,
+        "mean_reset": 0.2597719181881845,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7265484895487496,
+        "mean_full": 0.9906940324896981,
+        "mean_no_state": 0.2641455429409485,
+        "mean_reset": 0.23855103523130833,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "pointmaze-medium-navigate-v0",
+        "margin": 0.7215803571976347,
+        "mean_full": 0.9821047030017125,
+        "mean_no_state": 0.2605243458040778,
+        "mean_reset": 0.24106017976579333,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.7504930394768021,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24950696052319793,
+        "mean_reset": 0.2420152946468736,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.7338396496170787,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2661603503829213,
+        "mean_reset": 0.2527552856500225,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.7278296618344221,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2721703381655779,
+        "mean_reset": 0.2546108861898336,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.733440761602957,
+        "mean_full": 1.0,
+        "mean_no_state": 0.266559238397043,
+        "mean_reset": 0.2543859649122807,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.732787164980367,
+        "mean_full": 1.0,
+        "mean_no_state": 0.267212835019633,
+        "mean_reset": 0.253717684740334,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.7460919928025191,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25390800719748086,
+        "mean_reset": 0.24548158316174787,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "pointmaze-large-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7410810229959166,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2589189770040834,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7478070175438596,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24720610358908232,
+        "mean_reset": 0.25219298245614036,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7411718398560504,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.2588281601439496,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7455186712447486,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25448132875525137,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7349575598094544,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.2650424401905455,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7410031488978857,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.2589968511021143,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "pointmaze-giant-navigate-v0",
+        "margin": 0.7410031488978857,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.2589968511021143,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.7440953837939897,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2559046162060104,
+        "mean_reset": 0.2406654151022111,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.7518251981643721,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24479653453552513,
+        "mean_reset": 0.24817480183562787,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.2390488110137672,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.7574801165633084,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2425198834366916,
+        "mean_reset": 0.24136362582858203,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.7478070175438596,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25219298245614036,
+        "mean_reset": 0.24817190469568443,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.743866754739721,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25613324526027903,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "pointmaze-teleport-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.24104700417528624,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7478070175438596,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25219298245614036,
+        "mean_reset": 0.25105570141899214,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7486893006209916,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2476945569050832,
+        "mean_reset": 0.25131069937900846,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7496358752534236,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24808816914080073,
+        "mean_reset": 0.2503641247465765,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7506591885452558,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24934081145474418,
+        "mean_reset": 0.24195315275448334,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7202454227065584,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2541898268732238,
+        "mean_reset": 0.2797545772934416,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7297246285018298,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2404692082111437,
+        "mean_reset": 0.27027537149817016,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "antmaze-large-navigate-v0",
+        "margin": 0.7353096346318722,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24983708048224176,
+        "mean_reset": 0.2646903653681279,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.75,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.7454815831617478,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2545184168382521,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.7357324098916411,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2642675901083588,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.7375366568914956,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2624633431085044,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "antmaze-giant-navigate-v0",
+        "margin": 0.7425871619420006,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25741283805799936,
+        "mean_reset": 0.25,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6372614836448969,
+        "mean_full": 0.8865290039814092,
+        "mean_no_state": 0.24926752033651237,
+        "mean_reset": 0.24803918753592688,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6302729187112746,
+        "mean_full": 0.8864449985567805,
+        "mean_no_state": 0.2561720798455059,
+        "mean_reset": 0.25164151714609523,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6445418739153516,
+        "mean_full": 0.8956536890364676,
+        "mean_no_state": 0.251111815121116,
+        "mean_reset": 0.2428297545796393,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6717064454438852,
+        "mean_full": 0.918222261969978,
+        "mean_no_state": 0.24651581652609275,
+        "mean_reset": 0.23997523895422584,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6369873735461109,
+        "mean_full": 0.9040195797761099,
+        "mean_no_state": 0.26703220622999907,
+        "mean_reset": 0.2621342777211956,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.6503909362995619,
+        "mean_full": 0.9109966010082172,
+        "mean_no_state": 0.2606056647086553,
+        "mean_reset": 0.24440779269183197,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "humanoidmaze-large-navigate-v0",
+        "margin": 0.634826081595016,
+        "mean_full": 0.8952223834823264,
+        "mean_no_state": 0.2603963018873104,
+        "mean_reset": 0.24492941863339068,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "cube-single-play-v0",
+        "margin": 0.7376122969692991,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2623877030307009,
+        "mean_reset": 0.23809031323261154,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "cube-single-play-v0",
+        "margin": 0.7367557864024067,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24612012534336783,
+        "mean_reset": 0.2632442135975933,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "cube-single-play-v0",
+        "margin": 0.7301067961228154,
+        "mean_full": 1.0,
+        "mean_no_state": 0.23542269931777093,
+        "mean_reset": 0.26989320387718463,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "cube-single-play-v0",
+        "margin": 0.7337419080203652,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25436123349372985,
+        "mean_reset": 0.2662580919796348,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "cube-single-play-v0",
+        "margin": 0.7309444404960709,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2690555595039291,
+        "mean_reset": 0.2601294371213633,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "cube-single-play-v0",
+        "margin": 0.731356464995507,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2442949935416588,
+        "mean_reset": 0.268643535004493,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "cube-single-play-v0",
+        "margin": 0.7365896890091574,
+        "mean_full": 1.0,
+        "mean_no_state": 0.25215382372129747,
+        "mean_reset": 0.2634103109908425,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "cube-double-play-v0",
+        "margin": 0.7283555775396177,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.2693921702081301,
+        "mean_reset": 0.2497189899874333,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "cube-double-play-v0",
+        "margin": 0.7198301849834305,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.2691491676161463,
+        "mean_reset": 0.2779175627643173,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "cube-double-play-v0",
+        "margin": 0.7303303341812508,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.25693733235080835,
+        "mean_reset": 0.26741741356649695,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "cube-double-play-v0",
+        "margin": 0.7282133141649337,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.24656842452368893,
+        "mean_reset": 0.26953443358281404,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "cube-double-play-v0",
+        "margin": 0.7273941056519746,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.2703536420957732,
+        "mean_reset": 0.24799947339052922,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "cube-double-play-v0",
+        "margin": 0.7629833194699561,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.23476442827779162,
+        "mean_reset": 0.23363036843803844,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "cube-double-play-v0",
+        "margin": 0.7449630984111062,
+        "mean_full": 0.9977477477477478,
+        "mean_no_state": 0.25278464933664163,
+        "mean_reset": 0.23376682880962338,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7252927516962797,
+        "mean_full": 1.0,
+        "mean_no_state": 0.27470724830372034,
+        "mean_reset": 0.2555365493165539,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "cube-triple-play-v0",
+        "margin": 0.733138329637173,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24281344389042825,
+        "mean_reset": 0.26686167036282704,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7311009684606128,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2688990315393872,
+        "mean_reset": 0.2429215999692113,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7409131144310481,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2514357022206059,
+        "mean_reset": 0.25908688556895193,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7355381985164696,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2549787611927513,
+        "mean_reset": 0.2644618014835304,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7373023412627611,
+        "mean_full": 1.0,
+        "mean_no_state": 0.2602632321634926,
+        "mean_reset": 0.2626976587372389,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "cube-triple-play-v0",
+        "margin": 0.7365052075692438,
+        "mean_full": 1.0,
+        "mean_no_state": 0.24807519947879414,
+        "mean_reset": 0.2634947924307562,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.742014925674974,
+        "mean_full": 0.9729837782049429,
+        "mean_no_state": 0.2309688525299689,
+        "mean_reset": 0.2293578588905148,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.7154029330158489,
+        "mean_full": 0.9814112123189183,
+        "mean_no_state": 0.22203582828193336,
+        "mean_reset": 0.2660082793030693,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.710535867452435,
+        "mean_full": 0.9831744269034303,
+        "mean_no_state": 0.24849108027746578,
+        "mean_reset": 0.27263855945099524,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.7222274691510442,
+        "mean_full": 0.9808982164228854,
+        "mean_no_state": 0.24521716541539684,
+        "mean_reset": 0.2586707472718412,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.7485552694364521,
+        "mean_full": 0.9859058817625447,
+        "mean_no_state": 0.2373506123260926,
+        "mean_reset": 0.2367313656837795,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.725239154960904,
+        "mean_full": 0.9779175872400957,
+        "mean_no_state": 0.22203577175654113,
+        "mean_reset": 0.25267843227919173,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "puzzle-3x3-play-v0",
+        "margin": 0.6995446806471081,
+        "mean_full": 0.9566931017279606,
+        "mean_no_state": 0.228054145595366,
+        "mean_reset": 0.25714842108085256,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 4,
+        "env": "scene-play-v0",
+        "margin": 0.7032880977835665,
+        "mean_full": 0.9558083090541427,
+        "mean_no_state": 0.23980055159129918,
+        "mean_reset": 0.2525202112705763,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 6,
+        "env": "scene-play-v0",
+        "margin": 0.723967322212624,
+        "mean_full": 0.9528698570336728,
+        "mean_no_state": 0.2289025348210487,
+        "mean_reset": 0.2182583490274573,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 8,
+        "env": "scene-play-v0",
+        "margin": 0.6960154618062,
+        "mean_full": 0.9396090484708928,
+        "mean_no_state": 0.2435935866646928,
+        "mean_reset": 0.22458824778138034,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 10,
+        "env": "scene-play-v0",
+        "margin": 0.7167043600776698,
+        "mean_full": 0.9586651690999815,
+        "mean_no_state": 0.22075689098632253,
+        "mean_reset": 0.24196080902231162,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 12,
+        "env": "scene-play-v0",
+        "margin": 0.7345370163078309,
+        "mean_full": 0.9637223284881595,
+        "mean_no_state": 0.22918531218032873,
+        "mean_reset": 0.2288704872986913,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 15,
+        "env": "scene-play-v0",
+        "margin": 0.6975198818006255,
+        "mean_full": 0.9411180739703136,
+        "mean_no_state": 0.243598192169688,
+        "mean_reset": 0.2164378351384569,
+        "pass_count": 3,
+        "seed_count": 3
+      },
+      {
+        "age": 18,
+        "env": "scene-play-v0",
+        "margin": 0.7012720740486502,
+        "mean_full": 0.9493528725502296,
+        "mean_no_state": 0.24808079850157944,
+        "mean_reset": 0.2032877888960584,
+        "pass_count": 3,
+        "seed_count": 3
+      }
+    ],
+    "eval_ages": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      15,
+      18
+    ],
+    "eval_cells": 252,
+    "jobs": 36,
+    "mean_full": 0.9851442214124804,
+    "mean_no_state": 0.2502317169224599,
+    "mean_reset": 0.25115541021210475,
+    "pass_count": 252,
+    "train_ages": [
+      4,
+      8,
+      15
+    ],
+    "worst_full": {
+      "age": 6,
+      "env": "humanoidmaze-large-navigate-v0",
+      "margin": 0.6302729187112746,
+      "mean_full": 0.8864449985567805,
+      "mean_no_state": 0.2561720798455059,
+      "mean_reset": 0.25164151714609523,
+      "pass_count": 3,
+      "seed_count": 3
+    },
+    "worst_margin": {
+      "age": 6,
+      "env": "humanoidmaze-large-navigate-v0",
+      "margin": 0.6302729187112746,
+      "mean_full": 0.8864449985567805,
+      "mean_no_state": 0.2561720798455059,
+      "mean_reset": 0.25164151714609523,
+      "pass_count": 3,
+      "seed_count": 3
+    }
+  },
   "methods": {
     "gru": {
       "age": {
         "15": {
           "mean_full": 0.6691657587532275,
+          "mean_no_state": 0.245801407920714,
+          "mean_reset": 0.2523980090383723,
           "seed_count": 36,
           "seed_pass": 14
         },
         "4": {
           "mean_full": 0.8822741197584472,
+          "mean_no_state": 0.2505105996661037,
+          "mean_reset": 0.25216854610675105,
           "seed_count": 36,
           "seed_pass": 29
         },
         "8": {
           "mean_full": 0.8567938850729875,
+          "mean_no_state": 0.25314626697758735,
+          "mean_reset": 0.25139049610309216,
           "seed_count": 36,
           "seed_pass": 30
         }
       },
       "allpass_rows": 22,
-      "anypass_rows": 26,
       "jobs": 108,
       "mean_full": 0.802744587861554,
       "mean_no_state": 0.24981942485480169,
@@ -30,22 +985,27 @@
       "age": {
         "15": {
           "mean_full": 0.3496310613089929,
+          "mean_no_state": 0.25296409994093083,
+          "mean_reset": 0.25018824334575285,
           "seed_count": 36,
           "seed_pass": 0
         },
         "4": {
           "mean_full": 0.7746709889611201,
+          "mean_no_state": 0.2519924591543289,
+          "mean_reset": 0.2512711878890835,
           "seed_count": 36,
           "seed_pass": 20
         },
         "8": {
           "mean_full": 0.6054094182506046,
+          "mean_no_state": 0.2465341107609195,
+          "mean_reset": 0.24279397519456528,
           "seed_count": 36,
           "seed_pass": 6
         }
       },
       "allpass_rows": 6,
-      "anypass_rows": 12,
       "jobs": 108,
       "mean_full": 0.5765704895069058,
       "mean_no_state": 0.25049688995205976,
@@ -56,22 +1016,27 @@
       "age": {
         "15": {
           "mean_full": 0.6828535152811863,
+          "mean_no_state": 0.25516558308702303,
+          "mean_reset": 0.2535924881403427,
           "seed_count": 36,
           "seed_pass": 14
         },
         "4": {
           "mean_full": 0.9038313535833526,
+          "mean_no_state": 0.2524609443022938,
+          "mean_reset": 0.2564935229508055,
           "seed_count": 36,
           "seed_pass": 29
         },
         "8": {
           "mean_full": 0.8122927665835981,
+          "mean_no_state": 0.2518256762210676,
+          "mean_reset": 0.25382116686805567,
           "seed_count": 36,
           "seed_pass": 28
         }
       },
       "allpass_rows": 22,
-      "anypass_rows": 27,
       "jobs": 108,
       "mean_full": 0.7996592118160457,
       "mean_no_state": 0.2531507345367948,
@@ -82,22 +1047,27 @@
       "age": {
         "15": {
           "mean_full": 0.9621996613226856,
+          "mean_no_state": 0.24332750398076802,
+          "mean_reset": 0.25399040395639855,
           "seed_count": 36,
           "seed_pass": 36
         },
         "4": {
           "mean_full": 0.9973552910331863,
+          "mean_no_state": 0.2506683398403752,
+          "mean_reset": 0.2461468566882989,
           "seed_count": 36,
           "seed_pass": 36
         },
         "8": {
           "mean_full": 0.9892527038998772,
+          "mean_no_state": 0.24928974496246822,
+          "mean_reset": 0.24974548262948915,
           "seed_count": 36,
           "seed_pass": 36
         }
       },
       "allpass_rows": 36,
-      "anypass_rows": 36,
       "jobs": 108,
       "mean_full": 0.982935885418583,
       "mean_no_state": 0.24776186292787047,
@@ -118,13 +1088,6 @@
   },
   "slot_better_than_best_baseline": 32,
   "slot_ge_best_baseline": 36,
-  "sources": {
-    "gru": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/gru/summary.json",
-    "lstm": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/lstm/summary.json",
-    "mamba_lite": "/home/chrislin/projects/LeWorldModel-Memory/outputs/memory_arch_baselines_v1/mamba_lite/summary.json",
-    "native_use": "/home/chrislin/projects/LeWorldModel-Memory/outputs/native_use_repaired_combined_v2/stats.json",
-    "slot_current": "/home/chrislin/projects/LeWorldModel-Memory/outputs/multiview_patchset_color_jepa_native_v1/summary.json"
-  },
   "wins_by_env_age": {
     "slot_current": 36
   }

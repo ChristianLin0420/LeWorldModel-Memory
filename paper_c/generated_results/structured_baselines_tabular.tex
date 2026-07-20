@@ -1,0 +1,16 @@
+\begin{tabular}{lcccc}
+\toprule
+Memory & Full & Reset & No-state & State scalars\\
+\midrule
+\rowcolor{MemCream}Slot (ours) & 0.735 & 0.248 & 0.260 & 1280\\
+SlotSSM & 0.451 & 0.266 & 0.244 & 1280\\
+GSA & 0.669 & 0.214 & 0.267 & 1280\\
+Top-k retr. & 0.657 & 0.250 & 0.232 & 1280\\
+Transf.-XL & 0.294 & 0.293 & 0.308 & 1920\\
+8x GRU & 0.326 & 0.251 & 0.258 & 1280\\
+GRU+queries & 0.626 & 0.244 & 0.226 & 160\\
+GRU & 0.400 & 0.260 & 0.259 & 160\\
+LSTM & 0.293 & 0.275 & 0.274 & 320\\
+Mamba-lite & 0.515 & 0.282 & 0.269 & 160\\
+\bottomrule
+\end{tabular}

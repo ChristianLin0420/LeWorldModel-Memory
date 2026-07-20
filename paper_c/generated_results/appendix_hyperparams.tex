@@ -1,0 +1,21 @@
+\begin{tabular}{ll}
+\toprule
+Hyperparameter & Value\\
+\midrule
+Epochs & 36\\
+Batch size & 96\\
+Model dimension $D$ & 160\\
+Output memory slots $S$ & 8\\
+Attention heads (slot writer) & 4\\
+Optimizer & AdamW\\
+Learning rate & $3\times10^{-4}$\\
+Weight decay & $10^{-4}$\\
+Target patch grid & $4\times4$ pooled\\
+Target views per episode & 3 temporal bins\\
+Loss & set InfoNCE $+$ cosine $+$ std reg.\\
+Readout & ridge classifier (post-hoc)\\
+Evidence ages & 4, 8, 15\\
+Seeds & 0, 1, 2\\
+Validation split & held-out episodes per cell\\
+\bottomrule
+\end{tabular}

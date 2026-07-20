@@ -1,19 +1,24 @@
-\section{Artifact map}
+\section{Artifact map and reproducibility}
+\label{app:artifacts}
 
-The paper is generated from local JSON artifacts and does not hand-enter the
-main numbers.  The generator is \path{scripts/plot_paper_c.py}.  It writes
-figures to \path{paper_c/figures/} and tables plus a JSON snapshot to
-\path{paper_c/generated_results/}.
+The paper is generated from local JSON/NPZ artifacts and does not hand-enter the
+main numbers.  The generator is \path{scripts/plot_paper_c.py}; it writes
+figures to \path{paper_c/figures/}, tables to
+\path{paper_c/generated_results/}, and a machine-readable snapshot to
+\path{paper_c/generated_results/result_snapshot.json}.  Every table and figure
+below is a deterministic function of the source summaries in
+Table~\ref{tab:sources}.
 
-\begin{table}[H]
+\begin{table}[h]
 \centering
 \footnotesize
-\caption{Primary local result sources used by Paper C.}
+\caption{Primary local result sources.}
+\label{tab:sources}
 \begin{tabularx}{\linewidth}{lY}
 \toprule
 Claim & Local source\\
 \midrule
-Slot-memory current method
+Slot-memory (current method)
   & \path{outputs/multiview_patchset_color_jepa_native_v1/summary.json}\\
 GRU baseline
   & \path{outputs/memory_arch_baselines_v1/gru/summary.json}\\
@@ -22,36 +27,249 @@ LSTM baseline
 Mamba-lite baseline
   & \path{outputs/memory_arch_baselines_v1/mamba_lite/summary.json}\\
 Fixed-controller native use
-  & \path{outputs/native_use_repaired_combined_v2/stats.json}\\
+  & \path{outputs/native_use_repaired_combined_v2/\{stats,summary\}.json}\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{Training details}
+Each seed cell stores per-condition balanced accuracies and the confusion
+matrices used in Figure~\ref{fig:cue-inference};
+the shortcut-diagnostic panels (Figure~\ref{fig:cue-inference}) are refit at plot
+time with a ridge readout on the stored train features to demonstrate that the
+audit is reproducible from the raw feature banks (\path{features.npz}) rather
+than from cached scores.
 
-All methods use the same rendered caches, validation split, target mining, and
-readout protocol.  Training uses 36 epochs, batch size 96, dimension 160,
-eight output slots, four attention heads for the slot method, AdamW with
-learning rate $3\times10^{-4}$, and weight decay $10^{-4}$.  The loss is the
-sum of set InfoNCE, a weighted set cosine term, and a small standard deviation
-regularizer.  The training loss never sees the cue label.  Labels are used only
-for post-hoc audit readouts.
+\section{Training and audit details}
+\label{app:training}
 
-\section{Gate semantics}
+All methods share the same rendered caches, validation split, target mining,
+prediction head, and readout protocol.  Only the memory writer changes.
+Table~\ref{tab:hyperparams} lists the hyperparameters.
 
-A seed-level cell passes when the full-memory balanced accuracy is at least
-0.750 and both reset and no-state controls are at most 0.350.  An
-environment-age row is counted as all-pass only when all three seeds pass.  We
-also report seed-pass counts because they show partial stability.
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Shared training and evaluation hyperparameters.}
+\label{tab:hyperparams}
+\input{generated_results/appendix_hyperparams.tex}
+\end{table}
 
-\section{Automatic age extension plan}
+\paragraph{Target miner.}
+The causal history $[0,t]$ is split into $V{=}3$ contiguous temporal bins.  Per
+bin, view saliency combines local color contrast with novelty against a running
+mean of previously seen frames; one view is sampled per bin with probability
+proportional to saliency, and the top-saliency patches from that view form the
+target set.  The mined views are then removed from the visible token sequence so
+the writer cannot copy the answer from a legal frame.  The miner uses no cue
+labels, cue positions, or object crops; it is a generic visual saliency process.
 
-The present paper uses controlled ages 4, 8, and 15.  The next extension is an
-automatic age router.  Instead of training separate fixed-age cells, the data
-loader will sample cue delays from a range and attach a timestamp to each
-memory slot.  At inference, a query network will score stored slots by content
-match, timestamp, and confidence, then select the top-$k$ slots.  Evaluation
-will include the registered fixed ages plus unseen ages such as 6, 10, 20, and
-30.  We will report the maximum passing age found by a doubling and binary
-search protocol.  This extension is intentionally not claimed by the current
-paper.
+\paragraph{Target encoder $\phi$.}
+$\phi$ applies a $4{\times}4$ adaptive average pool, subtracts the per-patch
+mean, appends a max$-$min saturation channel, and projects the result through a
+fixed random matrix with a frozen seed.  Because $\phi$ is fixed and generic,
+targets carry color/texture structure but not a semantic class, which is what
+makes label-free training an honest test of retention.
+
+\paragraph{Gate semantics.}
+A seed cell passes when full-memory balanced accuracy is at least $0.750$ and
+both reset and no-state controls are at most $0.350$ (Eq.~\eqref{eq:gate}).  An
+environment-age row is all-pass only when all three seeds pass.  We also report
+seed-pass counts (Appendix~\ref{app:full}) because they show partial stability
+even where a row narrowly misses the strict all-pass criterion.
+
+\paragraph{Baseline implementation.}
+GRU and LSTM use single-layer recurrences of width $D$ read out at the endpoint;
+Mamba-lite is a plain PyTorch selective-state recurrence of the same width.  All
+three feed the identical prediction head and loss~\eqref{eq:loss}.  The
+Mamba-lite baseline is a controlled selective-recurrence stand-in, not the
+optimized official Mamba kernel; we therefore read its results as evidence about
+the \emph{format} of recurrence, not as a claim about the strongest possible
+state-space implementation.
+
+\section{Full per-environment results}
+\label{app:full}
+
+Tables~\ref{tab:ret4}--\ref{tab:ret15} report per-environment full/reset/no-state
+balanced accuracy for the slot writer alongside full-memory balanced accuracy for
+each recurrent baseline, at ages~4, 8, and 15.  Two patterns are visible.  First,
+the slot controls (reset, no-state) stay at chance ($\approx0.25$) in every cell,
+which is what licenses the retention reading.  Second, the baseline full column
+degrades with age and with visual structure: navigation decks stay competitive at
+age~4 but the manipulation and scene decks separate sharply by age~15.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\caption{Per-environment retention at \textbf{age 4}.  Slot columns are
+full/reset/no-state; baseline columns are full-memory BAcc.}
+\label{tab:ret4}
+\input{generated_results/appendix_retention_age4.tex}
+\end{table}
+
+\begin{table}[h]
+\centering
+\scriptsize
+\caption{Per-environment retention at \textbf{age 8}.}
+\label{tab:ret8}
+\input{generated_results/appendix_retention_age8.tex}
+\end{table}
+
+\begin{table}[h]
+\centering
+\scriptsize
+\caption{Per-environment retention at \textbf{age 15} (the long-delay stress
+test).}
+\label{tab:ret15}
+\input{generated_results/appendix_retention_age15.tex}
+\end{table}
+
+\paragraph{Seed stability.}
+Table~\ref{tab:seedpass} reports the number of passing seeds per method on the
+age-15 rows.  The slot writer passes all three seeds on every deck; the recurrent
+baselines pass intermittently, concentrated on the easier navigation decks.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Passing seeds (out of 3) per method on age-15 rows.}
+\label{tab:seedpass}
+\input{generated_results/appendix_seed_pass.tex}
+\end{table}
+
+\section{Retrieval versus exposure}
+\label{app:retrieval}
+
+The target miner also yields a self-supervised JEPA retrieval statistic
+(top-1 match of predicted to true mined latent), which is \emph{not} used for
+any paper claim but is informative about the difference between retrieval and
+exposure.  Table~\ref{tab:retrieval} reports slot retrieval top-1 by
+environment and age.  Retrieval is well above the chance rate expected from the
+number of candidates but is not perfectly correlated with readout exposure: some
+manipulation decks have moderate retrieval yet strong full-memory exposure,
+because the exposed cue class is recoverable even when the exact mined patch is
+not the top match.  This is consistent with our central claim that host-visible
+\emph{exposure}, not internal retrieval, is the property that matters for a
+frozen interface.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Slot-memory JEPA retrieval top-1 by environment and age
+(diagnostic only; not used for gating).}
+\label{tab:retrieval}
+\input{generated_results/appendix_retrieval.tex}
+\end{table}
+
+\section{Full native-use table}
+\label{app:native}
+
+Table~\ref{tab:native-full} reports per-environment-age executed success for the
+supported decks, with standard deviation over seeds and the recent-only,
+random-target, and oracle controls.  The controller receives the
+\emph{memory-selected} target rather than the true label, so recent-only and
+random targets cannot be repaired downstream; the gain column is full minus the
+stronger control.  AntMaze-large/giant and HumanoidMaze-large are omitted because
+no audited local low-level controller exists for those bodies; they are
+capacity-only in the retention audit and are never counted as native-use
+successes.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Per-environment-age fixed-controller native use on supported decks.
+Full is mean\,$\pm$\,std executed success over seeds; gain is full minus the
+stronger of recent/random.}
+\label{tab:native-full}
+\input{generated_results/appendix_native_full.tex}
+\end{table}
+
+\section{Mixed-age generalization and the age-router boundary}
+\label{app:autoage}
+
+\paragraph{Mixed-age result.}
+To test whether the interface is tied to the specific registered ages, we train
+the slot writer on a mixture of cue delays drawn from $\{4,8,15\}$ and evaluate
+on the denser grid $\{4,6,8,10,12,15,18\}$; the delays $\{6,10,12,18\}$ are
+never seen during training.  Table~\ref{tab:auto-age-full} reports per-environment
+full-memory balanced accuracy across the evaluation grid.  Every environment-age
+cell clears the same fail-closed gate as the fixed-age protocol, and full-memory
+exposure on the held-out delays is statistically indistinguishable from the
+trained delays while reset and no-state controls remain at chance.  The delay at
+which evidence must be retained is therefore not memorized as a fixed offset: a
+single mixed-age interface is delay-robust across the tested range.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\caption{Mixed-age training, per-environment full-memory balanced accuracy on
+the evaluation grid.  Columns 6, 10, 12, and 18 are held out from training.}
+\label{tab:auto-age-full}
+\input{generated_results/appendix_auto_age_full.tex}
+\end{table}
+
+\paragraph{What is still future work.}
+This mixed-age result demonstrates unseen-age \emph{generalization}.  It does not
+yet implement a learned explicit age router or an automatic maximum-age search.
+The next extension attaches a timestamp to each memory slot and trains a query
+network that scores stored slots by content match, timestamp, and confidence,
+then selects the top-$k$ slots; evaluation would report the maximum passing age
+found by a doubling-and-binary-search protocol.  That answers a different
+question (how far back to retrieve, and how far back retrieval remains possible)
+than the one audited here (whether old evidence at a given delay is retained and
+exposed), and we therefore keep it out of the current claim.
+
+\section{Carrier and loss-component ablations}
+\label{app:ablations}
+
+We ablate the two design choices behind the mechanistic claim on the structured
+decks (Cube-single, Puzzle-3x3) at age~15.  Table~\ref{tab:abl-slots} varies the
+slot count: $S{=}1$ is the single-vector carrier of the target--carrier grid,
+and accuracy rises with additional slots, confirming that the slot \emph{set},
+not a single compressed vector, carries the multi-part patch-set target.
+Table~\ref{tab:abl-loss} removes individual loss terms and swaps in the
+streaming writer; the full set objective and the streaming variant retain the
+exposure while dropping the contrastive or anti-collapse term degrades it.
+
+\IfFileExists{generated_results/ablation_slots_tabular.tex}{%
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Slot-count (carrier) ablation on structured decks at age~15.}
+\label{tab:abl-slots}
+\input{generated_results/ablation_slots_tabular.tex}
+\end{table}}{}
+
+\IfFileExists{generated_results/ablation_loss_tabular.tex}{%
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Loss-component and streaming ablation on structured decks at age~15.}
+\label{tab:abl-loss}
+\input{generated_results/ablation_loss_tabular.tex}
+\end{table}}{}
+
+\section{Additional analysis notes}
+\label{app:notes}
+
+\paragraph{Why the controls are matched at the feature level.}
+An earlier and weaker design compares full memory against an unconditioned
+classifier.  That comparison is too easy to pass, because class priors and
+endpoint pixels can carry substantial signal.  Matching the reset and no-state
+controls to the \emph{same} readout, endpoint, and held-out episodes forces any
+leaked signal to appear in all three conditions simultaneously, so a leaked deck
+cannot pass the gate in Eq.~\eqref{eq:gate}.
+
+\paragraph{Why a set target rather than a frame target.}
+A whole-frame latent target can be reconstructed from coarse scene statistics,
+which is sufficient for navigation but discards object-level structure.  The
+mined patch-\emph{set} target keeps several spatially distributed facts, so the
+memory must preserve more than a global summary.  Empirically this is what
+separates the manipulation and scene decks at age~15
+(Tables~\ref{tab:ret15},~\ref{tab:seedpass}).
+
+\paragraph{Compute.}
+Each method sweep is $12$ decks $\times$ $3$ ages $\times$ $3$ seeds $=108$
+cells, run across three local GPUs.  The four sweeps (slot, GRU, LSTM,
+Mamba-lite) reuse the same rendered caches, so the dominant cost is writer
+training rather than data generation.  All figures and tables in this paper are
+regenerated in a single pass by \path{scripts/plot_paper_c.py}.
