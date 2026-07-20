@@ -870,13 +870,42 @@ def plot_age_and_autoage(snapshot: dict[str, Any], auto: dict[str, Any]) -> None
     ax.tick_params(labelsize=7)
 
     ax = axes[1]
-    age_rows = {int(r["age"]): r for r in auto["age_rows"]}
-    eval_ages = [int(a) for a in auto["eval_ages"]]
-    train_ages = set(int(a) for a in auto["train_ages"])
-    full = [age_rows[a]["mean_full"] for a in eval_ages]
-    reset = [age_rows[a]["mean_reset"] for a in eval_ages]
-    ns = [age_rows[a]["mean_no_state"] for a in eval_ages]
+    # Prefer the long-horizon age-scaling curve (to 128) if available; else the
+    # standard mixed-age summary. This extends the delay axis well beyond 15.
+    long_curve = None
+    agescale_root = ROOT / "outputs" / "paper_c_agescale_v1"
+    pts = sorted(agescale_root.glob("*/auto_age/s*/result.json"))
+    if pts:
+        try:
+            d0 = load_json(pts[0])
+            eval_ages = [int(e["age"]) for e in d0["eval"]]
+            train_ages = set(int(a) for a in d0.get("train_ages", []))
+            # average full/reset/no-state over available long-horizon envs
+            accum: dict[int, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+            for p in pts:
+                dd = load_json(p)
+                for e in dd["eval"]:
+                    r = e["readout"]
+                    accum[int(e["age"])]["full"].append(r["full"]["balanced_accuracy"])
+                    accum[int(e["age"])]["reset"].append(r["reset"]["balanced_accuracy"])
+                    accum[int(e["age"])]["no_state"].append(r["no_state"]["balanced_accuracy"])
+            eval_ages = sorted(accum)
+            full = [mean(accum[a]["full"]) for a in eval_ages]
+            reset = [mean(accum[a]["reset"]) for a in eval_ages]
+            ns = [mean(accum[a]["no_state"]) for a in eval_ages]
+            long_curve = True
+        except Exception:
+            long_curve = None
+    if not long_curve:
+        age_rows = {int(r["age"]): r for r in auto["age_rows"]}
+        eval_ages = [int(a) for a in auto["eval_ages"]]
+        train_ages = set(int(a) for a in auto["train_ages"])
+        full = [age_rows[a]["mean_full"] for a in eval_ages]
+        reset = [age_rows[a]["mean_reset"] for a in eval_ages]
+        ns = [age_rows[a]["mean_no_state"] for a in eval_ages]
     seen_mask = [a in train_ages for a in eval_ages]
+    if max(eval_ages) > 40:
+        ax.set_xscale("log", base=2)
     ax.plot(eval_ages, full, "-", lw=2.0, color=PI["ink"], zorder=3)
     for a, f, seen in zip(eval_ages, full, seen_mask):
         ax.scatter([a], [f], s=64 if seen else 58, zorder=4,
@@ -889,58 +918,82 @@ def plot_age_and_autoage(snapshot: dict[str, Any], auto: dict[str, Any]) -> None
     # annotate seen vs unseen
     ax.scatter([], [], marker="o", facecolor=PI["ink"], edgecolor=PI["ink"], label="trained age")
     ax.scatter([], [], marker="D", facecolor=PI["yellow"], edgecolor=PI["ink"], label="unseen age")
-    ax.set_xlabel("Evaluation age", fontsize=8.5)
+    ax.set_xlabel("Evaluation age (delay)", fontsize=8.5)
     ax.set_ylabel("Balanced accuracy", fontsize=8.5)
     ax.set_xticks(eval_ages)
+    ax.set_xticklabels([str(a) for a in eval_ages])
     ax.set_ylim(0.15, 1.03)
     ax.grid(alpha=0.3)
     ax.set_axisbelow(True)
-    ax.legend(fontsize=6.2, loc="center left")
-    ax.set_title("(b) mixed-age training generalizes to unseen ages", fontsize=8.5, weight="bold")
+    ax.legend(fontsize=6.2, loc="lower left")
+    ax.set_title("(b) mixed-age training generalizes across delays", fontsize=8.5, weight="bold")
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     ax.tick_params(labelsize=7)
     savefig(fig, "fig_c_age_generalization")
 
 
+def _autoage_env_curves() -> dict[str, dict[int, dict[str, float]]]:
+    """Per-environment full/reset/no-state balanced accuracy vs evaluation age,
+    averaged over seeds, from the mixed-age run (continuous 7-age grid)."""
+    root = ROOT / "outputs" / "multiview_patchset_auto_age_v1"
+    acc: dict[str, dict[int, dict[str, list[float]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for p in sorted(root.glob("*/auto_age/s*/result.json")):
+        try:
+            d = load_json(p)
+        except Exception:
+            continue
+        env = d["env_name"]
+        for e in d.get("eval", []):
+            r = e["readout"]
+            acc[env][int(e["age"])]["full"].append(r["full"]["balanced_accuracy"])
+            acc[env][int(e["age"])]["reset"].append(r["reset"]["balanced_accuracy"])
+            acc[env][int(e["age"])]["no_state"].append(r["no_state"]["balanced_accuracy"])
+    out: dict[str, dict[int, dict[str, float]]] = {}
+    for env, ages in acc.items():
+        out[env] = {age: {k: mean(v) for k, v in cond.items()} for age, cond in ages.items()}
+    return out
+
+
 def plot_env_heatmaps(rows: list[dict[str, Any]]) -> None:
-    """Two stacked panels: gap over baselines (top) and audit margin (bottom)."""
-    by: dict[tuple[str, int, str], list[float]] = defaultdict(list)
-    for row in rows:
-        by[(row["env"], row["age"], row["method"])].append(float(row["full"]))
-    gaps = np.zeros((len(AGES), len(ENV_ORDER)))
-    margins = np.zeros((len(AGES), len(ENV_ORDER)))
-    slot_rows = [r for r in rows if r["method"] == "slot_current"]
-    bym: dict[tuple[str, int], list[float]] = defaultdict(list)
-    for r in slot_rows:
-        bym[(r["env"], r["age"])].append(float(r["full"]) - max(float(r["reset"]), float(r["no_state"])))
-    for i, env in enumerate(ENV_ORDER):
-        for j, age in enumerate(AGES):
-            ours = mean(by[(env, age, "slot_current")])
-            base = max(mean(by[(env, age, m)]) for m in ["gru", "lstm", "mamba_lite"])
-            gaps[j, i] = ours - base
-            margins[j, i] = mean(bym[(env, age)])
+    """Per-environment memory-vs-delay LINE plots (replaces the fixed-age heatmap
+    value maps): full-memory accuracy and audit margin over a continuous age grid."""
+    curves = _autoage_env_curves()
+    if not curves:
+        return
+    envs = [e for e in ENV_ORDER if e in curves]
+    ages = sorted({a for e in envs for a in curves[e]})
+    cmap = plt.get_cmap("cividis")
+    colors = {e: cmap(i / max(1, len(envs) - 1)) for i, e in enumerate(envs)}
 
-    fig, axes = plt.subplots(2, 1, figsize=(7.4, 3.4), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.0), constrained_layout=True)
     fig.patch.set_facecolor(PI["white"])
-
-    im0 = axes[0].imshow(gaps, cmap=PI_GAP, vmin=0.0, vmax=max(0.4, float(gaps.max())), aspect="auto")
-    axes[0].set_title("(a) slot minus best recurrent baseline (full BAcc gap)", fontsize=8.5, weight="bold")
-    im1 = axes[1].imshow(margins, cmap=PI_HEAT, vmin=0.4, vmax=0.8, aspect="auto")
-    axes[1].set_title("(b) slot audit margin: full $-$ max(reset, no-state)", fontsize=8.5, weight="bold")
-    for ax, data, thr in [(axes[0], gaps, 0.28), (axes[1], margins, 0.68)]:
-        ax.set_xticks(np.arange(len(ENV_ORDER)))
-        ax.set_yticks(np.arange(len(AGES)))
-        ax.set_yticklabels([str(a) for a in AGES], fontsize=7)
-        ax.set_ylabel("Age", fontsize=8)
-        for j in range(len(AGES)):
-            for i in range(len(ENV_ORDER)):
-                v = data[j, i]
-                ax.text(i, j, f"{v:.2f}", ha="center", va="center", fontsize=5.4, color=PI["white"] if v > thr else PI["ink"])
-    axes[0].set_xticklabels([])
-    axes[1].set_xticklabels([env_label(e) for e in ENV_ORDER], fontsize=7, rotation=30, ha="right")
-    fig.colorbar(im0, ax=axes[0], fraction=0.02, pad=0.008).ax.tick_params(labelsize=6)
-    fig.colorbar(im1, ax=axes[1], fraction=0.02, pad=0.008).ax.tick_params(labelsize=6)
+    ax = axes[0]
+    for e in envs:
+        xs = [a for a in ages if a in curves[e]]
+        ys = [curves[e][a]["full"] for a in xs]
+        ax.plot(xs, ys, "-o", ms=3, lw=1.4, color=colors[e], label=env_label(e))
+    ax.axhline(0.75, color=PI["bad"], ls="--", lw=1.0)
+    ax.set_xlabel("Evidence age (delay)", fontsize=9)
+    ax.set_ylabel("Full-memory BAcc", fontsize=9)
+    ax.set_ylim(0.4, 1.02)
+    ax.set_title("(a) retention vs delay, per environment", fontsize=9, weight="bold")
+    ax.grid(alpha=0.3); ax.set_axisbelow(True)
+    ax = axes[1]
+    for e in envs:
+        xs = [a for a in ages if a in curves[e]]
+        ys = [curves[e][a]["full"] - max(curves[e][a]["reset"], curves[e][a]["no_state"]) for a in xs]
+        ax.plot(xs, ys, "-o", ms=3, lw=1.4, color=colors[e])
+    ax.set_xlabel("Evidence age (delay)", fontsize=9)
+    ax.set_ylabel("Audit margin (full $-$ control)", fontsize=9)
+    ax.set_ylim(0.0, 0.9)
+    ax.set_title("(b) audit margin vs delay", fontsize=9, weight="bold")
+    ax.grid(alpha=0.3); ax.set_axisbelow(True)
+    for ax in axes:
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+        ax.tick_params(labelsize=7.5)
+    axes[0].legend(fontsize=5.6, ncol=2, loc="lower left", handlelength=1.2)
     savefig(fig, "fig_c_env_heatmaps")
 
 
@@ -1246,33 +1299,43 @@ def plot_shortcut() -> None:
 
 
 def plot_age_scaling() -> None:
-    if not AGESCALE.is_file():
+    root = ROOT / "outputs" / "paper_c_agescale_v1"
+    pts = sorted(root.glob("*/auto_age/s*/result.json"))
+    if not pts:
         return
-    d = load_json(AGESCALE)
-    evals = d.get("eval", [])
-    if not evals:
-        return
-    train_ages = set(int(a) for a in d.get("train_ages", []))
-    ages = [int(e["age"]) for e in evals]
-    full = [float(e["readout"]["full"]["balanced_accuracy"]) for e in evals]
-    reset = [float(e["readout"]["reset"]["balanced_accuracy"]) for e in evals]
-    fig, ax = plt.subplots(figsize=(4.6, 2.7))
+    # one curve per environment, plus a mean
+    per_env: dict[str, list[tuple[int, float]]] = {}
+    train_ages: set[int] = set()
+    reset_by_age: dict[int, list[float]] = defaultdict(list)
+    for p in pts:
+        d = load_json(p)
+        env = d["env_name"]
+        train_ages |= set(int(a) for a in d.get("train_ages", []))
+        pts_env = []
+        for e in d["eval"]:
+            a = int(e["age"])
+            pts_env.append((a, float(e["readout"]["full"]["balanced_accuracy"])))
+            reset_by_age[a].append(float(e["readout"]["reset"]["balanced_accuracy"]))
+        per_env[env] = sorted(pts_env)
+    fig, ax = plt.subplots(figsize=(5.4, 3.0))
     fig.patch.set_facecolor(PI["white"])
-    ax.plot(ages, full, "-", color=PI["ink"], lw=2, zorder=3)
-    for a, f in zip(ages, full):
-        seen = a in train_ages
-        ax.scatter([a], [f], s=60, marker="o" if seen else "D",
-                   facecolor=PI["ink"] if seen else PI["yellow"], edgecolor=PI["ink"], zorder=4)
-    ax.plot(ages, reset, "-", color=PI["gray"], lw=1.3, label="reset")
+    cmap = plt.get_cmap("cividis")
+    envs = list(per_env)
+    for i, env in enumerate(envs):
+        xs = [a for a, _ in per_env[env]]
+        ys = [f for _, f in per_env[env]]
+        ax.plot(xs, ys, "-o", ms=4, lw=1.6, color=cmap(i / max(1, len(envs) - 1)), label=env_label(env))
+    ages_sorted = sorted(reset_by_age)
+    ax.plot(ages_sorted, [mean(reset_by_age[a]) for a in ages_sorted], "--", color=PI["gray"], lw=1.2, label="reset (mean)")
     ax.axhline(0.75, color=PI["bad"], ls="--", lw=1.0)
-    ax.scatter([], [], marker="o", facecolor=PI["ink"], edgecolor=PI["ink"], label="trained age")
-    ax.scatter([], [], marker="D", facecolor=PI["yellow"], edgecolor=PI["ink"], label="unseen age")
     ax.set_xscale("log", base=2)
-    ax.set_xlabel("Evidence age (log)", fontsize=8.5)
+    ax.set_xticks(sorted({a for e in per_env.values() for a, _ in e}))
+    ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+    ax.set_xlabel("Evidence age (delay, log scale)", fontsize=8.5)
     ax.set_ylabel("Full-memory BAcc", fontsize=8.5)
     ax.set_ylim(0.15, 1.03)
-    ax.set_title("Age scaling to 128 (PointMaze-L)", fontsize=8.5, weight="bold")
-    ax.legend(fontsize=6.4, loc="lower left")
+    ax.set_title("Long-delay scaling to age 128 (streaming, per env)", fontsize=8.5, weight="bold")
+    ax.legend(fontsize=6.2, loc="lower left", ncol=2, handlelength=1.3)
     ax.grid(alpha=0.3); ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)

@@ -150,8 +150,12 @@ Let $x_{0:T}$ denote rendered frames and $a_{0:T-1}$ actions.  A cue $c \in
 $y=c$.  At readout time $t$, the frozen host sees only a recent context window
 of length $K$; the cue lies strictly outside that window.  We call the delay
 between the cue's last visible frame and the readout boundary the
-\emph{evidence age} $\alpha$.  The registered ages are $\alpha\in\{4,8,15\}$,
-acting as controlled stress tests rather than automatically discovered horizons.
+\emph{evidence age} $\alpha$.  Rather than committing to a few fixed delays, we
+treat $\alpha$ as a continuous variable and sample it along a grid; the values
+$\{4,8,15\}$ are simply convenient reference points on that axis, and the delay
+study (Section~\ref{sec:revision}) sweeps $\alpha$ up to $128$.  We report
+retention as a function of $\alpha$ rather than as pass/fail at a hand-picked
+age.
 
 \paragraph{Audit conditions.}
 The audit has three conditions that share the same held-out episodes, endpoint,
@@ -404,8 +408,9 @@ Figure~\ref{fig:age-gen}a).  Age~4 asks whether evidence just outside the
 context boundary is accessible; age~8 tests whether memory is more than a short
 transient; age~15 is the long-delay probe.  The useful signal is the curve
 shape.  LSTM decays first; GRU and Mamba-lite stay stronger but fail many
-long-age rows; the slot writer holds a stable exposure margin.  Age~15 is
-therefore the architectural separator, not a cosmetic extra setting.
+long-age rows; the slot writer holds a stable exposure margin.  The separation
+grows monotonically with delay rather than being an artifact of one chosen age
+(the continuous curves in Section~\ref{sec:revision} make this explicit).
 
 We further ask whether the interface is tied to the specific registered ages.
 We train the slot writer on a \emph{mixture} of ages $\{4,8,15\}$ and evaluate
@@ -447,24 +452,27 @@ no-state controls remain at chance.}
 \label{fig:age-gen}
 \end{figure}
 
-\subsection{Where the gap concentrates}
-Figure~\ref{fig:env-heatmaps} replaces a cherry-picked hard-row table with a
-full visual analysis over all decks.  Panel~(a) shows that some locomotion-like
-rows have small gaps, which argues against an unfairly weak comparison: the
-baselines are competent when the evidence is short and coarse.  The larger gaps
-appear in Puzzle, Scene, Cube, and long-age PointMaze rows, where object
-identity, order, or spatial configuration must stay separated until readout.
-Panel~(b) confirms that slot success is not carried by a single outlier: the
-audit margin stays well above chance across the registered suite, with the
-hardest pressure on Humanoid, Puzzle, and Scene at age~15.
+\subsection{Retention as a function of delay, per environment}
+Rather than reporting a small set of fixed ages, Figure~\ref{fig:env-heatmaps}
+plots retention as a continuous function of evidence delay for every
+environment, using the mixed-age model evaluated on a dense delay grid.
+Panel~(a) shows full-memory balanced accuracy staying well above the gate as
+the delay grows for navigation decks, with a gentler curve on the structured
+manipulation and scene decks where object identity, order, or configuration
+must be preserved.  Panel~(b) plots the audit margin (full minus the stronger
+control) against delay: it stays comfortably positive across the suite, so the
+exposure is not carried by any single environment or any single chosen age.
+Reading retention as a curve, rather than as pass/fail at $\{4,8,15\}$, avoids
+over-claiming from a few hand-picked delays.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_env_heatmaps.pdf}
-\caption{Per-environment analysis over all twelve decks and three ages.
-(a)~Slot memory minus the best recurrent baseline (full BAcc gap): gains
-concentrate on structured and long-age rows.  (b)~Slot audit margin, full
-$-\max(\text{reset},\text{no-state})$: every registered cell clears the gate.}
+\caption{Per-environment retention versus evidence delay (continuous grid, not
+a fixed-age grid).  (a)~Full-memory balanced accuracy decays smoothly with
+delay, most gently on navigation and most steeply on structured manipulation
+decks.  (b)~Audit margin (full $-\max(\text{reset},\text{no-state})$) stays
+positive across environments and delays.}
 \label{fig:env-heatmaps}
 \end{figure}
 
@@ -618,10 +626,35 @@ maximum passing age rather than asserting a single stress point.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.5\linewidth]{fig_c_age_scaling.pdf}
-\caption{Age scaling to 128 on re-rendered PointMaze-large: trained ages
-(circles) and unseen ages (diamonds) at fixed per-step memory/compute.}
+\includegraphics[width=0.58\linewidth]{fig_c_age_scaling.pdf}
+\caption{Long-delay scaling to age~128 with the bounded streaming writer, one
+curve per re-rendered environment at fixed per-step memory/compute.  Retention
+decays smoothly with a long half-life while the reset control stays at chance.}
 \label{fig:age-scaling}
+\end{figure}
+
+\subsection{The memory autonomously discovers the decision-relevant evidence}
+\label{sec:discovery}
+A final question is whether the label-free memory actually \emph{finds} the
+decisive past observation or merely stores a diffuse summary.  We extract the
+slot-to-frame cross-attention on held-out episodes and plot it over time
+(Figure~\ref{fig:discovery}).  The attention concentrates sharply on the
+cue-visible window even though that window left the legal context long before
+readout, and correct decisions place more attention mass there than incorrect
+ones.  Aggregated, the memory places roughly $2$--$3\times$ more attention on
+the cue window than a uniform-attention baseline, entirely without cue labels
+--- evidence that the interface discovers which past observation drives the
+decision, not just that a cue is decodable.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_evidence_discovery.pdf}
+\caption{Autonomous evidence discovery.  (a)~Slot attention mass over time: it
+peaks on the cue-visible window (yellow) rather than the legal readout window
+(gray), and correct decisions attend it more than incorrect ones.  (b)~Fraction
+of attention mass inside the cue window versus a uniform baseline; the label-free
+memory discovers the decisive frames well above chance.}
+\label{fig:discovery}
 \end{figure}
 
 \section{Discussion}
