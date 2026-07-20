@@ -559,6 +559,96 @@ def write_hyperparam_table() -> None:
     (GENERATED / "appendix_hyperparams.tex").write_text("\n".join(lines))
 
 
+def write_stream_headline_table() -> None:
+    """Bounded-streaming (K=4) headline retention across environments, per age.
+
+    Reads outputs/paper_c_revision_v1/stream_headline/slot/*/age_*/s0/result.json.
+    Streaming writer with eviction (chunk=4); reports mean full/reset/no-state
+    balanced accuracy and the number of completed environments per age so the
+    claim is honest about coverage even when the sweep is partial.
+    """
+    root = ROOT / "outputs" / "paper_c_revision_v1" / "stream_headline"
+    by_age: dict[int, list[dict[str, float]]] = defaultdict(list)
+    for p in sorted(root.glob("**/result.json")):
+        try:
+            d = load_json(p)
+        except Exception:
+            continue
+        r = d.get("readout", {})
+        if not {"full", "reset", "no_state"}.issubset(r):
+            continue
+        by_age[int(d["age"])].append(
+            {
+                "full": float(r["full"]["balanced_accuracy"]),
+                "reset": float(r["reset"]["balanced_accuracy"]),
+                "no_state": float(r["no_state"]["balanced_accuracy"]),
+            }
+        )
+    if not by_age:
+        return
+    lines = [
+        "\\begin{tabular}{lcccc}",
+        "\\toprule",
+        "Eval age & Envs & Full & Reset & No-state\\\\",
+        "\\midrule",
+    ]
+    for age in sorted(by_age):
+        vs = by_age[age]
+        lines.append(
+            f"{age} & {len(vs)} & {mean(v['full'] for v in vs):.3f} & "
+            f"{mean(v['reset'] for v in vs):.3f} & {mean(v['no_state'] for v in vs):.3f}\\\\"
+        )
+    lines.extend(["\\bottomrule", "\\end{tabular}", ""])
+    (GENERATED / "stream_headline_tabular.tex").write_text("\n".join(lines))
+
+
+def write_max_delay_table() -> None:
+    """Empirical maximum passing delay (largest age with full BAcc >= 0.75) and
+    full-memory BAcc at age 128, per re-rendered environment (P2, streaming).
+
+    Reads outputs/paper_c_agescale_v1/<env>/auto_age/s0/result.json.
+    """
+    root = ROOT / "outputs" / "paper_c_agescale_v1"
+    order = [
+        "pointmaze-large-navigate-v0",
+        "cube-single-play-v0",
+        "puzzle-3x3-play-v0",
+        "scene-play-v0",
+    ]
+    per_env: dict[str, dict[str, Any]] = {}
+    for env in order:
+        p = root / env / "auto_age" / "s0" / "result.json"
+        if not p.is_file():
+            continue
+        d = load_json(p)
+        train_ages = "/".join(str(int(a)) for a in d.get("train_ages", []))
+        pairs = sorted(
+            (int(e["age"]), float(e["readout"]["full"]["balanced_accuracy"]))
+            for e in d["eval"]
+        )
+        passing = [a for a, f in pairs if f >= 0.75]
+        max_pass = max(passing) if passing else None
+        b128 = next((f for a, f in pairs if a == 128), None)
+        per_env[env] = {"train_ages": train_ages, "max_pass": max_pass, "b128": b128}
+    if not per_env:
+        return
+    lines = [
+        "\\begin{tabular}{lccc}",
+        "\\toprule",
+        "Environment & Train ages & Max.\\ passing delay & Full BAcc @128\\\\",
+        "\\midrule",
+    ]
+    for env in order:
+        row = per_env.get(env)
+        if row is None:
+            continue
+        mp = "n/a" if row["max_pass"] is None else str(row["max_pass"])
+        b = "n/a" if row["b128"] is None else f"{row['b128']:.3f}"
+        lines.append(f"{env_full(env)} & {row['train_ages']} & {mp} & {b}\\\\")
+    lines.extend(["\\bottomrule", "\\end{tabular}", ""])
+    (GENERATED / "max_delay_tabular.tex").write_text("\n".join(lines))
+
+
 def write_auto_age_full_table(auto: dict[str, Any]) -> None:
     by = {(row["env"], row["age"]): row for row in auto["env_age_rows"]}
     lines = [
@@ -1434,6 +1524,8 @@ def main() -> None:
     write_seed_pass_table(index)
     write_native_full_table()
     write_hyperparam_table()
+    write_stream_headline_table()
+    write_max_delay_table()
 
     convert_architecture_svg()
     plot_shortcut_diagnostics()

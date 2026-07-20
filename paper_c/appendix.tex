@@ -12,22 +12,58 @@ Table~\ref{tab:sources}.
 \begin{table}[h]
 \centering
 \footnotesize
-\caption{Primary local result sources.}
+\caption{Local result sources for every table and figure, grouped by protocol
+(P0--P3) and revision analysis.}
 \label{tab:sources}
-\begin{tabularx}{\linewidth}{lY}
+\begin{tabularx}{\linewidth}{lYl}
 \toprule
-Claim & Local source\\
+Claim & Local source & Figure / table\\
 \midrule
-Slot-memory (current method)
-  & \path{outputs/multiview_patchset_color_jepa_native_v1/summary.json}\\
+Slot-memory main audit (P0)
+  & \path{outputs/multiview_patchset_color_jepa_native_v1/summary.json}
+  & Tab.~\ref{tab:main-comparison},~\ref{tab:age-comparison}; Fig.~\ref{fig:baseline-comparison}\\
 GRU baseline
-  & \path{outputs/memory_arch_baselines_v1/gru/summary.json}\\
+  & \path{outputs/memory_arch_baselines_v1/gru/summary.json}
+  & Tab.~\ref{tab:main-comparison}\\
 LSTM baseline
-  & \path{outputs/memory_arch_baselines_v1/lstm/summary.json}\\
+  & \path{outputs/memory_arch_baselines_v1/lstm/summary.json}
+  & Tab.~\ref{tab:main-comparison}\\
 Mamba-lite baseline
-  & \path{outputs/memory_arch_baselines_v1/mamba_lite/summary.json}\\
-Fixed-controller native use
-  & \path{outputs/native_use_repaired_combined_v2/\{stats,summary\}.json}\\
+  & \path{outputs/memory_arch_baselines_v1/mamba_lite/summary.json}
+  & Tab.~\ref{tab:main-comparison}\\
+Fixed-controller native use (P0)
+  & \path{outputs/native_use_repaired_combined_v2/\{stats,summary\}.json}
+  & Tab.~\ref{tab:native-use},~\ref{tab:native-full}; Fig.~\ref{fig:native-use}\\
+Dense delay interpolation (P1)
+  & \path{outputs/multiview_patchset_auto_age_v1}
+  & Tab.~\ref{tab:auto-age},~\ref{tab:auto-age-full}; Fig.~\ref{fig:age-gen},~\ref{fig:env-heatmaps}\\
+Long-horizon extrapolation (P2)
+  & \path{outputs/paper_c_agescale_v1}
+  & Tab.~\ref{tab:max-delay}; Fig.~\ref{fig:age-scaling}\\
+Streaming cost profiling
+  & \path{outputs/streaming_cost_v1/streaming_cost.json}
+  & Fig.~\ref{fig:streaming-cost}\\
+Capacity-matched + structured (P3)
+  & \path{outputs/paper_c_revision_v1/stream_age15_s0}
+  & Tab.~\ref{tab:structured},~\ref{tab:headline-recon}; Fig.~\ref{fig:capacity}\\
+Bounded-streaming headline
+  & \path{outputs/paper_c_revision_v1/stream_headline}
+  & Tab.~\ref{tab:stream-headline}\\
+Carrier / loss ablations
+  & \path{outputs/paper_c_revision_v1/ablations}
+  & Tab.~\ref{tab:abl-slots},~\ref{tab:abl-loss},~\ref{tab:headline-recon}\\
+Shortcut-broken identity (P3)
+  & \path{outputs/paper_c_revision_v1/shortcut_shape_age15_s0}
+  & Fig.~\ref{fig:shortcut}\\
+Attention + causal necessity
+  & \path{outputs/evidence_discovery_v1/\{evidence_discovery,causal_evidence\}.json}
+  & Fig.~\ref{fig:evidence},~\ref{fig:causal-evidence}\\
+Frozen-LeWM host exposure
+  & \path{outputs/lewm_pusht_host_writer_counterfactual_checkpointed_v1/summary.json}
+  & Fig.~\ref{fig:lewm}\\
+Frozen-LeWM control battery
+  & \path{outputs/lewm_host_controls_v1/controls.json}
+  & Tab.~\ref{tab:c-lewm-controls}; Fig.~\ref{fig:c-lewm-controls}\\
 \bottomrule
 \end{tabularx}
 \end{table}

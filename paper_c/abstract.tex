@@ -15,9 +15,10 @@ suite of OGBench render decks, controlled evidence ages, and seeds, the slot
 interface clears every registered retention gate while matched controls stay at
 chance, and the largest margins over recurrent GRU, LSTM, and Mamba-lite writers
 appear exactly where evidence is old or spread across object-like structure.
-Trained on a mixture of delays, the same interface generalizes to unseen delays
-and scales to far longer horizons at constant per-step memory and compute, since
-the writer is an explicitly bounded streaming state that evicts old tokens.  The
+Trained on a mixture of delays, the same interface generalizes to unseen delays;
+the memory is bounded in output throughout, and a streaming variant that evicts
+old tokens additionally bounds the attention context, scaling to far longer
+horizons at constant per-step memory and compute.  The
 advantage survives matching the carrier capacity and adding structured
 state-space, gated-slot, and retrieval memories, does not depend on a colour
 shortcut when the cue identity is decorrelated from colour, and transfers into a

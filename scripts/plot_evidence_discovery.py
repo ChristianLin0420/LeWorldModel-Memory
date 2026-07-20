@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Evidence-discovery / decision plot for paper_c.
 
-Loads a trained one-shot slot-memory checkpoint and, on held-out episodes,
-extracts the slot->frame cross-attention over time. This shows *which past
+Loads a trained one-shot (chunk=0) slot-memory checkpoint and, on held-out
+episodes, extracts the read-time slot->frame cross-attention over the full
+prefix. (A truly streaming writer would instead expose write-time attention;
+this figure is the one-shot read-time case.) This shows *which past
 observations the label-free memory discovers as decision-relevant*: attention
 concentrates on the cue-visible window even though the cue left the legal
 context long before readout, and correct readout decisions place more attention
@@ -163,7 +165,7 @@ def main() -> None:
     ax.plot(t, r["wrong_mass"], "-o", ms=3, lw=1.5, color=PI["bad"], label="incorrect decisions")
     ax.set_xlabel("Frame index (time)", fontsize=9)
     ax.set_ylabel("Slot attention mass", fontsize=9)
-    ax.set_title(f"(a) discovered evidence over time\n({r['env'].split('-')[0]}, age {AGE})", fontsize=8.5, weight="bold")
+    ax.set_title(f"(a) discovered evidence over time (one-shot read-time attn)\n({r['env'].split('-')[0]}, age {AGE})", fontsize=8.5, weight="bold")
     ax.legend(fontsize=6.4, loc="upper right")
     ax.grid(alpha=0.3); ax.set_axisbelow(True)
     for s in ("top", "right"):
@@ -177,7 +179,7 @@ def main() -> None:
     ax.set_xticks(x)
     ax.set_xticklabels([e.split("-")[0] for e in envs], fontsize=8)
     ax.set_ylabel("Attention mass in cue window", fontsize=9)
-    ax.set_title("(b) label-free evidence discovery rate", fontsize=8.5, weight="bold")
+    ax.set_title("(b) label-free evidence discovery rate\n(one-shot read-time full-prefix attention)", fontsize=8.5, weight="bold")
     ax.legend(fontsize=6.4, loc="upper right")
     ax.grid(axis="y", alpha=0.3); ax.set_axisbelow(True)
     for s in ("top", "right"):

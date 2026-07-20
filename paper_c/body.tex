@@ -151,11 +151,13 @@ $y=c$.  At readout time $t$, the frozen host sees only a recent context window
 of length $K$; the cue lies strictly outside that window.  We call the delay
 between the cue's last visible frame and the readout boundary the
 \emph{evidence age} $\alpha$.  Rather than committing to a few fixed delays, we
-treat $\alpha$ as a continuous variable and sample it along a grid; the values
-$\{4,8,15\}$ are simply convenient reference points on that axis, and the delay
-study (Section~\ref{sec:revision}) sweeps $\alpha$ up to $128$.  We report
-retention as a function of $\alpha$ rather than as pass/fail at a hand-picked
-age.
+treat $\alpha$ as an ordered stress variable evaluated on increasingly dense and
+geometric grids; the values $\{4,8,15\}$ are simply convenient reference points
+on that axis (protocol~P0), the dense-interpolation study (protocol~P1) fills in
+$\{4,6,8,10,12,15,18\}$, and the long-horizon study
+(Section~\ref{sec:age-scaling}, protocol~P2) extends $\alpha$ geometrically up to
+$128$.  We report retention as a function of $\alpha$ rather than as pass/fail at
+a hand-picked age.
 
 \paragraph{Audit conditions.}
 The audit has three conditions that share the same held-out episodes, endpoint,
@@ -307,6 +309,25 @@ were never used at all, there would be no way to audit whether the memory
 retained the task-relevant cue.  The split between label-free training and
 label-revealed evaluation is a measurement design, not a loophole.
 
+\subsection{Retention timeline}
+\label{sec:timeline}
+It is worth stating the chronology explicitly, because the target miner and the
+writer interact with the cue frames at different moments:
+\begin{center}\small
+cue frame observed $\;\to\;$ written to memory $\;\to\;$ cue tokens evicted
+$\;\to\;$ distractor chunks processed $\;\to\;$ audit at readout.
+\end{center}
+The writer \emph{observes} the cue frames when they arrive and folds them into
+the slot state; only \emph{afterwards} are those tokens evicted (streaming
+writer) or pushed outside the legal window (one-shot writer), and the audit
+happens later still, once several distractor chunks have been processed.  The
+target miner masks salient \emph{patches} from the visible stream so the writer
+cannot copy a legal answer, but this masking removes patches from the
+\emph{prediction target}; the writer has already observed the cue frames before
+they are hidden.  Retention is therefore genuine --- the memory carries evidence
+it saw and then lost access to, rather than reading a cue that was never
+deleted.
+
 \begin{algorithm}[t]
 \SetAlgoLined
 \DontPrintSemicolon
@@ -318,11 +339,18 @@ label-revealed evaluation is a measurement design, not a loophole.
     $v_b \leftarrow \mathrm{SampleSalientView}(b)$; \quad patches$_b \leftarrow \mathrm{TopSalientPatches}(v_b)$\;
   }
   $Y \leftarrow \{\,\mathrm{stopgrad}(\phi(\text{patch}))\,\}$;\quad remove mined views from visible $Z$\;
-  $M_t \leftarrow f_\theta(Z)$ \tcp*{Eq.~\eqref{eq:slot}, $S{=}8$ slots}
-  $\hat{Y} \leftarrow p_\theta(M_t)$; \quad $\mathcal{L} \leftarrow$ Eq.~\eqref{eq:loss} \tcp*{no cue labels}
+  $M \leftarrow M_0$ \tcp*{learned initial slots, $S$ slots}
+  \ForEach{chunk $Z_j$ of $Z$ in chronological order}{
+    $M \leftarrow f_\theta(M,\, Z_j)$ \tcp*{Eq.~\eqref{eq:streaming}; keys/values $=[M;Z_j]$}
+    permanently delete $Z_j$ \tcp*{pre-chunk tokens are inaccessible}
+  }
+  $\hat{Y} \leftarrow p_\theta(M)$; \quad $\mathcal{L} \leftarrow$ Eq.~\eqref{eq:loss} \tcp*{no cue labels}
   update $\theta$ with AdamW on $\nabla_\theta \mathcal{L}$\;
 }
-\caption{Label-free masked patch-set training (per method; only $f_\theta$ changes).}
+\caption{Label-free masked patch-set training with the bounded streaming writer
+  (per method; only $f_\theta$ changes).  With a chunk larger than the sequence
+  the loop reduces to the one-shot writer $M\leftarrow f_\theta(Z)$ of
+  Eq.~\eqref{eq:slot}, which we keep as an ablation.}
 \label{alg:train}
 \end{algorithm}
 
@@ -341,15 +369,85 @@ cell passes $\Leftarrow$ Eq.~\eqref{eq:gate}\;
 \end{algorithm}
 
 \section{Experiments}
+\label{sec:experiments-main}
 
 \paragraph{Protocol.}
 We evaluate twelve rendered OGBench decks \citep{r_ogbench}: PointMaze medium,
 large, giant, and teleport; AntMaze large and giant; HumanoidMaze large; Cube
-single, double, and triple; Puzzle-3x3; and Scene.  Every memory writer is run
-at ages $4/8/15$ and seeds $0/1/2$ ($108$ cells per method).  Figures and tables
-are generated from local JSON/NPZ artifacts by \path{scripts/plot_paper_c.py};
-per-environment numbers appear in Appendix~\ref{app:full}.  Balanced accuracy is
-reported throughout; chance is $0.25$.
+single, double, and triple; Puzzle-3x3; and Scene.  Every memory writer in the
+main audit is run at ages $4/8/15$ and seeds $0/1/2$ ($108$ cells per method).
+Figures and tables are generated from local JSON/NPZ artifacts by
+\path{scripts/plot_paper_c.py}; per-environment numbers appear in
+Appendix~\ref{app:full}.  Balanced accuracy is reported throughout; chance is
+$0.25$.
+
+\paragraph{Protocols.}
+The paper reports results under four named protocols that differ in the writer,
+the environment subset, and the evaluation grid; every results table and figure
+caption states which protocol it uses (Table~\ref{tab:protocols}).  Protocol~P0
+is the main controlled-age audit with the one-shot bounded-output writer; P1
+tests dense delay interpolation; P2 tests long-horizon extrapolation with the
+bounded streaming writer; and P3 is the capacity-matched, structured-deck
+comparison at strictly bounded context.  Keeping the protocols explicit prevents
+conflating numbers produced under different writers or environment subsets ---
+in particular, the headline audit numbers come from P0 (one-shot), not from the
+streaming writer.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Named evaluation protocols.  \emph{Writer} is one-shot (full-prefix,
+bounded output) or streaming (chunk eviction, bounded context).}
+\label{tab:protocols}
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\linewidth}{llllX}
+\toprule
+Protocol & Writer & Train / eval ages & Envs & Config / source\\
+\midrule
+P0 (main audit) & one-shot & $\{4,8,15\}$ / $\{4,8,15\}$ & 12 decks &
+  cue color, 3 seeds, $D{=}256$/$S{=}24$/96ep
+  (\path{multiview_patchset_color_jepa_native_v1})\\
+P1 (dense interp.) & one-shot & $\{4,8,15\}$ / $\{4,6,8,10,12,15,18\}$ & 12 &
+  mixed-age training (\path{multiview_patchset_auto_age_v1})\\
+P2 (long-horizon) & streaming & $\{4,8,16\}$ / $\{4,8,16,32,64,128\}$ & 4 &
+  re-rendered episodes (\path{paper_c_agescale_v1})\\
+P3 (capacity/struct.) & streaming & $15$ / $15$ & 3 struct. &
+  cube-single, puzzle-3x3, scene; $D{=}160$/$S{=}8$/36ep, $K{=}4$
+  (\path{paper_c_revision_v1/stream_age15_s0})\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Reconciling the age-15 numbers.}
+Because different protocols use different writers, environment subsets, and
+capacities, several distinct ``age-15 slot'' numbers appear in the paper.
+Table~\ref{tab:headline-recon} lists each with its exact settings so they are
+not confused.  The headline $0.962$ is the P0 one-shot writer averaged over all
+twelve decks; the lower structured-deck numbers reflect harder decks, matched
+capacity, and (for two of them) strictly bounded streaming context.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Every reported age-15 slot balanced accuracy with its protocol and
+settings.  ``One-shot'' re-reads the full prefix (bounded output); ``streaming''
+evicts chunks (bounded context, chunk $K{=}4$).  Values are read from the source
+artifacts of each protocol.}
+\label{tab:headline-recon}
+\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lllllllll}
+\toprule
+Age-15 BAcc & Protocol & Env subset & Cue & Train ages & Eval age & Writer & Chunk & $D$/$S$ (seeds)\\
+\midrule
+\rowcolor{MemCream}
+$0.962$ & P0 & 12 decks & color & $4/8/15$ & 15 & one-shot & none & $256$/$24$ (3)\\
+$0.735$ & P3 (cap.-matched) & 3 struct.\ decks & color & 15 & 15 & streaming & 4 & $160$/$8$ (1)\\
+$0.818$ & P3 (ablation) & cube-single, puzzle-3x3 & color & 15 & 15 & one-shot & none & $160$/$8$ (1)\\
+$0.671$ & P3 (ablation) & cube-single, puzzle-3x3 & color & 15 & 15 & streaming & 4 & $160$/$8$ (1)\\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 \subsection{Architecture comparison under a shared contract}
 Table~\ref{tab:main-comparison} and Figure~\ref{fig:baseline-comparison} give
@@ -366,8 +464,9 @@ baseline (GRU) passes $22$ rows and $73$ cells, and LSTM collapses to $6$ rows.
 \centering
 \footnotesize
 \caption{Controlled-age retention and exposure over 12 decks, 3 ages, and 3
-seeds.  Full, reset, and no-state are balanced accuracies from the shared
-post-hoc readout; controls are matched on the same held-out rows.}
+seeds (protocol~P0, one-shot writer).  Full, reset, and no-state are balanced
+accuracies from the shared post-hoc readout; controls are matched on the same
+held-out rows.}
 \label{tab:main-comparison}
 \input{generated_results/main_comparison_tabular.tex}
 \end{table}
@@ -375,9 +474,9 @@ post-hoc readout; controls are matched on the same held-out rows.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.86\linewidth]{fig_c_baseline_comparison.pdf}
-\caption{Architecture comparison with all non-memory components held fixed.  The
-slot writer dominates mean retention, the age-15 stress test, and the
-fail-closed all-pass count.}
+\caption{Architecture comparison with all non-memory components held fixed
+(protocol~P0).  The slot writer dominates mean retention, the age-15 stress
+test, and the fail-closed all-pass count.}
 \label{fig:baseline-comparison}
 \end{figure}
 
@@ -395,7 +494,7 @@ the current frame.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_cue_inference.pdf}
-\caption{Shortcut diagnostics on held-out Puzzle age-15 features.
+\caption{Shortcut diagnostics on held-out Puzzle age-15 features (protocol~P0).
 (a)~Cue inference: dashed boxes mark the true cue, solid boxes the prediction;
 full memory tracks the old cue while the controls collapse toward endpoint bias.
 (b)~Row-normalized confusion: full memory is diagonal, the controls are not.}
@@ -410,7 +509,8 @@ transient; age~15 is the long-delay probe.  The useful signal is the curve
 shape.  LSTM decays first; GRU and Mamba-lite stay stronger but fail many
 long-age rows; the slot writer holds a stable exposure margin.  The separation
 grows monotonically with delay rather than being an artifact of one chosen age
-(the continuous curves in Section~\ref{sec:revision} make this explicit).
+(the dense-grid delay curves of protocols~P1--P2 in Section~\ref{sec:revision}
+make this explicit).
 
 We further ask whether the interface is tied to the specific registered ages.
 We train the slot writer on a \emph{mixture} of ages $\{4,8,15\}$ and evaluate
@@ -429,14 +529,15 @@ leave to future work (Appendix~\ref{app:autoage}).
 \footnotesize
 \begin{minipage}[t]{0.46\linewidth}
 \centering
-\caption{Age-wise mean full-memory balanced accuracy (fixed-age training).}
+\caption{Age-wise mean full-memory balanced accuracy (fixed-age training,
+protocol~P0).}
 \label{tab:age-comparison}
 \input{generated_results/age_comparison_tabular.tex}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.50\linewidth}
 \centering
-\caption{Mixed-age training (ages $\{4,8,15\}$), evaluated on a denser grid;
-held-out ages shaded.}
+\caption{Mixed-age training (protocol~P1; ages $\{4,8,15\}$), evaluated on a
+denser grid; held-out ages shaded.}
 \label{tab:auto-age}
 \resizebox{\linewidth}{!}{\input{generated_results/auto_age_summary_tabular.tex}}
 \end{minipage}
@@ -445,10 +546,10 @@ held-out ages shaded.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_age_generalization.pdf}
-\caption{(a)~Fixed-age training: recurrent baselines decay as evidence ages,
-while the slot writer stays above the gate.  (b)~Mixed-age training generalizes
-to unseen ages (diamonds); full-memory exposure stays high while reset and
-no-state controls remain at chance.}
+\caption{(a)~Fixed-age training (protocol~P0): recurrent baselines decay as
+evidence ages, while the slot writer stays above the gate.  (b)~Mixed-age
+training (protocol~P1) generalizes to unseen ages (diamonds); full-memory
+exposure stays high while reset and no-state controls remain at chance.}
 \label{fig:age-gen}
 \end{figure}
 
@@ -468,8 +569,8 @@ over-claiming from a few hand-picked delays.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_env_heatmaps.pdf}
-\caption{Per-environment retention versus evidence delay (continuous grid, not
-a fixed-age grid).  (a)~Full-memory balanced accuracy decays smoothly with
+\caption{Per-environment retention versus evidence delay (protocol~P1 dense
+grid, not a fixed-age grid).  (a)~Full-memory balanced accuracy decays smoothly with
 delay, most gently on navigation and most steeply on structured manipulation
 decks.  (b)~Audit margin (full $-\max(\text{reset},\text{no-state})$) stays
 positive across environments and delays.}
@@ -498,8 +599,8 @@ own predictive output.
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.78\linewidth]{fig_c_native_heatmap.pdf}
-\caption{Fixed-controller native use on supported decks.  Each cell shows
-full-memory executed success and, below it, the gain over the stronger
+\caption{Fixed-controller native use on supported decks (protocol~P0).  Each cell
+shows full-memory executed success and, below it, the gain over the stronger
 recent-only or random-target control.}
 \label{fig:native-use}
 \end{figure}
@@ -507,7 +608,8 @@ recent-only or random-target control.}
 \begin{table}[t]
 \centering
 \footnotesize
-\caption{Fixed-controller native-use summary for supported OGBench rows.}
+\caption{Fixed-controller native-use summary for supported OGBench rows
+(protocol~P0).}
 \label{tab:native-use}
 \input{generated_results/native_use_tabular.tex}
 \end{table}
@@ -523,15 +625,23 @@ actual world-model host.
 
 \subsection{The memory is bounded and streaming}
 \label{sec:streaming-results}
-We reformulate the writer as the chunked recurrence of Eq.~\eqref{eq:streaming}
-and evict each chunk after it is consumed.  Figure~\ref{fig:streaming-cost}
-measures the writer as the observed sequence grows.  The one-shot full-prefix
-writer's peak activation memory grows with length, while the streaming writer's
-per-step compute is flat and its peak memory stays bounded: the persistent
-state is a fixed $S\times D$ tensor and no pre-eviction tokens are retained.
-The audit numbers in the previous section are reported with this streaming
-writer, so the retention claim is a property of a bounded state rather than of
-re-reading history.
+We distinguish two notions of boundedness.  In \emph{all} experiments the slot
+memory is bounded in \emph{output}: the persistent state the readout consumes is
+a fixed $S\times D$ tensor regardless of sequence length.  The
+\emph{streaming} writer additionally bounds the attention \emph{context} via the
+chunked recurrence of Eq.~\eqref{eq:streaming}, evicting each chunk after it is
+consumed so that peak activation memory and per-step compute are constant in
+sequence length (Figure~\ref{fig:streaming-cost}).  The one-shot full-prefix
+writer, by contrast, bounds only the output while re-reading every historical
+token, so its peak activation memory grows with length.  To be explicit about
+which writer produces which number: the main retention and exposure audit tables
+in Section~\ref{sec:experiments-main} (protocol~P0) use the \emph{one-shot}
+bounded-output writer, and the streaming variant attains slightly lower accuracy
+at strictly bounded context (Table~\ref{tab:headline-recon}, and the
+one-shot-vs-streaming ablation in Appendix~\ref{app:ablations}).  We do
+\emph{not} claim the headline numbers are produced by the streaming writer; we
+instead validate that the streaming writer retains old evidence broadly across
+environments at bounded context (Table~\ref{tab:stream-headline}).
 
 \begin{figure}[t]
 \centering
@@ -541,6 +651,25 @@ full-prefix writer grows with sequence length; the streaming writer stays
 bounded.  (b)~Per-step compute is constant for the streaming writer.}
 \label{fig:streaming-cost}
 \end{figure}
+
+Table~\ref{tab:stream-headline} reports the bounded streaming writer
+($K{=}4$, chunk eviction) across the navigation and locomotion decks at the
+registered ages.  Even at strictly constant per-step memory and compute, the
+streaming writer clears the fail-closed gate on average at every age while the
+reset and no-state controls stay at chance, so bounded-context retention is a
+property that holds broadly, not only on a single deck.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Bounded-streaming retention across environments (streaming writer,
+$K{=}4$, chunk eviction; \protect\path{outputs/paper_c_revision_v1/stream_headline}).
+Mean full/reset/no-state balanced accuracy over the completed
+navigation/locomotion decks per age (the sweep is partial; the \emph{Envs}
+column reports how many decks completed).}
+\label{tab:stream-headline}
+\input{generated_results/stream_headline_tabular.tex}
+\end{table}
 
 \subsection{Gains survive capacity matching and structured baselines}
 Because the audit readout consumes a mean-pooled $D$-dimensional vector for
@@ -552,15 +681,27 @@ eight learned output queries, and add structured memories that reviewers expect
 --- SlotSSM-style slot state-space, gated slot attention, a top-$k$ episodic
 retrieval cache, and a Transformer-XL cached state.
 Figure~\ref{fig:capacity} plots age-15 full-memory accuracy against exposed
-state scalars and compares all carriers under the shared contract.  The slot
+state scalars and compares all carriers under the shared contract (protocol~P3:
+the three structured decks, streaming $K{=}4$, matched $D{=}160$).  The slot
 interface remains at the top of the accuracy-vs-capacity frontier: matching the
 carrier size does not close the gap, and structured recurrent/retrieval
 memories do not match the slot writer's long-age exposure at equal state size.
+We are careful not to over-claim here.  On these hardest decks the slot writer's
+mean full-memory balanced accuracy is $0.735$
+(Table~\ref{tab:structured}) --- it is the \emph{strongest} carrier under matched
+capacity, comfortably ahead of the next-best structured memory (GSA at $0.669$)
+and every recurrent baseline, but it sits just \emph{below} the $0.750$
+registered gate of Eq.~\eqref{eq:gate}.  We therefore report P3 as a
+capacity-matched \emph{ranking} of carriers on the hardest, bounded-context
+setting, not as clearing the gate: the gate-clearing retention claim belongs to
+P0 (Table~\ref{tab:main-comparison}), where the one-shot writer passes every
+registered cell.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_capacity_structured.pdf}
-\caption{Capacity-matched and structured comparison at age~15.  (a)~Full-memory
+\caption{Capacity-matched and structured comparison at age~15 (protocol~P3).
+(a)~Full-memory
 balanced accuracy across recurrent, state-space, slot, retrieval, and cached
 baselines under the identical target/loss/readout contract.  (b)~Accuracy vs
 exposed persistent-state scalars: the slot interface sits on the upper frontier
@@ -571,8 +712,10 @@ rather than winning by state size.}
 \begin{table}[t]
 \centering
 \footnotesize
-\caption{Structured and capacity-matched memory baselines (age~15, matched
-$D{=}160$).  State scalars are the exposed persistent-state size.}
+\caption{Structured and capacity-matched memory baselines (protocol~P3; age~15,
+matched $D{=}160$, streaming $K{=}4$).  State scalars are the exposed
+persistent-state size.  The slot writer is the strongest carrier at $0.735$ but
+sits just below the $0.750$ gate on these hardest decks.}
 \label{tab:structured}
 \input{generated_results/structured_baselines_tabular.tex}
 \end{table}
@@ -589,9 +732,9 @@ the memory retains object-like structure, not merely a hue.
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.52\linewidth]{fig_c_shortcut.pdf}
-\caption{Randomized-colour identity cue: colour is decorrelated from the label,
-so pooled colour cannot solve the task.  Full memory still separates the old
-cue while reset and no-state remain at chance.}
+\caption{Randomized-colour identity cue (protocol~P3, structured decks): colour
+is decorrelated from the label, so pooled colour cannot solve the task.  Full
+memory still separates the old cue while reset and no-state remain at chance.}
 \label{fig:shortcut}
 \end{figure}
 
@@ -616,45 +759,138 @@ matched reset/no-state controls (five seeds).}
 \label{fig:lewm}
 \end{figure}
 
-\subsection{Age scaling}
-Finally we test how far back the interface retains evidence.  We re-render
-longer PointMaze-large episodes, train on ages $\{4,8,16\}$, and evaluate on a
-geometric ladder up to age~128 at fixed per-step budget
-(Figure~\ref{fig:age-scaling}).  Full-memory exposure decays gracefully with a
-long empirical half-life while the controls stay at chance, quantifying the
-maximum passing age rather than asserting a single stress point.
+\paragraph{Frozen-LeWM host-writer: specification.}
+We inject a slot-memory residual into the \emph{frozen} official PushT LeWorldModel (\texttt{quentinll/lewm-pusht}, rev.\ \texttt{22b330c}; ViT-S encoder $+$ 6-layer causal predictor, 192-d latents, 3-frame context, action dim 10), keeping \emph{both} encoder and predictor frozen (state-dict digest asserted unchanged). A Host-Aligned Evidence Writer ($6$ slots, dim $256$, $4$ heads, $\sim$2.76M params) forms slots from the full prefix and adds a gated residual $\mathbf z^{\text{ctx}}\!\leftarrow\!\mathbf z^{\text{ctx}}+ s\cdot g\odot\Delta$ into the final legal context $\{16,17,18\}$. The adapter is trained \emph{label-free} (contrastive cue-delta targets, 64 epochs, AdamW $3\!\times\!10^{-4}$); semantic labels are used only for a post-hoc Ridge readout on the host's own $192$-d next-step output. The task is 6-way multi-item visual-binding recall (color-order permutations) with the cue placed $15$ steps before the decision; $1200$ train / $480$ val episodes, $5$ seeds.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+Condition & Host-output balanced acc.\ (mean $\pm$ s.d.) \\
+\midrule
+host-only (no memory) & $0.161 \pm 0.019$ \\
+\textbf{correct memory} & $\mathbf{0.919 \pm 0.006}$ \\
+reset prefix & $0.151 \pm 0.016$ \\
+no-state & $0.161 \pm 0.019$ \\
+shuffled episode & $0.168 \pm 0.013$ \\
+random memory (matched norm) & $0.170 \pm 0.019$ \\
+memory-only probe & $0.908 \pm 0.009$ \\
+\midrule
+chance ($1/6$) & $0.167$ \\
+\bottomrule
+\end{tabular}
+\caption{Control battery for the frozen-LeWM host-writer (age 15, 5 seeds). Adapters and cue cache are reused from the primary run; no retraining.}
+\label{tab:c-lewm-controls}
+\end{table}
+
+Injecting the correct-episode memory lets the frozen host expose the out-of-window cue in its \emph{own} output at $0.919$ balanced accuracy, whereas the native host, a reset prefix, a shuffled-episode memory, and a matched-norm random residual all sit at chance ($0.15$--$0.17$), showing the effect is episode-specific and not an injection-path artifact. The memory-only probe reaches $0.908$, so the evidence is already linearly decodable from the injected memory and the host reproduces essentially all of it, adding only a small transformation (Fig.~\ref{fig:c-lewm-controls}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\linewidth]{fig_c_lewm_controls.pdf}
+\caption{Frozen-LeWM host-writer control battery (age~15, five seeds).  Only the
+correct-episode memory and the memory-only probe expose the out-of-window cue in
+the host's own output; host-only, reset, no-state, shuffled-episode, and
+matched-norm random memory all sit at chance ($1/6$).}
+\label{fig:c-lewm-controls}
+\end{figure}
+
+\subsection{Age scaling and empirical maximum passing delay}
+\label{sec:age-scaling}
+Finally we test how far back the interface retains evidence (protocol~P2).  We
+re-render longer episodes for four environments (PointMaze-large, Cube-single,
+Puzzle-3x3, and Scene), train on ages $\{4,8,16\}$ with the bounded streaming
+writer, and evaluate on a geometric ladder up to age~128 at fixed per-step
+budget (Figure~\ref{fig:age-scaling}).  Rather than fitting a decay constant, we
+report the \emph{empirical maximum passing delay}: the largest evaluated age at
+which full-memory balanced accuracy still clears the $0.750$ gate.
+Table~\ref{tab:max-delay} lists this quantity and the balanced accuracy at
+age~128 per environment.  Retention extends far beyond the registered ages on
+the navigation and single-object decks (PointMaze-large and Puzzle-3x3 pass to
+age~64, Cube-single all the way to age~128) and is shortest on the cluttered
+Scene deck (age~16), while the reset control stays at chance throughout.  This
+quantifies the maximum passing delay directly rather than asserting a single
+stress point.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.58\linewidth]{fig_c_age_scaling.pdf}
-\caption{Long-delay scaling to age~128 with the bounded streaming writer, one
-curve per re-rendered environment at fixed per-step memory/compute.  Retention
-decays smoothly with a long half-life while the reset control stays at chance.}
+\caption{Long-delay scaling to age~128 with the bounded streaming writer
+(protocol~P2), one curve per re-rendered environment at fixed per-step
+memory/compute.  Full-memory retention decays smoothly while the reset control
+stays at chance; the per-environment maximum passing delay is reported in
+Table~\ref{tab:max-delay}.}
 \label{fig:age-scaling}
 \end{figure}
 
-\subsection{The memory autonomously discovers the decision-relevant evidence}
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Empirical maximum passing delay (largest evaluated age with full-memory
+BAcc $\ge 0.750$) and full-memory BAcc at age~128, per re-rendered environment
+(protocol~P2, bounded streaming writer; \protect\path{outputs/paper_c_agescale_v1}).}
+\label{tab:max-delay}
+\input{generated_results/max_delay_tabular.tex}
+\end{table}
+
+\subsection{Write-time attention correlates with the cue interval, and cue
+frames are causally necessary}
 \label{sec:discovery}
 A final question is whether the label-free memory actually \emph{finds} the
 decisive past observation or merely stores a diffuse summary.  We extract the
 slot-to-frame cross-attention on held-out episodes and plot it over time
-(Figure~\ref{fig:discovery}).  The attention concentrates sharply on the
-cue-visible window even though that window left the legal context long before
-readout, and correct decisions place more attention mass there than incorrect
-ones.  Aggregated, the memory places roughly $2$--$3\times$ more attention on
-the cue window than a uniform-attention baseline, entirely without cue labels
---- evidence that the interface discovers which past observation drives the
-decision, not just that a cue is decodable.
+(Figure~\ref{fig:evidence}): it concentrates sharply on the cue-visible window
+even though that window left the legal context long before readout, and correct
+decisions place more attention mass there than incorrect ones.
+
+The attention visualized in Fig.~\ref{fig:evidence} is one-shot \emph{read-time}
+slot$\to$frame cross-attention from the full-prefix writer (chunk$=0$; a
+strictly streaming writer would instead expose write-time attention). To test
+whether this attention reflects causal attribution rather than mere
+concentration, we delete input frame tokens \emph{before the writer reads them}
+(setting \texttt{valid}$=0$ and zeroing the token) and recompute the frozen
+ridge readout: deleting the three cue frames collapses balanced accuracy from
+$\{1.00,0.94,1.00,0.97\}$ to near chance ($0.25$), a drop of
+$\Delta=0.77/0.67/0.66/0.73$ on PointMaze/Puzzle/Cube/Scene ($\pm{\le}0.04$,
+$2000$-sample episode bootstrap), establishing that cue frames are causally
+necessary. Crucially, deleting the three \emph{most-attended} old
+frames---selected by the model's read-time attention with no cue
+knowledge---reduces accuracy far more than deleting three random or three recent
+legal frames ($\Delta_{\text{top-3}}=0.53/0.10/0.65/0.16$ vs.\
+$\Delta_{\text{random}}\le0.01$), so attention localizes causally load-bearing
+evidence rather than merely correlating with it. The effect tracks
+concentration: the cue-window attention mass exceeds the uniform baseline by
+$2.91\times$ $[2.76,3.06]$ (PointMaze), $1.86\times$ $[1.82,1.89]$ (Cube), and
+$1.41\times$ (Puzzle $[1.34,1.48]$, Scene $[1.36,1.46]$), correcting our earlier
+imprecise ``$\sim$2--3$\times$'' claim; single-frame deletions barely move
+accuracy ($\Delta\le0.06$) because the cue is shown redundantly across three
+frames, which is why all interventions are count-matched at three deleted
+frames.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_evidence_discovery.pdf}
-\caption{Autonomous evidence discovery.  (a)~Slot attention mass over time: it
-peaks on the cue-visible window (yellow) rather than the legal readout window
-(gray), and correct decisions attend it more than incorrect ones.  (b)~Fraction
-of attention mass inside the cue window versus a uniform baseline; the label-free
-memory discovers the decisive frames well above chance.}
-\label{fig:discovery}
+\caption{Autonomous evidence discovery (one-shot read-time slot attention).
+(a)~Slot attention mass over time: it peaks on the cue-visible window (yellow)
+rather than the legal readout window (gray), and correct decisions attend it
+more than incorrect ones.  (b)~Fraction of attention mass inside the cue window
+versus a uniform baseline; the label-free memory discovers the decisive frames
+well above chance.}
+\label{fig:evidence}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_causal_evidence.pdf}
+\caption{Causal necessity of the cue frames.  Deleting the three cue frames
+before the writer reads them collapses balanced accuracy to near chance, and
+deleting the three most-attended old frames (selected by read-time attention,
+with no cue knowledge) hurts far more than deleting random or recent legal
+frames --- so read-time attention localizes causally load-bearing evidence.
+Interventions are count-matched at three deleted frames; error bars are a
+$2000$-sample episode bootstrap.}
+\label{fig:causal-evidence}
 \end{figure}
 
 \section{Discussion}
@@ -704,10 +940,24 @@ Old-evidence memory should be evaluated by retention, exposure, and bounded use.
 A hidden state that stores information but never exposes it is not enough for a
 frozen world-model interface; a readout that succeeds without controls is not
 enough either.  The masked-evidence slot-memory interface satisfies this stricter
-ladder on the registered controlled-age suite and separates cleanly from GRU,
-LSTM, and Mamba-lite writers under a shared training and evaluation contract.
-The result supports an ICLR-style controlled-age memory paper when the claim
-remains scoped to structured retention and exposure.
+ladder on the registered controlled-age suite (protocol~P0) and separates
+cleanly from GRU, LSTM, and Mamba-lite writers under a shared training and
+evaluation contract.  The revision fills in the fuller story: the memory is
+bounded in both output ($S\times D$ state in every experiment) and, in the
+streaming writer, context (constant per-step memory and compute via chunk
+eviction); dense-grid delay curves show the exposure is a smooth function of
+evidence age rather than an artifact of $\{4,8,15\}$; a long-horizon study
+quantifies the empirical maximum passing delay out to age~128; capacity-matched
+and structured-memory baselines confirm the slot interface is the strongest
+carrier at matched state size even where it sits just below the gate on the
+hardest decks; a shortcut-broken identity task shows the memory retains
+object-like structure rather than a colour; the frozen-LeWM host exposes the
+old cue in its \emph{own} output with a full control battery; and a
+counterfactual deletion test establishes that the cue frames are causally
+necessary and that read-time attention localizes them.  The clean claim remains
+a scoped, fail-closed evaluation protocol plus a controlled demonstration that
+target--carrier--host structural alignment improves host-visible old-evidence
+exposure.
 
 \section{Limitations}
 
@@ -717,7 +967,21 @@ memory patterns.  The native-use claim depends on fixed controllers and is
 reported only for environments with audited local controllers.  The Mamba-lite
 baseline tests selective recurrence but is not the optimized official Mamba
 stack.  The readout uses labels after training, so this is an audit of exposed
-representation quality rather than an end-to-end policy.  Most importantly,
-automatic age discovery remains future work: the current paper tests registered
-delays, while the next stage must learn a delay-robust router and report
-unseen-age generalization.
+representation quality rather than an end-to-end policy.
+
+Several directions remain genuinely open.  (i)~\emph{Automatic retrieval
+routing}: the current interface exposes a bounded memory but does not learn
+\emph{which} stored slot to consult for a given query, so a content-,
+timestamp-, and confidence-aware router is future work.  (ii)~\emph{Interference
+between multiple old events}: our tasks isolate one decisive cue, and we do not
+yet study how several old events compete inside a fixed-size slot set.
+(iii)~\emph{Overwrite and recency competition}: with a bounded state and
+eviction, understanding when new evidence should overwrite old evidence is
+unresolved.  (iv)~\emph{Natural observations}: cues are synthetic, and moving to
+non-synthetic robot observations is necessary to claim real-world memory.
+(v)~\emph{End-to-end planning with memory}: we audit exposure and bounded use,
+not closed-loop planning that consumes the memory.  Finally, our causal analysis
+(Section~\ref{sec:discovery}) inspects one-shot \emph{read-time} attention;
+analyzing the \emph{write-time} attention of a strictly streaming writer, which
+would show \emph{when} evidence is committed rather than \emph{how} it is later
+read, remains future work.
