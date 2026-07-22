@@ -1,0 +1,49 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,booktabs,array,tabularx,multirow}
+\usepackage{xcolor,colortbl,microtype,caption}
+\usepackage[ruled,linesnumbered]{algorithm2e}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\hypersetup{pdfauthor={},pdftitle={Causal-Effect Memory for Raw Visual Events},pdfsubject={Anonymous ICLR submission}}
+\emergencystretch=2em
+\raggedbottom
+
+\definecolor{CEMInk}{HTML}{171717}
+\definecolor{CEMCream}{HTML}{F7F4EA}
+\definecolor{CEMYellow}{HTML}{D19E00}
+\definecolor{CEMGreen}{HTML}{477A55}
+\definecolor{CEMRed}{HTML}{9A3F38}
+\newcommand{\cem}{\textsc{CEM}}
+\newcommand{\CE}{\operatorname{CE}}
+\newcommand{\Pass}{\textcolor{CEMGreen}{\ensuremath{\checkmark}}}
+\newcommand{\Fail}{\textcolor{CEMRed}{\ensuremath{\times}}}
+\newcommand{\NA}{\textcolor{black!45}{\textemdash}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\graphicspath{{figures/}}
+
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
+\setlength{\floatsep}{9pt plus 2pt minus 2pt}
+\setlength{\intextsep}{9pt plus 2pt minus 2pt}
+\captionsetup{font=footnotesize,labelfont={bf,color=CEMYellow},skip=3pt}
+
+\title{Causal-Effect Memory for Raw Visual Events in Finite-Window World Models}
+\author{Anonymous authors\\Paper under double-blind review}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+\input{body.tex}
+\input{refs.tex}
+\clearpage
+\appendix
+\input{appendix.tex}
+\end{document}

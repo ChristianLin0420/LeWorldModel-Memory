@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="500">
+<rect width="720" height="500" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#172033}.t{font-size:20px;font-weight:bold}.l{font-size:13px}.g{stroke:#e2e8f0}</style>
+<text x="360" y="28" text-anchor="middle" class="t">delta / tau / margin Pareto sweep</text>
+<g class="g"><line x1="75" y1="420" x2="660" y2="420"/><line x1="75" y1="330" x2="660" y2="330"/><line x1="75" y1="240" x2="660" y2="240"/><line x1="75" y1="150" x2="660" y2="150"/><line x1="75" y1="60" x2="660" y2="60"/></g>
+<line x1="75" y1="420" x2="660" y2="420" stroke="#64748b"/><line x1="75" y1="60" x2="75" y2="420" stroke="#64748b"/>
+<line x1="441" y1="60" x2="441" y2="420" stroke="#dc2626" stroke-dasharray="6 4"/><line x1="75" y1="150" x2="660" y2="150" stroke="#dc2626" stroke-dasharray="6 4"/>
+<text x="448" y="78" class="l">false-write target 0.25</text><text x="82" y="143" class="l">BAcc target 0.75</text>
+<g stroke="white" stroke-width="1.5"><circle cx="148" cy="113" r="7" fill="#365c8d"/><circle cx="177" cy="124" r="7" fill="#277f8e"/><circle cx="221" cy="139" r="7" fill="#1fa187"/><circle cx="265" cy="133" r="7" fill="#4ac16d"/><circle cx="309" cy="151" r="7" fill="#a0da39"/><circle cx="353" cy="166" r="7" fill="#fde725"/><circle cx="119" cy="157" r="7" fill="#482878"/><circle cx="192" cy="106" r="7" fill="#3e4a89"/><circle cx="280" cy="145" r="7" fill="#21918c"/><circle cx="382" cy="181" r="7" fill="#5ec962"/></g>
+<g class="l" text-anchor="middle"><text x="75" y="442">0.00</text><text x="221" y="442">0.10</text><text x="368" y="442">0.20</text><text x="514" y="442">0.30</text><text x="660" y="442">0.40</text><text x="368" y="474">Distractor false-write rate</text></g>
+<g class="l" text-anchor="end"><text x="68" y="425">0.60</text><text x="68" y="335">0.65</text><text x="68" y="245">0.70</text><text x="68" y="155">0.75</text><text x="68" y="65">0.80</text></g>
+<text x="505" y="468" class="l">Color: overwrite 0.60 to 0.80</text>
+</svg>

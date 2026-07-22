@@ -1,0 +1,507 @@
+\section{Introduction}
+
+World models often use a fixed observation window. An observation can affect
+the future after it leaves this window, but the model can no longer attend to
+it directly. Extending the window increases cost and does not decide which
+past observations are useful. A practical external memory must instead answer
+three questions: when to write, what to retain, and what to retrieve for a
+particular prediction.
+
+We study this problem without supplying event times or event labels.
+Causal-Effect Memory (\cem) uses the prediction loss of a fixed world model as
+its training and evaluation signal. Prediction surprise proposes a visual
+event. A delayed test measures whether retaining the event reduces
+action-conditioned future-latent loss. A learned score approximates this
+measurement, and periodic group deletion updates the score. At inference, a
+bounded router ranks verified events using query content, event content, age,
+and predicted need.
+
+Our main experiment uses original OGBench renderings. The model receives only
+frames, actions, and timestamps. Frozen DINOv2 patch tokens provide visual
+features, and an action-conditioned latent predictor is trained on each
+environment and then frozen. These predictors are \emph{DINO-feature
+action-conditioned world models}; they follow the feature-space design of
+DINO-WM \citep{r_dinowm}, but they are not released DINO-WM checkpoints.
+The study covers 10 environments from navigation, manipulation, puzzle, and
+scene families.
+
+The raw results are positive but limited. \cem\ lowers four-step prediction
+error relative to no-memory, reset, shuffled-episode, and matched-random
+controls in every environment, and the improvement grows with rollout
+horizon. A recent-only extension is nevertheless slightly better on average.
+Moreover, the learned causal-effect ranking has low held-out correlation with
+measured deletion effects. Thus past state is useful, but the current method
+does not reliably identify the most useful event.
+
+Two controlled studies clarify this result. First, the released frozen
+DINO-WM Wall host shows a large gap between selected-event and random-event
+deletion under a separate encoded event-versioning protocol. Second, a frozen
+LeWorldModel (LeWM) \citep{r_lewm} can retain a six-way binding in memory while
+failing to use it without harming its original prediction loss. We call
+\emph{host readiness} the ability of a pretrained world model to use an
+external memory representation. After this definition, we use the more direct
+term \emph{memory interface compatibility}.
+
+\paragraph{Contributions.}
+\begin{itemize}\setlength\itemsep{1pt}
+\item We define WRITE, KEEP, and RECALL with one causal importance score: the
+change in a fixed host's future-latent loss when an event group is removed.
+\item We implement a label-free raw-image protocol with frozen DINOv2 patch
+tokens, action-conditioned host surprise, delayed group verification, event
+versioning, hysteresis, and bounded retrieval.
+\item We report trajectory-disjoint results for 18 cells, 10 environments, and
+four families, including reset, shuffled, random, recent-only, budget, delay,
+rollout, deletion, and action-sequence controls.
+\item We separate DINO-feature breadth from released DINO-WM validation and
+show that storage quality and memory interface compatibility are distinct.
+\end{itemize}
+
+\section{Related Work}
+
+\paragraph{Predictive world models.}
+Joint-embedding predictive architectures learn by predicting latent targets
+rather than pixels \citep{r_jepa}. DINO-WM predicts frozen DINO features and
+uses them for planning \citep{r_dinowm}; LeWM trains an end-to-end latent world
+model \citep{r_lewm}. Causal-JEPA studies object-level latent masking
+\citep{r_causaljepa}. These methods learn predictive representations inside a
+configured context. We study an external state that persists after an
+observation leaves that context.
+
+\paragraph{Learned memory.}
+Recurrent networks, state-space models, and slot memories provide different
+ways to compress history \citep{r_gru,r_lstm,r_mamba,r_slotssm,r_gsa}.
+SlotMemory uses object-centered key--value storage \citep{r_slotmemory}.
+Titans writes to neural memory using surprise \citep{r_titans}, and test-time
+training adapts computation online \citep{r_ttt}. In \cem, surprise only
+proposes an event. Retention is trained against the effect of removing the
+event from a fixed external host.
+
+\paragraph{Memory evaluation.}
+RULER and LongMemEval show that nominal context length can overstate usable
+memory \citep{r_ruler,r_longmemeval}. ``On Memory'' argues that memory should
+be evaluated through downstream use \citep{r_onmemory}. We use a
+\emph{controlled memory evaluation}: full, reset, recent-only, shuffled, and
+random memories share the same host, data, and prediction target. Probe
+accuracy is secondary to host prediction loss and deletion tests.
+
+\paragraph{Surprise and predictive processing.}
+Predictive coding treats mismatch between expected and observed activity as a
+learning signal \citep{r_predictivecoding}; active inference extends prediction
+error to action and belief updating \citep{r_activeinference}. CEM uses a
+narrower engineering role: surprise proposes a write, while delayed future
+prediction and hard deletion decide whether the event remains useful.
+
+\paragraph{Interventional representation learning.}
+Interventional causal representation learning uses controlled changes to
+identify latent factors under explicit assumptions \citep{r_interventionalcrl}.
+CEM instead intervenes on the memory input to an already fixed predictor. Its
+causal statement is therefore local: deletion changed this host's future
+prediction, not the environment's causal structure.
+
+\section{Problem Definition}
+\label{sec:problem}
+
+Let a fixed host encode frame $x_t$ as $z_t$ and predict future latents from a
+legal context of $K$ observations and actions. A memory store
+$\mathcal M_t$ contains event groups
+\[
+m_i=(k_i,v_i,t_i,\widehat{\CE}_i,\ell_i),
+\]
+where $k_i$ and $v_i$ are a semantic key and value, $t_i$ is the observed
+timestamp, $\widehat{\CE}_i$ is a predicted causal importance score, and
+$\ell_i$ records whether the event is provisional, active, superseded,
+rejected, or evicted.
+
+For future evaluation set $\mathcal H_t$, define the measured group effect
+\begin{equation}
+\CE(G)=
+\mathbb E_{u\in\mathcal H_t}\!\left[
+\mathcal L_{\mathrm{future}}\!\left(\mathcal M_t\setminus G\right)
+-\mathcal L_{\mathrm{future}}(\mathcal M_t)\right].
+\label{eq:ce}
+\end{equation}
+The loss is the host's action-conditioned latent prediction error. We delete
+adjacent frames as a group because one visual transition can span several
+frames. Equation~\ref{eq:ce} measures an intervention on the memory input to a
+fixed computation. It is not an estimate of a causal effect in the external
+environment.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.98\textwidth]{fig_d_architecture.pdf}
+\caption{\textbf{CEM on an unmodified OGBench trajectory.} Four raw Cube-single
+frames are selected by a fixed pixel-change plus DINO-change score, restricted
+to retrieved test events. CEM discovers the $t{=}3$ change, rejects a later
+low-value event, verifies the stored group by deletion, and recalls it at
+$t{=}17$. No event time or label is supplied. Exact scores and hashes are in
+\protect\path{generated_results/architecture_example_receipt.json}.}
+\label{fig:architecture}
+\end{figure*}
+
+\section{Causal-Effect Memory}
+\label{sec:method}
+
+\subsection{WRITE: surprise and semantic change}
+
+The fixed host predicts $\hat z_t$ from the legal context and action. Its
+one-step surprise is
+\[
+s_t=\|\hat z_t-z_t\|_2^2.
+\]
+Separately, the method measures temporal change in frozen DINOv2 patch-token
+features. Train-set quantiles set both thresholds. Adjacent threshold
+crossings form a provisional event group, and the highest combined crossing
+defines its timestamp. This procedure has no manually chosen interval, color
+target, or saliency function.
+
+\subsection{KEEP: delayed group verification}
+
+A small estimator predicts the future-loss reduction from retaining a
+provisional group. Training targets are computed periodically by comparing
+the host with a singleton event group against the same host with no event.
+The target is normalized by no-memory loss. Smooth-L1 regression provides
+scale calibration, and a pairwise ranking loss trains ordering within each
+query. A group is promoted only after the verification delay and only when its
+predicted score exceeds a validation-selected threshold.
+
+\subsection{Event versioning}
+
+Event versioning means that semantically similar events share a key but keep
+separate timestamps and scores. Train-only clustering of DINO event vectors
+assigns keys. A new candidate does not remove an active event when it is
+proposed. The old event remains available until the new candidate passes
+verification by more than a hysteresis margin. If verification fails, the
+store falls back to the old version. Capacity eviction removes the lowest
+scored active event.
+
+\subsection{RECALL: bounded routing}
+
+For query $q_t$, the router scores active events by
+\begin{equation}
+r_i=q_t^\top k_i+\phi(t-t_i)+\nu(q_t,\mathrm{context})
++\lambda\widehat{\CE}_i ,
+\label{eq:router}
+\end{equation}
+where $\phi$ is a learned age function and $\nu$ predicts whether the current
+query needs memory. The router retrieves at most $k$ events. Verification
+uses the measured singleton group loss after the future evaluation horizon.
+We report this bounded retrieve-then-verify audit separately. The primary
+prediction uses the routed event before this outcome is known, so its test
+target never selects its own memory.
+
+\begin{algorithm}[t]
+\small
+\caption{Online CEM with delayed verification}
+\label{alg:cem}
+\KwIn{Frozen host $h$, bounded store $\mathcal M$, stream $(x_t,a_t)$}
+$z_t\leftarrow h_{\rm enc}(x_t)$; compute one-step surprise and DINO change\;
+\If{train-calibrated thresholds cross}{append adjacent frames as a provisional group}
+\ForEach{group whose verification delay expires}{
+  predict $\widehat{\CE}(G)$; promote, reject, or supersede by hysteresis\;
+}
+evict the lowest-value active group if $|\mathcal M|$ exceeds budget\;
+$C_t\leftarrow\operatorname{topk}_{G\in\mathcal M} r(G,q_t)$\;
+\Return frozen-host prediction conditioned on $C_t$\;
+\textbf{Audit only after the target arrives:} measure hard-delete $\CE(G)$\;
+\end{algorithm}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{\textbf{Signal-to-claim contract.} Each stage supports a narrower
+claim than the next; only hard deletion through the frozen host is treated as
+causal evidence.}
+\label{tab:signal-contract}
+\begin{tabularx}{\linewidth}{lYY}
+\toprule
+signal & controller role & licensed interpretation\\
+\midrule
+surprise + DINO change & DISCOVER & candidate, not importance\\
+$\widehat{\CE}$ & STORE / replace & amortized predicted value\\
+query/content/age/need & RECALL & bounded relevance ranking\\
+hard group deletion & VERIFY / audit & effect on fixed-host prediction\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Training/evaluation separation.}
+Thresholds, key clustering, the effect estimator, and router are fit on train
+trajectories and selected on validation trajectories. Test futures never
+select the primary memory. The retrieve-then-verify result is a separate
+post-hoc audit because it observes the realized future target.
+
+\paragraph{Bounded cost.}
+Surprise is a by-product of the host forward pass. Online KEEP and eviction use
+the amortized score; true group deletion is sampled during calibration and
+audit. The store, top-$k$ read, and version budget are fixed, so persistent
+state does not enlarge the host's legal attention window.
+
+\section{Experimental Protocol}
+\label{sec:protocol}
+
+\subsection{Raw OGBench breadth}
+
+We use original 64$\times$64 render caches with 768 trajectories and 22 frames
+per environment. The environments are PointMaze-large, PointMaze-teleport,
+PointMaze-giant, Cube-single, Cube-double, Cube-triple, Puzzle-3x3, Scene,
+AntMaze-large, and HumanoidMaze-large. PointMaze-large, PointMaze-teleport,
+Cube-single, and Cube-triple use three optimization seeds; the other
+environments use one breadth seed.
+
+A fixed trajectory permutation creates 538 train, 115 validation, and 115 test
+trajectories. A frozen DINOv2 ViT-S/14 produces a spatial pyramid of patch
+tokens. A 96-dimensional PCA projection is fit on train trajectories only.
+For each environment and seed, a finite-window action-conditioned predictor is
+trained on train trajectories, selected by validation loss, and frozen before
+CEM training. All 18 hosts beat latent persistence on test.
+
+The model reads only `frames`, `actions`, and array timestamps. Other cache
+keys are ignored. The validation split selects write thresholds, verification
+delay, hysteresis, budget, and retrieval count. The test split reports
+future-latent MSE by horizon, all memory controls, causal deletion, score
+calibration, write and retrieval rates, budget and delay curves, and post-hoc
+action-sequence identification.
+
+\subsection{Separate controlled protocols}
+
+The released DINO-WM Wall protocol freezes the published predictor,
+action/proprioception encoders, and DINOv2 features. It evaluates event
+versioning by relocating cached encoded events in time. This is a controlled
+representation-level protocol, not raw OGBench breadth or planning.
+
+The LeWM PushT protocol freezes the released encoder and predictor and tests a
+six-way same-base visual binding. It measures the path from readable memory to
+the predictor output. Semantic class labels are used only by post-hoc
+readouts. These synthetic tasks diagnose overwrite, binding, and interface
+failures; they are not the main breadth evidence.
+
+\subsection{Decision anatomy}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.92\textwidth]{cem_raw_event_timeline.pdf}
+\caption{\textbf{One automatic decision trace.} On the same raw Cube rollout
+used in Fig.~\ref{fig:architecture}, the $t{=}3$ event is verified and later
+retrieved at $t{=}17$. A larger proposal at $t{=}9$ is rejected by delayed
+verification. Proposal strength therefore does not determine retention.}
+\label{fig:raw-timeline}
+\end{figure*}
+
+The trace separates DISCOVER from KEEP. The later event is more surprising,
+but its predicted future value is below the active version's hysteresis
+threshold. CEM retains the older event and retrieves it without a supplied
+event boundary. The deterministic selection score and raw frame hashes are in
+\path{generated_results/architecture_example_receipt.json}.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Raw OGBench breadth}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.94\textwidth]{fig_raw_breadth.pdf}
+\caption{\textbf{Does CEM improve future prediction?} Per-environment
+four-step prediction improvement, normalized to each control. CEM improves on
+no memory in all ten environments, but recent-only is better in 15/18
+optimization cells. Error bars show optimization-seed variation where
+available; separators denote manipulation, navigation, puzzle, and scene.}
+\label{fig:raw-prediction}
+\end{figure*}
+
+CEM lowers prediction error relative to no memory in every environment. The
+mean reduction is $0.719\%$ and grows from $0.227\%$ at rollout step one to
+$1.086\%$ at step four. Reset, shuffled, and matched-random memories do not
+explain the gain. The stronger recent-only control does: CEM is slightly worse
+on average and wins only 3/18 cells. The primary result is therefore useful
+persistent state, not superior event selection. Raw MSE values and horizon
+curves are reported in Appendix~\ref{app:raw-controls}.
+
+\begin{figure*}[t]
+\centering
+\begin{minipage}[t]{.55\textwidth}
+\includegraphics[width=\linewidth]{cem_raw_rollout_horizon.pdf}
+\end{minipage}\hfill
+\begin{minipage}[t]{.41\textwidth}
+\includegraphics[width=\linewidth]{cem_raw_budget_pareto.pdf}
+\end{minipage}
+\caption{\textbf{When does memory help?} Left: normalized improvement grows
+over the four-step rollout. Right: matched controls confirm that an arbitrary
+residual does not help, while recent-only remains the strongest alternative.
+Intervals treat the 18 optimization cells as observations.}
+\label{fig:raw-horizon-controls}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.94\textwidth]{fig_raw_causal.pdf}
+\caption{\textbf{Does the learned score identify causal events?} Deletion
+effects are normalized by each host's no-memory prediction error. On raw
+OGBench, high-CE and matched-random groups have similar effects and vary by
+environment. The released DINO-WM protocol yields a large selected-versus-random
+contrast, but is a separate encoded-event study.}
+\label{fig:raw-causal}
+\end{figure*}
+
+\subsection{Causal ranking is not yet reliable}
+
+High-ranked deletion exceeds matched random deletion in 12/18 cells, but the
+aggregate gap includes zero and held-out rank correlation is near zero. CEM
+therefore discovers useful state more reliably than it orders individual
+events. Calibration and action-sequence diagnostics are reported in
+Appendix~\ref{app:raw-use}; neither supports a planning claim.
+
+\subsection{Delayed verification controls the event store}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.88\textwidth]{fig_discovery_progression.pdf}
+\caption{\textbf{Which controller decisions matter?} Immediate surprise,
+delayed causal-effect verification, the complete proxy controller, and
+released DINO-WM are compared on false writes, correct overwrite, and retrieval
+precision. Proxy bars average Cube and PointMaze; the official bar is a
+separate Wall protocol.}
+\label{fig:discovery-store}
+\end{figure*}
+
+Immediate surprise writes distractors. Delayed group verification sharply
+reduces false writes and improves overwrite and retrieval. Event versions then
+protect an active event while a replacement is tested. These task-level rates
+motivate the full controller without relying on raw prediction-loss units.
+
+\subsection{Released DINO-WM gives stronger controlled deletion evidence}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_official_factorial.pdf}
+\caption{\textbf{Released frozen DINO-WM Wall factorial} (three seeds).
+The panels report task exposure, correct overwrite, normalized prediction-error
+reduction, and selected-event deletion relative to the reset baseline. This
+encoded controlled protocol is separate from raw OGBench breadth.}
+\label{fig:official}
+\end{figure}
+
+On the released DINO-WM host, CEM exposes the event above chance, improves
+prediction by $16.6\%$, and produces a $21.2\%$ normalized selected-event
+deletion effect while random deletion is zero. This is clear host-use evidence,
+but the protocol relocates cached encoded events and does not establish raw
+breadth or planning.
+
+\subsection{LeWM reveals memory interface incompatibility}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_lewm_readiness.pdf}
+\caption{\textbf{Frozen LeWM interface study} (six-way PushT binding, age 15,
+three seeds). Left: task information available at the host output. Right:
+relative prediction degradation for interfaces evaluated with the same strict
+target. Non-comparable legacy objectives appear only in the left diagnostic.}
+\label{fig:lewm}
+\end{figure}
+
+The memory state retains the six-way binding, but dense residual injection
+loses it before the frozen predictor. Memory tokens and AdaLN expose the
+binding, but severely degrade prediction. Strict hybrid and LoRA preserve
+prediction but remain near chance. No tested point combines high exposure with
+less than $10\%$ degradation. Storage quality and host-interface compatibility
+are therefore separate.
+
+\section{Interpretation}
+
+\paragraph{Prediction and causal ordering are distinct.}
+An imperfect event set can lower average prediction error even when its
+within-query ranking is weak. CEM is consistent on the former endpoint and
+mixed on the latter, which is why the raw breadth and deletion figures answer
+separate questions.
+
+\paragraph{Recency is the strongest alternative.}
+Reset, shuffled, and random controls rule out a generic residual benefit.
+Recent-only retains valid short-range trajectory state and remains stronger.
+A decisive next benchmark must break local continuity with longer,
+trajectory-disjoint gaps while preserving the same memory and retrieval
+budget.
+
+\paragraph{Breadth is directional, not equally precise.}
+Four representative environments have three optimization seeds; six have one.
+The ten-environment result establishes a shared direction over no memory, not
+equal confidence across families. Full per-environment losses, uncertainty,
+telemetry, and audit receipts remain in the appendix.
+
+\section{Claim Hierarchy}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{\textbf{Evidence is reported at four distinct levels.} A stronger
+claim is not inferred from a weaker endpoint.}
+\label{tab:claim-hierarchy}
+\begin{tabularx}{\linewidth}{YcY}
+\toprule
+claim & status & evidence\\
+\midrule
+raw state improves on no memory & supported & 10/10 environments; matched controls\\
+CEM beats local recency & unsupported & 3/18 cell wins\\
+learned CE orders raw events & unresolved & deletion-gap interval includes zero\\
+released host uses selected memory & supported & fail-closed audit + deletion\\
+frozen LeWM is memory-compatible & unsupported & exposure--fidelity trade-off\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Why the hierarchy matters.}
+Prediction improvement establishes that retrieved history can be useful. It
+does not establish that the written event is uniquely necessary, that the
+learned score is calibrated, or that an arbitrary pretrained host can consume
+the memory. The raw, official-host, and LeWM protocols isolate these questions
+rather than averaging them into one headline metric.
+
+\paragraph{What would change the conclusion.}
+The raw selection claim would require CEM to outperform a capacity-matched
+recent-only state across longer gaps and to show a positive high-versus-random
+deletion interval. The host-compatibility claim would require a LeWM interface
+above the exposure gate while remaining below the registered prediction
+degradation bound. Neither condition is met here.
+
+\paragraph{Why the official result remains separate.}
+Released DINO-WM supplies the clearest selected-event deletion contrast, but it
+uses relocated cached latent events. It validates the controller's causal-use
+mechanism under a fixed released host; it cannot substitute for raw-event
+breadth, automatic semantic discovery, or executed planning.
+
+\section{Discussion and Limitations}
+
+\paragraph{What the raw result establishes.}
+Frozen DINO features, host surprise, and a small event store can improve
+action-conditioned prediction without supplied event labels or times. The
+increasing horizon gain and the shuffled/random controls support a genuine use
+of past visual state. The result covers unmodified simulated environment
+renderings and does not test real-world camera data.
+
+\paragraph{What it does not establish.}
+Recent-only state is stronger on average, CE-score calibration is low, and the
+deletion-ordering interval includes zero. Trajectories contain only 22 frames
+and four rollout steps are evaluated. Six environments have one breadth seed.
+The PCA projection and memory adapter are environment-specific. These limits
+rule out claims of unbounded recall, general causal discovery, or transfer.
+
+\paragraph{Host dependence.}
+Equation~\ref{eq:ce} can identify only information represented and used by the
+fixed host. A blind host produces no useful score. Conversely, a memory can
+retain information that the host interface removes, as in LeWM. Future work
+should jointly train a memory-compatible host interface while retaining
+controlled reset, shuffled, random, and recent-only comparisons.
+
+\paragraph{Computation.}
+Periodic group deletion requires extra host evaluations, and bounded
+retrieve-then-verify scales with the number of routed candidates. The current
+implementation limits this cost with amortized scoring and top-$k$ retrieval,
+but does not report a standardized cross-host latency benchmark.
+
+\section{Conclusion}
+
+\cem\ extends a finite-window world model with label-free visual event memory
+whose decisions are trained against future-latent prediction loss. On raw
+OGBench renderings, it consistently improves over no memory and corruption
+controls, with larger gains at longer rollout horizons. It does not yet beat a
+recent-only extension or reliably rank event effects. Released DINO-WM and
+LeWM diagnostics show why both event selection and memory interface
+compatibility must be evaluated. These results provide a reproducible baseline
+for raw visual event memory and a clear set of remaining failures.

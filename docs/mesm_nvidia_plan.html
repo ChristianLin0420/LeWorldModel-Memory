@@ -1851,6 +1851,7 @@
       <option value="#results">04 Results</option>
       <option value="#diagnosis">05 Diagnosis</option>
       <option value="#next">06 Next actions</option>
+      <option value="#raw-cem">07 Raw OGBench CEM</option>
     </select>
   </div>
 
@@ -1861,9 +1862,11 @@
         <a href="#context"><span>01</span><span>Context</span></a>
         <a href="#method"><span>02</span><span>Method</span></a>
         <a href="#architecture-flow"><span>03</span><span>Architecture</span></a>
-        <a href="#results"><span>04</span><span>Results</span></a>
-        <a href="#diagnosis"><span>05</span><span>Diagnosis</span></a>
-        <a href="#next"><span>06</span><span>Next actions</span></a>
+        <a href="#rollouts"><span>04</span><span>Rollouts</span></a>
+        <a href="#results"><span>05</span><span>Results</span></a>
+        <a href="#diagnosis"><span>06</span><span>Diagnosis</span></a>
+        <a href="#next"><span>07</span><span>Next actions</span></a>
+        <a href="#raw-cem"><span>08</span><span>Raw CEM</span></a>
       </div>
     </aside>
 
@@ -2133,9 +2136,59 @@
         </div>
       </section>
 
+      <section id="rollouts">
+        <div class="section-head">
+          <div class="chapter-no">04 / Rollouts</div>
+          <div>
+            <h2>Rendered rollouts and the evidence-age demand.</h2>
+            <p class="intro">Before the charts, two looping animations make the setup concrete. First, a real OGBench environment in motion; second, an annotated walk-through of why a cue that flashes for three frames must still be recoverable a full fifteen frames after the legal prediction window has slid past it.</p>
+          </div>
+        </div>
+
+        <div class="visual-panel dark" style="margin-top:16px">
+          <div class="visual-head"><span>01 · Real environment rollouts</span><span>cached OGBench renders · 140 frames · 10 fps · 64→256 px</span></div>
+          <div class="render-grid" style="margin-top:12px">
+            <div class="render-card">
+              <video controls loop muted autoplay playsinline style="display:block;width:100%;height:auto;border:1px solid var(--line-dark);background:var(--black)">
+                <source src="assets/rollout_pointmaze_large.mp4" type="video/mp4">
+                <img src="assets/rollout_pointmaze_large.gif" alt="PointMaze-large-navigate rollout, upscaled cached render">
+              </video>
+              <div class="render-label"><span>pointmaze-large-navigate-v0</span><span>navigation · ep 132</span></div>
+            </div>
+            <div class="render-card">
+              <video controls loop muted autoplay playsinline style="display:block;width:100%;height:auto;border:1px solid var(--line-dark);background:var(--black)">
+                <source src="assets/rollout_cube_single.mp4" type="video/mp4">
+                <img src="assets/rollout_cube_single.gif" alt="Cube-single-play rollout, upscaled cached render">
+              </video>
+              <div class="render-label"><span>cube-single-play-v0</span><span>manipulation · ep 132</span></div>
+            </div>
+          </div>
+          <p style="margin:12px 4px 0;font:400 13px/1.5 var(--sans);color:var(--gray)">The same 64 px frames the model consumes, nearest-neighbour upscaled to 256 px and looped. One navigation task (a point mass tracing a maze) and one manipulation task (an arm nudging a cube) show the two rendering regimes the memory adapter must serve.</p>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <div class="visual-panel dark">
+            <div class="visual-head"><span>02 · Evidence-age cue animation</span><span>cue at t1–3 · readout at age 15</span></div>
+            <div class="render-card" style="margin-top:12px;max-width:320px;margin-left:auto;margin-right:auto">
+              <video controls loop muted autoplay playsinline style="display:block;width:100%;height:auto;border:1px solid var(--line-dark);background:var(--black)">
+                <source src="assets/cue_animation.mp4" type="video/mp4">
+                <img src="assets/cue_animation.gif" alt="Annotated evidence-age cue animation for a navigation and a manipulation episode">
+              </video>
+              <div class="render-label"><span>cue seen early · recalled late</span><span>K=3 legal window</span></div>
+            </div>
+          </div>
+          <aside class="callout">
+            <strong>How to read it</strong>
+            <p>A four-way colour cue card (here <b>blue</b>) is injected at frames&nbsp;1–3 via the paper's own <code>inject_cue_sequence</code>. The red <b>CUE VISIBLE</b> banner marks those frames.</p>
+            <p>The white box on the timeline strip is the sliding <b>legal context window (K=3)</b> — the only frames the frozen host is allowed to attend to. As it advances, the cue drops out of the window and the render turns to <b>HOLD IN MEMORY</b>.</p>
+            <p>The large counter is the <b>evidence age</b>: frames elapsed since the cue was last shown. It grows to the yellow <b>READOUT</b> frame (age&nbsp;15), where the audit asks the host to expose the long-gone cue — the exact retention demand this project studies.</p>
+          </aside>
+        </div>
+      </section>
+
       <section id="results">
         <div class="section-head">
-          <div class="chapter-no">04 / Results</div>
+          <div class="chapter-no">05 / Results</div>
           <div>
             <h2>The DINO-WM iteration log shows why the final writer was needed.</h2>
             <p class="intro">Token recall was solved immediately. The first ordered-binding repair improved the target but failed age8 robustness; the later host-aligned writer below resolved that exposure bottleneck.</p>
@@ -2185,7 +2238,7 @@
 
       <section id="diagnosis" class="dark-band">
         <div class="section-head">
-          <div class="chapter-no">05 / Diagnosis</div>
+          <div class="chapter-no">06 / Diagnosis</div>
           <div>
             <h2>The historical DINO-WM bottleneck was not storage. It was stable host exposure.</h2>
             <p class="intro">The age8 failed seeds were rerun with a three-level readout. The carrier stored the binding almost perfectly; the information weakened when written into the context and remained just below the official host-output gate.</p>
@@ -2248,7 +2301,7 @@
 
       <section id="next">
         <div class="section-head">
-          <div class="chapter-no">06 / Next actions</div>
+          <div class="chapter-no">07 / Next actions</div>
           <div>
             <h2>The DINO-WM rescue stabilized binding before the LeWM expansion.</h2>
             <p class="intro">The fastest path was to fix the age8 binding robustness issue under the same frozen PushT host before expanding the scope. That rescue produced the DINO-WM reference result that LeWM has now matched at age15.</p>
@@ -3314,6 +3367,265 @@ gate = age8 binding seeds 2 and 3 first</code>
 
 
 
+      <!-- CEM_V2_STATUS_START -->
+      <section class="section-block" id="cem-v2-status">
+        <div class="section-kicker">CEM v2 focused execution · 2026-07-21</div>
+        <h2>Normalized causal KEEP improves ranking, not LeWM six-way exposure.</h2>
+        <p>CEM v2 calibrates <code>CE_norm=(L_drop-L_keep)/(L_no_memory+1e-8)</code>
+          with Smooth-L1 plus all-pairs ranking loss. True deletion calibration
+          runs every optimizer step. LeWM injection is query-conditioned:
+          current context tokens cross-attend to surprise-gated slots before
+          residual injection; the frozen host digest is unchanged.</p>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">LeWM six-way · seed 0</span>
+            <strong>0.24398 / 1.339995</strong>
+            <p>memory / no-memory loss; Spearman 0.6491; high-CE deletion
+              0.0001726 versus random −0.0000091.</p>
+            <span class="status-pill fail">Audit failed: 0.1708 full</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Fail-closed controls</span>
+            <strong>0.1708 / 0.1583 / 0.1583</strong>
+            <p>full / reset / no-state BAcc. Raw cue latent BAcc is 0.9958,
+              but frozen decision-latent BAcc is chance 0.1667.</p>
+            <span class="status-pill fail">0.75 target not reached</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Shape random color · 200 episodes</span>
+            <strong>0.5197 vs 0.2782</strong>
+            <p>Surprise versus saliency BAcc. Surprise cue/distractor writes:
+              32.5%/0%; saliency: 0%/100%.</p>
+            <span class="status-pill pass">Artificial saliency not required</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">DINO-WM Wall · seed 0</span>
+            <strong>1.07315 / 1.07320</strong>
+            <p>memory / no-memory loss; audit 0.275/0.254/0.250;
+              Spearman 0.050. Two-epoch normalized-CE smoke is undertrained.</p>
+            <span class="status-pill fail">Focused run failed</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_v2_lewm_memory_timeline.png"
+              alt="LeWM CEM v2 written, kept, evicted, and retrieved event timeline">
+            <figcaption>LeWM six-way seed 0 · real decision log</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_v2_dinowm_value_scatter.png"
+              alt="DINO-WM CEM v2 predicted versus true causal-effect calibration">
+            <figcaption>DINO-WM Wall seed 0 · real CE calibration</figcaption>
+          </figure>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <strong>Bounded verdict</strong>
+            <p>Ranking calibration passes LeWM seeds 0/1 but fails seed 2
+            (Spearman 0.1249); relation-specific
+            signal still disappears between injected context and frozen host output.
+            Surprise defeats the handcrafted saliency distractor, yet identity BAcc
+            remains below 0.75. Router interference, lifetime/budget curves, and
+            pretrained-DINO semantic patch targets remain unexecuted.</p>
+        </div>
+        <p><small>Artifacts:
+          <code>outputs/cem_lewm_v2/multi-item-visual-binding-recall/s0</code>,
+          <code>outputs/cem_shortcut_v2/summary.json</code>,
+          <code>outputs/cem_dinowm_v2/wall/s0</code>.
+          No <code>paper_c/</code> files were changed.</small></p>
+      </section>
+      <!-- CEM_V2_STATUS_END -->
+
+      <!-- CEM_V3_STATUS_START -->
+      <section class="section-block" id="cem-v3-status">
+        <div class="section-kicker">CEM v3 targeted fixes · 2026-07-21</div>
+        <h2>Memory retains six-way identity; the residual injection boundary erases it.</h2>
+        <p>V3 trains label-free InfoNCE/cosine objectives against six
+          same-trajectory counterfactual cue branches at injected-context and
+          frozen-host-output levels. It also calibrates matched three-frame
+          group deletion and replaces pooled color targets with locally cached,
+          frozen DINOv2 ViT-S/14 patch tokens.</p>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">LeWM factorial · 12 real cells</span>
+            <strong>0.1556 best host BAcc</strong>
+            <p>A/B/C/D mean host outputs are 0.1576/0.1563/0.1556/0.1556.
+              All controls remain 0.1417–0.1729.</p>
+            <span class="status-pill fail">0.75 gate failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Exposure localization</span>
+            <strong>1.000 → 0.919 → 0.169 → 0.156</strong>
+            <p>Config D cue latent → memory → injected context → host output.
+              The collapse occurs before the frozen predictor.</p>
+            <span class="status-pill fail">Injection subspace bottleneck</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Three-frame group KEEP</span>
+            <strong>20–26× larger effect</strong>
+            <p>Predicted cue group beats a matched random group on 3/3 seeds;
+              mean pairwise accuracy 0.689, mean Spearman 0.467.</p>
+            <span class="status-pill pass">Redundancy diagnosis confirmed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">DINOv2 semantic shortcut · 3 seeds</span>
+            <strong>0.497 / 0.310 / 0.199</strong>
+            <p>Surprise semantic / random semantic / handcrafted saliency mean
+              BAcc. Surprise wins every seed but misses the retention gate.</p>
+            <span class="status-pill fail">Write stability remains weak</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">DINO-WM surprise-semantic · 3 seeds</span>
+            <strong>0.8144 / 1.4137 mean loss</strong>
+            <p>Full audit 0.9979/1.0/1.0; controls 0.25. High-CE deletion
+              exceeds random on 3/3, but mean held-out Spearman is 0.3255.</p>
+            <span class="status-pill pass">Host-use audit passed 3/3</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_v3_lewm_exposure_factorial.png"
+              alt="CEM v3 LeWM cue, memory, injected context, and host output balanced accuracy">
+            <figcaption>Real age-15 A/B/C/D exposure ladder · mean ± SD, 3 seeds</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_v3_group_vs_single_ce.png"
+              alt="CEM v3 group-level versus single-item causal-effect calibration">
+            <figcaption>Joint three-frame deletion exposes the redundant cue effect</figcaption>
+          </figure>
+        </div>
+        <figure class="render-card" style="margin-top:16px">
+          <img src="assets/cem_v3_dinowm_semantic_comparison.png"
+            alt="DINO-WM pooled, random semantic, and surprise semantic policy comparison">
+          <figcaption>DINO-WM Wall semantic-policy comparison · completed six-epoch real runs</figcaption>
+        </figure>
+        <div class="callout" style="margin-top:16px">
+          <strong>Next decision</strong>
+          <p>Counterfactual supervision is not enough when the current residual
+            map projects readable memory into a host-inert direction. Replace it
+            with a host-Jacobian-aligned or predictor key/value adapter. The
+            six-epoch DINO-WM sweep is complete: pooled fails, random semantic
+            passes seed 0, and surprise-semantic passes all three seeds. The
+            artificial-miner concern is resolved for DINO host use, while
+            held-out CE calibration remains below 0.5 on surprise-semantic.</p>
+        </div>
+        <p><small>Machine report: <code>outputs/cem_v3_report.json</code>.
+          Decision logs: <code>outputs/cem_lewm_v3/{A,B,C,D}</code>.
+          No <code>paper_c/</code> files were changed.</small></p>
+      </section>
+      <!-- CEM_V3_STATUS_END -->
+
+      <!-- RAW_CEM_STATUS_START -->
+      <section class="section-block" id="raw-cem">
+        <div class="section-kicker">Raw OGBench CEM breadth · 2026-07-22</div>
+        <h2>Unmodified renderings yield a small prediction gain, while recent-only remains stronger.</h2>
+        <p>The raw protocol consumes only original cached frames, actions, and
+          timestamps. Frozen DINOv2 patch tokens provide semantics and a
+          train-only action-conditioned DINO-feature host provides surprise and
+          future-latent loss. Cached cue metadata, hand-written event labels,
+          saliency, color rules, reward, goal, and simulator state are excluded
+          from every write, keep, and recall decision.</p>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Breadth and integrity</span>
+            <strong>10 envs · 18 cells · 4 families</strong>
+            <p>PointMaze large/teleport and Cube single/triple use three seeds;
+              six breadth environments use one. All host digests remain
+              unchanged during CEM training.</p>
+            <span class="status-pill pass">No failed cells · GPU3 unused</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Future-latent prediction</span>
+            <strong>0.48383 / 0.48725</strong>
+            <p>CEM / no-memory mean MSE. Cell-level reduction is 0.719%
+              (95% CI 0.621%–0.818%); all ten environments improve.</p>
+            <span class="status-pill pass">Positive across four families</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Strict recent-only control</span>
+            <strong>0.48320 vs 0.48383</strong>
+            <p>Recent-only / CEM MSE. CEM wins only 3/18 cells, so automatic
+              event selection does not beat a simple context extension.</p>
+            <span class="status-pill fail">Superiority not established</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Causal deletion and calibration</span>
+            <strong>0.004253 / 0.004147</strong>
+            <p>High-ranked / matched-random deletion ΔMSE. High wins 12/18;
+              mean CE-hat Spearman is 0.037 and the deletion-gap CI crosses 0.</p>
+            <span class="status-pill fail">Causal ranking remains weak</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Action-sequence identification</span>
+            <strong>0.3066 / 0.3030</strong>
+            <p>Memory / no-memory top-1 accuracy against seven shuffled action
+              sequences. This is a post-hoc use test, not planning.</p>
+            <span class="status-pill fail">Small, inconsistent change</span>
+          </div>
+        </div>
+
+        <p>The bounded retrieve-then-verify audit accepts 64.6% of routed
+          candidates after the future target is observed. Its post-hoc
+          verified-memory MSE is 0.48137. These values are reported separately
+          and do not select the primary prediction.</p>
+
+        <figure class="render-card" style="margin-top:16px">
+          <img src="assets/fig_d_architecture.png"
+            alt="CEM architecture with unmodified HumanoidMaze frames and a model-discovered raw event">
+          <figcaption>Model-selected raw event at t=12. The receipt binds the
+            exact unmodified frame hashes; no ground-truth event interval
+            exists.</figcaption>
+        </figure>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_raw_rollout_horizon.png"
+              alt="Per-environment future-latent MSE reduction over rollout horizon">
+            <figcaption>Prediction gain grows with rollout horizon in all ten
+              environments.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_raw_causal_deletion.png"
+              alt="High predicted causal-effect versus random group deletion by environment">
+            <figcaption>High-versus-random deletion is mixed; the aggregate
+              difference is not significant.</figcaption>
+          </figure>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_raw_budget_pareto.png"
+              alt="Memory budget and retrieval rate versus prediction improvement">
+            <figcaption>Budget/retrieval Pareto from exact test results.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_raw_family_aggregate.png"
+              alt="Raw CEM family prediction and causal deletion aggregates">
+            <figcaption>DINO-WM-style breadth is visually and statistically
+              separate from the official DINO-WM Wall protocol.</figcaption>
+          </figure>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Bounded conclusion</strong>
+          <p>Raw CEM supplies useful past state beyond the finite host window
+            and beats reset, shuffled-episode, and matched-norm controls.
+            It does not consistently beat recent-only state, and its CE
+            estimator is poorly calibrated. The existing official DINO-WM Wall
+            result remains stronger causal evidence but uses a separate encoded
+            event-versioning protocol.</p>
+        </div>
+
+        <p><small>Detailed report:
+          <a href="CEM_RAW_OGBENCH_REPORT.md"><code>docs/CEM_RAW_OGBENCH_REPORT.md</code></a>.
+          Machine results:
+          <a href="../outputs/cem_raw_ogbench/report.json"><code>outputs/cem_raw_ogbench/report.json</code></a>.
+          Decision logs:
+          <code>outputs/cem_raw_ogbench/cells/&lt;env&gt;/s&lt;seed&gt;/decision_log.json</code>.
+          Frame receipt:
+          <code>outputs/cem_raw_ogbench/figure_receipt.json</code>.</small></p>
+      </section>
+      <!-- RAW_CEM_STATUS_END -->
 
 </main>
   </div>

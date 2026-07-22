@@ -1,0 +1,28 @@
+{
+  "cue_window": null,
+  "cue_window_used_by_model": false,
+  "decision_log": "outputs/cem_raw_ogbench/cells/humanoidmaze-large-navigate-v0/s0/decision_log.json",
+  "environment": "humanoidmaze-large-navigate-v0",
+  "episode_id": 384,
+  "event_timestamp": 12,
+  "figure": "docs/assets/cem_raw_event_timeline.pdf",
+  "frame_indices": [
+    11,
+    12,
+    13,
+    16
+  ],
+  "frame_sha256": [
+    "580e26ec823bdbc162dc1ce55d5afa50720729b783cd8b1d045efeb6e7e8e38b",
+    "635122015b60b50c9adccd79c5ee741a6d05f675427253d434ae9045222d2e10",
+    "f228119b21e99a2076ca23a30feb6d13caa56b43849ac456b9cd314e74321c56",
+    "243c8e4fdfcea96485cdd5396f00b0cd99ee0c99a74f9ba3128fce077d6bfe74"
+  ],
+  "frames_modified": false,
+  "query_timestamp": 16,
+  "raw_cache": "outputs/multiview_patchset_color_jepa_native_v1/cache/humanoidmaze-large-navigate-v0/render_cache.npz",
+  "raw_cache_sha256": "d226a9a646c83aeba9e081e10a57f95ef35103a4aa9dafe0f93e318b0f92336d",
+  "schema": "cem_raw_ogbench_figure_receipt",
+  "seed": 0,
+  "selection_rule": "largest proposal score among events retrieved by completed test-time CEM logs; no frame or timestamp selected manually"
+}

@@ -1,0 +1,321 @@
+\section{Artifact Map and Generation Contract}
+\label{app:artifacts}
+
+Every paper value is read from machine-readable artifacts by
+\path{scripts/plot_paper_d.py}. The script writes white-background figures,
+table fragments, the raw-frame selection receipt, and paper snapshots.
+Generated paper files are self-contained, so compilation does not require the
+gitignored output tree.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Protocol and artifact map. ``Official'' denotes a released host
+checkpoint. The DINO-feature breadth host is trained locally and is not
+official DINO-WM.}
+\label{tab:artifact-map}
+\begin{tabularx}{\linewidth}{p{1.1cm}p{2.2cm}Yp{2.2cm}}
+\toprule
+protocol & host/tasks & source & paper products\\
+\midrule
+Raw breadth & DINO-feature host, 10 OGBench environments &
+\path{outputs/cem_raw_ogbench/report.json};
+\path{outputs/cem_raw_ogbench/cells/**/result.json} &
+Figs.~\ref{fig:architecture}--\ref{fig:raw-causal}\\
+Official validation & released DINO-WM, Wall &
+\path{outputs/cem_event_versioning_dinowm_official_v1/report.json} &
+Fig.~\ref{fig:official}\\
+Memory interface & released LeWM, PushT &
+\path{outputs/cem_lewm_\{semantic_adapter,memory_tokens,memory_experts,adaln_memory,hybrid_interface,lora_memory\}_v1/report.json} &
+Fig.~\ref{fig:lewm}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The checked-in raw snapshot is
+\path{generated_results/raw_ogbench_snapshot.json}. It records the source
+report hash and embeds the aggregate result used by the manuscript.
+\path{generated_results/architecture_example_receipt.json} binds the selected
+environment, episode, timestamps, change scores, raw cache hash, and individual
+frame hashes.
+
+\section{Raw Protocol Contract}
+\label{app:contract}
+
+\paragraph{Allowed inputs.}
+The feature stage opens only `frames` and `actions` from each cache. Array
+indices are timestamps. The model does not consume reward, goal, simulator
+state, or any event annotation.
+
+\paragraph{Disallowed inputs and procedures.}
+The runtime source audit rejects calls named \texttt{draw\_cue},
+\texttt{inject\_cue\_sequence},
+\texttt{inject\_cue\_sequence\_mode}, or
+\texttt{\_saliency\_map}. Cached cue-label and cue-position arrays are listed
+as ignored. No fixed event interval, color rule, saturation rule, manually
+selected key frame, or semantic event label is used by feature extraction,
+host training, CEM training, threshold selection, or test inference.
+
+\paragraph{Contract metadata.}
+Every receipt and result stores
+\texttt{cue\_window=null},
+\texttt{cue\_window\_used\_by\_model=false},
+\texttt{cue\_metadata\_used\_by\_model=false}, and the AST audit result. All
+18 cells pass. The architecture frames are unmodified cache arrays; only
+display resizing is applied by the plotting library.
+
+\section{Data Split and Feature Host}
+\label{app:raw-host}
+
+Each environment contains 768 trajectories, 22 frames per trajectory, and 21
+actions. A fixed split seed, 20,260,721, assigns 538 trajectories to train,
+115 to validation, and 115 to test. Split-index SHA256 hashes are stored in
+each feature receipt. The same split is used across optimization seeds.
+
+The frozen visual encoder is DINOv2 ViT-S/14. Its local weights have SHA256
+\texttt{b938bf1bc15cd2ec0feacfe3a1bb553f}\allowbreak
+\texttt{e8ea9ca46a7e1d8d00217f29aef60cd9}.
+The feature is a 1x1 plus 2x2 spatial pyramid over
+\texttt{x\_norm\_patchtokens}. PCA is fit on train trajectories only and
+retains 96 components. The finite host window contains two latent frames and
+aligned actions. The residual MLP predicts the next latent and is trained only
+on train trajectories. CEM training starts after the best validation host is
+restored and all host parameters are frozen.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Raw host quality. MSE is held-out one-step latent error.
+Host/persistence below one means the action-conditioned predictor improves on
+copying the latest latent. ``Reliable'' reports passed cells.}
+\label{tab:raw-host}
+\begin{tabular}{lrrrr}
+\toprule
+environment & $n$ & host MSE & host/persistence & reliable\\
+\midrule
+\input{generated_results/raw_ogbench_hosts.tex}
+\end{tabular}
+\end{table}
+
+\section{Raw CEM Training Details}
+\label{app:raw-training}
+
+\paragraph{Proposal and grouping.}
+For each frame, the frozen host supplies one-step latent MSE and DINO features
+supply temporal semantic change. The 0.78 train quantile sets both thresholds.
+Adjacent crossings form one group. If a trajectory has no crossing, its
+largest combined train-calibrated score supplies one provisional group; this
+fallback is automatic and label-free.
+
+\paragraph{Semantic keys and versions.}
+A train-only MiniBatchKMeans model clusters event vectors into at most 16
+semantic keys. A provisional event remains separate from the active version
+with the same key. At its verification time, the new version is promoted only
+if its predicted score exceeds both the validation-selected threshold and the
+active score plus a hysteresis margin. A failed replacement leaves the active
+version unchanged.
+
+\paragraph{Causal-effect target.}
+For candidate group $G$, the calibration target is
+\[
+y_G =
+\frac{\mathcal L_{\mathrm{no\ memory}}-
+      \mathcal L_{\mathrm{singleton}\ G}}
+     {\mathcal L_{\mathrm{no\ memory}}+\epsilon}.
+\]
+Deleting $G$ from the singleton store returns the no-memory condition, so this
+is the normalized loss increase caused by group deletion. The estimator uses
+Smooth-L1 regression and within-query pairwise ranking. This target does not
+use a semantic event label.
+
+\paragraph{Validation selection.}
+The validation sweep covers promotion-score quantiles, two hysteresis margins,
+budgets 1/2/4, verification delays 1/3, and top-$k$ values 1/2 where legal.
+The selected point minimizes future-latent MSE with a negligible retrieval
+tie-break cost. Test outcomes do not enter selection. Test-only budget curves
+add budget 8, and delay curves evaluate delays 1/2/3/4/6.
+
+\section{Full Raw Controls and Telemetry}
+\label{app:raw-controls}
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Cell-level mean four-step test MSE over 18 cells. Every condition uses
+the same frozen host, trajectories, prediction target, and memory adapter.}
+\label{tab:raw-controls}
+\begin{tabular}{lr}
+\toprule
+condition & future-latent MSE\\
+\midrule
+CEM & 0.48383\\
+no memory & 0.48725\\
+reset memory & 0.48725\\
+shuffled-episode memory & 0.48939\\
+matched-norm random memory & 0.48952\\
+recent-only state & 0.48320\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The mean relative CEM improvement over no memory is $0.719\%$ with a normal
+cell-level 95\% interval $[0.621,0.818]\%$. The corresponding horizon
+reductions are $0.227\%$, $0.487\%$, $0.817\%$, and $1.086\%$ for horizons
+one through four. All 10 environment means are positive. CEM is better than
+recent-only in 3/18 cells.
+
+Mean proposals per query are 1.923. Delayed verification promotes 0.586 and
+rejects 0.414 of eligible groups. Mean active occupancy is 0.901 and retrieval
+rate is 0.803. The per-cell JSON additionally records superseded, fallback,
+evicted, and stale-selection counts.
+
+\section{Causal Deletion and Action Use}
+\label{app:raw-use}
+
+For every test query with at least two candidate groups, the deletion test
+compares the predicted-high singleton group with a randomly selected candidate
+from the same query. Mean loss increases are 0.004253 and 0.004147. The
+high-minus-random mean is 0.000106 with interval
+$[-0.000056,0.000269]$ and 12/18 cell wins. CE-score Spearman correlation is
+0.037 on average, positive in 13/18 cells. These values support only a weak
+ranking claim.
+
+The bounded retrieve-then-verify audit accepts 64.6\% of routed candidates
+when the measured singleton group effect is positive. Its mean post-hoc
+verified-memory MSE is 0.48137. This audit is computed only after observing the
+future target and is not used by the primary prediction.
+
+Action-sequence identification uses 256 test queries per cell where available.
+The observed four-action sequence is placed among seven sequences sampled
+from other episodes. Memory retrieval is selected with candidate actions
+masked, then each action sequence is rolled out. The score is latent error to
+the observed future. Mean top-1 accuracy is 0.3066 with memory and 0.3030
+without memory, with 8/18 cell wins. This is an offline identification test,
+not model-predictive control.
+
+\section{Official DINO-WM Validation}
+\label{app:official}
+
+The separate official protocol uses checkpoint
+\path{outputs/dinowm_wall_audit_v1/checkpoint/model_latest.pth}, epoch 65,
+SHA256
+\texttt{8441971becdae934fe08de5b163398390}\allowbreak
+\texttt{a32f6fe1fb0a8df1}\allowbreak
+\texttt{13290e2468e142b}.
+The source revision is
+\texttt{0a9492fa12044b852ae9e001c}\allowbreak
+\texttt{c74604b79c8bb0c}. The checkpoint, action/proprioception encoders, and
+DINO features remain fixed.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Released DINO-WM Wall factorial, means over seeds 0--2.
+Full/control is balanced accuracy; loss is memory/reset.}
+\label{tab:official-full}
+\begin{tabular}{lrrrr}
+\toprule
+condition & overwrite & full/control & loss & high/random deletion\\
+\midrule
+Immediate replacement & .219 & .400/.243 & 1.311/1.397 & .085/.000\\
+Hysteresis only & .751 & .774/.244 & 1.160/1.397 & .237/.000\\
+Versions, no verification & .551 & .635/.236 & 1.223/1.397 & .174/.000\\
+CEM & .751 & .758/.254 & 1.165/1.397 & .296/.000\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This protocol relocates cached genuine encoded events in latent time rather
+than rendering a raw environment stream. It validates the released host and
+the event-versioning mechanism, but it is not OGBench breadth, native planning,
+or evidence about unmodified event discovery.
+
+\section{LeWM Memory Interface Details}
+\label{app:lewm}
+
+All LeWM studies assert the same encoder/predictor digest before and after
+training:
+\texttt{5589632959b98370ad96001523025bc2}\allowbreak
+\texttt{65686e82b87376d327da18cbd555f879}.
+Trainable adapters are separate from the fixed host.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{LeWM six-way PushT interface results, three-seed means. Intermediate
+columns report post-hoc task information. Strict ratio is future-latent loss
+relative to the unmodified host when objectives are comparable.}
+\label{tab:lewm-full}
+\begin{tabular}{lrrrrr}
+\toprule
+interface & memory & intermediate & host & strict ratio & result\\
+\midrule
+Dense residual & .919 & .169 & .156 & not comparable & interface loss\\
+Memory experts & .921 & .698 & .370 & 36.79 & prediction loss\\
+Semantic bottleneck & .838 & .760 & .788 & not comparable & diagnostic only\\
+AdaLN & .961 & .854 & .813 & 31.08 & prediction loss\\
+Memory tokens & .984 & .983 & .819 & 13.59 & prediction loss\\
+Strict hybrid & .967 & .840 & .349 & 1.034 & task information lost\\
+LoRA & .742 & .760 & .185 & .993 & task information lost\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The semantic bottleneck preserves the pairwise structure of counterfactual
+latent targets (distance Pearson 0.992), but its original cue-conditioned
+objective is not comparable to strict next-latent loss. Memory tokens and
+AdaLN make task information available but substantially worsen prediction.
+The strict hybrid and LoRA preserve prediction but do not make the binding
+available at the host output. No row satisfies both requirements.
+
+\section{Decision-Log Schema}
+\label{app:logs}
+
+Each raw decision log records the environment, optimization seed, query
+timestamp, surprise stream, semantic-change stream, proposal groups, semantic
+key, event timestamp, predicted effect, router score, lifecycle transitions,
+promotion or rejection, supersession, eviction, fallback, retrieved event
+identifiers, and the selected store configuration. It also repeats the
+no-manual-event contract. Feature vectors are stored in checkpoints rather
+than expanded into JSON.
+
+The architecture receipt uses a deterministic rule: among completed test logs,
+select the retrieved event with largest proposal score, then display the
+preceding frame, event frame, following frame, and query frame. For the current
+paper this selects HumanoidMaze-large, seed 0, episode 384, event timestamp 12,
+and query timestamp 16. The four raw frame hashes and full cache hash are in
+\path{generated_results/raw_architecture_receipt.json}.
+
+\section{Reproduction}
+\label{app:reproduce}
+
+From the repository root:
+\begin{verbatim}
+.venv/bin/python -m pytest -q \
+  scripts/test_run_cem_raw_ogbench.py
+
+.venv/bin/python scripts/launch_cem_raw_ogbench.py \
+  --smoke --gpus 1 2
+
+.venv/bin/python scripts/launch_cem_raw_ogbench.py \
+  --campaign --gpus 0 1 2
+
+.venv/bin/python scripts/plot_cem_raw_ogbench.py
+.venv/bin/python scripts/plot_paper_d.py
+
+cd paper_d
+/home/chrislin/.TinyTeX/bin/x86_64-linux/pdflatex \
+  -interaction=nonstopmode -halt-on-error main.tex
+/home/chrislin/.TinyTeX/bin/x86_64-linux/pdflatex \
+  -interaction=nonstopmode -halt-on-error main.tex
+\end{verbatim}
+
+The launcher accepts only physical GPUs 0, 1, and 2 and rejects GPU3. The
+completed launch receipt records no failed or running jobs. Generated figures,
+tables, and snapshots are intended to be included with the paper so a later
+PDF build does not require private output caches.
+
+\section{Scope and Omitted Claims}
+\label{app:scope}
+
+We do not claim real-world camera generalization, robot deployment, native
+DINO-WM planning, executed raw-OGBench control, unbounded recall, cross-task
+transfer, or a well-calibrated causal-effect estimator. The breadth images are
+unmodified simulated environment renderings. Four environments have three
+optimization seeds and six have one. The recent-only comparison and weak
+deletion ordering are retained because they directly limit the main result.

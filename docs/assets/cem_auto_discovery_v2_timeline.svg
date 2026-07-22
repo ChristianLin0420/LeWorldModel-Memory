@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+<rect width="1200" height="430" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#172033}.title{font-size:22px;font-weight:700}.label{font-size:14px}.small{font-size:12px}.axis{stroke:#94a3b8;stroke-width:1}.dash{stroke-dasharray:7 5}</style>
+<text x="600" y="32" text-anchor="middle" class="title">CEM v2 event lifecycle  held-out overwrite episode 1</text>
+<line x1="125" y1="350" x2="1120" y2="350" class="axis"/>
+<g class="small" text-anchor="middle"><text x="125" y="372">0</text><text x="374" y="372">25</text><text x="623" y="372">50</text><text x="871" y="372">75</text><text x="1070" y="372">95</text></g>
+<g class="label" text-anchor="end"><text x="115" y="90">GT cue (post-hoc)</text><text x="115" y="150">provisional</text><text x="115" y="210">persistent</text><text x="115" y="270">final state</text><text x="115" y="330">proposal</text></g>
+<!-- post-hoc truth: [47,48] overwritten and [65,69] target -->
+<line x1="593" y1="85" x2="613" y2="85" stroke="#111827" stroke-width="7" class="dash"/>
+<line x1="772" y1="85" x2="822" y2="85" stroke="#111827" stroke-width="7" class="dash"/>
+<!-- provisional groups [33], [47,48], [65,76] -->
+<line x1="453" y1="145" x2="463" y2="145" stroke="#f59e0b" stroke-width="9"/>
+<line x1="593" y1="145" x2="613" y2="145" stroke="#f59e0b" stroke-width="9"/>
+<line x1="772" y1="145" x2="891" y2="145" stroke="#f59e0b" stroke-width="9"/>
+<!-- promotion and later lifecycle -->
+<line x1="453" y1="205" x2="463" y2="205" stroke="#16a34a" stroke-width="9"/>
+<line x1="593" y1="205" x2="613" y2="205" stroke="#16a34a" stroke-width="9"/>
+<line x1="772" y1="205" x2="891" y2="205" stroke="#16a34a" stroke-width="9"/>
+<line x1="453" y1="265" x2="463" y2="265" stroke="#64748b" stroke-width="9"/>
+<line x1="593" y1="265" x2="613" y2="265" stroke="#16a34a" stroke-width="9"/>
+<line x1="772" y1="265" x2="891" y2="265" stroke="#2563eb" stroke-width="9"/>
+<g fill="#7c3aed"><path d="M458 315 l-7 13 h14 z"/><path d="M598 315 l-7 13 h14 z"/><path d="M772 315 l-7 13 h14 z"/></g>
+<line x1="1070" y1="60" x2="1070" y2="350" stroke="#111827" stroke-width="2" class="dash"/>
+<text x="1077" y="67" class="small">query/retrieval t=95</text>
+<g class="small"><rect x="150" y="395" width="16" height="8" fill="#f59e0b"/><text x="171" y="403">provisional</text><rect x="260" y="395" width="16" height="8" fill="#16a34a"/><text x="281" y="403">promoted</text><rect x="365" y="395" width="16" height="8" fill="#dc2626"/><text x="386" y="403">rejected</text><rect x="455" y="395" width="16" height="8" fill="#64748b"/><text x="476" y="403">evicted</text><rect x="535" y="395" width="16" height="8" fill="#2563eb"/><text x="556" y="403">retrieved</text><rect x="635" y="395" width="16" height="8" fill="#be123c"/><text x="656" y="403">rejected by hysteresis</text></g>
+</svg>

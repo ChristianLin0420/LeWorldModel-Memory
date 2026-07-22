@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+<rect width="1200" height="430" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#172033}.title{font-size:22px;font-weight:700}.label{font-size:13px}.value{font-size:12px;font-weight:700}.grid{stroke:#e2e8f0}</style>
+<text x="600" y="30" text-anchor="middle" class="title">CEM v2 factorial ablation  2 environments � 3 seeds</text>
+<g class="grid"><line x1="70" y1="340" x2="1135" y2="340"/><line x1="70" y1="265" x2="1135" y2="265"/><line x1="70" y1="190" x2="1135" y2="190"/><line x1="70" y1="115" x2="1135" y2="115"/><line x1="70" y1="40" x2="1135" y2="40"/></g>
+<g class="label" text-anchor="end"><text x="62" y="345">0.00</text><text x="62" y="270">0.25</text><text x="62" y="195">0.50</text><text x="62" y="120">0.75</text><text x="62" y="45">1.00</text></g>
+<!-- false-write -->
+<g fill="#dc2626"><rect x="115" y="49" width="45" height="291"/><rect x="185" y="51" width="45" height="289"/><rect x="255" y="303" width="45" height="37"/><rect x="325" y="303" width="45" height="37"/></g>
+<!-- overwrite -->
+<g fill="#f59e0b"><rect x="435" y="246" width="45" height="94"/><rect x="505" y="124" width="45" height="216"/><rect x="575" y="123" width="45" height="217"/><rect x="645" y="123" width="45" height="217"/></g>
+<!-- BAcc -->
+<g fill="#2563eb"><rect x="755" y="203" width="45" height="137"/><rect x="825" y="119" width="45" height="221"/><rect x="895" y="114" width="45" height="226"/><rect x="965" y="114" width="45" height="226"/></g>
+<g class="value" text-anchor="middle"><text x="137" y="43">0.968</text><text x="207" y="45">0.963</text><text x="277" y="297">0.122</text><text x="347" y="297">0.122</text><text x="457" y="240">0.315</text><text x="527" y="118">0.721</text><text x="597" y="117">0.722</text><text x="667" y="117">0.722</text><text x="777" y="197">0.455</text><text x="847" y="113">0.735</text><text x="917" y="108">0.753</text><text x="987" y="108">0.753</text></g>
+<g class="label" text-anchor="middle"><text x="242" y="375">Distractor false-write �</text><text x="562" y="375">Overwrite correctness �</text><text x="882" y="375">Full BAcc �</text></g>
+<g class="label"><rect x="395" y="400" width="14" height="8" fill="#94a3b8"/><text x="414" y="408">v1 immediate</text><rect x="515" y="400" width="14" height="8" fill="#f59e0b"/><text x="534" y="408">+ grouping</text><rect x="615" y="400" width="14" height="8" fill="#16a34a"/><text x="634" y="408">+ delayed CE</text><rect x="730" y="400" width="14" height="8" fill="#2563eb"/><text x="749" y="408">+ hysteresis/router</text></g>
+</svg>

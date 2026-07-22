@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050"
+     role="img" aria-labelledby="cemTitle cemDesc">
+  <title id="cemTitle">Causal-Effect Memory architecture for a frozen world-model host</title>
+  <desc id="cemDesc">A left-to-right and top-to-bottom architecture diagram. Frozen LeWM or DINO-WM encodes pixels and predicts the next latent; its one-step error drives a label-free surprise write gate. Timestamped semantic events enter a bounded store. A predicted causal-effect head evicts low-value events and is periodically calibrated by true single and group deletion interventions. A learned router retrieves bounded top-k candidates and verifies them against frozen-host rollout loss. Verified memories cross an unresolved host-exposure interface; rejected memories return to the store or are dropped. Outputs include prediction or planning, fail-closed controls, and causal deletion. A bottom strip defines the single causal-effect scalar shared by write, keep, and recall.</desc>
+  <defs>
+    <style><![CDATA[
+      .canvas{fill:#f5f4ef}
+      .panel{fill:#fbfbf9;stroke:#c9c3b2;stroke-width:2}
+      .host{fill:url(#hostHatch);stroke:#5f6b76;stroke-width:2.2}
+      .train{fill:#fdf3cf;stroke:#d8a900;stroke-width:2.5}
+      .memory{fill:#111827;stroke:#111827;stroke-width:2.2}
+      .runtime{fill:#fff;stroke:#111827;stroke-width:2}
+      .intervention{fill:url(#doHatch);stroke:#315b2c;stroke-width:2.3}
+      .verified{fill:#edf5e9;stroke:#315b2c;stroke-width:2.3}
+      .rejected{fill:#f4efec;stroke:#a64b3c;stroke-width:2}
+      .note{fill:#fff9df;stroke:#d8a900;stroke-width:1.8}
+      .title{font:700 32px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .subtitle{font:400 18px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#656760}
+      .ptitle{font:700 23px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .btitle{font:700 19px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .btitlew{font:700 19px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#fbd45b}
+      .body{font:400 16px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#2b3440}
+      .bodyw{font:400 16px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#f5f4ef}
+      .small{font:400 14px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#656760}
+      .compact{font:700 17px 'Noto Sans','DejaVu Sans',Arial,sans-serif;fill:#111827}
+      .mini{font:600 12px 'DejaVu Sans Mono','Noto Sans Mono',monospace;fill:#111827}
+      .badge{font:700 13px 'Noto Sans','DejaVu Sans',Arial,sans-serif;letter-spacing:.7px}
+      .mono{font:600 14px 'DejaVu Sans Mono','Noto Sans Mono',monospace;fill:#111827}
+      .monow{font:600 14px 'DejaVu Sans Mono','Noto Sans Mono',monospace;fill:#f5f4ef}
+      .flow{fill:none;stroke:#343a40;stroke-width:3;marker-end:url(#arrowInk)}
+      .cheap{fill:none;stroke:#d8a900;stroke-width:3.5;marker-end:url(#arrowGold)}
+      .true{fill:none;stroke:#315b2c;stroke-width:3;stroke-dasharray:10 7;marker-end:url(#arrowGreen)}
+      .reject{fill:none;stroke:#a64b3c;stroke-width:2.7;stroke-dasharray:7 6;marker-end:url(#arrowRed)}
+      .return{fill:none;stroke:#7b7f7a;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrowGray)}
+      .divider{stroke:#dfdbcf;stroke-width:1.5}
+    ]]></style>
+    <pattern id="hostHatch" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#eeece4"/>
+      <path d="M-2 2L2-2M0 10L10 0M8 12L12 8" stroke="#c7cdd3" stroke-width="1.3"/>
+    </pattern>
+    <pattern id="doHatch" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#edf5e9"/>
+      <path d="M0 0L10 10M-3 7L3 13M7-3L13 3" stroke="#b5c9ae" stroke-width="1.4"/>
+    </pattern>
+    <marker id="arrowInk" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#343a40"/></marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#d8a900"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#315b2c"/></marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#a64b3c"/></marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7b7f7a"/></marker>
+  </defs>
+
+  <rect class="canvas" width="1600" height="1050"/>
+  <text class="title" x="30" y="43">CEM &#8212; one causal currency for WRITE, KEEP, and RECALL</text>
+  <text class="subtitle" x="30" y="70">A bounded, timestamped event sidecar for a FROZEN LeWM / DINO-WM host; cue identity and cue time are never supplied to the controller.</text>
+
+  <!-- semantic legend -->
+  <g aria-label="semantic visual-class legend">
+    <rect class="host" x="30" y="88" width="26" height="20" rx="4"/><text class="small" x="64" y="104">frozen host</text>
+    <rect class="train" x="181" y="88" width="26" height="20" rx="4"/><text class="small" x="215" y="104">trainable controller</text>
+    <rect class="memory" x="390" y="88" width="26" height="20" rx="4"/><text class="small" x="424" y="104">runtime memory</text>
+    <rect class="intervention" x="572" y="88" width="26" height="20" rx="4"/><text class="small" x="606" y="104">fixed / true intervention</text>
+    <path class="true" d="M823 98H862"/><text class="small" x="872" y="104">verified causal path</text>
+    <rect class="rejected" x="1042" y="88" width="26" height="20" rx="4"/>
+    <path d="M1047 92L1063 104M1063 92L1047 104" stroke="#a64b3c" stroke-width="2.2"/>
+    <text class="small" x="1076" y="104">rejected / evicted</text>
+    <path class="cheap" d="M1236 98H1275"/><text class="small" x="1285" y="104">cheap estimate</text>
+    <path class="flow" d="M1431 98H1470"/><text class="small" x="1480" y="104">host flow</text>
+  </g>
+
+  <!-- A + B: frozen host and write -->
+  <rect class="panel" x="24" y="126" width="1552" height="270" rx="14"/>
+  <text class="ptitle" x="46" y="160">A  FROZEN WORLD-MODEL HOST</text>
+  <text class="small" x="430" y="159">native short-context computation supplies the write signal; encoder and predictor never train</text>
+  <line class="divider" x1="46" y1="174" x2="1554" y2="174"/>
+
+  <rect class="runtime" x="46" y="202" width="138" height="98" rx="10"/>
+  <text class="btitle" x="66" y="228">Observation</text>
+  <text class="body" x="66" y="252">pixels o<tspan baseline-shift="sub">t</tspan></text>
+  <rect x="66" y="266" width="98" height="18" fill="#e7e3d7" stroke="#9b8f75"/>
+  <circle cx="91" cy="275" r="6" fill="#fbd45b"/><circle cx="119" cy="275" r="6" fill="#5f6b76"/>
+
+  <rect class="host" x="220" y="202" width="172" height="98" rx="10"/>
+  <text class="badge" x="240" y="226" fill="#5f6b76">FROZEN</text>
+  <text class="btitle" x="240" y="253">Visual encoder</text>
+  <text class="mono" x="240" y="280">o<tspan baseline-shift="sub">t</tspan> &#8594; z<tspan baseline-shift="sub">t</tspan></text>
+
+  <rect class="runtime" x="428" y="202" width="122" height="98" rx="10"/>
+  <text class="btitle" x="449" y="243">Latent</text>
+  <text class="mono" x="463" y="273">z<tspan baseline-shift="sub">t</tspan></text>
+
+  <rect class="host" x="586" y="194" width="222" height="114" rx="10"/>
+  <text class="badge" x="606" y="220" fill="#5f6b76">FROZEN</text>
+  <text class="compact" x="606" y="247">Short-window predictor</text>
+  <text class="small" x="606" y="273">recent legal z + actions</text>
+  <text class="mono" x="606" y="295">z_hat<tspan baseline-shift="sub">t</tspan> = host.predict(...)</text>
+
+  <rect class="runtime" x="842" y="202" width="140" height="98" rx="10"/>
+  <text class="btitle" x="858" y="231">Host error</text>
+  <text class="mono" x="858" y="258">surprise<tspan baseline-shift="sub">t</tspan></text>
+  <text class="small" x="858" y="283">one-step MSE</text>
+
+  <rect class="train" x="1018" y="190" width="260" height="122" rx="11"/>
+  <text class="badge" x="1038" y="216" fill="#8a6500">B  WRITE &#183; CHEAP / LABEL-FREE</text>
+  <text class="btitle" x="1038" y="244">Running surprise quantile</text>
+  <text class="mono" x="1038" y="270">write iff s<tspan baseline-shift="sub">t</tspan> &gt; Q<tspan baseline-shift="sub">&#961;</tspan>(s)</text>
+  <text class="small" x="1038" y="296">self-calibrating host byproduct</text>
+
+  <rect class="memory" x="1314" y="190" width="238" height="122" rx="11"/>
+  <text class="btitlew" x="1334" y="218">Candidate event</text>
+  <text class="small" x="1334" y="246" style="fill:#f5f4ef">semantic patch / event latent</text>
+  <text class="monow" x="1334" y="272">key &#183; value &#183; time t</text>
+  <text class="bodyw" x="1334" y="298">distinct event, not slot blend</text>
+
+  <path class="flow" d="M184 251H218"/><path class="flow" d="M392 251H426"/>
+  <path class="flow" d="M550 251H584"/><path class="flow" d="M808 251H840"/>
+  <path class="cheap" d="M982 251H1016"/><path class="cheap" d="M1278 251H1312"/>
+
+  <rect class="note" x="46" y="326" width="506" height="48" rx="8"/>
+  <text class="btitle" x="64" y="348">Cue time is NOT given to the model.</text>
+  <text class="small" x="64" y="367">Post-hoc ground-truth cue interval = evaluation only; discovered writes are separate.</text>
+  <rect class="note" x="1018" y="326" width="534" height="48" rx="8"/>
+  <text class="btitle" x="1038" y="349">No cue labels &#183; no hand-crafted color saliency</text>
+  <text class="small" x="1038" y="368">WRITE timing comes only from frozen-host surprise.</text>
+
+  <!-- Store, keep, recall, exposure, output -->
+  <rect class="panel" x="24" y="414" width="1552" height="446" rx="14"/>
+  <text class="ptitle" x="46" y="450">C-G  BOUNDED MEMORY LIFE CYCLE</text>
+  <text class="small" x="470" y="449">gold = online approximation &#183; green dashed = expensive true host intervention &#183; red = failed verification</text>
+  <line class="divider" x1="46" y1="464" x2="1554" y2="464"/>
+
+  <!-- keep -->
+  <rect class="train" x="44" y="490" width="292" height="290" rx="12"/>
+  <text class="badge" x="64" y="516" fill="#8a6500">D  KEEP / EVICT</text>
+  <text class="compact" x="64" y="544">Amortized causal-value head</text>
+  <text class="mono" x="64" y="570">CE_hat(key, context, age, s)</text>
+  <text class="body" x="64" y="592">capacity pressure</text>
+  <text class="body" x="64" y="613">&#8594; evict lowest CE_hat</text>
+  <rect class="intervention" x="64" y="624" width="252" height="116" rx="9"/>
+  <text class="badge" x="82" y="649" fill="#315b2c">PERIODIC TRUE do-CALIBRATION</text>
+  <text class="body" x="82" y="676">delete event / redundant group</text>
+  <text class="body" x="82" y="700">&#8594; frozen-host future rollout &#916;L</text>
+  <text class="small" x="82" y="724">distill scale + ranking into CE_hat</text>
+  <g aria-label="redundant cue group deletion">
+    <rect x="76" y="752" width="30" height="20" rx="4" fill="#111827"/>
+    <rect x="112" y="752" width="30" height="20" rx="4" fill="#111827"/>
+    <rect x="148" y="752" width="30" height="20" rx="4" fill="#111827"/>
+    <path d="M73 748L182 776M182 748L73 776" stroke="#315b2c" stroke-width="2.5"/>
+    <text class="small" x="191" y="769">GROUP deletion</text>
+  </g>
+
+  <!-- store -->
+  <rect class="memory" x="372" y="490" width="340" height="290" rx="12"/>
+  <text class="badge" x="392" y="516" fill="#fbd45b">C  BOUNDED EVENT STORE</text>
+  <text class="small" x="392" y="541" style="fill:#f5f4ef">timestamped distinct events &#183; budget B &#183; status</text>
+  <g>
+    <rect x="392" y="560" width="300" height="38" rx="6" fill="#fbfbf9"/>
+    <text class="mini" x="407" y="584">m1  key | value | t=08 | CE_hat=.71</text>
+    <rect x="392" y="606" width="300" height="38" rx="6" fill="#fbfbf9"/>
+    <text class="mini" x="407" y="630">m2  key | value | t=21 | CE_hat=.44</text>
+    <rect x="392" y="652" width="300" height="38" rx="6" fill="#fbfbf9"/>
+    <text class="mini" x="407" y="676">m3  key | value | t=47 | CE_hat=.09</text>
+    <rect x="392" y="698" width="300" height="38" rx="6" fill="#fdf3cf"/>
+    <text class="mini" x="407" y="722">m4  key | value | t=63 | candidate</text>
+  </g>
+  <text class="bodyw" x="392" y="762">FULL  B/B  &#8594; KEEP must free capacity</text>
+
+  <!-- recall -->
+  <rect class="train" x="748" y="490" width="306" height="290" rx="12"/>
+  <text class="badge" x="768" y="516" fill="#8a6500">E  RECALL &#183; BOUNDED top-k</text>
+  <text class="btitle" x="768" y="544">Learned query router</text>
+  <text class="body" x="768" y="571">content match + age kernel</text>
+  <text class="body" x="768" y="594">+ predicted need &#8594; top-k</text>
+  <rect class="intervention" x="768" y="620" width="266" height="96" rx="9"/>
+  <text class="badge" x="786" y="646" fill="#315b2c">RETRIEVE-THEN-VERIFY</text>
+  <text class="body" x="786" y="673">accept only if host-loss delta &gt; &#948;</text>
+  <text class="mono" x="786" y="699">L(null) &#8722; L(inject m)</text>
+  <rect class="verified" x="768" y="732" width="122" height="32" rx="7"/>
+  <text class="badge" x="785" y="753" fill="#315b2c">VERIFIED</text>
+  <rect class="rejected" x="906" y="732" width="128" height="32" rx="7"/>
+  <path d="M917 739L936 757M936 739L917 757" stroke="#a64b3c" stroke-width="2"/>
+  <text class="badge" x="944" y="753" fill="#a64b3c">REJECT</text>
+
+  <!-- interface -->
+  <rect class="note" x="1090" y="490" width="250" height="290" rx="12"/>
+  <text class="badge" x="1110" y="516" fill="#8a6500">F  HOST EXPOSURE</text>
+  <text class="btitle" x="1110" y="544">INTERFACE CHOICE</text>
+  <text class="body" x="1110" y="570">open bottleneck &#8212; no winner yet</text>
+  <line class="divider" x1="1110" y1="584" x2="1320" y2="584"/>
+  <text class="body" x="1110" y="611">&#8226; dedicated memory tokens</text>
+  <text class="body" x="1110" y="640">&#8226; memory experts</text>
+  <text class="body" x="1110" y="669">&#8226; AdaLN conditioning</text>
+  <text class="body" x="1110" y="698">&#8226; semantic bottleneck</text>
+  <rect class="rejected" x="1110" y="720" width="210" height="42" rx="7"/>
+  <text class="small" x="1122" y="738">dense residual injection can</text>
+  <text class="small" x="1122" y="755">destroy semantic separability</text>
+
+  <!-- outputs -->
+  <rect class="host" x="1376" y="490" width="176" height="290" rx="12"/>
+  <text class="badge" x="1396" y="516" fill="#5f6b76">G  FROZEN OUTPUTS</text>
+  <text class="btitle" x="1396" y="548">Next-latent</text>
+  <text class="body" x="1396" y="572">prediction / planning</text>
+  <line class="divider" x1="1396" y1="592" x2="1532" y2="592"/>
+  <text class="btitle" x="1396" y="621">Fail-closed audit</text>
+  <text class="small" x="1396" y="648">full / reset / no-state</text>
+  <text class="small" x="1396" y="672">+ shuffled / random</text>
+  <line class="divider" x1="1396" y1="692" x2="1532" y2="692"/>
+  <text class="btitle" x="1396" y="721">Causal deletion</text>
+  <text class="small" x="1396" y="747">single + group deletion</text>
+  <text class="small" x="1396" y="768">host-loss endpoint</text>
+
+  <!-- inter-panel and lifecycle flows -->
+  <path class="cheap" d="M1433 312V430H542V488"/>
+  <text class="small" x="1138" y="426" fill="#8a6500">admitted candidate</text>
+  <path class="cheap" d="M372 610H338"/>
+  <text class="small" x="341" y="597" text-anchor="end" fill="#8a6500">score / evict</text>
+  <path class="cheap" d="M712 610H746"/>
+  <path class="true" d="M336 680C354 820 560 840 660 780"/>
+  <text class="small" x="396" y="829" fill="#315b2c">true &#916;L targets recalibrate CE_hat</text>
+  <path class="true" d="M890 748C995 818 1058 820 1090 700"/>
+  <path class="true" d="M1340 635H1374"/>
+  <path class="reject" d="M970 764C948 830 700 842 650 781"/>
+  <text class="small" x="749" y="849" fill="#a64b3c">rejected &#8594; return to store or drop</text>
+  <path class="return" d="M372 744C342 814 278 816 226 780"/>
+  <text class="small" x="48" y="810" fill="#7b7f7a">low CE_hat &#8594; evicted</text>
+
+  <!-- causal definition -->
+  <rect x="24" y="880" width="1552" height="146" rx="14" fill="#111827"/>
+  <text class="badge" x="48" y="910" fill="#fbd45b">THE SINGLE CAUSAL DEFINITION</text>
+  <text x="48" y="952" style="font:700 25px 'DejaVu Sans Mono','Noto Sans Mono',monospace;fill:#f5f4ef">
+    CE(m) = L<tspan baseline-shift="sub" font-size="17">future</tspan>(do(M \ {m})) &#8722; L<tspan baseline-shift="sub" font-size="17">future</tspan>(M)
+  </text>
+  <text class="bodyw" x="48" y="992">A memory is valuable only when deleting it makes the untouched host predict or plan worse.</text>
+  <rect x="812" y="908" width="220" height="78" rx="9" fill="#fbd45b"/>
+  <text class="btitle" x="832" y="937">WRITE</text><text class="small" x="832" y="960" fill="#111827">1-step &#183; cheapest proxy</text>
+  <text class="small" x="832" y="979" fill="#111827">host surprise</text>
+  <rect x="1050" y="908" width="220" height="78" rx="9" fill="#fdf3cf" stroke="#d8a900"/>
+  <text class="btitle" x="1070" y="937">KEEP</text><text class="small" x="1070" y="960" fill="#111827">amortized multi-step</text>
+  <text class="small" x="1070" y="979" fill="#111827">periodic true calibration</text>
+  <rect x="1288" y="908" width="240" height="78" rx="9" fill="#edf5e9" stroke="#315b2c"/>
+  <text class="btitle" x="1308" y="937">RECALL</text><text class="small" x="1308" y="960" fill="#111827">bounded top-k &#183; highest cost</text>
+  <text class="small" x="1308" y="979" fill="#111827">true verify at decision time</text>
+  <text class="small" x="812" y="1010" style="fill:#f5f4ef">Three estimators of one scalar at increasing horizon and intervention cost &#8594;</text>
+</svg>

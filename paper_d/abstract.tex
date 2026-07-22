@@ -1,0 +1,17 @@
+Finite-window world models cannot directly use observations after they leave
+the context window. We introduce Causal-Effect Memory (\cem), an external
+controller that proposes events from prediction surprise, verifies them using
+future-latent loss, stores verified event versions, and retrieves a bounded set
+for later prediction. The controller receives no event labels or event times.
+We evaluate \cem\ on unmodified OGBench renderings using frozen DINOv2 features
+and action-conditioned latent predictors, with separate controlled studies on
+released DINO-WM and LeWorldModel hosts. Across diverse OGBench environments,
+memory consistently improves prediction over no-memory, reset, shuffled, and
+random-memory controls, and its benefit grows with rollout horizon. However, a
+recent-only extension is slightly stronger on average, and learned
+causal-effect rankings remain weak. The released DINO-WM study provides
+stronger deletion evidence, while the LeWorldModel study shows that a readable
+memory can still be incompatible with a frozen predictor. These results support
+external event memory as a useful but limited extension to finite-window world
+models and identify event ranking and memory-interface compatibility as the
+main unresolved problems.

@@ -1,0 +1,62 @@
+{
+  "schema": "paper_d_raw_architecture_selector_v2",
+  "environment": "cube-single-play-v0",
+  "family": "manipulation",
+  "episode": 556,
+  "frame_indices": [
+    2,
+    3,
+    6,
+    17
+  ],
+  "pixel_mean_absolute_difference": [
+    0.016083281487226486,
+    0.02745799906551838,
+    0.0440065898001194
+  ],
+  "semantic_change": 1.0054659843444824,
+  "selection_score": 0.11771184988319874,
+  "selection_rule": "maximum sum of three ordered raw-pixel differences plus 0.03 times log-produced DINO semantic change, restricted to retrieved events",
+  "frames_modified": false,
+  "frame_sha256": [
+    "0257f1b4464b1d6317d78ec6b2ed32a7b0f224a7470f575e2c99f13fab864b75",
+    "17b3da81eb44c99faa5e83ac0e5b898fd792d3bc4093ec809e11cfd11e5e1ea9",
+    "89e6fb1f86d8f91dbfa33a79e2fb368f892231ed89c58d47f429627e3c390db2",
+    "8d5f5e1bca13fe98fb7ff9b9cc4460617028fe9630285e678914a0dc6694a724"
+  ],
+  "cache_path": "outputs/multiview_patchset_color_jepa_native_v1/cache/cube-single-play-v0/render_cache.npz",
+  "cache_sha256": "8e834163c3bf330c6f7a5af6b72a6e1ac0aa4e57779b5bd404b3856eb8fc6793",
+  "decision_log": "outputs/cem_raw_ogbench/cells/cube-single-play-v0/s0/decision_log.json",
+  "event": {
+    "ce_hat": 0.0013860464096069336,
+    "event_id": 0,
+    "event_timestamp": 3,
+    "group_end": 5,
+    "group_start": 2,
+    "host_surprise": 0.7471835017204285,
+    "key_id": 5,
+    "proposal_score": 1.6501035690307617,
+    "retrieve_then_verify_accepted": true,
+    "retrieved": true,
+    "router_score": 0.026937872171401978,
+    "semantic_change": 1.0054659843444824,
+    "true_group_effect_posthoc": 0.011854070238769054
+  },
+  "rejected_event": {
+    "ce_hat": -0.04622994735836983,
+    "event_id": 1,
+    "event_timestamp": 9,
+    "group_end": 9,
+    "group_start": 7,
+    "host_surprise": 0.9924170970916748,
+    "key_id": 5,
+    "proposal_score": 2.191685199737549,
+    "retrieve_then_verify_accepted": false,
+    "retrieved": false,
+    "router_score": -0.5436899662017822,
+    "semantic_change": 1.1737855672836304,
+    "true_group_effect_posthoc": 0.01873769983649254
+  },
+  "query_t": 17,
+  "cue_window_used_by_model": false
+}
