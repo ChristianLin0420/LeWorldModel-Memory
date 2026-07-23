@@ -453,6 +453,87 @@ def write_auto_age_table(auto: dict[str, Any]) -> None:
     (GENERATED / "auto_age_summary_tabular.tex").write_text("\n".join(lines))
 
 
+def write_delay_summary_table(snapshot: dict[str, Any], auto: dict[str, Any]) -> None:
+    """General per-writer delay-sweep summary (no per-age columns).
+
+    For the slot writer, means are aggregated over the dense mixed-age delay
+    sweep (protocol~P1: all evaluated delays and seeds).  For the recurrent
+    baselines only the controlled-age sweep is available, so their means are over
+    the evaluated delays (protocol~P0).  ``Max. passing delay'' is the largest
+    evaluated delay whose mean full-memory balanced accuracy still clears the
+    0.75 gate (evaluated ranges differ by protocol).
+    """
+    lines = [
+        "\\begin{tabular}{lcccc}",
+        "\\toprule",
+        "Method & Mean full BAcc & Mean reset & Mean no-state & Max.\\ passing delay\\\\",
+        "\\midrule",
+    ]
+    slot_pass = [int(r["age"]) for r in auto["age_rows"] if r["mean_full"] >= 0.75]
+    slot_mp = f"$\\ge {max(slot_pass)}$" if slot_pass else "n/a"
+    slot_row = (
+        f"{METHOD_LABELS['slot_current']} & {fmt(auto['mean_full'])} & {fmt(auto['mean_reset'])} & "
+        f"{fmt(auto['mean_no_state'])} & {slot_mp}\\\\"
+    )
+    lines.append("\\rowcolor{MemCream}" + slot_row)
+    for method in ["gru", "lstm", "mamba_lite"]:
+        item = snapshot["methods"][method]
+        passing = [age for age in AGES if item["age"][str(age)]["mean_full"] >= 0.75]
+        mp = str(max(passing)) if passing else "n/a"
+        lines.append(
+            f"{METHOD_LABELS[method]} & {fmt(item['mean_full'])} & {fmt(item['mean_reset'])} & "
+            f"{fmt(item['mean_no_state'])} & {mp}\\\\"
+        )
+    lines.extend(["\\bottomrule", "\\end{tabular}", ""])
+    (GENERATED / "delay_summary_tabular.tex").write_text("\n".join(lines))
+
+
+def write_env_retention_summary_table(
+    auto: dict[str, Any], index: dict[tuple[str, str, int], dict[str, Any]]
+) -> None:
+    """Condensed per-environment retention summary (no per-age columns).
+
+    Slot columns are mean full/reset/no-state balanced accuracy over the dense
+    mixed-age delay sweep (protocol~P1).  The best-baseline column is the
+    strongest recurrent baseline's mean full-memory balanced accuracy over its
+    evaluated delays (protocol~P0), with the winning baseline in parentheses.
+    """
+    slot_by_env: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in auto["env_age_rows"]:
+        slot_by_env[str(row["env"])]["full"].append(float(row["mean_full"]))
+        slot_by_env[str(row["env"])]["reset"].append(float(row["mean_reset"]))
+        slot_by_env[str(row["env"])]["no_state"].append(float(row["mean_no_state"]))
+    lines = [
+        "\\begin{tabular}{lcccc}",
+        "\\toprule",
+        "\\multirow{2}{*}{Environment} & \\multicolumn{3}{c}{Slot memory (ours)} & Best baseline\\\\",
+        "\\cmidrule(lr){2-4}",
+        " & Full & Reset & No-state & Full\\\\",
+        "\\midrule",
+    ]
+    for env in ENV_ORDER:
+        slot = slot_by_env.get(env)
+        if not slot:
+            continue
+        best_val: float | None = None
+        best_method = ""
+        for method in ["gru", "lstm", "mamba_lite"]:
+            vals = [index[(method, env, age)]["full"] for age in AGES if (method, env, age) in index]
+            if not vals:
+                continue
+            mval = mean(vals)
+            if best_val is None or mval > best_val:
+                best_val = mval
+                best_method = METHOD_SHORT[method]
+        best_str = "n/a" if best_val is None else f"{fmt(best_val)} ({best_method})"
+        lines.append(
+            f"{env_full(env)} & {fmt(mean(slot['full']))} & {fmt(mean(slot['reset']))} & "
+            f"{fmt(mean(slot['no_state']))} & {best_str}\\\\"
+        )
+    lines.extend(["\\bottomrule", "\\end{tabular}", ""])
+    (GENERATED / "env_retention_summary_tabular.tex").write_text("\n".join(lines))
+
+
 # --------------------------------------------------------------------------- #
 # Appendix tables
 # --------------------------------------------------------------------------- #
@@ -1087,6 +1168,167 @@ def plot_env_heatmaps(rows: list[dict[str, Any]]) -> None:
     savefig(fig, "fig_c_env_heatmaps")
 
 
+CONTINUOUS_ROOT = ROOT / "outputs" / "paper_c_continuous_v1"
+CONTINUOUS_ENVS = [
+    "pointmaze-large-navigate-v0",
+    "cube-single-play-v0",
+    "puzzle-3x3-play-v0",
+    "scene-play-v0",
+]
+
+
+def _load_continuous() -> dict[str, dict[str, Any]]:
+    """Per-environment continuous-delay evaluation payloads (log-uniform sweep)."""
+    out: dict[str, dict[str, Any]] = {}
+    for env in CONTINUOUS_ENVS:
+        path = CONTINUOUS_ROOT / env / "continuous_eval.json"
+        if path.is_file():
+            out[env] = load_json(path)
+    return out
+
+
+def _kernel_smooth(x: np.ndarray, y: np.ndarray, xq: np.ndarray, bw: float) -> np.ndarray:
+    """Gaussian-kernel regression of y on x, evaluated at xq (x in log-alpha)."""
+    weights = np.exp(-0.5 * ((xq[:, None] - x[None, :]) / bw) ** 2)
+    denom = weights.sum(axis=1)
+    denom[denom == 0] = 1.0
+    return (weights * y[None, :]).sum(axis=1) / denom
+
+
+def _balanced_curve(alpha: np.ndarray, correct: np.ndarray, labels: np.ndarray,
+                    xq: np.ndarray, bw: float) -> np.ndarray:
+    """Smooth balanced accuracy vs log-alpha: mean over per-class recall curves."""
+    logx = np.log(alpha)
+    recalls = []
+    for cls in range(CLASSES):
+        mask = labels == cls
+        if int(mask.sum()) >= 3:
+            recalls.append(_kernel_smooth(logx[mask], correct[mask].astype(float), xq, bw))
+    if not recalls:
+        return _kernel_smooth(logx, correct.astype(float), xq, bw)
+    return np.mean(np.stack(recalls, axis=0), axis=0)
+
+
+def _binned_balanced(alpha: np.ndarray, correct: np.ndarray, labels: np.ndarray,
+                     edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Balanced accuracy inside each log-alpha bin (for the scatter overlay)."""
+    centers, values = [], []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        mask = (alpha >= lo) & (alpha < hi) if hi != edges[-1] else (alpha >= lo) & (alpha <= hi)
+        if int(mask.sum()) < 4:
+            continue
+        recalls = []
+        for cls in range(CLASSES):
+            cmask = mask & (labels == cls)
+            if int(cmask.sum()) >= 1:
+                recalls.append(float(correct[cmask].mean()))
+        if recalls:
+            centers.append(float(np.sqrt(lo * hi)))
+            values.append(float(np.mean(recalls)))
+    return np.asarray(centers), np.asarray(values)
+
+
+def _continuous_metrics() -> dict[str, dict[str, Any]]:
+    """General retention metrics per environment from the continuous sweep."""
+    data = _load_continuous()
+    out: dict[str, dict[str, Any]] = {}
+    for env, payload in data.items():
+        rows = payload["rows"]
+        alpha = np.asarray([r["alpha"] for r in rows], dtype=float)
+        labels = np.asarray([r["label"] for r in rows], dtype=int)
+        full = np.asarray([r["full_correct"] for r in rows], dtype=float)
+        reset = np.asarray([r["reset_correct"] for r in rows], dtype=float)
+        lo = float(payload.get("min_alpha", alpha.min()))
+        hi = float(payload.get("max_alpha", alpha.max()))
+        xq = np.linspace(np.log(lo), np.log(max(hi, lo + 1e-6)), 200)
+        bw = max(0.15, (xq[-1] - xq[0]) / 8.0)
+        full_curve = _balanced_curve(alpha, full, labels, xq, bw)
+        reset_curve = _balanced_curve(alpha, reset, labels, xq, bw)
+        aq = np.exp(xq)
+        above = np.where(full_curve >= 0.75)[0]
+        max_pass = float(aq[above[-1]]) if len(above) else None
+        auc = float(np.trapz(full_curve, xq) / (xq[-1] - xq[0]))
+        bacc_max = float(full_curve[-1])
+        edges = np.logspace(np.log10(lo), np.log10(hi), 13)
+        sc_x, sc_y = _binned_balanced(alpha, full, labels, edges)
+        out[env] = {
+            "aq": aq,
+            "full_curve": full_curve,
+            "reset_curve": reset_curve,
+            "scatter_x": sc_x,
+            "scatter_y": sc_y,
+            "max_pass": max_pass,
+            "auc": auc,
+            "bacc_max": bacc_max,
+            "max_alpha": hi,
+            "min_alpha": lo,
+            "draws": len(rows),
+        }
+    return out
+
+
+def plot_continuous_retention() -> None:
+    """Continuous retention: balanced accuracy vs delay (log axis) per environment,
+    a smoothed curve over a genuinely continuous log-uniform delay sweep, with the
+    reset control and the 0.75 gate."""
+    metrics = _continuous_metrics()
+    if not metrics:
+        return
+    envs = [e for e in CONTINUOUS_ENVS if e in metrics]
+    n = len(envs)
+    fig, axes = plt.subplots(1, n, figsize=(2.55 * n, 2.6), constrained_layout=True, squeeze=False)
+    fig.patch.set_facecolor(PI["white"])
+    axes = axes[0]
+    for ax, env in zip(axes, envs):
+        m = metrics[env]
+        ax.scatter(m["scatter_x"], m["scatter_y"], s=20, color=PI["yellow_deep"],
+                   edgecolor=PI["ink"], linewidth=0.5, zorder=3, label="binned BAcc")
+        ax.plot(m["aq"], m["full_curve"], "-", lw=2.0, color=PI["ink"], zorder=4, label="full (smoothed)")
+        ax.plot(m["aq"], m["reset_curve"], "-", lw=1.3, color=PI["gray"], zorder=3, label="reset")
+        ax.axhline(0.75, color=PI["bad"], lw=1.0, ls="--", zorder=2)
+        if m["max_pass"] is not None:
+            ax.axvline(m["max_pass"], color=PI["yellow_deep"], lw=1.0, ls=":", zorder=2)
+        ax.set_xscale("log")
+        ax.set_ylim(0.1, 1.03)
+        ax.set_xlabel(r"Evidence delay $\alpha$ (log)", fontsize=8)
+        if env == envs[0]:
+            ax.set_ylabel("Balanced accuracy", fontsize=8.5)
+        ax.set_title(env_full(env), fontsize=8.5, weight="bold")
+        ax.grid(alpha=0.3)
+        ax.set_axisbelow(True)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+        ax.tick_params(labelsize=7)
+    axes[0].legend(fontsize=6.0, loc="lower left", handlelength=1.3)
+    savefig(fig, "fig_c_continuous_retention")
+
+
+def write_retention_summary_table() -> None:
+    """Compact GENERAL per-environment retention summary (no per-age columns):
+    empirical maximum passing delay (smoothed 0.75 crossing), retention AUC over
+    log-alpha (normalized 0--1), and balanced accuracy at the maximum tested delay."""
+    metrics = _continuous_metrics()
+    if not metrics:
+        return
+    lines = [
+        "\\begin{tabular}{lccc}",
+        "\\toprule",
+        "Environment & Max.\\ passing delay & Retention AUC & BAcc @ max.\\ $\\alpha$\\\\",
+        "\\midrule",
+    ]
+    for env in CONTINUOUS_ENVS:
+        if env not in metrics:
+            continue
+        m = metrics[env]
+        mp = "n/a" if m["max_pass"] is None else f"{m['max_pass']:.0f}"
+        lines.append(
+            f"{env_full(env)} & {mp} & {m['auc']:.3f} & {m['bacc_max']:.3f}"
+            f"\\;(@{m['max_alpha']:.0f})\\\\"
+        )
+    lines.extend(["\\bottomrule", "\\end{tabular}", ""])
+    (GENERATED / "retention_summary_tabular.tex").write_text("\n".join(lines))
+
+
 def plot_native_heatmap() -> None:
     summary = load_json(NATIVE_SUMMARY)
     values = np.full((len(AGES), len(NATIVE_ENVS)), np.nan)
@@ -1515,11 +1757,10 @@ def main() -> None:
     index = index_summary(summary_rows())
 
     write_main_table(snapshot)
-    write_age_table(snapshot)
+    write_delay_summary_table(snapshot, auto)
     write_native_table()
-    write_auto_age_table(auto)
     write_auto_age_full_table(auto)
-    write_retention_by_age(index)
+    write_env_retention_summary_table(auto, index)
     write_retrieval_table(index)
     write_seed_pass_table(index)
     write_native_full_table()
@@ -1527,11 +1768,14 @@ def main() -> None:
     write_stream_headline_table()
     write_max_delay_table()
 
+    write_retention_summary_table()
+
     convert_architecture_svg()
     plot_shortcut_diagnostics()
     plot_results(snapshot)
     plot_age_and_autoage(snapshot, auto)
     plot_env_heatmaps(cells)
+    plot_continuous_retention()
     plot_native_heatmap()
     run_revision_figures()
 

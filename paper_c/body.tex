@@ -42,14 +42,14 @@ visual evidence.  Slots help because the target itself is a \emph{set} of visual
 facts, and a memory set is a better carrier for that target than a single
 recurrent vector.
 
-Concretely, on twelve OGBench render decks, three controlled evidence ages
-(4, 8, 15), and three seeds, the slot writer passes every registered retention
-cell (36/36 environment-age rows, 108/108 seed cells) with mean full-memory
-balanced accuracy $0.983$ while reset and no-state controls stay at $0.250$ and
-$0.248$.  The strongest recurrent baseline reaches $0.803$ mean full accuracy
-and $22/36$ rows; at age~15 the slot writer scores $0.962$ against $0.669$,
-$0.350$, and $0.683$.  Where audited fixed controllers exist, memory-selected
-targets execute at $0.957$ mean success across $27/36$ rows.
+Concretely, on twelve OGBench render decks across a sweep of controlled
+evidence delays and three seeds, the slot writer passes every registered
+retention cell (36/36 environment-age rows, 108/108 seed cells) with mean
+full-memory balanced accuracy $0.983$ while reset and no-state controls stay at
+$0.250$ and $0.248$.  The strongest recurrent baseline reaches $0.803$ mean full
+accuracy and $22/36$ rows, and its margin behind the slot writer widens as
+evidence ages.  Where audited fixed controllers exist, memory-selected targets
+execute at $0.957$ mean success across $27/36$ rows.
 
 \paragraph{Contributions.}
 \begin{itemize}
@@ -173,7 +173,7 @@ together and therefore fails the audit.
 \paragraph{Claim ladder.}
 We report a four-rung ladder in which each rung is interpreted only after the
 previous one passes.  \textbf{(1)~Demand:} the decisive cue must sit outside the
-legal context window (ages $4/8/15$).  \textbf{(2)~Retention:} full memory must
+legal context window across the evaluated delay sweep.  \textbf{(2)~Retention:} full memory must
 expose the old cue on held-out episodes.  \textbf{(3)~Controls:} reset and
 no-state features must stay near chance.  \textbf{(4)~Use:} executed success is
 reported only where a fixed local controller exists; missing rows are marked
@@ -409,6 +409,8 @@ P0 (main audit) & one-shot & $\{4,8,15\}$ / $\{4,8,15\}$ & 12 decks &
   (\path{multiview_patchset_color_jepa_native_v1})\\
 P1 (dense interp.) & one-shot & $\{4,8,15\}$ / $\{4,6,8,10,12,15,18\}$ & 12 &
   mixed-age training (\path{multiview_patchset_auto_age_v1})\\
+Pc (continuous, primary) & one-shot & $[4,136]$ / $[4,136]$ log-unif.\ (per ep.) & 4 &
+  continuous train+eval delays (\path{paper_c_continuous_v1})\\
 P2 (long-horizon) & streaming & $\{4,8,16\}$ / $\{4,8,16,32,64,128\}$ & 4 &
   re-rendered episodes (\path{paper_c_agescale_v1})\\
 P3 (capacity/struct.) & streaming & $15$ / $15$ & 3 struct. &
@@ -502,45 +504,42 @@ full memory tracks the old cue while the controls collapse toward endpoint bias.
 \end{figure}
 
 \subsection{Evidence-age stress and unseen-age generalization}
-The age sweep is a stress test (Table~\ref{tab:age-comparison},
-Figure~\ref{fig:age-gen}a).  Age~4 asks whether evidence just outside the
-context boundary is accessible; age~8 tests whether memory is more than a short
-transient; age~15 is the long-delay probe.  The useful signal is the curve
-shape.  LSTM decays first; GRU and Mamba-lite stay stronger but fail many
-long-age rows; the slot writer holds a stable exposure margin.  The separation
-grows monotonically with delay rather than being an artifact of one chosen age
-(the dense-grid delay curves of protocols~P1--P2 in Section~\ref{sec:revision}
-make this explicit).
+We treat evidence age as a continuous stress variable rather than a set of
+fixed checkpoints (Table~\ref{tab:delay-summary}, Figure~\ref{fig:age-gen}a).
+The useful signal is the shape of the retention curve as the delay grows: LSTM
+decays first; GRU and Mamba-lite stay stronger but fail once evidence is old;
+the slot writer holds a stable exposure margin across the sweep.  The per-writer
+summary makes the ordering explicit --- the slot writer keeps the highest mean
+full-memory exposure and the largest passing delay while both controls stay at
+chance --- and the separation grows monotonically with delay rather than being
+an artifact of one chosen age (the dense-grid delay curves of protocols~P1--P2
+in Section~\ref{sec:revision} make this explicit).
 
-We further ask whether the interface is tied to the specific registered ages.
-We train the slot writer on a \emph{mixture} of ages $\{4,8,15\}$ and evaluate
-on a denser grid $\{4,6,8,10,12,15,18\}$, so that $\{6,10,12,18\}$ are never
-seen during training.  Table~\ref{tab:auto-age} and Figure~\ref{fig:age-gen}b
-show that every held-out age clears the same fail-closed gate, with full-memory
-exposure indistinguishable from the trained ages and both controls at chance.
-The delay at which evidence must be retained is therefore not memorized as a
-fixed offset; mixed-age training yields a delay-robust interface.  We are
-careful about the boundary: this demonstrates unseen-age \emph{generalization},
-not a learned explicit age router or an automatic maximum-age search, which we
-leave to future work (Appendix~\ref{app:autoage}).
+We further ask whether the interface is tied to the specific training delays.
+We train the slot writer on a \emph{mixture} of delays and evaluate on a denser
+held-out grid that interpolates between and beyond them (protocol~P1), so that
+the intermediate delays are never seen during training.
+Figure~\ref{fig:age-gen}b shows that every held-out delay clears the same
+fail-closed gate, with full-memory exposure indistinguishable from the trained
+delays and both controls at chance.  The delay at which evidence must be
+retained is therefore not memorized as a fixed offset; mixed-age training yields
+a delay-robust interface.  We are careful about the boundary: this demonstrates
+unseen-delay \emph{generalization}, not a learned explicit age router or an
+automatic maximum-age search, which we leave to future work
+(Appendix~\ref{app:autoage}).
 
 \begin{table}[t]
 \centering
 \footnotesize
-\begin{minipage}[t]{0.46\linewidth}
-\centering
-\caption{Age-wise mean full-memory balanced accuracy (fixed-age training,
-protocol~P0).}
-\label{tab:age-comparison}
-\input{generated_results/age_comparison_tabular.tex}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.50\linewidth}
-\centering
-\caption{Mixed-age training (protocol~P1; ages $\{4,8,15\}$), evaluated on a
-denser grid; held-out ages shaded.}
-\label{tab:auto-age}
-\resizebox{\linewidth}{!}{\input{generated_results/auto_age_summary_tabular.tex}}
-\end{minipage}
+\caption{General delay-sweep summary per memory writer (no per-age columns).
+For the slot writer, means are aggregated over the dense mixed-age delay sweep
+(protocol~P1: all evaluated delays and seeds); for the recurrent baselines they
+are over the evaluated delays (protocol~P0).  ``Max.\ passing delay'' is the
+largest evaluated delay whose mean full-memory balanced accuracy clears the
+$0.750$ gate (evaluated ranges differ by protocol; the long-horizon extension is
+in Table~\ref{tab:max-delay}).}
+\label{tab:delay-summary}
+\input{generated_results/delay_summary_tabular.tex}
 \end{table}
 
 \begin{figure}[t]
@@ -553,24 +552,71 @@ exposure stays high while reset and no-state controls remain at chance.}
 \label{fig:age-gen}
 \end{figure}
 
-\subsection{Retention as a function of delay, per environment}
-Rather than reporting a small set of fixed ages, Figure~\ref{fig:env-heatmaps}
-plots retention as a continuous function of evidence delay for every
-environment, using the mixed-age model evaluated on a dense delay grid.
+\subsection{Retention as a continuous function of delay}
+\label{sec:continuous-retention}
+Our primary retention result treats the evidence delay as a genuinely
+continuous variable rather than a set of fixed checkpoints or even a denser
+discrete grid.  We train a single slot writer with the cue delay sampled
+\emph{per episode} from a log-uniform distribution over the legal range
+$[4,\alpha_{\max}]$, where $\alpha_{\max}$ is the largest delay the cache
+supports ($136$ on the $140$-frame long-horizon caches), and then evaluate each
+held-out episode at an independent delay drawn from the same continuous
+distribution.  Figure~\ref{fig:continuous-retention} plots balanced accuracy
+against $\alpha$ on a logarithmic axis for the four re-rendered long-horizon
+environments, overlaying the binned empirical accuracy, a smoothed retention
+curve, the reset control, and the $0.75$ gate.  Because every episode uses its
+own delay, the curve is a dense sweep over the whole range instead of a handful
+of enumerated ages.
+
+We summarize each environment with three general, age-agnostic metrics rather
+than a per-age table (Table~\ref{tab:retention-summary}): the \emph{empirical
+maximum passing delay} (the largest $\alpha$ at which the smoothed curve still
+clears the $0.75$ gate), the \emph{retention AUC} (the smoothed balanced
+accuracy integrated over $\log\alpha$ and normalized to $[0,1]$), and the
+balanced accuracy at the maximum tested delay.  These compact metrics describe
+retention as a property of the entire delay axis, not of any single hand-picked
+age, while the reset control stays at chance throughout.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_c_continuous_retention.pdf}
+\caption{Primary retention result: balanced accuracy versus evidence delay
+$\alpha$ (log axis) under a continuous log-uniform delay sweep, with both the
+training and evaluation delays drawn per episode over the legal range
+(\protect\path{outputs/paper_c_continuous_v1}).  Points are binned empirical
+balanced accuracy, the black curve is the smoothed retention estimate, the grey
+curve is the reset control, the dashed line is the $0.75$ gate, and the dotted
+vertical line marks the empirical maximum passing delay.}
+\label{fig:continuous-retention}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{General per-environment retention summary from the continuous delay
+sweep (no per-age columns): empirical maximum passing delay (smoothed $0.75$
+crossing), retention AUC over $\log\alpha$ (normalized to $[0,1]$), and balanced
+accuracy at the maximum tested delay (\protect\path{outputs/paper_c_continuous_v1}).}
+\label{tab:retention-summary}
+\input{generated_results/retention_summary_tabular.tex}
+\end{table}
+
+\paragraph{Per-environment delay curves.}
+Figure~\ref{fig:env-heatmaps} complements the continuous sweep with the
+mixed-age model evaluated across the delay range for all twelve decks.
 Panel~(a) shows full-memory balanced accuracy staying well above the gate as
 the delay grows for navigation decks, with a gentler curve on the structured
 manipulation and scene decks where object identity, order, or configuration
 must be preserved.  Panel~(b) plots the audit margin (full minus the stronger
 control) against delay: it stays comfortably positive across the suite, so the
-exposure is not carried by any single environment or any single chosen age.
-Reading retention as a curve, rather than as pass/fail at $\{4,8,15\}$, avoids
-over-claiming from a few hand-picked delays.
+exposure is not carried by any single environment or any single chosen delay.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_c_env_heatmaps.pdf}
-\caption{Per-environment retention versus evidence delay (protocol~P1 dense
-grid, not a fixed-age grid).  (a)~Full-memory balanced accuracy decays smoothly with
+\caption{Per-environment retention versus evidence delay (protocol~P1; the
+mixed-age model evaluated across the delay range rather than at a fixed-age
+grid).  (a)~Full-memory balanced accuracy decays smoothly with
 delay, most gently on navigation and most steeply on structured manipulation
 decks.  (b)~Audit margin (full $-\max(\text{reset},\text{no-state})$) stays
 positive across environments and delays.}
@@ -910,10 +956,10 @@ swapping the writer, not the target, is the informative ablation: with identical
 data and loss, GRU/LSTM/Mamba-lite still lose long-age exposure.
 
 \paragraph{Short-horizon competence is not long-horizon exposure.}
-GRU and Mamba-lite often clear easy age-4 rows, yet the age-15 curve and the
-Puzzle/Scene/Cube gaps show where a single hidden vector stops keeping separable
-visual facts.  Reporting only mean accuracy would hide this; the age sweep and
-the per-environment gap heatmap are what localize the failure.
+GRU and Mamba-lite often clear easy short-delay rows, yet the long-delay curve
+and the Puzzle/Scene/Cube gaps show where a single hidden vector stops keeping
+separable visual facts.  Reporting only mean accuracy would hide this; the delay
+sweep and the per-environment retention curves are what localize the failure.
 
 \paragraph{Internal storage is not host exposure.}
 The fail-closed controls enforce a distinction that a raw memory-capacity metric
@@ -924,7 +970,7 @@ pooled score.
 
 \paragraph{Delay robustness is a property of the interface, not the offset.}
 Mixed-age training generalizes to unseen delays
-(Table~\ref{tab:auto-age}, Figure~\ref{fig:age-gen}b), so the exposure is not a
+(Figure~\ref{fig:age-gen}b), so the exposure is not a
 memorized offset.  The boundary is still explicit: this is unseen-age
 generalization, not a learned age router that decides \emph{how far back} to
 retrieve, nor an automatic maximum-age search; those remain future work
@@ -946,7 +992,7 @@ evaluation contract.  The revision fills in the fuller story: the memory is
 bounded in both output ($S\times D$ state in every experiment) and, in the
 streaming writer, context (constant per-step memory and compute via chunk
 eviction); dense-grid delay curves show the exposure is a smooth function of
-evidence age rather than an artifact of $\{4,8,15\}$; a long-horizon study
+evidence age rather than an artifact of a few hand-picked delays; a long-horizon study
 quantifies the empirical maximum passing delay out to age~128; capacity-matched
 and structured-memory baselines confirm the slot interface is the strongest
 carrier at matched state size even where it sits just below the gate on the

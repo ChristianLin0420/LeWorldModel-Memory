@@ -15,8 +15,12 @@ suite of OGBench render decks, controlled evidence ages, and seeds, the slot
 interface clears every registered retention gate while matched controls stay at
 chance, and the largest margins over recurrent GRU, LSTM, and Mamba-lite writers
 appear exactly where evidence is old or spread across object-like structure.
-Trained on a mixture of delays, the same interface generalizes to unseen delays;
-the memory is bounded in output throughout, and a streaming variant that evicts
+Trained on delays sampled continuously (log-uniform) over the legal range, the
+same interface retains and exposes old evidence smoothly across the whole delay
+axis rather than at a few fixed ages, and we summarize retention with general,
+age-agnostic metrics (maximum passing delay and retention AUC) instead of
+per-age tables; the memory is bounded in output throughout, and a streaming
+variant that evicts
 old tokens additionally bounds the attention context, scaling to far longer
 horizons at constant per-step memory and compute.  The
 advantage survives matching the carrier capacity and adding structured

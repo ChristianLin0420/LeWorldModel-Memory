@@ -21,7 +21,7 @@ Claim & Local source & Figure / table\\
 \midrule
 Slot-memory main audit (P0)
   & \path{outputs/multiview_patchset_color_jepa_native_v1/summary.json}
-  & Tab.~\ref{tab:main-comparison},~\ref{tab:age-comparison}; Fig.~\ref{fig:baseline-comparison}\\
+  & Tab.~\ref{tab:main-comparison},~\ref{tab:delay-summary},~\ref{tab:env-retention-summary}; Fig.~\ref{fig:baseline-comparison}\\
 GRU baseline
   & \path{outputs/memory_arch_baselines_v1/gru/summary.json}
   & Tab.~\ref{tab:main-comparison}\\
@@ -34,9 +34,12 @@ Mamba-lite baseline
 Fixed-controller native use (P0)
   & \path{outputs/native_use_repaired_combined_v2/\{stats,summary\}.json}
   & Tab.~\ref{tab:native-use},~\ref{tab:native-full}; Fig.~\ref{fig:native-use}\\
+Continuous delay sweep (primary)
+  & \path{outputs/paper_c_continuous_v1}
+  & Tab.~\ref{tab:retention-summary}; Fig.~\ref{fig:continuous-retention}\\
 Dense delay interpolation (P1)
   & \path{outputs/multiview_patchset_auto_age_v1}
-  & Tab.~\ref{tab:auto-age},~\ref{tab:auto-age-full}; Fig.~\ref{fig:age-gen},~\ref{fig:env-heatmaps}\\
+  & Tab.~\ref{tab:delay-summary},~\ref{tab:env-retention-summary}; Fig.~\ref{fig:age-gen},~\ref{fig:env-heatmaps}\\
 Long-horizon extrapolation (P2)
   & \path{outputs/paper_c_agescale_v1}
   & Tab.~\ref{tab:max-delay}; Fig.~\ref{fig:age-scaling}\\
@@ -125,38 +128,26 @@ state-space implementation.
 \section{Full per-environment results}
 \label{app:full}
 
-Tables~\ref{tab:ret4}--\ref{tab:ret15} report per-environment full/reset/no-state
-balanced accuracy for the slot writer alongside full-memory balanced accuracy for
-each recurrent baseline, at ages~4, 8, and 15.  Two patterns are visible.  First,
-the slot controls (reset, no-state) stay at chance ($\approx0.25$) in every cell,
-which is what licenses the retention reading.  Second, the baseline full column
-degrades with age and with visual structure: navigation decks stay competitive at
-age~4 but the manipulation and scene decks separate sharply by age~15.
+Table~\ref{tab:env-retention-summary} reports, per environment, the slot
+writer's mean full/reset/no-state balanced accuracy aggregated over the delay
+sweep alongside the strongest recurrent baseline's mean full-memory balanced
+accuracy.  Two patterns are visible.  First, the slot controls (reset, no-state)
+stay at chance ($\approx0.25$) in every environment, which is what licenses the
+retention reading.  Second, the best baseline's full-memory column degrades with
+visual structure: navigation decks stay competitive while the manipulation and
+scene decks separate sharply as evidence ages.
 
 \begin{table}[h]
 \centering
-\scriptsize
-\caption{Per-environment retention at \textbf{age 4}.  Slot columns are
-full/reset/no-state; baseline columns are full-memory BAcc.}
-\label{tab:ret4}
-\input{generated_results/appendix_retention_age4.tex}
-\end{table}
-
-\begin{table}[h]
-\centering
-\scriptsize
-\caption{Per-environment retention at \textbf{age 8}.}
-\label{tab:ret8}
-\input{generated_results/appendix_retention_age8.tex}
-\end{table}
-
-\begin{table}[h]
-\centering
-\scriptsize
-\caption{Per-environment retention at \textbf{age 15} (the long-delay stress
-test).}
-\label{tab:ret15}
-\input{generated_results/appendix_retention_age15.tex}
+\footnotesize
+\caption{Per-environment retention summary (no per-age columns).  Slot columns
+are mean full/reset/no-state balanced accuracy over the dense mixed-age delay
+sweep (protocol~P1); the ``Best baseline'' column is the strongest recurrent
+baseline's mean full-memory balanced accuracy over its evaluated delays
+(protocol~P0, \protect\path{outputs/memory_arch_baselines_v1}), with the winning
+baseline in parentheses.}
+\label{tab:env-retention-summary}
+\input{generated_results/env_retention_summary_tabular.tex}
 \end{table}
 
 \paragraph{Seed stability.}
@@ -223,25 +214,17 @@ stronger of recent/random.}
 \label{app:autoage}
 
 \paragraph{Mixed-age result.}
-To test whether the interface is tied to the specific registered ages, we train
-the slot writer on a mixture of cue delays drawn from $\{4,8,15\}$ and evaluate
-on the denser grid $\{4,6,8,10,12,15,18\}$; the delays $\{6,10,12,18\}$ are
-never seen during training.  Table~\ref{tab:auto-age-full} reports per-environment
-full-memory balanced accuracy across the evaluation grid.  Every environment-age
-cell clears the same fail-closed gate as the fixed-age protocol, and full-memory
-exposure on the held-out delays is statistically indistinguishable from the
-trained delays while reset and no-state controls remain at chance.  The delay at
-which evidence must be retained is therefore not memorized as a fixed offset: a
-single mixed-age interface is delay-robust across the tested range.
-
-\begin{table}[h]
-\centering
-\scriptsize
-\caption{Mixed-age training, per-environment full-memory balanced accuracy on
-the evaluation grid.  Columns 6, 10, 12, and 18 are held out from training.}
-\label{tab:auto-age-full}
-\input{generated_results/appendix_auto_age_full.tex}
-\end{table}
+To test whether the interface is tied to specific training delays, we train the
+slot writer with the cue delay sampled continuously (log-uniform) over the legal
+range and evaluate held-out episodes at independently drawn continuous delays.
+The general per-environment summary is reported in the main text
+(Section~\ref{sec:continuous-retention}, Table~\ref{tab:retention-summary}), and
+the per-environment delay curves appear in Figure~\ref{fig:env-heatmaps}; we no
+longer enumerate a per-age grid.  Full-memory exposure clears the same
+fail-closed gate across the swept range while reset and no-state controls remain
+at chance, so the delay at which evidence must be retained is not memorized as a
+fixed offset: a single interface is delay-robust across the continuous range
+rather than at a few enumerated ages.
 
 \paragraph{What is still future work.}
 This mixed-age result demonstrates unseen-age \emph{generalization}.  It does not
@@ -300,8 +283,8 @@ A whole-frame latent target can be reconstructed from coarse scene statistics,
 which is sufficient for navigation but discards object-level structure.  The
 mined patch-\emph{set} target keeps several spatially distributed facts, so the
 memory must preserve more than a global summary.  Empirically this is what
-separates the manipulation and scene decks at age~15
-(Tables~\ref{tab:ret15},~\ref{tab:seedpass}).
+separates the manipulation and scene decks as evidence ages
+(Tables~\ref{tab:env-retention-summary},~\ref{tab:seedpass}).
 
 \paragraph{Compute.}
 Each method sweep is $12$ decks $\times$ $3$ ages $\times$ $3$ seeds $=108$

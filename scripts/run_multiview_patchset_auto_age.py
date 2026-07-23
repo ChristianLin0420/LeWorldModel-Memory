@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 from typing import Any, Iterable
@@ -32,10 +33,29 @@ DEFAULT_OUTPUT = ROOT / "outputs" / "multiview_patchset_auto_age_v1"
 DEFAULT_CACHE_ROOT = ROOT / "outputs" / "multiview_patchset_color_jepa_native_v1"
 DEFAULT_TRAIN_AGES = (4, 8, 15)
 DEFAULT_EVAL_AGES = (4, 6, 8, 10, 12, 15, 18)
+CONTINUOUS_OUTPUT = ROOT / "outputs" / "paper_c_continuous_v1"
 
 
 def stable_json(value: Any) -> str:
     return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def max_legal_age() -> int:
+    """Largest cue delay whose readout endpoint still fits inside the cache.
+
+    The readout endpoint is ``LAST_CUE_FRAME + age`` and must be a valid frame
+    index (``< LENGTH``), so the largest legal delay is ``LENGTH - LAST_CUE_FRAME
+    - 1``.  With the 140-frame long-horizon caches this is 136.
+    """
+    return int(base.LENGTH - base.LAST_CUE_FRAME - 1)
+
+
+def split_indices(n: int, seed: int, validation_fraction: float, split: str) -> np.ndarray:
+    """Deterministic train/val episode split shared by every dataset variant."""
+    rng = np.random.default_rng(97_101 + int(seed))
+    order = rng.permutation(int(n))
+    val_count = max(base.CLASSES, int(round(int(n) * float(validation_fraction))))
+    return order[:-val_count] if split == "train" else order[-val_count:]
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
@@ -62,6 +82,40 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--temporal-drop", type=float, default=0.12)
     parser.add_argument("--patch-drop", type=float, default=0.20)
     parser.add_argument("--device", default="cuda:0")
+    # Continuous-delay mode: instead of a fixed grid of ages, sample a cue delay
+    # per episode from a log-uniform distribution over [min-age, max-age].
+    parser.add_argument(
+        "--continuous-eval",
+        action="store_true",
+        help="evaluate held-out episodes at per-episode delays drawn log-uniformly "
+        "over [continuous-min-age, continuous-max-age] and write continuous_eval.json",
+    )
+    parser.add_argument(
+        "--continuous-train",
+        action="store_true",
+        help="sample the training cue delay per episode log-uniformly over the same "
+        "range instead of the fixed --train-ages grid",
+    )
+    parser.add_argument("--continuous-min-age", type=float, default=4.0)
+    parser.add_argument(
+        "--continuous-max-age",
+        type=float,
+        default=0.0,
+        help="upper delay bound (0 = auto = LENGTH - LAST_CUE_FRAME - 1)",
+    )
+    parser.add_argument(
+        "--continuous-draws",
+        type=int,
+        default=500,
+        help="number of (episode, delay) evaluation draws",
+    )
+    parser.add_argument(
+        "--continuous-train-reps",
+        type=int,
+        default=3,
+        help="log-uniform delay draws per training episode when --continuous-train",
+    )
+    parser.add_argument("--continuous-output", type=Path, default=CONTINUOUS_OUTPUT)
     return parser.parse_args(argv)
 
 
@@ -92,32 +146,35 @@ class AutoAgePatchSetDataset(Dataset):
         self,
         archive: Path,
         *,
-        ages: Iterable[int],
-        split: str,
-        seed: int,
-        validation_fraction: float,
+        ages: Iterable[int] = (),
+        split: str = "val",
+        seed: int = 0,
+        validation_fraction: float = 0.20,
         variant: str = "full",
         augment: bool = False,
         temporal_drop: float = 0.0,
         patch_drop: float = 0.0,
         max_context: int,
+        explicit_items: Iterable[tuple[int, int]] | None = None,
     ) -> None:
         with np.load(archive, allow_pickle=False) as data:
             self.frames = data["frames"]
             self.actions = data["actions"]
             self.labels = data["cue_labels"]
             self.positions = data["cue_positions"]
-        self.ages = [int(value) for value in ages]
         self.variant = str(variant)
         self.augment = bool(augment)
         self.temporal_drop = float(temporal_drop)
         self.patch_drop = float(patch_drop)
         self.max_context = int(max_context)
-        rng = np.random.default_rng(97_101 + int(seed))
-        order = rng.permutation(len(self.frames))
-        val_count = max(base.CLASSES, int(round(len(order) * float(validation_fraction))))
-        indices = order[:-val_count] if split == "train" else order[-val_count:]
-        self.items = [(int(index), int(age)) for age in self.ages for index in indices]
+        if explicit_items is not None:
+            # Per-episode delays supplied directly (continuous-delay mode).
+            self.items = [(int(index), int(age)) for index, age in explicit_items]
+            self.ages = sorted({age for _, age in self.items})
+        else:
+            self.ages = [int(value) for value in ages]
+            indices = split_indices(len(self.frames), seed, validation_fraction, split)
+            self.items = [(int(index), int(age)) for age in self.ages for index in indices]
 
     def __len__(self) -> int:
         return len(self.items)
@@ -223,6 +280,85 @@ def build_dataset(args: argparse.Namespace, *, ages: list[int], split: str, vari
     )
 
 
+def continuous_range(args: argparse.Namespace) -> tuple[float, float]:
+    """Resolve the log-uniform delay range, clamped to what the cache supports."""
+    hi = float(args.continuous_max_age) if float(args.continuous_max_age) > 0 else float(max_legal_age())
+    hi = min(hi, float(max_legal_age()))
+    lo = max(1.0, float(args.continuous_min_age))
+    if lo >= hi:
+        raise ValueError(f"continuous-min-age {lo} must be < max age {hi}")
+    return lo, hi
+
+
+def _sample_log_uniform_age(rng: np.random.Generator, lo: float, hi: float) -> int:
+    age = int(round(math.exp(rng.uniform(math.log(lo), math.log(hi)))))
+    return max(int(round(lo)), min(int(round(hi)), age))
+
+
+def build_continuous_items(
+    n_episodes: int,
+    args: argparse.Namespace,
+    *,
+    split: str,
+    draws: int,
+    lo: float,
+    hi: float,
+    seed_offset: int,
+) -> list[tuple[int, int]]:
+    """List of (episode, delay) pairs with delays drawn log-uniformly per pair.
+
+    Episodes cycle through the requested split so coverage is balanced; each draw
+    receives an independent continuous delay, producing a dense (non-grid) sweep.
+    """
+    idx = split_indices(n_episodes, int(args.seed), float(args.validation_fraction), split)
+    idx = np.asarray(idx)
+    rng = np.random.default_rng(20_260_720 + int(args.seed) + int(seed_offset))
+    items: list[tuple[int, int]] = []
+    for k in range(int(draws)):
+        episode = int(idx[k % len(idx)])
+        items.append((episode, _sample_log_uniform_age(rng, lo, hi)))
+    return items
+
+
+def evaluate_continuous(
+    model,
+    readout,
+    args: argparse.Namespace,
+    device: torch.device,
+    items: list[tuple[int, int]],
+    max_context: int,
+) -> list[dict[str, Any]]:
+    """Per-episode correctness at each drawn delay under matched conditions."""
+    payloads = {}
+    for variant in ["full", "reset", "no_state"]:
+        dataset = AutoAgePatchSetDataset(
+            cache_path(args),
+            split="val",
+            seed=int(args.seed),
+            validation_fraction=float(args.validation_fraction),
+            variant=variant,
+            augment=False,
+            max_context=int(max_context),
+            explicit_items=items,
+        )
+        payloads[variant] = memory_base.extract(model, make_loader(dataset, args, shuffle=False), device)
+    preds = {name: readout.predict(payload["memory"]).astype(np.int64) for name, payload in payloads.items()}
+    labels = payloads["full"]["labels"].astype(np.int64)
+    rows: list[dict[str, Any]] = []
+    for i, (episode, age) in enumerate(items):
+        rows.append(
+            {
+                "alpha": float(age),
+                "episode": int(episode),
+                "label": int(labels[i]),
+                "full_correct": int(preds["full"][i] == labels[i]),
+                "reset_correct": int(preds["reset"][i] == labels[i]),
+                "no_state_correct": int(preds["no_state"][i] == labels[i]),
+            }
+        )
+    return rows
+
+
 def evaluate_age(model, readout, args: argparse.Namespace, device: torch.device, age: int) -> dict[str, Any]:
     payloads = {}
     for variant in ["full", "reset", "no_state"]:
@@ -263,7 +399,14 @@ def evaluate_age(model, readout, args: argparse.Namespace, device: torch.device,
 def train_cell(args: argparse.Namespace) -> dict[str, Any]:
     args.output = args.output if args.output.is_absolute() else ROOT / args.output
     args.cache_root = args.cache_root if args.cache_root.is_absolute() else ROOT / args.cache_root
-    validate_ages(args)
+    args.continuous_output = (
+        args.continuous_output if args.continuous_output.is_absolute() else ROOT / args.continuous_output
+    )
+    continuous = bool(args.continuous_eval or args.continuous_train)
+    if continuous:
+        lo, hi = continuous_range(args)
+    else:
+        validate_ages(args)
     if not cache_path(args).is_file():
         raise FileNotFoundError(cache_path(args))
     out_dir = result_dir(args)
@@ -273,14 +416,33 @@ def train_cell(args: argparse.Namespace) -> dict[str, Any]:
     if device.type == "cuda":
         torch.cuda.set_device(device)
 
-    train_aug = build_dataset(args, ages=list(args.train_ages), split="train", variant="full", augment=True)
-    train_eval = build_dataset(args, ages=list(args.train_ages), split="train", variant="full", augment=False)
-    train_loader = make_loader(train_aug, args, shuffle=True)
-    train_eval_loader = make_loader(train_eval, args, shuffle=False)
-
     with np.load(cache_path(args), allow_pickle=False) as data:
         img_size = int(data["img_size"])
         action_dim = int(data["actions"].shape[-1])
+        n_episodes = int(data["frames"].shape[0])
+
+    if args.continuous_train:
+        cont_context = base.LAST_CUE_FRAME + int(round(hi)) + 1
+        train_items = build_continuous_items(
+            n_episodes, args, split="train", draws=len(
+                split_indices(n_episodes, int(args.seed), float(args.validation_fraction), "train")
+            ) * max(1, int(args.continuous_train_reps)), lo=lo, hi=hi, seed_offset=1,
+        )
+        train_aug = AutoAgePatchSetDataset(
+            cache_path(args), variant="full", augment=True,
+            temporal_drop=float(args.temporal_drop), patch_drop=float(args.patch_drop),
+            max_context=cont_context, explicit_items=train_items,
+        )
+        train_eval = AutoAgePatchSetDataset(
+            cache_path(args), variant="full", augment=False,
+            max_context=cont_context, explicit_items=train_items,
+        )
+    else:
+        train_aug = build_dataset(args, ages=list(args.train_ages), split="train", variant="full", augment=True)
+        train_eval = build_dataset(args, ages=list(args.train_ages), split="train", variant="full", augment=False)
+    train_loader = make_loader(train_aug, args, shuffle=True)
+    train_eval_loader = make_loader(train_eval, args, shuffle=False)
+
     model = multiview.MultiViewPatchSetJEPA(
         img_size=img_size,
         action_dim=action_dim,
@@ -310,6 +472,60 @@ def train_cell(args: argparse.Namespace) -> dict[str, Any]:
     train_features = memory_base.extract(model, train_eval_loader, device)
     readout = make_pipeline(StandardScaler(), RidgeClassifier(alpha=1.0))
     readout.fit(train_features["memory"], train_features["labels"])
+
+    if args.continuous_eval:
+        eval_context = base.LAST_CUE_FRAME + int(round(hi)) + 1
+        eval_items = build_continuous_items(
+            n_episodes, args, split="val", draws=int(args.continuous_draws), lo=lo, hi=hi, seed_offset=2,
+        )
+        rows = evaluate_continuous(model, readout, args, device, eval_items, eval_context)
+        cont_result = {
+            "schema": "multiview_patchset_continuous_eval_v1",
+            "status": "completed",
+            "env_name": str(args.env_name),
+            "seed": int(args.seed),
+            "continuous_train": bool(args.continuous_train),
+            "train_ages": None if args.continuous_train else [int(v) for v in args.train_ages],
+            "delay_distribution": "log-uniform",
+            "min_alpha": float(lo),
+            "max_alpha": float(hi),
+            "max_legal_alpha": int(max_legal_age()),
+            "length": int(base.LENGTH),
+            "last_cue_frame": int(base.LAST_CUE_FRAME),
+            "draws": len(rows),
+            "epochs": int(args.epochs),
+            "dim": int(args.dim),
+            "slots": int(args.slots),
+            "heads": int(args.heads),
+            "training_loss_uses_cue_labels": False,
+            "posthoc_readout_uses_cue_labels": True,
+            "n_full_correct": int(sum(r["full_correct"] for r in rows)),
+            "n_reset_correct": int(sum(r["reset_correct"] for r in rows)),
+            "n_no_state_correct": int(sum(r["no_state_correct"] for r in rows)),
+            "rows": rows,
+        }
+        cont_dir = args.continuous_output / base.env_key(args.env_name)
+        cont_dir.mkdir(parents=True, exist_ok=True)
+        (cont_dir / "continuous_eval.json").write_text(stable_json(cont_result))
+        torch.save(
+            {"model": model.state_dict(), "args": vars(args)}, cont_dir / "model.pt"
+        )
+        print(
+            stable_json(
+                {
+                    "env": args.env_name,
+                    "seed": int(args.seed),
+                    "status": "completed",
+                    "draws": len(rows),
+                    "alpha_range": [float(lo), float(hi)],
+                    "acc_full": round(cont_result["n_full_correct"] / max(1, len(rows)), 4),
+                    "acc_reset": round(cont_result["n_reset_correct"] / max(1, len(rows)), 4),
+                }
+            ),
+            flush=True,
+        )
+        return cont_result
+
     eval_rows = [evaluate_age(model, readout, args, device, int(age)) for age in args.eval_ages]
     result = {
         "schema": "multiview_patchset_auto_age_cell_v1",

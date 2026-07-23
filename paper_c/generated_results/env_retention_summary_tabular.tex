@@ -1,0 +1,20 @@
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Environment} & \multicolumn{3}{c}{Slot memory (ours)} & Best baseline\\
+\cmidrule(lr){2-4}
+ & Full & Reset & No-state & Full\\
+\midrule
+PointMaze-medium & 0.996 & 0.251 & 0.245 & 0.862 (GRU)\\
+PointMaze-large & 1.000 & 0.250 & 0.261 & 0.943 (GRU)\\
+PointMaze-giant & 1.000 & 0.257 & 0.251 & 0.979 (GRU)\\
+PointMaze-teleport & 1.000 & 0.245 & 0.249 & 0.973 (GRU)\\
+AntMaze-large & 1.000 & 0.258 & 0.249 & 0.896 (GRU)\\
+AntMaze-giant & 1.000 & 0.250 & 0.256 & 0.961 (GRU)\\
+HumanoidMaze-large & 0.900 & 0.248 & 0.256 & 0.752 (GRU)\\
+Cube-single & 1.000 & 0.261 & 0.252 & 0.815 (Mamba)\\
+Cube-double & 0.998 & 0.254 & 0.257 & 0.799 (Mamba)\\
+Cube-triple & 1.000 & 0.259 & 0.257 & 0.787 (Mamba)\\
+Puzzle-3x3 & 0.977 & 0.253 & 0.233 & 0.565 (Mamba)\\
+Scene & 0.952 & 0.227 & 0.236 & 0.549 (Mamba)\\
+\bottomrule
+\end{tabular}
