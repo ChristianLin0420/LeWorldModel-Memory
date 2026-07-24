@@ -366,3 +366,174 @@ separate from the DINO-WM-style OGBench breadth host.
 
 Full protocol, results, limitations, and reproduction commands:
 [`CEM_RAW_OGBENCH_REPORT.md`](CEM_RAW_OGBENCH_REPORT.md).
+
+---
+
+## 10. Graph-CEM gate status
+
+Graph-CEM was evaluated as a possible structured CEM buffer under two
+mandatory pre-implementation gates. Both failed, so no graph was built.
+
+The non-default flat conditional-target diagnostic rebuilt the real versioned
+store after every deletion, reran fallback/routing, and included pair
+deletions. Across PointMaze-large, Cube-single, and Puzzle-3x3 with three
+optimization seeds each, conditional CE produced within-query Spearman
+`-0.020` (hierarchical 95% CI `[-0.096, 0.055]`), pairwise accuracy `0.493`,
+and no environment with a positive high-minus-random deletion lower bound.
+This fails Gate 1 and shows that correcting the singleton-versus-empty target
+does not by itself make the current event/query features causally ordered.
+
+A disclosed controlled-splice suffix-collision diagnostic then tested gaps
+8/16/32/64/128 with exact paired recent observation/action suffixes and
+matched four-token, 1,536-byte reads. Oracle historical frames beat
+recent-only with resolved intervals at gaps 32/64/128, confirming memory
+opportunity. Automatically discovered nodes recovered `66.39%` of the
+high-gap oracle-frame gain, below the `70%` Gate 2 threshold. Conditional
+selection was negative at gaps 32/64 and closed only `25.3%` of the oracle
+event-set gain at gap 128.
+
+Therefore Graph-CEM, edge ablations, all-environment scaling, raw official
+DINO-WM replay, and control were hard-stopped. The next valid experiment is a
+flat frame-plus-event fallback selector with cross-fitted long-horizon
+conditional targets; graph edges should be reconsidered only after both gates
+pass. Full results and reproduction:
+[`GRAPH_CEM_REPORT.md`](GRAPH_CEM_REPORT.md).
+
+### 10.1 Frame+event fallback follow-up
+
+The required fallback experiment is also complete. A fixed candidate pool adds
+eight label-free raw DINO k-center frames to eight automatic events and four
+recent frames. Three-fold cross-fitting generates conditional deletion labels
+with policies that never train on the held-out source pair. Five bootstrap
+heads provide calibrated lower-confidence-bound selection.
+
+Candidate availability now passes the intended diagnostic: oracle union
+recovers `87.8%/80.4%/80.6%` of frame-oracle gain at gaps `32/64/128`.
+Conditional ordering still fails (Spearman `-0.0072`, pairwise `0.4961`, zero
+environments with positive deletion-gap lower bounds), and learned high-gap
+recovery is `-36.12%`. Uncertainty calibration and latency pass, so they do not
+explain the failure.
+
+Graph reconsideration, scale, official replay, and control remain not reached.
+For this host/task configuration, the defensible endpoint is recent-only, not
+flat conditional CEM or Graph-CEM. Full protocol:
+[`CEM_FALLBACK_SELECTOR_REPORT.md`](CEM_FALLBACK_SELECTOR_REPORT.md).
+
+### 10.2 Native long-trajectory conditioner recovery
+
+The subsequent recovery campaign replaces controlled suffix collisions with
+unmodified 140-frame native OGBench trajectories. PointMaze-large,
+Cube-single, Puzzle-3x3, and Scene use three optimization seeds each, fixed
+trajectory-disjoint train/validation/test splits, and equal four-token recent
+and historical reads. Query mining uses only frozen DINO changes/revisits,
+frozen-host surprise, actions, and chronology.
+
+Native opportunity passes: the train-only oracle filter retains `27.12%`
+(`[24.40%, 29.84%]`) of test queries, and historical frames have resolved
+positive gains at gaps `32/64/128` in all four families. The final
+host-facing conditioner keeps recent and historical tokens on separate
+normalized cross-attention residual paths and preserves ordinary recent-only
+loss (`+0.074%` degradation), but recovers only `17.04%`
+(`[11.74%, 22.34%]`) of oracle opportunity versus the required `50%`.
+
+Gate B therefore fails. The conservative binary activation gate and downstream
+use are hard-stopped; the safe policy remains recent-only with zero activation.
+This is not an event-ranking, selective-memory, planning, or control result.
+Graph remains stopped. Full protocol:
+[`CEM_NATIVE_LONG_REPORT.md`](CEM_NATIVE_LONG_REPORT.md).
+
+### 10.3 Spatial patch-grid conditioner
+
+The frozen-host follow-up replaces the global memory bottleneck with 16
+location-preserving DINO patch tokens, 2D coordinates, action/age metadata,
+and bounded patch-to-patch cross-attention. The Gate-A dataset, opportunity
+masks, oracle frames, and event discovery are asserted unchanged.
+
+Across three seeds each for Cube and PointMaze, mean recovery reaches `77.13%`
+with a trajectory/environment/seed CI of `[41.01%, 118.98%]`, only `+0.382%`
+ordinary degradation, and exact empty
+memory. This does not pass Gate B: Cube resolves positive gains at all high
+gaps, while PointMaze intervals include zero, so replication is only `1/2`
+families. Attention remains nearly uniform, isolating spatial alignment as the
+remaining limitation. Gate C, downstream use, selector work, and Graph-CEM
+remain stopped. Full protocol:
+[`CEM_SPATIAL_CONDITIONER_REPORT.md`](CEM_SPATIAL_CONDITIONER_REPORT.md).
+
+### 10.4 Patch alignment and random masking
+
+The final fixed-interface factorial tests random patch masking (25/50/75%),
+semantic-change masking, frozen-policy causal patch deletion targets, and a
+random-plus-causal hybrid. None improves the 68.86% no-alignment baseline:
+the respective best recoveries are 41.46% random, 33.68% semantic, 35.28%
+causal, and 24.97% hybrid.
+
+Random-50 improves reconstruction most while recovering only 17.76% of host
+opportunity. Causal patch ranking remains chance (Spearman `-0.017`, pairwise
+`0.495`) and high-effect deletion is no better than random. Causal/hybrid
+PointMaze changes are resolved negative. The current global host loss cannot
+identify patch-level historical credit, so Gate B, Gate C, downstream, and the
+conditioner line are stopped. Full protocol:
+[`CEM_PATCH_ALIGNMENT_REPORT.md`](CEM_PATCH_ALIGNMENT_REPORT.md).
+
+### 10.5 Decision-conditioned memory utility
+
+The next campaign conditions memory value on the query goal and candidate
+actions rather than generic latent reconstruction. A PointMaze anti-recency
+task uses branch-specific raw historical events, exact paired recent
+observation/action suffixes, a future-goal latent, and four shuffled native
+action sequences.
+
+Gate 1 passes only through relative closure: all history improves action
+ranking by `+4.19pp` (`[+3.02,+5.36]`), while discovered events improve by
+`+2.44pp` and recover `58.14%` of that oracle gap. The learned decision router
+then fails: action gain is only `+0.97pp` with a zero lower bound, DU Spearman
+is `-0.001`, pairwise accuracy `0.500`, and positive-utility activation
+precision `32.5%`. Gate 2, execution, and breadth are stopped. Full protocol:
+[`CEM_DECISION_MEMORY_REPORT.md`](CEM_DECISION_MEMORY_REPORT.md).
+
+### 10.6 MIKASA long-memory admission
+
+The official MIKASA-Robo-VLA v1.0.0 GatherAndRecall3/5 admission used 60
+fresh successful motion-planning episodes, three learned-head seeds, raw
+two-camera RGB, and an identical 8-event budget and candidate controller for
+all matched conditions. The recent suffix contained zero flash frames in
+`60/60` episodes (minimum gap 66 frames), and its probe remained weak at
+`37.78%` (95% CI `[33.33%, 42.22%]`).
+
+The required oracle opportunity is absent: recent-only executed success is
+`37.78%`, oracle single-event is `32.22%`, and oracle full-event is `31.67%`.
+Oracle-full minus recent is `-6.11pp` with paired 95% CI
+`[-10.56pp, -2.22pp]`; full pre-decision history is also chance at `35.00%`.
+The common motor interface itself passes (`60/60` matching candidates succeed,
+`120/120` wrong candidates fail). The mandatory gate therefore fails on
+oracle gain and oracle execution. Focused CEM, GatherAndRecall7/9 scaling, and
+paper changes are hard-stopped. Full report:
+[`MIKASA_MEMORY_ADMISSION_REPORT.md`](MIKASA_MEMORY_ADMISSION_REPORT.md).
+
+### 10.7 RoboTwin-MeM long-horizon admission
+
+The official EventVLA/RoboTwin-MeM release was pinned at repository commit
+`4b5b26030abddf83bc60e1a6b067de8f521fd0ec` and dataset revision
+`f67a4ee99a20c65c86897b85d3f5309b205cc897` (MIT code, Apache-2.0 data).
+Simulator execution is unavailable because the published checkout references
+but omits `RoboTwin-Mem/task_config/`, `assets/_download.py`, and
+`data/_download.py`; no proxy environment was substituted. The official
+LeRobot 2.1 fallback passed deterministic loading for 50 episodes per task,
+three raw `640×480` RGB views, 14D state/action, and a matched four-frame
+(`11,059,200` raw-byte) memory budget.
+
+The preregistered frozen-DINO action head fails all three task gates. Exact
+oracle-event-set sequence accuracy is `30.0%` for Pick the Unhidden Block,
+`0.0%` for Pick Objects in Order, and `0.0%` for Cover Blocks Hard; recent-only
+is `23.3%`, `0.0%`, and `0.0%`, respectively. Event overlap in every recent
+suffix is zero, with minimum gaps of 100–102 frames.
+
+A source-hash-frozen Qwen3-VL-4B confirmatory control then evaluates nine
+previously untouched episodes per task over three calibration seeds. Cover
+Blocks Hard establishes a real memory opportunity—`63.0%` oracle set versus
+`3.7%` recent, a paired `+59.3pp` (`[+48.1,+66.7]`)—but still fails the
+registered `>75%` oracle-control and recent-probe clauses. Unhidden Block
+reaches only `11.1%` oracle set and Pick Objects in Order remains `0.0%`.
+Therefore zero tasks are admitted, learned CEM and difficulty scaling are
+hard-stopped, and no paper files are changed. Full report:
+[`ROBOTWIN_MEM_CEM_REPORT.md`](ROBOTWIN_MEM_CEM_REPORT.md).

@@ -3627,6 +3627,551 @@ gate = age8 binding seeds 2 and 3 first</code>
       </section>
       <!-- RAW_CEM_STATUS_END -->
 
+      <!-- GRAPH_CEM_STATUS_START -->
+      <section class="section-block" id="graph-cem-gates">
+        <div class="section-kicker">Graph-CEM hard-gate campaign · 2026-07-23</div>
+        <h2>Long-memory opportunity exists, but causal selection and automatic discovery do not justify a graph.</h2>
+        <p>The campaign first repaired the raw singleton target to true
+          conditional deletion from a rebuilt occupied store, then constructed
+          a disclosed raw-frame suffix-collision diagnostic at gaps
+          8/16/32/64/128. Both mandatory gates failed, so the 32-node graph,
+          edge ablations, scale, raw official DINO-WM, and control phases were
+          hard-stopped.</p>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Gate 1 · conditional causal ranking</span>
+            <strong>ρ = −0.020 · pairwise = 0.493</strong>
+            <p>Hierarchical Spearman CI is [−0.096, 0.055], pairwise accuracy
+              remains below 0.65, and 0/3 environments have a positive
+              high-minus-random deletion lower bound.</p>
+            <span class="status-pill fail">Gate 1 failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Oracle/recent opportunity</span>
+            <strong>+0.0251 / +0.0296 / +0.0483</strong>
+            <p>Oracle-frame paired host-loss gains over equal-byte recent-only
+              at gaps 32/64/128. All lower confidence bounds are above zero.</p>
+            <span class="status-pill pass">Opportunity criterion passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Gate 2 · automatic discovery</span>
+            <strong>66.39% recovery</strong>
+            <p>Automatic discovered nodes miss the 70% high-gap recovery
+              threshold. Recovery is 73.3%, 55.6%, and 69.4% at gaps
+              32, 64, and 128.</p>
+            <span class="status-pill fail">Gate 2 failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Matched anti-recency control</span>
+            <strong>1,536 B · 4 tokens · 1 host call</strong>
+            <p>Every memory arm uses the same read budget. Paired six-frame
+              observation/action suffixes are exact; evaluator-only branch
+              BAcc is 0.500.</p>
+            <span class="status-pill pass">Recent suffix indistinguishable</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Graph and downstream phases</span>
+            <strong>Not run</strong>
+            <p>No graph-vs-flat, edge-shuffle, all-environment scale, official
+              raw host, latency Pareto, or executed-control claim exists.</p>
+            <span class="status-pill fail">Stopped by hard gates</span>
+          </div>
+        </div>
+
+        <figure class="render-card" style="margin-top:16px">
+          <img src="assets/graph_cem_gate_dashboard.png"
+            alt="Graph-CEM conditional and oracle hard-gate dashboard">
+          <figcaption>Both mandatory gates fail; graph implementation is not
+            scientifically authorized.</figcaption>
+        </figure>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/graph_cem_conditional_calibration.png"
+              alt="Conditional versus singleton causal-effect calibration across three environments">
+            <figcaption>Correcting the target does not make conditional effects
+              reliably rankable.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/graph_cem_oracle_ladder_vs_gap.png"
+              alt="Equal-byte oracle ladder and discovery recovery over long gaps">
+            <figcaption>Oracle history beats recency, while learned selection
+              remains unstable and automatic recovery misses its gate.</figcaption>
+          </figure>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Recommendation</strong>
+          <p>Do not build Graph-CEM or prefer the current flat conditional head.
+            First test a flat frame-plus-event fallback selector with
+            cross-fitted long-horizon conditional targets; reconsider graph
+            edges only after both mandatory gates pass.</p>
+        </div>
+
+        <p><small>Detailed report:
+          <a href="GRAPH_CEM_REPORT.md"><code>docs/GRAPH_CEM_REPORT.md</code></a>.
+          Machine decision:
+          <a href="../outputs/graph_cem_report.json"><code>outputs/graph_cem_report.json</code></a>.
+          Phase reports:
+          <code>outputs/graph_cem_conditional_v1/report.json</code> and
+          <code>outputs/graph_cem_long_gap_v1/report.json</code>.
+          No <code>paper_c/</code> or <code>paper_d/</code> files were changed.</small></p>
+      </section>
+      <!-- GRAPH_CEM_STATUS_END -->
+
+      <!-- CEM_FALLBACK_STATUS_START -->
+      <section class="section-block" id="cem-fallback-selector">
+        <div class="section-kicker">Flat frame+event fallback recovery · 2026-07-23</div>
+        <h2>Frame candidates recover the oracle opportunity; learned conditional utility remains unrankable.</h2>
+        <p>The Graph-CEM follow-up combines eight automatic events, eight
+          label-free DINO k-center historical frames, and four recent frames.
+          Three-fold cross-fitting prevents each target-generating
+          policy/router from training on its held-out source pair. Five
+          bootstrap heads provide heteroscedastic and ensemble uncertainty;
+          test selection uses a calibrated lower confidence bound.</p>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Candidate proposal recovery</span>
+            <strong>87.8% / 80.4% / 80.6%</strong>
+            <p>Oracle frame+event union recovery of frame-oracle gain at gaps
+              32/64/128. The prior event-only discovery bottleneck is resolved.</p>
+            <span class="status-pill pass">Candidate pool adequate</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Cross-fitted conditional ranking</span>
+            <strong>ρ = −0.007 · pairwise = 0.496</strong>
+            <p>Hierarchical Spearman CI is [−0.032, 0.016]. No environment has
+              a positive high-minus-random deletion lower bound.</p>
+            <span class="status-pill fail">Ranking gate failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Learned fallback vs recent</span>
+            <strong>−0.0203 / −0.0213 / +0.0105</strong>
+            <p>Paired host-loss gains at gaps 32/64/128. The gap-128 gain is
+              smaller than event-only; there are zero qualifying high-gap wins.</p>
+            <span class="status-pill fail">Recovery −36.12%</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Uncertainty calibration</span>
+            <strong>0.889 coverage · 0.048 ECE</strong>
+            <p>Mean empirical coverage for nominal 90% intervals and
+              three-point coverage calibration error.</p>
+            <span class="status-pill pass">Calibration adequate</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Matched recall efficiency</span>
+            <strong>1.000x mean · 1.359x max</strong>
+            <p>Fallback/event-only non-host latency ratio. Every arm reads four
+              tokens, 1,536 bytes, and one host forward.</p>
+            <span class="status-pill pass">Efficiency gate passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Graph / scale / official / control</span>
+            <strong>Not run</strong>
+            <p>Ranking and recovery prerequisites fail, so graph
+              reconsideration and downstream phases remain unauthorized.</p>
+            <span class="status-pill fail">Hard-stopped</span>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_fallback_candidate_oracle_ladder.png"
+              alt="Frame event oracle and learned fallback host-loss ladder over gaps">
+            <figcaption>The union retains most oracle opportunity, while learned
+              fallback is worse than recency at gaps 32 and 64.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_fallback_calibration_ranking.png"
+              alt="Cross-fitted fallback ranking and uncertainty calibration">
+            <figcaption>Calibrated uncertainty coexists with chance-level
+              conditional ordering.</figcaption>
+          </figure>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_fallback_frame_event_selections.png"
+              alt="Frame event selection frequencies and oracle recovery closure">
+            <figcaption>Frame selection rises with gap, but selected utility
+              does not close the candidate-pool opportunity.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_fallback_uncertainty_pareto.png"
+              alt="Fallback uncertainty coverage and non-host recall efficiency">
+            <figcaption>Calibration and latency pass; value ranking is the
+              isolated bottleneck.</figcaption>
+          </figure>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Decisive recommendation</strong>
+          <p>Stop Graph-CEM and further selector complexity on the current
+            DINO-feature breadth host. Use recent-only as the conservative
+            baseline. Any restart should change the host-memory conditioner or
+            move to native long trajectories with larger, more stable utility
+            effects before reconsidering structured memory.</p>
+        </div>
+
+        <p><small>Detailed report:
+          <a href="CEM_FALLBACK_SELECTOR_REPORT.md"><code>docs/CEM_FALLBACK_SELECTOR_REPORT.md</code></a>.
+          Machine decision:
+          <a href="../outputs/cem_fallback_report.json"><code>outputs/cem_fallback_report.json</code></a>.
+          Cell artifacts:
+          <code>outputs/cem_fallback_selector_v1/cells/&lt;env&gt;/s&lt;seed&gt;</code>.
+          No <code>paper_c/</code> or <code>paper_d/</code> files were changed.</small></p>
+      </section>
+      <!-- CEM_FALLBACK_STATUS_END -->
+
+      <!-- CEM_NATIVE_LONG_STATUS_START -->
+      <section class="section-block" id="cem-native-long">
+        <div class="section-kicker">Native long-trajectory recovery · 2026-07-23</div>
+        <h2>Native opportunity passes, but the host conditioner still cannot expose enough historical utility.</h2>
+        <p>The recovery uses unmodified 140-frame PointMaze-large, Cube-single,
+          Puzzle-3x3, and Scene trajectories with three seeds each. Query mining
+          consumes frozen DINO semantics, frozen-host surprise, actions, and
+          chronology only. Recent and historical arms both read four
+          96-dimensional tokens; Graph-CEM remains stopped.</p>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Gate A · native opportunity</span>
+            <strong>27.12% retained · 4 families</strong>
+            <p>Coverage CI is [24.40%, 29.84%]. Oracle historical frames have
+              resolved positive gains at gaps 32/64/128 in every family.</p>
+            <span class="status-pill pass">Opportunity passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Gate B · host conditioner</span>
+            <strong>17.04% recovery</strong>
+            <p>95% CI [11.74%, 22.34%], below the required 50%. Separate
+              recent/history cross-attention paths improve exposure but do not
+              close the oracle opportunity.</p>
+            <span class="status-pill fail">Conditioner failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Ordinary recent-only fidelity</span>
+            <strong>+0.074% loss · 0.0 reset MSE</strong>
+            <p>The +5% non-degradation constraint passes comfortably and the
+              zero-memory path exactly reproduces the frozen host.</p>
+            <span class="status-pill pass">Safety passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Activation / downstream</span>
+            <strong>Not reached · 0% activation</strong>
+            <p>The real calibrated gate, controller use, and executed success
+              are hard-stopped by Gate B. Recent-only remains the safe default.</p>
+            <span class="status-pill fail">Abstained</span>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_native_long_opportunity.png"
+              alt="Native oracle opportunity and retained coverage over long historical gaps">
+            <figcaption>Native oracle effects resolve across all four families;
+              gap-128 retained coverage is lower and remains visible.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_native_long_conditioner.png"
+              alt="Historical opportunity recovery and ordinary recent-only fidelity">
+            <figcaption>Ordinary-path safety is solved; historical effect
+              strength remains far below the 50% recovery gate.</figcaption>
+          </figure>
+        </div>
+
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_native_long_policy_comparison.png"
+              alt="Recent always-memory abstaining and oracle activation comparison">
+            <figcaption>The hard-stopped gated arm is recent-only at zero
+              coverage. Oracle activation is post-hoc and not deployable.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_native_long_activation_timeline.png"
+              alt="Raw native frames showing an oracle opportunity and abstained activation">
+            <figcaption>A real native opportunity is visible, but activation is
+              marked abstained because the conditioner prerequisite failed.</figcaption>
+          </figure>
+        </div>
+
+        <div class="callout" style="margin-top:16px">
+          <strong>Only justified next step</strong>
+          <p>Redesign the host interface to preserve spatial/object patch state
+            into prediction, then rerun Gate B before training any activation
+            gate. Do not add graph edges, CE-ranking complexity, or downstream
+            control to the current pooled DINO-feature host.</p>
+        </div>
+
+        <p><small>Detailed report:
+          <a href="CEM_NATIVE_LONG_REPORT.md"><code>docs/CEM_NATIVE_LONG_REPORT.md</code></a>.
+          Machine decision:
+          <a href="../outputs/cem_native_long_report.json"><code>outputs/cem_native_long_report.json</code></a>.
+          Cell artifacts:
+          <code>outputs/cem_native_long_v1/cells/&lt;env&gt;/s&lt;seed&gt;</code>.
+          No <code>paper_c/</code> or <code>paper_d/</code> claim was changed.</small></p>
+      </section>
+      <!-- CEM_NATIVE_LONG_STATUS_END -->
+
+      <!-- CEM_SPATIAL_STATUS_START -->
+      <section class="section-block" id="cem-spatial-conditioner">
+        <div class="section-kicker">Spatial Gate-B follow-up · 2026-07-23</div>
+        <h2>Patch-grid memory raises mean recovery above 50%, but does not replicate across families.</h2>
+        <p>The fixed-host follow-up keeps 16 frozen-DINO patch tokens with 2D
+          coordinates and bounded cross-attention. Gate-A masks, oracle frames,
+          splits, and event discovery are asserted byte-for-byte unchanged.</p>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Focused recovery</span>
+            <strong>77.13% · CI [41.01%, 118.98%]</strong>
+            <p>Six full cells: three seeds each for Cube and PointMaze.</p>
+            <span class="status-pill pass">Mean target exceeded</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Family replication</span>
+            <strong>1 / 2 families</strong>
+            <p>Cube resolves gaps 32/64/128; every PointMaze interval includes zero.</p>
+            <span class="status-pill fail">Gate B failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Fidelity</span>
+            <strong>+0.382% ordinary · 0.0 empty MSE</strong>
+            <p>The frozen host and exact no-memory path remain safe.</p>
+            <span class="status-pill pass">Safety passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Spatial diagnosis</span>
+            <strong>entropy 2.7726 · overlap 0.0625</strong>
+            <p>Attention is effectively uniform; spatial alignment is limiting.</p>
+            <span class="status-pill fail">Alignment unresolved</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_spatial_factorial_recovery.png"
+              alt="Global and patch-grid conditioner recovery comparison">
+            <figcaption>Mean recovery rises sharply, but the interval remains broad.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_spatial_family_gap.png"
+              alt="Cube and PointMaze patch-grid memory gains by gap">
+            <figcaption>Only Cube supplies resolved positive high-gap evidence.</figcaption>
+          </figure>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <strong>Final alignment/masking result</strong>
+          <p>No treatment improves the 68.86% no-alignment baseline. Random
+            25/50/75 reaches 41.46%/17.76%/36.47%; semantic masking 33.68%;
+            causal alignment 35.28%; hybrid 24.97%. Random-50 reconstructs
+            best but has the worst random-mask host recovery. Patch ranking is
+            chance and PointMaze causal/hybrid changes are resolved negative.
+            The conditioner line is stopped.</p>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_patch_alignment_factorial_recovery.png"
+              alt="Patch alignment and random masking recovery factorial">
+            <figcaption>Masking and causal supervision all reduce host utility.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_patch_alignment_mask_ratio_curve.png"
+              alt="Random mask ratio reconstruction and host recovery">
+            <figcaption>Better reconstruction does not imply useful memory.</figcaption>
+          </figure>
+        </div>
+        <p><small>Detailed report:
+          <a href="CEM_SPATIAL_CONDITIONER_REPORT.md"><code>docs/CEM_SPATIAL_CONDITIONER_REPORT.md</code></a>.
+          Final alignment report:
+          <a href="CEM_PATCH_ALIGNMENT_REPORT.md"><code>docs/CEM_PATCH_ALIGNMENT_REPORT.md</code></a>.
+          Machine report:
+          <a href="../outputs/cem_spatial_conditioner_report.json"><code>outputs/cem_spatial_conditioner_report.json</code></a>.
+          Gate C and downstream remain hard-stopped.</small></p>
+      </section>
+      <!-- CEM_SPATIAL_STATUS_END -->
+
+      <!-- CEM_DECISION_STATUS_START -->
+      <section class="section-block" id="cem-decision-memory">
+        <div class="section-kicker">Decision-conditioned memory utility · 2026-07-23</div>
+        <h2>Decision loss sharpens the oracle audit, but learned conditional utility remains chance.</h2>
+        <p>The fixed PointMaze anti-recency task ranks four native candidate
+          action sequences against a branch-specific future-goal latent. Recent
+          observation/action suffixes are exact, histories use unmodified raw
+          frames, and all methods share memory bytes and host calls.</p>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Oracle closure</span>
+            <strong>58.14% of all-history gap</strong>
+            <p>Event oracle +2.44pp; all history +4.19pp over recent-only.</p>
+            <span class="status-pill pass">Gate 1 closure passed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Learned action gain</span>
+            <strong>+0.97pp · CI [0.00, 1.75]</strong>
+            <p>The lower bound is not positive.</p>
+            <span class="status-pill fail">Prediction gain unresolved</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Conditional utility</span>
+            <strong>ρ = −0.001 · pairwise = 0.500</strong>
+            <p>High-minus-random deletion remains unresolved and negative on average.</p>
+            <span class="status-pill fail">Gate 2 failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Activation / execution</span>
+            <strong>66.57% coverage · 32.50% precision</strong>
+            <p>The controlled branch goal is not an admitted standard-goal controller task.</p>
+            <span class="status-pill fail">Execution not reached</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/cem_decision_oracle_ladder.png"
+              alt="Decision-conditioned PointMaze oracle ladder">
+            <figcaption>Decision oracle headroom is real but smaller than 5pp.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/cem_decision_du_calibration_deletion.png"
+              alt="Decision utility calibration and deletion">
+            <figcaption>Within-query utility ranking remains at chance.</figcaption>
+          </figure>
+        </div>
+        <p><small>Detailed report:
+          <a href="CEM_DECISION_MEMORY_REPORT.md"><code>docs/CEM_DECISION_MEMORY_REPORT.md</code></a>.
+          Machine report:
+          <a href="../outputs/cem_decision_memory_report.json"><code>outputs/cem_decision_memory_report.json</code></a>.
+          No planning, execution, breadth, or paper claim was added.</small></p>
+      </section>
+      <!-- CEM_DECISION_STATUS_END -->
+
+      <!-- MIKASA_ADMISSION_STATUS_START -->
+      <section class="section-block" id="mikasa-memory-admission">
+        <div class="section-kicker">MIKASA long-memory admission · 2026-07-24</div>
+        <h2>The real control interface works; the mandatory oracle memory opportunity does not.</h2>
+        <p>Official MIKASA-Robo-VLA v1.0.0 GatherAndRecall3/5 evaluation uses
+          60 fresh successful motion-planning episodes, three learned-head
+          seeds, raw two-camera RGB, and the same eight-event budget and
+          candidate controller for every matched condition.</p>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Recent-only execution</span>
+            <strong>37.78%</strong>
+            <p>95% CI 33.33%–42.22%; the recent window contains no flash
+              frames in 60/60 episodes.</p>
+            <span class="status-pill pass">Recent-memory gap verified</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Oracle full-event execution</span>
+            <strong>31.67%</strong>
+            <p>Oracle minus recent is −6.11pp with paired 95% CI
+              −10.56pp to −2.22pp.</p>
+            <span class="status-pill fail">Admission gate failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Motor/controller equality</span>
+            <strong>60/60 · 120/120</strong>
+            <p>All matching candidates execute successfully; all wrong
+              candidates fail under the identical 7D controller.</p>
+            <span class="status-pill pass">Execution interface validated</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/mikasa_admission_oracle_ladder.png"
+              alt="MIKASA no-memory, recent, random, oracle, and full-history executed success">
+            <figcaption>Oracle-event access does not improve the shared decision head.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/mikasa_admission_recent_leakage.png"
+              alt="MIKASA recent-suffix flash leakage audit">
+            <figcaption>Minimum post-flash gap is 66 frames; overlap is zero.</figcaption>
+          </figure>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <strong>Hard stop</strong>
+          <p>Focused CEM and 7/9 scaling are not authorized. The complete
+            demonstrations permit a realized-future/demo-tail shortcut, but
+            causal pre-decision history, oracle events, and full history remain
+            at chance. No paper files were changed.</p>
+        </div>
+        <p><small>Detailed report:
+          <a href="MIKASA_MEMORY_ADMISSION_REPORT.md"><code>docs/MIKASA_MEMORY_ADMISSION_REPORT.md</code></a>.
+          Machine report:
+          <a href="../outputs/mikasa_memory_admission_v1/report.json"><code>outputs/mikasa_memory_admission_v1/report.json</code></a>.
+        </small></p>
+      </section>
+      <!-- MIKASA_ADMISSION_STATUS_END -->
+
+      <!-- ROBOTWIN_MEM_ADMISSION_STATUS_START -->
+      <section class="section-block" id="robotwin-mem-admission">
+        <div class="section-kicker">RoboTwin-MeM long-horizon admission · 2026-07-24</div>
+        <h2>A genuine Cover Blocks memory gap appears, but no task clears controller headroom.</h2>
+        <p>The official EventVLA checkout and Apache-2.0 RoboTwin-MeM data are
+          pinned at <code>4b5b2603</code> and <code>f67a4ee9</code>. The
+          published simulator bundle omits its referenced task configurations
+          and asset/data downloaders, so execution is explicitly unavailable.
+          The fallback uses official LeRobot 2.1 trajectories only: 50 episodes
+          per task, three raw 640×480 RGB views, 14D state/action, deterministic
+          30/10/10 splits, and equal four-frame memory reads.</p>
+        <div class="metric-grid" style="margin-top:16px">
+          <div class="metric-card">
+            <span class="metric-label">Recent-suffix leakage</span>
+            <strong>0 / 150</strong>
+            <p>No evaluator event enters a recent window; minimum gaps are
+              100–102 frames.</p>
+            <span class="status-pill pass">Temporal demand verified</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Frozen-DINO oracle set</span>
+            <strong>30.0% · 0.0% · 0.0%</strong>
+            <p>Unhidden Block, Pick Objects in Order, and Cover Blocks Hard all
+              fail the primary action-sequence gate.</p>
+            <span class="status-pill fail">Primary control failed</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Cover Blocks strong control</span>
+            <strong>63.0% vs 3.7%</strong>
+            <p>Preregistered oracle-set minus recent is +59.3pp with paired
+              95% CI +48.1 to +66.7pp.</p>
+            <span class="status-pill fail">Below &gt;75% headroom</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Benchmark admission</span>
+            <strong>0 / 3 tasks</strong>
+            <p>Every task fails at least one oracle-control, gain, or
+              recent-probe clause over three seeds.</p>
+            <span class="status-pill fail">CEM not authorized</span>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px">
+          <figure class="render-card">
+            <img src="assets/robotwin_mem_vlm_oracle_ladder.png"
+              alt="RoboTwin-MeM preregistered frozen-VLM oracle admission ladder">
+            <figcaption>Cover Blocks exposes a large memory opportunity, but
+              seed-averaged oracle control remains 63.0%.</figcaption>
+          </figure>
+          <figure class="render-card">
+            <img src="assets/robotwin_mem_real_rollout_storyboard.png"
+              alt="Official RoboTwin-MeM transient-event rollout storyboard">
+            <figcaption>Official raw rollout: transient reveals, long gap,
+              delayed query, and demonstrated action.</figcaption>
+          </figure>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <strong>Hard stop</strong>
+          <p>Learned CEM, horizon/difficulty scaling, and paper edits are not
+            authorized. The exact simulator blocker and both controller ladders
+            remain preserved as standalone receipts.</p>
+        </div>
+        <p><small>Detailed report:
+          <a href="ROBOTWIN_MEM_CEM_REPORT.md"><code>docs/ROBOTWIN_MEM_CEM_REPORT.md</code></a>.
+          Machine report:
+          <a href="../outputs/robotwin_mem_admission_v1/report.json"><code>outputs/robotwin_mem_admission_v1/report.json</code></a>.
+        </small></p>
+      </section>
+      <!-- ROBOTWIN_MEM_ADMISSION_STATUS_END -->
+
 </main>
   </div>
 
